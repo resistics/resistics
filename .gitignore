@@ -1,0 +1,23 @@
+# ignore backup python files and pyc files
+*.py.bak
+*.pyc
+
+# visual studio code
+.vscode
+
+# ignore docs build
+docs/build/
+
+# ignore build directories
+build/
+dist/
+resistics.egg-info/
+
+# data directory
+tests/testData
+
+# exampleProject
+examples/exampleProject
+examples/exampleProject2
+examples/exampleSeedData
+
