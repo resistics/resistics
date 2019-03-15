@@ -14,7 +14,7 @@ Statistics are another useful feature baked into Resistics. Statistics can be us
     :titlesonly:
     :hidden:
 
-    features/1_config.rst
-    features/2_comments.rst
-    features/3_statistics.rst
-    features/4_remoteStatistics.rst
+    features/configuration.rst
+    features/comments.rst
+    features/statistics.rst
+    features/remoteStatistics.rst

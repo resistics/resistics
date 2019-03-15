@@ -1,15 +1,14 @@
 API reference
 =============
 
-.. include:: ./maindoc/api.rst
+.. include:: api.rst
 
 .. toctree::
     :maxdepth: 4
     :hidden:
 
-
-    calculators
-    dataObjects
-    ioHandlers
-    project
-    utilities
+    api/calculators.rst
+    api/dataObjects.rst
+    api/ioHandlers.rst
+    api/project.rst
+    api/utilities.rst

@@ -37,12 +37,12 @@ The second reason behind the calculation of statistics in Resistics is to allow 
     :glob:
     :hidden:
 
-    3a_powerSpectralDensity.rst
-    3a_coherences.rst
-    3a_partialCoherence.rst
-    3a_polarisationDirection.rst
-    3a_transferFunction.rst
-    3a_resistivityPhase.rst
+    statistics/powerSpectralDensity.rst
+    statistics/coherences.rst
+    statistics/partialCoherence.rst
+    statistics/polarisationDirection.rst
+    statistics/transferFunction.rst
+    statistics/resistivityPhase.rst
 
 .. |Ex| replace:: E\ :sub:`x`
 .. |Ey| replace:: E\ :sub:`y`

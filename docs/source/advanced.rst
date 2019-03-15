@@ -20,4 +20,7 @@ This section introduces some of the more advanced features of Resistics includin
     :glob:
     :hidden:
 
-    advanced/*
+    advanced/preProcess.rst
+    advanced/remoteReference.rst
+    advanced/remoteReferenceStatistics.rst
+    advanced/remoteReferenceMasking.rst

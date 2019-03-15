@@ -1,11 +1,25 @@
+.. role:: python(code)
+   :language: python
+
+.. |Ex| replace:: E\ :sub:`x`
+.. |Ey| replace:: E\ :sub:`y`
+.. |Hx| replace:: H\ :sub:`x`
+.. |Hy| replace:: H\ :sub:`y`
+.. |Hz| replace:: H\ :sub:`z`
+.. |Zxy| replace:: Z\ :sub:`xy`
+.. |Zxx| replace:: Z\ :sub:`xx`
+.. |Zyx| replace:: Z\ :sub:`yx`
+.. |Zyy| replace:: Z\ :sub:`yy`
+.. |fs| replace:: f\ :sub:`s`
+
 Up and running
 --------------
 
-Resistics can quickly run projects with default settings by using the :doc:`Project API <../../project>`. Default configuration options are detailed in :doc:`Configuration Parameters <../features/1a_configParameters>` section.
+Resistics can quickly run projects with default settings by using the :doc:`Project API <../api/project>`. Default configuration options are detailed in :doc:`Configuration Parameters <../features/configuration/parameters>` section.
 
 Begin by loading the project and calculating spectra.
 
-.. literalinclude:: ../../../../examples/ex1_simpleRun.py
+.. literalinclude:: ../../../examples/ex1_simpleRun.py
     :linenos:
     :language: python
     :lines: 1-11
@@ -42,9 +56,9 @@ Spectra data files are stored in project specData directory. The folder structur
     ├── images
     └── mtProj.prj
 
-By default spectra are stored in a folder called spectra under the dataFolder. The reason for this will become clearer in the section covering :doc:`multiple spectra <06_multipleSpectra>`.
+By default spectra are stored in a folder called spectra under the dataFolder. The reason for this will become clearer in the section covering :doc:`multiple spectra <multipleSpectra>`.
 
-.. literalinclude:: ../../../../examples/ex1_simpleRun.py
+.. literalinclude:: ../../../examples/ex1_simpleRun.py
     :linenos:
     :language: python
     :lines: 13-16
@@ -90,15 +104,15 @@ Transfer functions are saved in an internal format. This is a minimal format cur
 --- Example transfer function data format
 
 
-Once the components of the impedance tensor have been calculated, it is possible to visualise them using the methods available in the :doc:`projectTransferFunction <../../project.projectTransferFunction>` module.
+Once the components of the impedance tensor have been calculated, it is possible to visualise them using the methods available in the :doc:`projectTransferFunction <../api/project.projectTransferFunction>` module.
 
-.. literalinclude:: ../../../../examples/ex1_simpleRun.py
+.. literalinclude:: ../../../examples/ex1_simpleRun.py
     :linenos:
     :language: python
     :lines: 18-20
     :lineno-start: 18
 
-.. figure:: ../../_images/transFunction_simpleRun_onePlot.png
+.. figure:: ../_images/transFunction_simpleRun_onePlot.png
     :align: center
     :alt: alternate text
     :width: 400
@@ -108,13 +122,13 @@ Once the components of the impedance tensor have been calculated, it is possible
 
 However, this plot is quite busy. One way to simplify the plot is to explicitly specify the polarisations to plot. 
 
-.. literalinclude:: ../../../../examples/ex1_simpleRun.py
+.. literalinclude:: ../../../examples/ex1_simpleRun.py
     :linenos:
     :language: python
     :lines: 22-23
     :lineno-start: 22
 
-.. figure:: ../../_images/transFunction_simpleRun_onePlot_polarisations.png
+.. figure:: ../_images/transFunction_simpleRun_onePlot_polarisations.png
     :align: center
     :alt: alternate text
     :width: 400
@@ -124,7 +138,7 @@ However, this plot is quite busy. One way to simplify the plot is to explicitly 
 
 On occasion, it can be more useful to plot each component separately. This can be done by setting :python:`oneplot = False` in the arguments.
 
-.. literalinclude:: ../../../../examples/ex1_simpleRun.py
+.. literalinclude:: ../../../examples/ex1_simpleRun.py
     :linenos:
     :language: python
     :lines: 25-26
@@ -132,7 +146,7 @@ On occasion, it can be more useful to plot each component separately. This can b
 
 This results in the following plot.
 
-.. figure:: ../../_images/transFunction_simpleRun_multPlots.png
+.. figure:: ../_images/transFunction_simpleRun_multPlots.png
     :align: center
     :alt: alternate text
     :figclass: align-center

@@ -1,3 +1,17 @@
+.. role:: python(code)
+   :language: python
+
+.. |Ex| replace:: E\ :sub:`x`
+.. |Ey| replace:: E\ :sub:`y`
+.. |Hx| replace:: H\ :sub:`x`
+.. |Hy| replace:: H\ :sub:`y`
+.. |Hz| replace:: H\ :sub:`z`
+.. |Zxy| replace:: Z\ :sub:`xy`
+.. |Zxx| replace:: Z\ :sub:`xx`
+.. |Zyx| replace:: Z\ :sub:`yx`
+.. |Zyy| replace:: Z\ :sub:`yy`
+.. |fs| replace:: f\ :sub:`s`
+
 Viewing spectra
 ---------------
 
@@ -64,23 +78,23 @@ Each spectra file that is calculated is written out with a set of comments. The 
     Spectra data written out to exampleProject\specData\site1\meas_2012-02-10_11-05-00\spectra on 2019-03-03 19:33:27.595114
     ---------------------------------------------------
 
-There are a number of methods in :doc:`projectSpectra <../../project.projectSpectra>` that can be used to visualise spectra.
+There are a number of methods in :doc:`projectSpectra <../api/project.projectSpectra>` that can be used to visualise spectra.
 
-.. figure:: ../../_images/spectraData_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
+.. figure:: ../_images/spectraData_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Plot of the tipper result when |Hz| is set as the only output channel
 
-.. figure:: ../../_images/spectraSection_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
+.. figure:: ../_images/spectraSection_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Plot of the tipper result when |Hz| is set as the only output channel
 
-.. figure:: ../../_images/spectraStack_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
+.. figure:: ../_images/spectraStack_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -90,14 +104,14 @@ There are a number of methods in :doc:`projectSpectra <../../project.projectSpec
 
 For the 128Hz data
 
-.. figure:: ../../_images/spectraSection_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
+.. figure:: ../_images/spectraSection_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Plot of the tipper result when |Hz| is set as the only output channels
 
-.. figure:: ../../_images/spectraStack_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
+.. figure:: ../_images/spectraStack_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
     :align: center
     :alt: alternate text
     :figclass: align-center

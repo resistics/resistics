@@ -27,15 +27,15 @@ These will both give different solutions are the solution to the robust regressi
 
 Continuing on from the example in the previous section, the spectra have already been calculated and it is possible to simply process the same spectra again, but this time using different input and output channels.
 
-.. literalinclude:: ../../../../examples/ex1_simpleRunWithTipper.py
+.. literalinclude:: ../../../examples/ex1_simpleRunWithTipper.py
     :linenos:
     :language: python
     :lines: 1-20
     :lineno-start: 1
 
-The tipper can be viewed using the methods provided in the :doc:`projectTransferFunction <../../project.projectTransferFunction>` module as follows:
+The tipper can be viewed using the methods provided in the :doc:`projectTransferFunction <../api/project.projectTransferFunction>` module as follows:
 
-.. literalinclude:: ../../../../examples/ex1_simpleRunWithTipper.py
+.. literalinclude:: ../../../examples/ex1_simpleRunWithTipper.py
     :linenos:
     :language: python
     :lines: 22-24
@@ -43,7 +43,7 @@ The tipper can be viewed using the methods provided in the :doc:`projectTransfer
 
 This produces the following plot:
 
-.. figure:: ../../_images/tipper_site1_spectra_with_Hz.png
+.. figure:: ../_images/tipper_site1_spectra_with_Hz.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -52,7 +52,7 @@ This produces the following plot:
 
 As stated earlier, another way to calculate the tipper is to use |Hz| as the only output channel. An example of this is given below.
 
-.. literalinclude:: ../../../../examples/ex1_simpleRunWithTipper.py
+.. literalinclude:: ../../../examples/ex1_simpleRunWithTipper.py
     :linenos:
     :language: python
     :lines: 27-30
@@ -62,7 +62,7 @@ The tipper result is given in the figure. The result here is different to the re
 
 This produces the following plot:
 
-.. figure:: ../../_images/tipper_site1_spectra_only_Hz.png
+.. figure:: ../_images/tipper_site1_spectra_only_Hz.png
     :align: center
     :alt: alternate text
     :figclass: align-center

@@ -5,7 +5,7 @@ Magnetotelluric surveying
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 Magnetotellurics (MT) is a passive geophysical method for estimating the electrical properties of the subsurface. The MT method uses variations in the natural geoelectric and geomagnetic fields as the source of energy.
 
-.. figure:: ../_images/mtSetup.png
+.. figure:: _images/mtSetup.png
     :align: center
     :alt: alternate text
     :figclass: align-center

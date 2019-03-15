@@ -19,7 +19,7 @@ def getDefaultConfigFilepath() -> str:
 
     # globalConfigFile = os.path.join("..", "config.ini")
     globalConfigFile = os.path.join(
-        "e:/", "magnetotellurics", "code", "resistics", "resistics", "config.ini"
+        "e:/", "magnetotellurics", "code", "resistics", "resistics", "resisticsConfig.ini"
     )
     if not checkFilepath(globalConfigFile):
         errorPrint(

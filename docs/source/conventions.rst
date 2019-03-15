@@ -19,7 +19,6 @@ Resistics adopts a number of conventions which are outlined below:
 - Resistics will automatically locate a calibration file for the data. The following calibration file conventions are used
 
 
-
 .. |Ex| replace:: E\ :sub:`x`
 .. |Ey| replace:: E\ :sub:`y`
 .. |Hx| replace:: H\ :sub:`x`

@@ -111,7 +111,7 @@ A more detailed explanation of each parameter is provided in the next section.
     :glob:
     :hidden:
 
-    1a_configParameters.rst
+    configuration/parameters.rst
 
 
 
