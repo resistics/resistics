@@ -6,15 +6,12 @@ from typing import Dict, List
 
 # import from package
 from resistics.calculators.calculator import Calculator
+from resistics.dataObjects.calibrationData import CalibrationData
 from resistics.dataObjects.timeData import TimeData
+from resistics.ioHandlers.calibrationIO import CalibrationIO
 from resistics.utilities.utilsChecks import isMagnetic
 from resistics.utilities.utilsConfig import loadConfig
-from resistics.utilities.utilsCalibrate import (
-    getKnownCalibrationFormats,
-    readCalFile,
-    getCalName,
-    unitCalibration,
-)
+from resistics.utilities.utilsCalibrate import getKnownCalibrationFormats, getCalName
 from resistics.utilities.utilsFreq import (
     forwardFFT,
     inverseFFT,
@@ -35,10 +32,8 @@ class Calibrator(Calculator):
         The calibration file formats of the respective extensions
     calDir : str
         Directory path of calibration files
-    calFiles : list
+    calFiles : list[str]
         List of calibration files found in calibration directory
-    calTypes :
-        Types of the calibration files found in calibration directory
     numCalFiles : int
         Number of found calibration files in calibration directory
     useTheoretical : bool
@@ -78,12 +73,13 @@ class Calibrator(Calculator):
         """
 
         self.calExt, self.calFormats = getKnownCalibrationFormats()
-        self.calFiles: List = []
-        self.calTypes: List = []
+        self.calFiles: List[str] = []
+        self.numCalFiles = 0
         self.calDir: str = calDirectory
         self.findCalFiles()
         # set whether to use theoretical calibration functions
         conf = loadConfig()
+        self.extend: bool = conf["Calibration"]["extend"]
         self.useTheoretical: bool = conf["Calibration"]["usetheoretical"]
 
     def setCalDir(self, calDirectory: str) -> None:
@@ -104,21 +100,19 @@ class Calibrator(Calculator):
         """Find calibration files in calibration directory"""
 
         self.calFiles.clear()
-        self.calTypes.clear()
-        for cE, cF in zip(self.calExt, self.calFormats):
+        for cE in self.calExt:
             # get all files of format cE
-            tmp1 = glob.glob(os.path.join(self.calDir, "*.{}".format(cE)))
-            tmp2 = [cF] * len(tmp1)
-            self.calFiles = self.calFiles + tmp1
-            self.calTypes = self.calTypes + tmp2
+            self.calFiles = self.calFiles + glob.glob(
+                os.path.join(self.calDir, "*.{}".format(cE))
+            )
         self.numCalFiles = len(self.calFiles)
 
     def calibrate(
         self,
         timeData: TimeData,
         sensor: Dict[str, str],
-        serial: Dict[str, str],
-        chopper: Dict[str, str],
+        serial: Dict[str, int],
+        chopper: Dict[str, bool],
     ) -> TimeData:
         """Calibrate time data
 
@@ -132,11 +126,11 @@ class Calibrator(Calculator):
         timeData : TimeData
             TimeData object
         sensor : Dict
-            Dictionary of sensor information with channels as the key and sensor as the value
+            Dictionary of sensor information with channels as the key and sensor as the value (sensor is a string)
         serial :
-            Dictionary of serial information with channels as the key and sensor as the value
+            Dictionary of serial information with channels as the key and sensor as the value (serial is a number)
         chopper :
-            Dictionary of chopper information with channels as the key and sensor as the value
+            Dictionary of chopper information with channels as the key and sensor as the value (chopper is a bool)
 
         Returns
         -------
@@ -144,13 +138,16 @@ class Calibrator(Calculator):
             Calibration TimeData object
         """
 
+        calIO = CalibrationIO()
         # iterate over data
         for chan in timeData.chans:
             # output some info
             self.printText("Calibrating channel {}".format(chan))
             # try and find calibration file
-            calIndex = self.getCalFile(sensor[chan], serial[chan], chopper[chan])
-            if calIndex < 0:
+            calFile, calFormat = self.getCalFile(
+                sensor[chan], serial[chan], chopper[chan]
+            )
+            if calFile == "":
                 # no file found
                 if self.useTheoretical and isMagnetic(chan):
                     # use theoretical
@@ -170,35 +167,32 @@ class Calibrator(Calculator):
                     )
                     timeData.addComment("Channel {} not calibrated".format(chan))
                     continue  # nothing to do
+
             # else file found
             # no need to separately apply static gain, already included in cal data
-            calData, staticGain = readCalFile(
-                self.calTypes[calIndex],
-                self.calFiles[calIndex],
-                sensor[chan],
-                serial[chan],
-                chopper[chan],
-            )
+            calIO.refresh(calFile, calFormat, chopper=chopper[chan], extend=self.extend)
+            calData = calIO.read()
             self.printText(
                 "Calibration file found for sensor {}, serial number {}, chopper {}: {}".format(
-                    sensor[chan], serial[chan], chopper[chan], self.calFiles[calIndex]
+                    sensor[chan], serial[chan], chopper[chan], calFile
                 )
             )
+            self.printText("Format: {}".format(calFormat))
             self.printText(
                 "Static gain correction of {} applied to calibration data".format(
-                    staticGain
+                    calData.staticGain
                 )
             )
-            self.printText("Format: {}".format(self.calTypes[calIndex]))
+            # calibrate time data
             timeData.data[chan] = self.calibrateChan(
                 timeData.data[chan], timeData.sampleFreq, calData
             )
             timeData.addComment(
                 "Channel {} calibrated with calibration data from file {}".format(
-                    chan, self.calFiles[calIndex]
+                    chan, calFile
                 )
             )
-        # return timeData at the end
+        # return calibrated time data
         return timeData
 
     def getCalFile(self, sensor, serial, chopper) -> int:
@@ -206,36 +200,33 @@ class Calibrator(Calculator):
     
         Parameters
         ----------
-        sensor : serial
+        sensor : str
             Channel data
-        serial : float
+        serial : int
             Sampling frequency Hz
-        chopper : np.ndarray
+        chopper : bool
             Calibration data
 
         Returns
         -------
-        out : int
-            Index of file in calFiles list or -1 if file not found
+        calFile : str
+            The mathing calibration file
+        calFormat : str
+            The calibration format
         """
 
-        index = -1
-        for calE, calF in zip(self.calExt, self.calFormats):
+        for extension, fileformat in zip(self.calExt, self.calFormats):
             # get the name for this format
-            calName = getCalName(calF, calE, sensor, serial, chopper)
-            # search to find a calibration file with that name
-            # take the first encountered
-            for iF in range(0, self.numCalFiles):
-                if calName in self.calFiles[iF]:
-                    index = iF
-            # break out of calfile found
-            if index != -1:
-                break
-        # return the index to the calibration file
-        return index
+            calName = getCalName(fileformat, extension, sensor, serial, chopper)
+            # search to find a calibration file with that name and take the first encountered
+            for calFile in self.calFiles:
+                if calName in calFile:
+                    return calFile, fileformat
+        # else return empty strings
+        return "", ""
 
     def calibrateChan(
-        self, data: np.ndarray, sampleFreq: float, calData: np.ndarray
+        self, data: np.ndarray, sampleFreq: float, calData: CalibrationData
     ) -> np.ndarray:
         """Calibrate a channel
 
@@ -247,7 +238,7 @@ class Calibrator(Calculator):
             Channel data
         sampleFreq : float
             Sampling frequency Hz
-        calData : np.ndarray
+        calData : CalibrationData
             Calibration data
 
         Returns
@@ -271,19 +262,15 @@ class Calibrator(Calculator):
         # return the non padded part of the array
         return inverseFFT(fftData, data.size)[:dataSize]
 
-    def interpolateCalData(
-        self, calData: np.ndarray, f: np.ndarray, spline: bool = True
-    ) -> np.ndarray:
+    def interpolateCalData(self, calData: CalibrationData, f: np.ndarray) -> np.ndarray:
         """Interpolation calibration data on to frequency points
     
         Parameters
         ----------
-        calData : np.ndarray
+        calData : CalibrationData
             Calibration data
         f : np.ndarray
             Frequency array where calibration data is defined
-        spline : bool (True)
-            Boolean flag to use spline interpolation
 
         Returns
         -------
@@ -291,19 +278,9 @@ class Calibrator(Calculator):
             Calibration data interpolated to the frequency array f
         """
 
-        if spline:
-            # spline interpolation
-            interpFuncMag = interp.InterpolatedUnivariateSpline(
-                calData[:, 0], calData[:, 1]
-            )
-            interpFuncPhase = interp.InterpolatedUnivariateSpline(
-                calData[:, 0], calData[:, 2]
-            )
-        else:
-            # linear interpolate
-            interpFuncMag = interp.interp1d(calData[:, 0], calData[:, 1])
-            interpFuncPhase = interp.interp1d(calData[:, 0], calData[:, 2])
-
+        # linear interpolate
+        interpFuncMag = interp.interp1d(calData.freqs, calData.magnitude)
+        interpFuncPhase = interp.interp1d(calData.freqs, calData.phase)
         return interpFuncMag(f[1:]) * np.exp(1j * interpFuncPhase(f[1:]))
 
     def getTheoreticalCalData(self, sensor: str) -> np.ndarray:
@@ -322,7 +299,7 @@ class Calibrator(Calculator):
 
         # should use the sensor to figure out what calibration func
         if "mfs06" in sensor or "MFS06" in sensor:
-            return unitCalibration()
+            return CalibrationIO().unitCalibration()
 
     def printList(self) -> List[str]:
         """Class information as a list of strings
@@ -340,10 +317,10 @@ class Calibrator(Calculator):
         textLst.append("Associated formats")
         textLst.append(", ".join(self.calFormats))
         # now print the actual calibration files
-        textLst.append("Calibration files found:")
-        if len(self.calFiles) == 0:
+        textLst.append("{} calibration files found:".format(self.numCalFiles))
+        if self.numCalFiles == 0:
             textLst.append("\t\tNo calibration files found")
         else:
-            for cE, cT in zip(self.calFiles, self.calTypes):
-                textLst.append("{}\t\t{}".format(cT, cE))
+            for calFile in self.calFiles:
+                textLst.append("\t\t{}".format(calFile))
         return textLst

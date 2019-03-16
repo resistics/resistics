@@ -12,7 +12,7 @@ from resistics.utilities.utilsPlotter import getViewFonts
 
 
 class TimeData(DataObject):
-    """Class for holding information time data
+    """Class for holding time data
 
     Attributes
     ----------

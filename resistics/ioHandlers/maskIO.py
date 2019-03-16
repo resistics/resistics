@@ -27,7 +27,7 @@ class MaskIO(IOHandler):
 	Methods
 	-------
 	__init__(datapath)
-		Initialise the maskIO file.
+		Initialise the MaskIO object.
 	read(maskName, sampleFreq)
 		Read in maskName for sampleFreq from datapath        
 	write(maskData)
