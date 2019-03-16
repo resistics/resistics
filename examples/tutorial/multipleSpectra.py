@@ -3,7 +3,7 @@ from resistics.project.projectIO import loadProject
 from resistics.project.projectTransferFunction import processProject, viewTransferFunction
 
 # need the project path for loading
-projectPath = os.path.join("exampleProject")
+projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath)
 
 # calculate another set of spectra for the 128 Hz data with notching at 50Hz and 16.667Hz

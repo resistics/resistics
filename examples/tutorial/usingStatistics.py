@@ -14,7 +14,7 @@ from resistics.project.projectStatistics import calculateStatistics
 from resistics.utilities.utilsStats import getStatNames
 
 # need the project path for loading
-projectPath = os.path.join("exampleProject")
+projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath)
 stats, remotestats = getStatNames()
 calculateStatistics(projData, stats=stats)

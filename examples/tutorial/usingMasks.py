@@ -11,7 +11,7 @@ import os
 from resistics.project.projectIO import loadProject
 
 # load project and configuration file
-projectPath = os.path.join("exampleProject")
+projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath, configFile="ex1_04_config.ini")
 
 # get a mask data object and specify the sampling frequency to mask (128Hz)

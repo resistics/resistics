@@ -2,7 +2,7 @@ import os
 from resistics.project.projectIO import loadProject
 
 # load the project
-projectPath = os.path.join("exampleProject")
+projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath)
 
 # calculate spectrum using standard options

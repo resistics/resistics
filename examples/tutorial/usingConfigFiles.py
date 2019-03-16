@@ -5,7 +5,7 @@ import os
 from resistics.project.projectIO import loadProject
 
 #  load the project and also provide a config file
-projectPath = os.path.join("exampleProject")
+projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath, configFile="ex1_04_config.ini")
 projData.printInfo()
 
