@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<EmeraldModuleResponse>
+    <CalibrationFile>06133_1503_H_15V</CalibrationFile>
+    <CalibrationDate>2015_03</CalibrationDate>
+    <CalibrationType>RSP</CalibrationType>
+    <SensorType>Metronix_Coil</SensorType>
+    <SensorSpecification>006_HF</SensorSpecification>
+    <SensorId>133</SensorId>
+    <StaticGain>800.000000</StaticGain>
+    <Unit>mV/nT</Unit>
+    <Status>OK</Status>
+    <ResponseData Frequency=" 100000.00000000" Magnitude="0.08877854" Phase="-123.74210000" />
+    <ResponseData Frequency="  96222.71000000" Magnitude="0.09151411" Phase="-122.20340000" />
+    <ResponseData Frequency="  92588.10000000" Magnitude="0.09446067" Phase="-120.79290000" />
+    <ResponseData Frequency="  89090.78000000" Magnitude="0.09755461" Phase="-119.37630000" />
+    <ResponseData Frequency="  85725.57000000" Magnitude="0.10078241" Phase="-117.89050000" />
+    <ResponseData Frequency="  82487.47000000" Magnitude="0.10417753" Phase="-116.40460000" />
+    <ResponseData Frequency="  79371.68000000" Magnitude="0.10746057" Phase="-114.94360000" />
+    <ResponseData Frequency="  76373.58000000" Magnitude="0.11086033" Phase="-113.60060000" />
+    <ResponseData Frequency="  73488.73000000" Magnitude="0.11420669" Phase="-112.39800000" />
+    <ResponseData Frequency="  70712.85000000" Magnitude="0.11790333" Phase="-111.32490000" />
+    <ResponseData Frequency="  68041.82000000" Magnitude="0.12206631" Phase="-110.34170000" />
+    <ResponseData Frequency="  65471.68000000" Magnitude="0.12650338" Phase="-109.31160000" />
+    <ResponseData Frequency="  62998.63000000" Magnitude="0.13135538" Phase="-108.33700000" />
+    <ResponseData Frequency="  60618.99000000" Magnitude="0.13645350" Phase="-107.22050000" />
+    <ResponseData Frequency="  58329.23000000" Magnitude="0.14178375" Phase="-105.95920000" />
+    <ResponseData Frequency="  56125.97000000" Magnitude="0.14708763" Phase="-104.76010000" />
+    <ResponseData Frequency="  54005.93000000" Magnitude="0.15226050" Phase="-103.55500000" />
+    <ResponseData Frequency="  51965.97000000" Magnitude="0.15765400" Phase="-102.46000000" />
+    <ResponseData Frequency="  50003.07000000" Magnitude="0.16305150" Phase="-101.46570000" />
+    <ResponseData Frequency="  48114.31000000" Magnitude="0.16867225" Phase="-100.50760000" />
+    <ResponseData Frequency="  46296.89000000" Magnitude="0.17464037" Phase=" -99.73044000" />
+    <ResponseData Frequency="  44548.13000000" Magnitude="0.18112975" Phase=" -98.95991000" />
+    <ResponseData Frequency="  42865.41000000" Magnitude="0.18840138" Phase=" -98.26605000" />
+    <ResponseData Frequency="  41246.27000000" Magnitude="0.19632613" Phase=" -97.50920000" />
+    <ResponseData Frequency="  39688.27000000" Magnitude="0.20506888" Phase=" -96.66896000" />
+    <ResponseData Frequency="  38189.13000000" Magnitude="0.21417450" Phase=" -95.67523000" />
+    <ResponseData Frequency="  36746.62000000" Magnitude="0.22378650" Phase=" -94.62573000" />
+    <ResponseData Frequency="  35358.59000000" Magnitude="0.23369975" Phase=" -93.41593000" />
+    <ResponseData Frequency="  34023.00000000" Magnitude="0.24372675" Phase=" -92.09158000" />
+    <ResponseData Frequency="  32737.85000000" Magnitude="0.25378587" Phase=" -90.72304000" />
+    <ResponseData Frequency="  31501.25000000" Magnitude="0.26357338" Phase=" -89.26049000" />
+    <ResponseData Frequency="  30311.36000000" Magnitude="0.27334562" Phase=" -87.82895000" />
+    <ResponseData Frequency="  29166.41000000" Magnitude="0.28277425" Phase=" -86.38580000" />
+    <ResponseData Frequency="  28064.71000000" Magnitude="0.29252925" Phase=" -84.95051000" />
+    <ResponseData Frequency="  27004.62000000" Magnitude="0.30144925" Phase=" -83.57078000" />
+    <ResponseData Frequency="  25984.58000000" Magnitude="0.31023187" Phase=" -82.27145000" />
+    <ResponseData Frequency="  25003.07000000" Magnitude="0.31878313" Phase=" -81.07256000" />
+    <ResponseData Frequency="  24058.63000000" Magnitude="0.32705462" Phase=" -80.03114000" />
+    <ResponseData Frequency="  23149.87000000" Magnitude="0.33582125" Phase=" -79.11964000" />
+    <ResponseData Frequency="  22275.43000000" Magnitude="0.34500938" Phase=" -78.33450000" />
+    <ResponseData Frequency="  21434.02000000" Magnitude="0.35476388" Phase=" -77.71940000" />
+    <ResponseData Frequency="  20624.40000000" Magnitude="0.36569350" Phase=" -77.16328000" />
+    <ResponseData Frequency="  19845.36000000" Magnitude="0.37808613" Phase=" -76.64165000" />
+    <ResponseData Frequency="  19095.74000000" Magnitude="0.39179938" Phase=" -76.15090000" />
+    <ResponseData Frequency="  18374.44000000" Magnitude="0.40909613" Phase=" -75.39464000" />
+    <ResponseData Frequency="  17680.38000000" Magnitude="0.42601200" Phase=" -74.57809000" />
+    <ResponseData Frequency="  17012.54000000" Magnitude="0.44359738" Phase=" -73.60526000" />
+    <ResponseData Frequency="  16369.93000000" Magnitude="0.46208163" Phase=" -72.44982000" />
+    <ResponseData Frequency="  15751.59000000" Magnitude="0.48112488" Phase=" -71.08853000" />
+    <ResponseData Frequency="  15156.61000000" Magnitude="0.49970175" Phase=" -69.65128000" />
+    <ResponseData Frequency="  14584.10000000" Magnitude="0.51839500" Phase=" -68.08278000" />
+    <ResponseData Frequency="  14033.22000000" Magnitude="0.53616725" Phase=" -66.47764000" />
+    <ResponseData Frequency="  13503.14000000" Magnitude="0.55398938" Phase=" -64.83617000" />
+    <ResponseData Frequency="  12993.09000000" Magnitude="0.57075862" Phase=" -63.16896000" />
+    <ResponseData Frequency="  12502.30000000" Magnitude="0.58733663" Phase=" -61.46547000" />
+    <ResponseData Frequency="  12030.05000000" Magnitude="0.60346125" Phase=" -59.75940000" />
+    <ResponseData Frequency="  11575.64000000" Magnitude="0.61879500" Phase=" -58.05477000" />
+    <ResponseData Frequency="  11138.40000000" Magnitude="0.63376563" Phase=" -56.32827000" />
+    <ResponseData Frequency="  10717.67000000" Magnitude="0.64798400" Phase=" -54.60885000" />
+    <ResponseData Frequency="  10312.83000000" Magnitude="0.66395025" Phase=" -52.79426000" />
+    <ResponseData Frequency="   9923.28600000" Magnitude="0.67668200" Phase=" -51.07599000" />
+    <ResponseData Frequency="   9548.45500000" Magnitude="0.68900887" Phase=" -49.39648000" />
+    <ResponseData Frequency="   9187.78200000" Magnitude="0.70002263" Phase=" -47.70113000" />
+    <ResponseData Frequency="   8840.73300000" Magnitude="0.71046888" Phase=" -46.02061000" />
+    <ResponseData Frequency="   8506.79300000" Magnitude="0.71976525" Phase=" -44.36049000" />
+    <ResponseData Frequency="   8185.46700000" Magnitude="0.72796500" Phase=" -42.68160000" />
+    <ResponseData Frequency="   7876.27900000" Magnitude="0.73486363" Phase=" -41.01434000" />
+    <ResponseData Frequency="   7578.76900000" Magnitude="0.74015125" Phase=" -39.39211000" />
+    <ResponseData Frequency="   7292.49700000" Magnitude="0.74340988" Phase=" -37.77294000" />
+    <ResponseData Frequency="   7017.03800000" Magnitude="0.74477900" Phase=" -36.20350000" />
+    <ResponseData Frequency="   6751.98400000" Magnitude="0.74378063" Phase=" -34.73297000" />
+    <ResponseData Frequency="   6496.94200000" Magnitude="0.73922162" Phase=" -33.31895000" />
+    <ResponseData Frequency="   6251.53400000" Magnitude="0.73166287" Phase=" -32.14974000" />
+    <ResponseData Frequency="   6015.39600000" Magnitude="0.72060062" Phase=" -31.34537000" />
+    <ResponseData Frequency="   5788.17700000" Magnitude="0.70725213" Phase=" -31.05912000" />
+    <ResponseData Frequency="   5569.54100000" Magnitude="0.69477675" Phase=" -31.51843000" />
+    <ResponseData Frequency="   5359.16300000" Magnitude="0.68783825" Phase=" -32.74899000" />
+    <ResponseData Frequency="   5156.73200000" Magnitude="0.69212750" Phase=" -34.46659000" />
+    <ResponseData Frequency="   4961.94800000" Magnitude="0.70966512" Phase=" -36.12075000" />
+    <ResponseData Frequency="   4774.52100000" Magnitude="0.73774500" Phase=" -37.06163000" />
+    <ResponseData Frequency="   4594.17300000" Magnitude="0.77015088" Phase=" -37.16825000" />
+    <ResponseData Frequency="   4420.63800000" Magnitude="0.80159825" Phase=" -36.56036000" />
+    <ResponseData Frequency="   4253.65800000" Magnitude="0.82986563" Phase=" -35.52214000" />
+    <ResponseData Frequency="   4092.98500000" Magnitude="0.85391987" Phase=" -34.23725000" />
+    <ResponseData Frequency="   3938.38100000" Magnitude="0.87379887" Phase=" -32.88945000" />
+    <ResponseData Frequency="   3789.61700000" Magnitude="0.89053325" Phase=" -31.49726000" />
+    <ResponseData Frequency="   3646.47200000" Magnitude="0.90346738" Phase=" -30.15461000" />
+    <ResponseData Frequency="   3508.73400000" Magnitude="0.91603612" Phase=" -28.85027000" />
+    <ResponseData Frequency="   3376.19900000" Magnitude="0.92565325" Phase=" -27.63919000" />
+    <ResponseData Frequency="   3248.67100000" Magnitude="0.93478188" Phase=" -26.48347000" />
+    <ResponseData Frequency="   3125.95900000" Magnitude="0.94173487" Phase=" -25.37949000" />
+    <ResponseData Frequency="   3007.88300000" Magnitude="0.94812737" Phase=" -24.34476000" />
+    <ResponseData Frequency="   2894.26600000" Magnitude="0.95358850" Phase=" -23.37326000" />
+    <ResponseData Frequency="   2784.94100000" Magnitude="0.95873425" Phase=" -22.36996000" />
+    <ResponseData Frequency="   2679.74600000" Magnitude="0.96341025" Phase=" -21.50375000" />
+    <ResponseData Frequency="   2578.52400000" Magnitude="0.96762362" Phase=" -20.67566000" />
+    <ResponseData Frequency="   2481.12600000" Magnitude="0.97150487" Phase=" -19.80529000" />
+    <ResponseData Frequency="   2387.40700000" Magnitude="0.97486675" Phase=" -19.02755000" />
+    <ResponseData Frequency="   2297.22800000" Magnitude="0.97747925" Phase=" -18.29376000" />
+    <ResponseData Frequency="   2210.45500000" Magnitude="0.98051137" Phase=" -17.59004000" />
+    <ResponseData Frequency="   2126.95900000" Magnitude="0.98306925" Phase=" -16.88171000" />
+    <ResponseData Frequency="   2046.61800000" Magnitude="0.98680013" Phase=" -16.27970000" />
+    <ResponseData Frequency="   1969.31100000" Magnitude="0.98799425" Phase=" -15.60589000" />
+    <ResponseData Frequency="   1894.92500000" Magnitude="0.99043875" Phase=" -14.97023000" />
+    <ResponseData Frequency="   1823.34800000" Magnitude="0.99244525" Phase=" -14.42108000" />
+    <ResponseData Frequency="   1754.47500000" Magnitude="0.99453187" Phase=" -13.82166000" />
+    <ResponseData Frequency="   1688.20300000" Magnitude="0.99624050" Phase=" -13.26928000" />
+    <ResponseData Frequency="   1624.43500000" Magnitude="0.99741825" Phase=" -12.78584000" />
+    <ResponseData Frequency="   1563.07500000" Magnitude="0.99878075" Phase=" -12.26478000" />
+    <ResponseData Frequency="   1504.03400000" Magnitude="0.99913737" Phase=" -11.80522000" />
+    <ResponseData Frequency="   1447.22200000" Magnitude="0.99990150" Phase=" -11.38177000" />
+    <ResponseData Frequency="   1392.55600000" Magnitude="1.00213800" Phase=" -10.90575000" />
+    <ResponseData Frequency="   1339.95500000" Magnitude="1.00414575" Phase=" -10.50015000" />
+    <ResponseData Frequency="   1289.34100000" Magnitude="1.00400900" Phase=" -10.09041000" />
+    <ResponseData Frequency="   1240.63900000" Magnitude="1.00555813" Phase="  -9.64709200" />
+    <ResponseData Frequency="   1193.77700000" Magnitude="1.00596850" Phase="  -9.30379600" />
+    <ResponseData Frequency="   1148.68400000" Magnitude="1.00701037" Phase="  -8.91853500" />
+    <ResponseData Frequency="   1105.29500000" Magnitude="1.00704775" Phase="  -8.56366300" />
+    <ResponseData Frequency="   1063.54500000" Magnitude="1.00749325" Phase="  -8.29078600" />
+    <ResponseData Frequency="   1023.37200000" Magnitude="1.00784175" Phase="  -7.86474000" />
+    <ResponseData Frequency="    984.71610000" Magnitude="1.00812313" Phase="  -7.52669100" />
+    <ResponseData Frequency="    947.52050000" Magnitude="1.01035550" Phase="  -7.33875700" />
+    <ResponseData Frequency="    911.72990000" Magnitude="1.00964163" Phase="  -7.01577800" />
+    <ResponseData Frequency="    877.29130000" Magnitude="1.00957462" Phase="  -6.67788600" />
+    <ResponseData Frequency="    844.15340000" Magnitude="1.01057825" Phase="  -6.52545700" />
+    <ResponseData Frequency="    812.26730000" Magnitude="1.01314625" Phase="  -6.16592200" />
+    <ResponseData Frequency="    781.58570000" Magnitude="1.01204450" Phase="  -5.87499800" />
+    <ResponseData Frequency="    752.06290000" Magnitude="1.01314275" Phase="  -5.66213100" />
+    <ResponseData Frequency="    723.65530000" Magnitude="1.01190950" Phase="  -5.51033400" />
+    <ResponseData Frequency="    696.32080000" Magnitude="1.01262738" Phase="  -5.26667000" />
+    <ResponseData Frequency="    670.01870000" Magnitude="1.01386100" Phase="  -4.99495900" />
+    <ResponseData Frequency="    644.71020000" Magnitude="1.01383500" Phase="  -4.56462800" />
+    <ResponseData Frequency="    620.35770000" Magnitude="1.01312975" Phase="  -4.52968200" />
+    <ResponseData Frequency="    596.92490000" Magnitude="1.01241838" Phase="  -4.34644400" />
+    <ResponseData Frequency="    574.37740000" Magnitude="1.01186850" Phase="  -4.04080200" />
+    <ResponseData Frequency="    552.68150000" Magnitude="1.01787463" Phase="  -4.09456800" />
+    <ResponseData Frequency="    531.80510000" Magnitude="1.01236900" Phase="  -3.96180100" />
+    <ResponseData Frequency="    511.71730000" Magnitude="1.01460300" Phase="  -3.73493600" />
+    <ResponseData Frequency="    492.38830000" Magnitude="1.01447463" Phase="  -3.44727300" />
+    <ResponseData Frequency="    473.78930000" Magnitude="1.01412850" Phase="  -3.24690300" />
+    <ResponseData Frequency="    455.89290000" Magnitude="1.01808250" Phase="  -3.20123100" />
+    <ResponseData Frequency="    438.67250000" Magnitude="1.01817463" Phase="  -3.05453300" />
+    <ResponseData Frequency="    422.10260000" Magnitude="1.01767500" Phase="  -2.76427000" />
+    <ResponseData Frequency="    406.15860000" Magnitude="1.01593700" Phase="  -2.62289000" />
+    <ResponseData Frequency="    390.81680000" Magnitude="1.01353125" Phase="  -2.56399100" />
+    <ResponseData Frequency="    376.05450000" Magnitude="1.01665663" Phase="  -2.30128600" />
+    <ResponseData Frequency="    361.84990000" Magnitude="1.02066363" Phase="  -2.38722800" />
+    <ResponseData Frequency="    335.02990000" Magnitude="1.01719650" Phase="  -2.18067400" />
+    <ResponseData Frequency="    322.37490000" Magnitude="1.01986600" Phase="  -1.80498700" />
+    <ResponseData Frequency="    310.19780000" Magnitude="1.01742625" Phase="  -1.72342600" />
+    <ResponseData Frequency="    298.48080000" Magnitude="1.01665188" Phase="  -1.40456000" />
+    <ResponseData Frequency="    287.20630000" Magnitude="1.01719287" Phase="  -1.33476400" />
+    <ResponseData Frequency="    276.35770000" Magnitude="1.01766225" Phase="  -1.31812500" />
+    <ResponseData Frequency="    265.91890000" Magnitude="1.01377813" Phase="  -1.02183900" />
+    <ResponseData Frequency="    236.90920000" Magnitude="1.01091875" Phase="  -0.90050380" />
+    <ResponseData Frequency="    227.96050000" Magnitude="1.01594950" Phase="  -0.82571860" />
+    <ResponseData Frequency="    219.34970000" Magnitude="1.01364837" Phase="  -0.72262460" />
+    <ResponseData Frequency="    211.06430000" Magnitude="1.01723000" Phase="  -0.67256750" />
+    <ResponseData Frequency="    203.09180000" Magnitude="1.01323200" Phase="  -0.39070290" />
+    <ResponseData Frequency="    195.42040000" Magnitude="1.01665262" Phase="  -0.34327180" />
+    <ResponseData Frequency="    188.03880000" Magnitude="1.01500213" Phase="  -0.37686230" />
+    <ResponseData Frequency="    180.93600000" Magnitude="1.01808925" Phase="  -0.16195270" />
+    <ResponseData Frequency="    174.10160000" Magnitude="1.01602938" Phase="  -0.01704049" />
+    <ResponseData Frequency="    167.52530000" Magnitude="1.01678450" Phase="   0.04301032" />
+    <ResponseData Frequency="    161.19730000" Magnitude="1.01658675" Phase="   0.21623680" />
+    <ResponseData Frequency="    143.61200000" Magnitude="1.01823762" Phase="   0.19182020" />
+    <ResponseData Frequency="    138.18730000" Magnitude="1.01697275" Phase="   0.65767340" />
+    <ResponseData Frequency="    132.96760000" Magnitude="1.01807550" Phase="   0.73678700" />
+    <ResponseData Frequency="    127.94500000" Magnitude="1.01636875" Phase="   0.82077430" />
+    <ResponseData Frequency="    123.11220000" Magnitude="1.01728938" Phase="   0.90175380" />
+    <ResponseData Frequency="    118.46190000" Magnitude="1.01660100" Phase="   0.93770800" />
+    <ResponseData Frequency="    113.98720000" Magnitude="1.01655713" Phase="   1.21314200" />
+    <ResponseData Frequency="    109.68160000" Magnitude="1.01720688" Phase="   1.12879200" />
+    <ResponseData Frequency="    105.53860000" Magnitude="1.02097425" Phase="   1.30943800" />
+    <ResponseData Frequency="    101.55210000" Magnitude="1.01296238" Phase="   1.58789200" />
+    <ResponseData Frequency="     97.71619000" Magnitude="1.01437837" Phase="   1.80333400" />
+    <ResponseData Frequency="     94.02518000" Magnitude="1.01696925" Phase="   1.58334100" />
+    <ResponseData Frequency="     90.47357000" Magnitude="1.01521488" Phase="   1.75391000" />
+    <ResponseData Frequency="     87.05612000" Magnitude="1.01705563" Phase="   1.90544700" />
+    <ResponseData Frequency="     83.76776000" Magnitude="1.01676163" Phase="   2.12269900" />
+    <ResponseData Frequency="     80.60361000" Magnitude="1.01749212" Phase="   2.35168100" />
+    <ResponseData Frequency="     77.55898000" Magnitude="1.01408025" Phase="   2.50879300" />
+    <ResponseData Frequency="     74.62936000" Magnitude="1.01558650" Phase="   2.66469900" />
+    <ResponseData Frequency="     71.81039000" Magnitude="1.01701362" Phase="   2.66783500" />
+    <ResponseData Frequency="     69.09791000" Magnitude="1.01579388" Phase="   2.67449800" />
+    <ResponseData Frequency="     66.48788000" Magnitude="1.01249650" Phase="   2.75570900" />
+    <ResponseData Frequency="     63.97644000" Magnitude="1.01468700" Phase="   3.26490400" />
+    <ResponseData Frequency="     61.55986000" Magnitude="1.01939638" Phase="   3.37516000" />
+    <ResponseData Frequency="     59.23457000" Magnitude="1.02469938" Phase="   3.57448500" />
+    <ResponseData Frequency="     56.99711000" Magnitude="1.01076562" Phase="   3.39453000" />
+    <ResponseData Frequency="     45.23956000" Magnitude="1.01365837" Phase="   4.78150000" />
+    <ResponseData Frequency="     43.53074000" Magnitude="1.02041888" Phase="   5.25572000" />
+    <ResponseData Frequency="     41.88645000" Magnitude="1.01456525" Phase="   5.25482300" />
+    <ResponseData Frequency="     40.30428000" Magnitude="1.01416200" Phase="   5.66824500" />
+    <ResponseData Frequency="     38.78187000" Magnitude="1.01347188" Phase="   5.75877800" />
+    <ResponseData Frequency="     37.31697000" Magnitude="1.01175488" Phase="   6.05706900" />
+    <ResponseData Frequency="     35.90740000" Magnitude="1.01335837" Phase="   6.19422000" />
+    <ResponseData Frequency="     34.55107000" Magnitude="1.01467550" Phase="   6.49802500" />
+    <ResponseData Frequency="     33.24598000" Magnitude="1.01266338" Phase="   6.72740600" />
+    <ResponseData Frequency="     31.99018000" Magnitude="1.01177125" Phase="   7.11083800" />
+    <ResponseData Frequency="     30.78182000" Magnitude="1.01189950" Phase="   7.34236400" />
+    <ResponseData Frequency="     29.61910000" Magnitude="1.01179687" Phase="   7.59592700" />
+    <ResponseData Frequency="     28.50031000" Magnitude="1.00974725" Phase="   7.94773300" />
+    <ResponseData Frequency="     27.42377000" Magnitude="1.01118650" Phase="   8.29576100" />
+    <ResponseData Frequency="     26.38789000" Magnitude="1.00949875" Phase="   8.59513200" />
+    <ResponseData Frequency="     25.39114000" Magnitude="1.01009100" Phase="   8.92935400" />
+    <ResponseData Frequency="     24.43205000" Magnitude="1.00891300" Phase="   9.35981700" />
+    <ResponseData Frequency="     23.50918000" Magnitude="1.00795350" Phase="   9.62346500" />
+    <ResponseData Frequency="     22.62117000" Magnitude="1.00784838" Phase="  10.06581000" />
+    <ResponseData Frequency="     21.76670000" Magnitude="1.00577112" Phase="  10.42234000" />
+    <ResponseData Frequency="     20.94451000" Magnitude="1.00575850" Phase="  10.90986000" />
+    <ResponseData Frequency="     20.15338000" Magnitude="1.00438937" Phase="  11.32069000" />
+    <ResponseData Frequency="     19.39213000" Magnitude="1.00256862" Phase="  11.85436000" />
+    <ResponseData Frequency="     18.65963000" Magnitude="1.00216588" Phase="  12.22126000" />
+    <ResponseData Frequency="     17.95480000" Magnitude="1.00116725" Phase="  12.88312000" />
+    <ResponseData Frequency="     15.39186000" Magnitude="0.99536338" Phase="  14.89497000" />
+    <ResponseData Frequency="     14.81046000" Magnitude="0.99225588" Phase="  15.46403000" />
+    <ResponseData Frequency="     14.25103000" Magnitude="0.99224500" Phase="  16.00377000" />
+    <ResponseData Frequency="     13.71272000" Magnitude="0.99035862" Phase="  16.67527000" />
+    <ResponseData Frequency="     13.19476000" Magnitude="0.98715387" Phase="  17.34152000" />
+    <ResponseData Frequency="     12.69635000" Magnitude="0.98515825" Phase="  17.94263000" />
+    <ResponseData Frequency="     12.21677000" Magnitude="0.98327912" Phase="  18.67780000" />
+    <ResponseData Frequency="     11.75531000" Magnitude="0.98058950" Phase="  19.42797000" />
+    <ResponseData Frequency="     11.31128000" Magnitude="0.97735225" Phase="  20.17696000" />
+    <ResponseData Frequency="     10.88402000" Magnitude="0.97460575" Phase="  20.91657000" />
+    <ResponseData Frequency="     10.47290000" Magnitude="0.97103713" Phase="  21.69529000" />
+    <ResponseData Frequency="     10.07731000" Magnitude="0.96787437" Phase="  22.49375000" />
+    <ResponseData Frequency="      9.69665800" Magnitude="0.96419150" Phase="  23.35962000" />
+    <ResponseData Frequency="      9.33038700" Magnitude="0.96048800" Phase="  24.23872000" />
+    <ResponseData Frequency="      8.97795200" Magnitude="0.95577875" Phase="  25.13118000" />
+    <ResponseData Frequency="      8.63882800" Magnitude="0.95123175" Phase="  26.07279000" />
+    <ResponseData Frequency="      8.31251500" Magnitude="0.94643537" Phase="  27.03755000" />
+    <ResponseData Frequency="      7.99852800" Magnitude="0.94082888" Phase="  28.01823000" />
+    <ResponseData Frequency="      7.69640000" Magnitude="0.93563613" Phase="  29.05140000" />
+    <ResponseData Frequency="      7.40568400" Magnitude="0.92972737" Phase="  30.07529000" />
+    <ResponseData Frequency="      7.12595100" Magnitude="0.92357637" Phase="  31.17091000" />
+    <ResponseData Frequency="      6.85678300" Magnitude="0.91706413" Phase="  32.30061000" />
+    <ResponseData Frequency="      6.59778300" Magnitude="0.91024663" Phase="  33.45770000" />
+    <ResponseData Frequency="      6.34856500" Magnitude="0.90279912" Phase="  34.63381000" />
+    <ResponseData Frequency="      6.10876200" Magnitude="0.89495975" Phase="  35.86138000" />
+    <ResponseData Frequency="      5.87801600" Magnitude="0.88655362" Phase="  37.08980000" />
+    <ResponseData Frequency="      5.65598600" Magnitude="0.87785612" Phase="  38.36166000" />
+    <ResponseData Frequency="      5.44234400" Magnitude="0.86854912" Phase="  39.67066000" />
+    <ResponseData Frequency="      5.23677100" Magnitude="0.85890500" Phase="  41.01062000" />
+    <ResponseData Frequency="      5.03896300" Magnitude="0.84930638" Phase="  42.38470000" />
+    <ResponseData Frequency="      4.84862700" Magnitude="0.83865200" Phase="  43.78920000" />
+    <ResponseData Frequency="      4.66548000" Magnitude="0.82778150" Phase="  45.22813000" />
+    <ResponseData Frequency="      4.48925100" Magnitude="0.81639912" Phase="  46.68229000" />
+    <ResponseData Frequency="      4.31967900" Magnitude="0.80453862" Phase="  48.18391000" />
+    <ResponseData Frequency="      4.15651300" Magnitude="0.79195300" Phase="  49.70335000" />
+    <ResponseData Frequency="      3.99950900" Magnitude="0.77936700" Phase="  51.26211000" />
+    <ResponseData Frequency="      3.84843600" Magnitude="0.76605613" Phase="  52.82388000" />
+    <ResponseData Frequency="      3.70307000" Magnitude="0.75236437" Phase="  54.44391000" />
+    <ResponseData Frequency="      3.56319400" Magnitude="0.73874300" Phase="  56.07273000" />
+    <ResponseData Frequency="      3.42860200" Magnitude="0.72372800" Phase="  57.69059000" />
+    <ResponseData Frequency="      3.29909400" Magnitude="0.70910675" Phase="  59.35883000" />
+    <ResponseData Frequency="      3.17447700" Magnitude="0.69380988" Phase="  61.08051000" />
+    <ResponseData Frequency="      3.05456800" Magnitude="0.67793050" Phase="  62.71901000" />
+    <ResponseData Frequency="      2.93918800" Magnitude="0.66215213" Phase="  64.49177000" />
+    <ResponseData Frequency="      2.82816700" Magnitude="0.64600975" Phase="  66.24989000" />
+    <ResponseData Frequency="      2.72133900" Magnitude="0.62965512" Phase="  68.00648000" />
+    <ResponseData Frequency="      2.61854600" Magnitude="0.61309087" Phase="  69.77637000" />
+    <ResponseData Frequency="      2.51963600" Magnitude="0.59644513" Phase="  71.55630000" />
+    <ResponseData Frequency="      2.42446200" Magnitude="0.57950400" Phase="  73.36092000" />
+    <ResponseData Frequency="      2.33288300" Magnitude="0.56242525" Phase="  75.16586000" />
+    <ResponseData Frequency="      2.24476300" Magnitude="0.54552137" Phase="  77.00172000" />
+    <ResponseData Frequency="      2.15997200" Magnitude="0.52859062" Phase="  78.80736000" />
+    <ResponseData Frequency="      2.07838400" Magnitude="0.51147062" Phase="  80.64350000" />
+    <ResponseData Frequency="      1.99987700" Magnitude="0.49454175" Phase="  82.48358000" />
+    <ResponseData Frequency="      1.92433600" Magnitude="0.47764725" Phase="  84.30909000" />
+    <ResponseData Frequency="      1.85164800" Magnitude="0.46077775" Phase="  86.15383000" />
+    <ResponseData Frequency="      1.78170600" Magnitude="0.44407713" Phase="  88.00144000" />
+    <ResponseData Frequency="      1.71440600" Magnitude="0.42745850" Phase="  89.84236000" />
+    <ResponseData Frequency="      1.64964800" Magnitude="0.41087300" Phase="  91.68628000" />
+    <ResponseData Frequency="      1.58733600" Magnitude="0.39470650" Phase="  93.52610000" />
+    <ResponseData Frequency="      1.52737800" Magnitude="0.37873050" Phase="  95.36633000" />
+    <ResponseData Frequency="      1.46968400" Magnitude="0.36305112" Phase="  97.20285000" />
+    <ResponseData Frequency="      1.41417000" Magnitude="0.34775838" Phase="  99.03044000" />
+    <ResponseData Frequency="      1.36075300" Magnitude="0.33265012" Phase=" 100.84700000" />
+    <ResponseData Frequency="      1.30935300" Magnitude="0.31799900" Phase=" 102.64810000" />
+    <ResponseData Frequency="      1.25989500" Magnitude="0.30360600" Phase=" 104.46570000" />
+    <ResponseData Frequency="      1.21230500" Magnitude="0.28949850" Phase=" 106.27010000" />
+    <ResponseData Frequency="      1.16651300" Magnitude="0.27591425" Phase=" 108.05070000" />
+    <ResponseData Frequency="      1.12245100" Magnitude="0.26260112" Phase=" 109.82990000" />
+    <ResponseData Frequency="      1.08005200" Magnitude="0.24974337" Phase=" 111.58270000" />
+    <ResponseData Frequency="      1.03925600" Magnitude="0.23718962" Phase=" 113.32730000" />
+    <ResponseData Frequency="      1.00000000" Magnitude="0.22505363" Phase=" 115.05370000" />
+</EmeraldModuleResponse>
