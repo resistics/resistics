@@ -17,7 +17,8 @@ resistics.egg-info/
 tests/testData
 
 # exampleProject
-examples/exampleProject
-examples/exampleProject2
+examples/tutorial/exampleProject
+examples/tutorial/tutorialProject
+examples/advanced/advancedProject
 examples/exampleSeedData
 

@@ -1,8 +1,3 @@
-Advanced
---------
-
-This section introduces some of the more advanced features of Resistics including inter-operability of different data formats, remote reference processing, remote reference statistics and more. 
-
 .. |Ex| replace:: E\ :sub:`x`
 .. |Ey| replace:: E\ :sub:`y`
 .. |Hx| replace:: H\ :sub:`x`
@@ -13,6 +8,13 @@ This section introduces some of the more advanced features of Resistics includin
 .. |Zyx| replace:: Z\ :sub:`yx`
 .. |Zyy| replace:: Z\ :sub:`yy`
 .. |fs| replace:: f\ :sub:`s`
+
+Advanced
+--------
+
+This section introduces some of the more advanced features of Resistics including inter-operability of different data formats, remote reference processing, remote reference statistics and more. 
+
+
 
 .. toctree::
     :maxdepth: 2
