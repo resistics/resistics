@@ -1,2 +1,2 @@
-Pre-processing time series data
+Pre-processing timeseries data
 -------------------------------

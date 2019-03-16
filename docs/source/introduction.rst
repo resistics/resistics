@@ -1,3 +1,9 @@
+.. |Ex| replace:: E\ :sub:`x`
+.. |Ey| replace:: E\ :sub:`y`
+.. |Hx| replace:: H\ :sub:`x`
+.. |Hy| replace:: H\ :sub:`y`
+.. |Hz| replace:: H\ :sub:`z`
+
 Introduction
 ------------
 
@@ -12,7 +18,7 @@ Magnetotellurics (MT) is a passive geophysical method for estimating the electri
 
     An example magnetotelluric setup
 
-Electrodes are used to measure potential difference variations  in the x direction (|Ex|) and y direction (|Ey|). Induction coils measure variations of the geomagnetic field in the x, y and z directions (|Hx|, |Hy| and |Hz| respectively). Commonly, x represents East-West and y represents North-South, though only orthongonality is really required. 
+In the field, electrodes are used to measure potential difference variations  in the x direction (|Ex|) and y direction (|Ey|). Induction coils measure variations of the geomagnetic field in the x, y and z directions (|Hx|, |Hy| and |Hz| respectively). Commonly, x represents East-West and y represents North-South, though only orthongonality is really required. 
 
 For more information, see the following references:
 
@@ -22,17 +28,17 @@ For more information, see the following references:
 
 Resistics
 ~~~~~~~~~
-Resistics is a native python3 package for the processing of magnetotelluric data. The code is based on standard processing techniques. The processing methodology is as follows:
+Resistics is a native Python 3 package for the processing of magnetotelluric data. The code is based on standard processing techniques. The processing methodology is as follows:
 
-- Windowing of time series data
-- Fourier transform of windowed time series data
+- Windowing of timeseries data
+- Fourier transform of windowed timeseries data
 - For a set of evaluation frequencies, calculate out relevant auto power and cross power spectra for each window
 - Use auto power and cross power spectra from across all windows to estimate impedance tensor components for each evaluation frequency by using robust regression
 - Decimation and repeat 
 
-Resistics currently supports the reading in of ATS, SPAM and Phoenix data and has an internal data format too, which is simply based on numpy save. However, Resistics does not yet support the calibration of Phoenix data as the Phoenix calibration file format is not yet supported.
+Resistics currently supports the reading in of ATS, SPAM and Phoenix data and has an internal data format too, which is simply based on the python numpy library. However, resistics does not yet support the Phoenix calibration file format, though ASCII calibration files can be used.
 
-Whilst other codes exist, Resistics was written for the following purpose:
+Whilst other codes exist, resistics was written for the following purpose:
 
 - Be an easy-to-use, native Python code for processing magnetotelluric data
 - Allow seamless integration of different data types including: ATS, SPAM, Phoenix and ASCII
@@ -47,9 +53,3 @@ Whilst other codes exist, Resistics was written for the following purpose:
     :titlesonly:
     :glob:
     :hidden:
-
-.. |Ex| replace:: E\ :sub:`x`
-.. |Ey| replace:: E\ :sub:`y`
-.. |Hx| replace:: H\ :sub:`x`
-.. |Hy| replace:: H\ :sub:`y`
-.. |Hz| replace:: H\ :sub:`z`

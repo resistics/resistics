@@ -1,5 +1,11 @@
+.. |Ex| replace:: E\ :sub:`x`
+.. |Ey| replace:: E\ :sub:`y`
+.. |Hx| replace:: H\ :sub:`x`
+.. |Hy| replace:: H\ :sub:`y`
+.. |Hz| replace:: H\ :sub:`z`
+
 Statistics
-==========
+----------
 
 There are two motivating factors for the calculation of statistics:
 
@@ -10,7 +16,7 @@ Statistics are calculated on an evaluation frequency basis, meaning that differe
 
 Selection of windows
 ~~~~~~~~~~~~~~~~~~~~
-The philosophy of Resistics is that all time series data is windowed and transformed into the frequency domain. Selection of windows happens after this point using either date and time constraints or constraints based on the calculation of statistics. 
+The philosophy of Resistics is that all timeseries data is windowed and transformed into the frequency domain. Selection of windows happens after this point using either date and time constraints or constraints based on the calculation of statistics. 
 
 There are a number of statistics already included in Resistics. These are:
 
@@ -43,9 +49,3 @@ The second reason behind the calculation of statistics in Resistics is to allow 
     statistics/polarisationDirection.rst
     statistics/transferFunction.rst
     statistics/resistivityPhase.rst
-
-.. |Ex| replace:: E\ :sub:`x`
-.. |Ey| replace:: E\ :sub:`y`
-.. |Hx| replace:: H\ :sub:`x`
-.. |Hy| replace:: H\ :sub:`y`
-.. |Hz| replace:: H\ :sub:`z`

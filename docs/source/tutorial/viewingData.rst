@@ -12,12 +12,12 @@
 .. |Zyy| replace:: Z\ :sub:`yy`
 .. |fs| replace:: f\ :sub:`s`
 
-Viewing time series data
+Viewing timeseries data
 ------------------------
 
 After time data files are in place, they can be visualised. Begin by loading the project and then using the methods in the :doc:`projectTime <../api/project.projectTime>` module.
 
-.. literalinclude:: ../../../examples/ex1_viewTime.py
+.. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
     :lines: 1-11
@@ -34,7 +34,7 @@ This produces the below plot:
 
 By default, channels |Ex|, |Ey|, |Hx|, |Hy|, |Hz| are all plotted. However, the channels to plot can be explicitly defined. Further, all sites in the project with time data in this range will be plotted. Sites to plot can be explicitly defined as a list of sites.
 
-.. literalinclude:: ../../../examples/ex1_viewTime.py
+.. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
     :lines: 13-20
@@ -49,7 +49,7 @@ By default, channels |Ex|, |Ey|, |Hx|, |Hy|, |Hz| are all plotted. However, the 
 
 There are a number of pre-processing options that can be optionally applied to the time data. If calibration files for magnetic channels are available and appropriately placed in the project calData directory, the calibration option can be applied.
 
-.. literalinclude:: ../../../examples/ex1_viewTime.py
+.. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
     :lines: 22-30
@@ -64,7 +64,7 @@ There are a number of pre-processing options that can be optionally applied to t
 
 Low pass filters can be applied to the data as shown below:
 
-.. literalinclude:: ../../../examples/ex1_viewTime.py
+.. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
     :lines: 32-41
@@ -81,7 +81,7 @@ High pass, band pass and notch filters can also be applied to the data in a simi
 
 Resistics can automatically save plots as images in the project images directory. When batching, it can often be useful to not show the plots (which tend to block the progress of the code) but rather save the plot without showing it. This can be achieved in the following way:
 
-.. literalinclude:: ../../../examples/ex1_viewTime.py
+.. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
     :lines: 87-98

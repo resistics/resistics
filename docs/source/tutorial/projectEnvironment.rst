@@ -13,7 +13,7 @@ The reference time should be a time before any time data was recorded and gives 
 
 Below is an example of setting up a new project in the folder exampleProject. The newProject method create new folders as required and returns a :doc:`ProjectData <../api/dataObjects.projectData>` object which holds the project information. 
 
-.. literalinclude:: ../../../examples/ex1_createProject.py
+.. literalinclude:: ../../../examples/tutorial/createProject.py
     :linenos:
     :language: python
     :lines: 1-10
@@ -63,9 +63,9 @@ The mtProj.prj project file stores some information about the project allowing i
     Image data path = exampleProject\images
     Reference time = 2012-02-10 00:00:00
 
-The next step is to create a directory for a new site. This can be done using :python:`projData.createSite(siteName)`. However, printing the project information again still shows zero sites. This is because only folders with time series data in them are counted as sites. 
+The next step is to create a directory for a new site. This can be done using :python:`projData.createSite(siteName)`. However, printing the project information again still shows zero sites. This is because only folders with timeseries data in them are counted as sites. 
 
-.. literalinclude:: ../../../examples/ex1_createProject.py
+.. literalinclude:: ../../../examples/tutorial/createProject.py
     :linenos:
     :language: python
     :lines: 11-13
@@ -86,7 +86,7 @@ Creating a new site only involves creating a new directory. This can also be don
     ├── images
     └── mtProj.prj
 
-Once a project has been created, time series data should be added to the timeData directory under a site directory. 
+Once a project has been created, timeseries data should be added to the timeData directory under a site directory. 
 
 .. code-block:: text
 
@@ -109,7 +109,7 @@ Once a project has been created, time series data should be added to the timeDat
 
 Once a project has been created and a site populated with data folders, the project can be loaded. It will automatically pick up the new files. Please see the :doc:`conventions <../conventions>` section is your data is not being picked up
 
-.. literalinclude:: ../../../examples/ex1_loadProject.py
+.. literalinclude:: ../../../examples/tutorial/loadProject.py
     :linenos:
     :language: python
     :lines: 1-8
@@ -135,7 +135,7 @@ Printing the project information now that there is a site with data shows the nu
 
 Another useful function is to view the project timeline. This can be done with :python:`projData.view()`.
 
-.. literalinclude:: ../../../examples/ex1_loadProject.py
+.. literalinclude:: ../../../examples/tutorial/loadProject.py
     :linenos:
     :language: python
     :lines: 10-11
@@ -150,7 +150,7 @@ Another useful function is to view the project timeline. This can be done with :
 
 Site information can be accessed by using :python:`projData.getSiteData(siteName)`. :doc:`SiteData <../api/dataObjects.projectData>` objects hold information about sites which can be printed in the same way as project information.
 
-.. literalinclude:: ../../../examples/ex1_loadProject.py
+.. literalinclude:: ../../../examples/tutorial/loadProject.py
     :linenos:
     :language: python
     :lines: 13-16

@@ -9,7 +9,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 
-dependencies = ["numpy", "scipy", "pyfftw", "configobj", "validate"]
+dependencies = ["numpy", "scipy", "pyfftw", "matplotlib", "configobj", "validate"]
 
 with open("README.md", "r") as fh:
     long_description = fh.read()

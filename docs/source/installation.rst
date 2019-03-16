@@ -9,25 +9,27 @@ Resistics can be installed from using python pip as follows:
     
     python -m pip install resist
 
-This is the simplest method of installing Resistics and deals with all the dependencies.
+This is the simplest method of installing resistics and deals with all the dependencies. 
 
 Dependencies
 ~~~~~~~~~~~~
-Resistics is a Python3 and above only code. Python3 can be found at https://www.python.org and is available for all major operating systems.
+Resistics is a Python 3 and above only code. Python 3 can be found at https://www.python.org and is available for all major operating systems.
 
-Resistics uses a number of Python3 libraries. These are:
+Resistics uses a number of Python 3 libraries. These are:
 
 - numpy
 - scipy
 - matplotlib
 - pyfftw
+- configObj
+- validate
 
-These can be installed using the pip package manager for Python3.
+Most of these can be installed using the pip package manager for Python 3.
 
-pyfftw does have an external dependency on FFTW (Fast Fourier Transform in the West) library. More information about pyfftw can be found here:
+pyfftw does have an external dependency on FFTW (Fastest Fourier Transform in the West) library. More information about pyfftw can be found here:
 https://hgomersall.github.io/pyFFTW/
 
-Please see installation information for each major operating system below.
+See more installation information for each major operating system below.
 
 Linux
 ~~~~~
@@ -35,9 +37,9 @@ To install magpy on Linux, please follow the below steps:
 
 - sudo apt-get install python3
 - sudo apt-get install libfftw3-dev
-- python3 -m pip install --user Resistics
+- python3 -m pip install --user resistics
 
-The final command will install the required dependencies for running Resistics in Python3.
+The final command will install the required dependencies for running Resistics in Python 3.
 
 Mac
 ~~~

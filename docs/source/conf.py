@@ -84,6 +84,7 @@ pygments_style = None
 #
 html_theme = "sphinx_rtd_theme"
 html_logo = os.path.join("_images", "logo.png")
+html_favicon = os.path.join("_images", "favicon.png")
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -110,7 +111,7 @@ html_static_path = ["_static"]
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "Resisticsdoc"
+htmlhelp_basename = "resisticsdocs"
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -157,7 +158,7 @@ texinfo_documents = [
         "Resistics Documentation",
         author,
         "Resistics",
-        "Python3 magnetotelluric processing code",
+        "Python 3 magnetotelluric processing code",
         "Miscellaneous",
     )
 ]
@@ -187,3 +188,8 @@ epub_exclude_files = ["search.html"]
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+
+# function to add custom css/stylesheets
+def setup(app):
+    app.add_stylesheet(os.path.join("css", "custom.css"))

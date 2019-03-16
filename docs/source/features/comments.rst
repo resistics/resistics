@@ -1,9 +1,9 @@
 Comments
 ========
 
-To help traceability and reproducibility of processing results, all datasets which are written out by Resistics are written with associated comment files. Comment files detail the parameters with which the data was processed. An example of a comments file for a spectra dataset is provided below. As can be seen, there is a significant detail about the processing sequence and the parameters used. 
+To help traceability and reproducibility of processing results, all datasets which are written out by resistics are written with associated comment files. Comment files detail the parameters with which the data was processed. An example of a comments file for a spectra dataset is provided below. As can be seen, there is a significant detail about the processing sequence and the parameters used. 
 
-Only time series data, spectra data and statistic data are written out with comment files. Transfer function files do not have associated comments files as they are usually calculated out from an amalgamation of files.
+Only timeseries data, spectra data and statistic data are written out with comment files. Transfer function files do not have associated comments files as they are usually calculated out from a set of data sources.
 
 .. code-block:: text
 

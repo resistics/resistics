@@ -27,7 +27,7 @@ These will both give different solutions are the solution to the robust regressi
 
 Continuing on from the example in the previous section, the spectra have already been calculated and it is possible to simply process the same spectra again, but this time using different input and output channels.
 
-.. literalinclude:: ../../../examples/ex1_simpleRunWithTipper.py
+.. literalinclude:: ../../../examples/tutorial/simpleRunWithTipper.py
     :linenos:
     :language: python
     :lines: 1-20
@@ -35,7 +35,7 @@ Continuing on from the example in the previous section, the spectra have already
 
 The tipper can be viewed using the methods provided in the :doc:`projectTransferFunction <../api/project.projectTransferFunction>` module as follows:
 
-.. literalinclude:: ../../../examples/ex1_simpleRunWithTipper.py
+.. literalinclude:: ../../../examples/tutorial/simpleRunWithTipper.py
     :linenos:
     :language: python
     :lines: 22-24
@@ -52,7 +52,7 @@ This produces the following plot:
 
 As stated earlier, another way to calculate the tipper is to use |Hz| as the only output channel. An example of this is given below.
 
-.. literalinclude:: ../../../examples/ex1_simpleRunWithTipper.py
+.. literalinclude:: ../../../examples/tutorial/simpleRunWithTipper.py
     :linenos:
     :language: python
     :lines: 27-30

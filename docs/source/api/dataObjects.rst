@@ -6,6 +6,7 @@ Submodules
 
 .. toctree::
 
+   dataObjects.calibrationData
    dataObjects.configData
    dataObjects.dataObject
    dataObjects.maskData

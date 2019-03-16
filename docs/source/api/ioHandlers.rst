@@ -6,6 +6,7 @@ Submodules
 
 .. toctree::
 
+   ioHandlers.calibrationIO
    ioHandlers.dataReader
    ioHandlers.dataReaderATS
    ioHandlers.dataReaderAscii

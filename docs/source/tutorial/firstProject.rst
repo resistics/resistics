@@ -19,7 +19,7 @@ Resistics can quickly run projects with default settings by using the :doc:`Proj
 
 Begin by loading the project and calculating spectra.
 
-.. literalinclude:: ../../../examples/ex1_simpleRun.py
+.. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
     :lines: 1-11
@@ -58,7 +58,7 @@ Spectra data files are stored in project specData directory. The folder structur
 
 By default spectra are stored in a folder called spectra under the dataFolder. The reason for this will become clearer in the section covering :doc:`multiple spectra <multipleSpectra>`.
 
-.. literalinclude:: ../../../examples/ex1_simpleRun.py
+.. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
     :lines: 13-16
@@ -106,7 +106,7 @@ Transfer functions are saved in an internal format. This is a minimal format cur
 
 Once the components of the impedance tensor have been calculated, it is possible to visualise them using the methods available in the :doc:`projectTransferFunction <../api/project.projectTransferFunction>` module.
 
-.. literalinclude:: ../../../examples/ex1_simpleRun.py
+.. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
     :lines: 18-20
@@ -122,7 +122,7 @@ Once the components of the impedance tensor have been calculated, it is possible
 
 However, this plot is quite busy. One way to simplify the plot is to explicitly specify the polarisations to plot. 
 
-.. literalinclude:: ../../../examples/ex1_simpleRun.py
+.. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
     :lines: 22-23
@@ -138,7 +138,7 @@ However, this plot is quite busy. One way to simplify the plot is to explicitly 
 
 On occasion, it can be more useful to plot each component separately. This can be done by setting :python:`oneplot = False` in the arguments.
 
-.. literalinclude:: ../../../examples/ex1_simpleRun.py
+.. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
     :lines: 25-26
