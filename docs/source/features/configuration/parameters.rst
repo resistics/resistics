@@ -7,7 +7,7 @@ General
 ~~~~~~~
 These parameters are general and not tied to any specific section.
 
-.. topic:: Parameter: name
+.. topic:: name
 
     :Type: string 
     :Default value: "default"
@@ -17,13 +17,13 @@ Calibration
 ~~~~~~~~~~~
 Parameters related to calibration data and calibrating of time data.
 
-.. topic:: Parameter: extend
+.. topic:: extend
 
     :Type: bool (True or False) 
     :Default value: True
     :Description: Extrapolate out calibration data to cover a greater range of frequencies.
 
-.. topic:: Parameter: useTheoretical
+.. topic:: useTheoretical
 
     :Type: bool (True or False) 
     :Default value: False
@@ -33,13 +33,13 @@ Decimation
 ~~~~~~~~~~
 Parameters to define the decimation scheme. Note that depending on the length of timeseries recording, not all decimation levels may be calculated.
 
-.. topic:: Parameter: numlevels
+.. topic:: numlevels
 
     :Type: int
     :Default value: 7 (min=1, max=10)
     :Description: Number of decimation levels.
 
-.. topic:: Parameter: minsamples
+.. topic:: minsamples
 
     :Type: int 
     :Default value: 100 (min=50)
@@ -49,13 +49,13 @@ Frequencies
 ~~~~~~~~~~~
 Evaluation frequency related parameters. If evaluation frequencies are not explicitly supplied, then they are automatically selected internally.
 
-.. topic:: Parameter: frequencies
+.. topic:: frequencies
 
     :Type: List[float] (comma separated list of floats)
     :Default value: None
     :Description: Evaluation frequencies specified as a comma separated list of floats.
 
-.. topic:: Parameter: perlevel
+.. topic:: perlevel
 
     :Type: int 
     :Default value: 7 (min=1, max=10)
@@ -67,43 +67,43 @@ timeseries windowing parameters. This defines how the timeseries data will be wi
 
 Window and overlap sizes can be set explicitly using the windowsizes and overlap sizes. If windowsizes are explicitly set, overlapsizes needs to be set too.
 
-.. topic:: Parameter: minwindows
+.. topic:: minwindows
 
     :Type: int
     :Default value: 5 (min=1)
     :Description: Minimum windows required for a decimation level before decimation is ended.
 
-.. topic:: Parameter: windowfactor
+.. topic:: windowfactor
 
     :Type: int 
     :Default value: 2 (min=1)
     :Description: The factor which defines window size. The window size is calculated as: sampling frequency at decimation level / windowfactor.
     
-.. topic:: Parameter: minwindowsize
+.. topic:: minwindowsize
 
     :Type: int
     :Default value: 512 (min=32)
     :Description: The minimum allowable size of a window in samples.
 
-.. topic:: Parameter: minoverlapsize
+.. topic:: minoverlapsize
 
     :Type: int 
     :Default value: 128 (min=8)
     :Description: The minimum allowable overlap size.
 
-.. topic:: Parameter: overlapfraction
+.. topic:: overlapfraction
 
     :Type: float
     :Default value: 0.25 (min=0, max=0.5)
     :Description: The fraction of the windowsize to use as overlap size.
 
-.. topic:: Parameter: windowsizes
+.. topic:: windowsizes
 
     :Type: List[int] of size equal to number of decimation levels 
     :Default value: None
     :Description: Explicitly specify the window sizes as a comma separated list. 
     
-.. topic:: Parameter: overlapsizes
+.. topic:: overlapsizes
 
     :Type: List[int] of size equal to number of decimation levels 
     :Default value: None
@@ -113,19 +113,19 @@ Spectra
 ~~~~~~~
 Parameters related to calculating timeseries fourier spectra.
 
-.. topic:: Parameter: specdir
+.. topic:: specdir
 
     :Type: string
     :Default value: "spectra"
     :Description: The spectra directory to write out to. This allows each configuration file to be related to a different run of the data.
     
-.. topic:: Parameter: applywindow
+.. topic:: applywindow
 
     :Type: bool (True or False)
     :Default value: True
     :Description: Window the data before performing the fourier transform.
     
-.. topic:: Parameter: windowfunction
+.. topic:: windowfunction
 
     :Type: string. One of "barthann", "bartlett", "blackman", "blackmanharis", "bohman", "chebwin", "hamming", "hann", "nuttall", "parzen".
     :Default value: "hamming"
@@ -135,13 +135,13 @@ Statistics
 ~~~~~~~~~~
 Parameters related to calculating timeseries fourier spectra.
 
-.. topic:: Parameter: stats
+.. topic:: stats
 
     :Type: List[str]
     :Default value: "coherence", "transferFunction"
     :Description: Comma separated list of statistics to calculate.
 
-.. topic:: Parameter: remotestats
+.. topic:: remotestats
 
     :Type: List[str]
     :Default value: "RR_coherence" , "RR_transferFunction"
@@ -151,13 +151,13 @@ Solver
 ~~~~~~~~~~
 Solution parameters
 
-.. topic:: Parameter: intercept
+.. topic:: intercept
 
     :Type: bool (True or False)
     :Default value: False
     :Description: Boolean flag for including an intercept in the least squares problem.
 
-.. topic:: Parameter: windowfunc
+.. topic:: windowfunc
 
     :Type: str. One of "barthann", "bartlett", "blackman", "blackmanharis", "bohman", "chebwin", "hamming", "hann", "nuttall", "parzen".
     :Default value: "hamming"

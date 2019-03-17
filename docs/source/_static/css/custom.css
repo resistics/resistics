@@ -1,9 +1,11 @@
 .topic {
-    background-color: #e7f2fa; 
+    /*background-color: #e7f2fa;*/
+    background-color: #ffedcc; 
 }
 
 .topic-title {
-    background-color: #6ab0de;
+    /*background-color: #6ab0de;*/
+    background-color: #f0b37e;
     color: white;
     padding: 5px 10px 5px 10px;
 }

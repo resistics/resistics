@@ -1,0 +1,21 @@
+ package
+========
+
+Subpackages
+-----------
+
+.. toctree::
+
+    .calculators
+    .dataObjects
+    .ioHandlers
+    .project
+    .utilities
+
+Module contents
+---------------
+
+.. automodule:: 
+    :members:
+    :undoc-members:
+    :show-inheritance:
