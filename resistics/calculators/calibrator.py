@@ -100,10 +100,12 @@ class Calibrator(Calculator):
         """Find calibration files in calibration directory"""
 
         self.calFiles.clear()
-        for cE in self.calExt:
+        # get unique extensions
+        extensions = list(set(self.calExt))
+        for calExt in extensions:
             # get all files of format cE
             self.calFiles = self.calFiles + glob.glob(
-                os.path.join(self.calDir, "*.{}".format(cE))
+                os.path.join(self.calDir, "*.{}".format(calExt))
             )
         self.numCalFiles = len(self.calFiles)
 
