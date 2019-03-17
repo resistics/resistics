@@ -12,7 +12,13 @@ from resistics.utilities.utilsIO import checkFilepath, lineToKeyAndValue
 class DataReaderInternal(DataReader):
     """Data reader for internal formatted data
 
-    Internal formatted data is straightforward. Header information is read in from a separate ascii formatted file. Each channel has its own data file written out using numpy's binary write function and with a .dat extension.
+    Internal formatted data is straightforward. Header information is read in from a global header file and header files for each channel, all of them ascii formatted file. Each channel has its own data file written out using numpy's binary write function and with a .dat extension.
+
+    As raw data is not usually in the internal data format, to avoid any problems, the following workflow is suggested:
+
+    - Get physical data from the raw data files (ATS, SPAM, Phoenix)
+    - Perform any pre-processing required
+    - Save as internal format, ensuring to set the lsb_applied channel header for every channel to True. This will avoid any further scaling when the data is read in again.
     
     Methods
     -------

@@ -10,46 +10,26 @@ from resistics.ioHandlers.dataReader import DataReader
 from resistics.dataObjects.timeData import TimeData
 from resistics.utilities.utilsChecks import isMagnetic, isElectric, consistentChans
 from resistics.utilities.utilsPrint import blockPrint
-from resistics.utilities.utilsClean import removeZeros, removeZerosSingle, removeNansSingle
+from resistics.utilities.utilsClean import (
+    removeZeros,
+    removeZerosSingle,
+    removeNansSingle,
+)
 
 
 class DataReaderSPAM(DataReader):
     """Data reader for SPAM data
 
     SPAM data has the following characteristics:
-    The start time in XTR files is the time of the first sample in the data
-    The end time in XTR files is the time of the last sample in the data
-    SPAM data is already scaled by LSB and getting unscaled samples returns single precision float with units Volts
 
-    Notes
-    -----
-	One major difference with SPAM data is that you can have multiple data files in the same measurement directory. Therefore, read all the XTR/XTRX files and read in the start and end times. It is requirement that SPAM data that is all in one directory should be continuous and without gaps. If gaps are found, the execution will quite and ask the data to be separated.
+    - SPAM raw data is already scaled by the least significant bit and is single precision floats with unit Volts. Therefore, getting unscaled samples returns data with unit Volts for both the electric and magnetic fields
+    - The start time in XTR files is the time of the first sample in the data
+    - The end time in XTR files is the time of the last sample in the data
 
-    SPAM raw data has already been multipled by the LSB and is single precision float data in Volts. Below are the calculations to convert the data into physical units:
-    The data is raw voltage of sensors
-    Gain needs to be removed
-    this is in the scaling = 1/1000*total_gain (gain1*gain2)
-    what we want here is 1000/total_gain = 1000000*scaling
-    the E fields need their polarity reversed (from email with Reinhard)
-    The scaling can be different for each dataset in the directory
-    scaling = float(dataSplit[-2])
-    if isElectric(chanH["channel_type"]):
-        # the factor of 100000 is not entirely clear
-        lsb = 1000000.0 * scaling
-        lsb = -1 * lsb  # reverse polarity
-    else:
-        # the spam scaling in the xtr file for magnetic fields includes the static gain correction
-        # however, a static gain correction is applied in the calibration
-        # in order to avoid duplication, the scaling in the xtr is file ignored for the magnetic channels
-        lsb = -1000.0  # volts to millivolts and a minus to switch polarity
-    chanH["ts_lsb"] = lsb
+    In situations where a SPAM dataset is recorded in multiple small files, it is required that the recording is continuous. 
 
-    todo:
-    Implement reading of XTRX header files
-    Actually write this up properly
-
-	Attributes
-	----------
+    Attributes
+    ----------
     recChannels : Dict
         Channels in each data file
     dtype : np.float32
@@ -59,10 +39,10 @@ class DataReaderSPAM(DataReader):
     numDataFiles : int
         The number of data files
 
-	Methods
-	-------
-	__init__(dataPath)
-		Initialise with path to the data directory
+    Methods
+    -------
+    __init__(dataPath)
+        Initialise with path to the data directory
     setParameters()
         Set parameters specific to a data format
     getUnscaledSamples(**kwargs)
@@ -87,6 +67,15 @@ class DataReaderSPAM(DataReader):
         Get data file information as a list of strings
     printDataFiles()
         Print data file information to terminal
+
+    Notes
+    -----
+    Getting unscaled samples for SPAM data removes the gain rather than return exactly the values in the data files. In cases where there are multiple data files, it is not necessary that they have been recorded with the same gain. Therefore, to ensure consistency when looking at raw data, the gain is removed at the getUnscaledSamples stage rather than getPhysicalSamples, where it would have probably been more appropriate. This means that getUnscaledSamples returns data where all channels are in mV.
+
+    The scalings to convert the raw data to mV are stored in the ts_lsb chan header and calculated out as the header files are being read.
+
+    .. todo::
+        Implement reading of XTRX header files
     """
 
     def setParameters(self) -> None:
@@ -108,13 +97,13 @@ class DataReaderSPAM(DataReader):
         self.numHeaderFiles: int = len(self.headerF)
         self.numDataFiles: int = len(self.dataF)
 
-    # SPAM data is already scaled by LSB and in single precision float in volts
-    # instead of going back to counts, which seems a bit pointless (as usually, we are only interested in the physical data)
     def getUnscaledSamples(self, **kwargs) -> TimeData:
-        """Get raw data from data file
+        """Get raw data from data file, returned in mV
 
-        SPAM raw data is single precision float with units Volts. Calling this method removes the gain pre-applied to the raw data as these might be different for each individual data file in the recording. Therefore, to allow fair comparisons of raw data, gains are removed at this stage.
+        SPAM raw data is single precision float with unit Volts. Calling this applies the ts_lsb calculated when the headers are read. This is because when a recording consists of multiple data files, each channel of each data file might have a different scaling. The only way to make the data consistent is to apply the ts_lsb scaling.  
         
+        Therefore, this method returns the data in mV for all channels.
+
         Parameters
         ----------
         chans : List[str]
@@ -133,15 +122,7 @@ class DataReaderSPAM(DataReader):
         Returns
         -------
         TimeData
-            Time data object
-
-        Notes
-        -----
-        To remove the gain, scalings are calculated out when reading the header files. The scaling is calculated out as,
-        scaling = 1/1000*total_gain 
-        where,
-        total_gain = (gain1*gain2)
-        Multiplying the raw data in Volts by this scaling gives data in V  
+            Time data object 
         """
 
         # initialise chans, startSample and endSample with the whole dataset
@@ -257,11 +238,15 @@ class DataReaderSPAM(DataReader):
     def getPhysicalSamples(self, **kwargs):
         """Get data scaled to physical values
         
-        This method puts everything into field units:
-        Electric field in mV/km
-        Magnetic fields is mV 
+        resistics uses field units, meaning physical samples will return the following:
 
-        Because the gain is removed when getting the unscaledSamples, the only calculation that has to be done is to divide by the dipole lengths (east-west spacing and north-south spacing).
+        - Electrical channels in mV/km
+        - Magnetic channels in mV
+        - To get magnetic fields in nT, calibration needs to be performed
+
+        Notes
+        -----
+        The method getUnscaledSamples multiplies the raw data by the ts_lsb converting it to mV. Because gain is removed when getting the unscaledSamples and all channel data is in mV, the only calculation that has to be done is to divide by the dipole lengths (east-west spacing and north-south spacing).
         
         To get magnetic fields in nT, they have to be calibrated.
 
@@ -404,6 +389,33 @@ class DataReaderSPAM(DataReader):
     def readHeaderXTR(self, headerFile: str) -> None:
         """Read a XTR header file
 
+        The raw data for SPAM is in single precision Volts. However, if there are multiple data files for a single recording, each one may have a different gain. Therefore, a scaling has to be calculated for each data file and channel. This scaling will convert all channels to mV. 
+
+        For the most part, this method only reads recording information. However, it does additionally calculate out the lsb scaling and store it in the ts_lsb channel header. More information is provided in the notes.
+
+        Notes
+        -----
+        The raw data for SPAM is in single precision floats and record the raw Voltage measurements of the sensors. However, if there are multiple data files for a single recording, each one may have a different gain. Therefore, a scaling has to be calculated for each data file. 
+
+        For electric channels, the scaling begins with the scaling provided in the header file in the DATA section. This incorporates any gain occuring in the device. This scaling is further amended by,
+
+        .. code-block:: text
+        
+            scaling = 1000000 * scaling ,
+            scaling = -1 * scaling ,
+            ts_lsb = scaling ,
+        
+        where the reason for the 1000000 factor is not clear, nor is the polarity reversal. However, this information was provided by people more familiar with the data format.
+        
+        For magnetic channels, the scaling in the header file DATA section is ignored. This is because it includes a static gain correction, which would be duplicated at the calibration stage. Therefore, this is not included at this point.
+
+        .. code-block:: text 
+        
+            scaling = -1000 ,
+            ts_lsb = scaling ,
+        
+        This scaling converts the magnetic data from V to mV.
+
         Parameters
         ----------
         headerFile : str
@@ -494,21 +506,17 @@ class DataReaderSPAM(DataReader):
                 if "LF" in calLine:
                     chanH["echopper"] = 1
 
-            # the scaling - recall, the data is raw voltage of sensors
-            # gain needs to be removed - this is in the scaling = 1/1000*total_gain (gain1*gain2)
-            # what we want here is 1000/total_gain = 1000000*scaling
+            # the scaling - recall, the data is raw voltage of sensors       
             # the E fields also need their polarity reversed (from email with Reinhard)
-            # NOTE: The scaling can be different for each dataset in the directory
             scaling = float(dataSplit[-2])
             if isElectric(chanH["channel_type"]):
                 # the factor of 100000 is not entirely clear
                 lsb = 1000000.0 * scaling
                 lsb = -1 * lsb  # reverse polarity
             else:
-                # the spam scaling in the xtr file for magnetic fields includes the static gain correction
-                # however, a static gain correction is applied in the calibration
-                # in order to avoid duplication, the scaling in the xtr is file ignored for the magnetic channels
-                lsb = -1000.0  # volts to millivolts and a minus to switch polarity
+                # volts to millivolts and a minus to switch polarity giving data in mV
+                # scaling in header file is ignored because it duplicates static gain correction in calibration
+                lsb = -1000.0  
             chanH["ts_lsb"] = lsb
 
             # the distances
@@ -546,8 +554,7 @@ class DataReaderSPAM(DataReader):
     def headersFromRawFile(self, rawFile: str, headers: Dict) -> None:
         """Read headers from the raw data files
         
-        Read the headers from the raw file and figure out the data byte offset. 
-        Open with encoding ISO-8859-1 because it has a value for all bytes unlike other encoding. In particular, want to find number of samples and the size of the header.        
+        Read the headers from the raw file and figure out the data byte offset.     
 
         Parameters
         ----------
@@ -558,7 +565,7 @@ class DataReaderSPAM(DataReader):
 
         Notes
         -----
-        The extended header is ignored
+        Open with encoding ISO-8859-1 because it has a value for all bytes unlike other encoding. In particular, want to find number of samples and the size of the header. The extended header is ignored.
         """
 
         dFile = open(os.path.join(self.dataPath, rawFile), "r", encoding="ISO-8859-1")

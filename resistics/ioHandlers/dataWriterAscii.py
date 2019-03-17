@@ -27,5 +27,5 @@ class DataWriterAscii(DataWriter):
             dataF = open(writePath, "w")
             size = timeData.data[c].size
             for i in range(0, size):
-                dataF.write("{:9f}".format(timeData.data[c][i]))
+                dataF.write("{:9f}\n".format(timeData.data[c][i]))
             dataF.close()

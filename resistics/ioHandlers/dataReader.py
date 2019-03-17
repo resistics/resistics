@@ -19,15 +19,22 @@ class DataReader(IOHandler):
     DataReader is the base class for the time data readers. It implements much of the non-format dependent methods.
 
     The DataReaders for the different formats are meant to give a consistent output. Conventions used include:
-    The start time is the time of the first sample
-    The end time is the time of the last sample
 
-	Attributes
-	----------
-	dataPath : str
-		Path to the data folder.
-	headers : Dict
-		Dictionary mapping header words to values
+    - The start time is the time of the first sample
+    - The end time is the time of the last sample
+
+    Physical data is always returned in:
+
+    - Electrical channels in mV/km
+    - Magnetic channels in mV
+    - To get magnetic fields in nT, calibration needs to be performed    
+
+    Attributes
+    ----------
+    dataPath : str
+        Path to the data folder.
+    headers : Dict
+        Dictionary mapping header words to values
     chans : List[str]
         List of channels
     numChannels : int
@@ -37,20 +44,20 @@ class DataReader(IOHandler):
     chanMap : Dict
         Map from channel name to index for chanHeaders
     comments : List[str]
-		List of comments associated with data
-	headerF	: List[str]
-		List of header files (with extension .hdr)
-	dataF : List[str]
-		List of data files (with extension .npy)
-	dataByteOffset : int
-		Number of bytes to offset before reading
-	dataByteSize : int
-		Byte size of a single data value
+        List of comments associated with data
+    headerF	: List[str]
+        List of header files (with extension .hdr)
+    dataF : List[str]
+        List of data files (with extension .npy)
+    dataByteOffset : int
+        Number of bytes to offset before reading
+    dataByteSize : int
+        Byte size of a single data value
 
-	Methods
-	-------
-	__init__(dataPath)
-		Initialise with path to the data directory
+    Methods
+    -------
+    __init__(dataPath)
+        Initialise with path to the data directory
     setParameters()
         Set parameters specific to a data format
     checkFiles()
@@ -155,7 +162,7 @@ class DataReader(IOHandler):
         Comment information as list of strings
     printComments()
         Print comments to terminal
-	"""
+    """
 
     def __init__(self, dataPath: str) -> None:
         """Initialise with path to data directory
@@ -191,49 +198,6 @@ class DataReader(IOHandler):
         self.dataF = glob.glob(os.path.join(self.dataPath, "*.dat"))
         self.dataByteOffset = 0
         self.dataByteSize = 4
-
-    # def getSampleFreqInt(self) -> int:
-    #     return int(self.headers["sample_freq"])
-
-    # def getStartDate(self) -> str:
-    #     """Get date of first sample as string
-
-    #     Returns
-    #     -------
-    #     str
-    #         Date of first sample
-    #     """
-
-    #     return self.headers["start_date"]
-
-    # def getStartTime(self) -> str:
-    #     """Get time of first sample as string
-
-    #     Returns
-    #     -------
-    #     str
-    #         Time of first sample
-    #     """
-
-    #     return self.headers["start_time"]
-
-    # def getStartDatetimeTuple(self):
-    #     return self.datetimeStart.utctimetuple()
-
-    # def getStartDatetimeString(self) -> str:
-    #     return self.datetimeStart.strftime("%Y-%m-%d %H:%M:%S.%f")
-
-    # def getStopTime(self) -> str:
-    #     return self.headers["stop_time"]
-
-    # def getStopDate(self) -> str:
-    #     return self.headers["stop_date"]
-
-    # def getStopDatetimeTuple(self):
-    #     return self.datetimeStop.utctimetuple()
-
-    # def getStopDatetimeString(self) -> str:
-    #     return self.datetimeStop.strftime("%Y-%m-%d %H:%M:%S.%f")
 
     def checkFiles(self) -> bool:
         """Check to make sure data files found"""
@@ -653,7 +617,12 @@ class DataReader(IOHandler):
     def getUnscaledSamples(self, **kwargs) -> TimeData:
         """Get raw data from data file
 
-        Depending on the data format, this could be raw counts. This method reads samples for ATS and internal format. SPAM data has its own implementation.
+        Depending on the data format, this could be raw counts or in some physical unit. The method implemented in the base DataReader can read from ATS and internal files. SPAM and Phoenix data readers have their own implementations.
+
+        The raw data units for ATS and internal data formats are as follows: 
+
+        - ATS data format has raw data in counts.
+        - The raw data unit of the internal format is dependent on what happened to the data before writing it out in the internal format. If the channel header lsb_applied is set to True, no scaling happens in either getUnscaledSamples or getPhysicalSamples. However, if the channel header lsb_applied is set to False, the internal format data will be treated like ATS data, meaning raw data in counts.
         
         Parameters
         ----------
@@ -727,10 +696,10 @@ class DataReader(IOHandler):
         )
 
     def getUnscaledData(self, startTime, endTime, **kwargs) -> TimeData:
-        """Get raw data from data file between a start and end data
+        """Get raw data from data file between a start and end date
 
-        Depending on the data format, this could be raw counts. This method reads samples for ATS and internal format. SPAM data has its own implementation.
-        
+        Calculates the start and end sample given the data range and returns getUnscaledSamples for that sample range.
+
         Parameters
         ----------
         startTime : datetime
@@ -760,18 +729,34 @@ class DataReader(IOHandler):
 
     def getPhysicalSamples(self, **kwargs):
         """Get data scaled to physical values
+        
+        Depending on the data format, the scalings required to convert to field physical units is different. The method in the base DataReader class covers ATS and internal file format.
 
-        Each data format is recorded in a different way.
-        ATS provides unscaled data in counts (*lsb gives mV)
-        SPAM provides unscaled data in the count data/unscaled data * lsb is assumed to give data in mV
-        Phoenix
-        Internal
+        resistics will always provide physical samples in field units. That means
+
+        - Electrical channels in mV/km
+        - Magnetic channels in mV
+        - To get magnetic fields in nT, calibration needs to be performed
         
-        The data readers return data using field units. Therefore:
-        Electric field channels are returned in mV/km
-        Magnetic fields are in mV 
+        If the channel header lsb_applied is set to True, no scaling of the unscaled data is done. This is to cover the internal data format where all scalings may already have been applied.
+
+        Notes
+        -----
+        The raw data units for ATS data are in counts. To get data in field units, ATS data is first multipled by the least significat bit (lsb) defined in the header files,
+
+        .. code-block:: text  
         
-        To get magnetic fields in nT, calibration needs to be performed
+            data = data * leastSignificantBit,
+        
+        giving data in mV. The lsb includes the gain removal, so no separate gain removal needs to be performed.
+        
+        For electrical channels, there is additional step of dividing by the electrode spacing, which is provided in metres. The extra factor of a 1000 is to convert this to km to give mV/km for electric channels
+        
+        .. code-block:: text  
+            
+            data = (1000 * data)/electrodeSpacing
+        
+        Finally, to get magnetic channels in nT, the magnetic channels need to be calibrated.
 
         Parameters
         ----------
@@ -843,17 +828,7 @@ class DataReader(IOHandler):
     def getPhysicalData(self, startTime, endTime, **kwargs):
         """Get physical data from data file between a start and end data
 
-        Each data format is recorded in a different way.
-        ATS provides unscaled data in counts (*lsb gives mV)
-        SPAM provides unscaled data in the count data/unscaled data * lsb is assumed to give data in mV
-        Phoenix
-        Internal
-        
-        The data readers return data using field units. Therefore:
-        Electric field channels are returned in mV/km
-        Magnetic fields are in mV 
-        
-        To get magnetic fields in nT, calibration needs to be performed
+        Calculates the start and end sample given the data range and returns getPhysicalSamples for that sample range.
         
         Parameters
         ----------
@@ -1243,6 +1218,7 @@ class DataReader(IOHandler):
             "Note: Field units used. Physical data has units mV/km for electric fields and mV for magnetic fields"
         )
         textLst.append("Note: To get magnetic field in nT, please calibrate")
+        return textLst
 
     def printCommentsList(self) -> List[str]:
         """Dataset comments as a list of strings
@@ -1253,7 +1229,7 @@ class DataReader(IOHandler):
             List of strings with information
         """
 
-        textLst = []
+        textLst: List[str] = []
         textLst.append("Dataset Comments")
         if len(self.comments) == 0:
             textLst.append("No comments")

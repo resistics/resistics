@@ -12,7 +12,11 @@ from resistics.ioHandlers.dataReader import DataReader
 from resistics.ioHandlers.dataWriterInternal import DataWriterInternal
 from resistics.dataObjects.timeData import TimeData
 from resistics.utilities.utilsChecks import consistentChans, isMagnetic, isElectric
-from resistics.utilities.utilsClean import removeZeros, removeZerosSingle, removeNansSingle
+from resistics.utilities.utilsClean import (
+    removeZeros,
+    removeZerosSingle,
+    removeNansSingle,
+)
 from resistics.utilities.utilsMath import intdiv
 from resistics.utilities.utilsPrint import blockPrint
 
@@ -20,12 +24,22 @@ from resistics.utilities.utilsPrint import blockPrint
 class DataReaderPhoenix(DataReader):
     """Data reader for Phoenix data
 
-	The Phoenix data and recording format is different. There are three frequencies recorded consecutively (e.g. 2400Hz, 150Hz, 15Hz). The lowest sampling frequency is continuous whilst the others record small bits at regular intervals. There is no issue with the continous sampling frequency. However, with the others, this is going to lead to lots of small data folders if converted to internal data format because high frequencies are recorded in small chunks of time. 
+    The Phoenix data and recording format is different and does not nicely fit with the way resistics tries to model data.
+    
+    There are three frequencies recorded concurrently (e.g. 2400Hz, 150Hz, 15Hz). The lowest sampling frequency is continuous whilst the others record data files at regular intervals. There is no issue with the continous sampling frequency. 
+    
+    However, as resistics separates out data into continuous recordings, the consistent gaps for the higher frequencies will lead to lots of small data folders if converted to internal data format.
 
     This class returns the lowest frequency recording (the continuous one) when time series data is requested. However, higher frequencies can be converted to the internal data format using the methods available here.
 
-	Attributes
-	----------
+    Warnings
+    --------
+    The appropriate scaling for Phoenix data to return field units has not yet been verified.
+
+    It is not actually recommended to reformat the high frequency recordings as this will lead to potentially thousands of data folders. There is currently no straight-forward way to support the high-frequency Phoenix recordings.
+
+    Attributes
+    ----------
     recChannels : Dict
         Channels in each data file
     dtype : np.float32
@@ -35,41 +49,65 @@ class DataReaderPhoenix(DataReader):
     numDataFiles : int
         The number of data files
 
-	Methods
-	-------
-	__init__(dataPath)
-		Initialise with path to the data directory
+    Methods
+    -------
     setParameters()
-        Set parameters specific to a data format
+        Set data reader parameters for Phoenix files
+    getSamplesRatesTS()
+        Get the sampling frequencies of the time series data
+    getNumberSamplesTS()
+        Get the number of samples for each time series file
     getUnscaledSamples(**kwargs)
-        Get raw, unscaled data
+        Get raw data from data file
+    getRecordsForSamples(startSample, endSample)
+        Get the records to read for a sample range
+    readTag(dataFile)
+        Read the tag from a data file
+    readRecord(dataFile, numChans, numScans)
+        Read numScans from a record
+    twosComplement(dataBytes)
+        Read the two's complement data from the file
     getPhysicalSamples(**kwargs)
-        Get data in physical units
-    spamHeaders()
-        Get sections and section headers to be read in for SPAM data
+        Get data scaled to physical values
     chanDefaults()
-        Get defaults values for channel headers
+        Get defaults for channel headers
     readHeader()
-        Read SPAM header files
-    readHeaderXTR(headerFile)
-        Read a XTR header file
-    readHeaderXTRX(headerFile)
-        Read a XTRX header files
-    headersFromRawFile(rawFile, headers)
-        Read headers from the data files
-    mergeHeaders(headersList, chanHeadersList)
-        Merge the headers from all the data files
-    printDataFileList()
-        Get data file information as a list of strings
-    printDataFiles()
-        Print data file information to terminal
+        Read header file
+    readTable()
+        Read table file
+    removeControl(inBytes)
+        Remove control characters from a byte string
+    headersFromTable(tableData)
+        Parse the information in the table file to get headers
+    getDates(tableData)
+        Get recording dates (start and end time)
+    checkSamples()
+        Check the number of samples for all the timeseries (ts) files
+    reformatHigh(path, **kwargs)
+        Write out high frequency time series in internal format
+    reformatContinuous(path)
+        Write out the continuous time series in internal format
+    reformat(path)
+        Write out all recorded time series to internal format
+    printDataFileList()  
+        Information about the data files as a list of strings
+    printDataFileInfo()
+        Print a list of the data files
+    printTableFileList()
+        Information about the table file as a list of strings
+    printTableFileInfo()
+        Print table file info
+
+    Notes
+    -----
+    Phoenix data is stored in 3 bytes two's-complement format.
     """
 
     def setParameters(self) -> None:
         """Set data reader parameters for Phoenix files
         
         Phoenix time series data is not contiguous in the file and is separated into records. There are multiple time series data files, one for the continuous recording and two others for the other frequencies. Therefore, there are a few other class variables defined here than in the parent DataReader class.
-        """        
+        """
 
         # get a list of the header and data files in the folder
         self.headerF = glob.glob(os.path.join(self.dataPath, "*.TBL"))
@@ -90,7 +128,7 @@ class DataReaderPhoenix(DataReader):
         -------
         Dict
             Dictionary with the time series file number as keys and their sampling frequencies in Hz as values
-        """ 
+        """
 
         info: Dict = {}
         for num, sr in zip(self.tsNums, self.tsSampleFreqs):
@@ -104,7 +142,7 @@ class DataReaderPhoenix(DataReader):
         -------
         Dict
             Dictionary with the time series file number as keys and their number of samples as values
-        """ 
+        """
 
         info = {}
         for num, ns in zip(self.tsNums, self.tsNumSamples):
@@ -211,7 +249,9 @@ class DataReaderPhoenix(DataReader):
             comments=comment,
         )
 
-    def getRecordsForSamples(self, startSample: int, endSample: int) -> Tuple[List, List]:
+    def getRecordsForSamples(
+        self, startSample: int, endSample: int
+    ) -> Tuple[List, List]:
         """Get the records to read for a sample range
 
         Parameters
@@ -312,7 +352,7 @@ class DataReaderPhoenix(DataReader):
         return numScans, numChans, dateString
 
     def readRecord(self, dataFile, numChans, numScans):
-        """Read the tag from a data file
+        """Read numScans from a record
 
         Parameters
         ----------
@@ -354,10 +394,11 @@ class DataReaderPhoenix(DataReader):
 
         if len(dataBytes) % self.sampleByteSize != 0:
             self.printError(
-                "The number of bytes divided by the sample byte size does not give an exact number", quitRun=True
+                "The number of bytes divided by the sample byte size does not give an exact number",
+                quitRun=True,
             )
-        # calculate num samples, this should be exact    
-        numSamples = intdiv(len(dataBytes), self.sampleByteSize) 
+        # calculate num samples, this should be exact
+        numSamples = intdiv(len(dataBytes), self.sampleByteSize)
         dataRead = np.zeros(shape=(numSamples), dtype=self.dtype)
         for i in range(0, numSamples):
             sampleBytes = dataBytes[
@@ -368,20 +409,8 @@ class DataReaderPhoenix(DataReader):
             dataRead[i] = signed
         return dataRead
 
-
     def getPhysicalSamples(self, **kwargs) -> TimeData:
         """Get data scaled to physical values
-
-        Each data format is recorded in a different way.
-        ATS provides unscaled data in counts (*lsb gives mV)
-        SPAM provides unscaled data in the count data/unscaled data * lsb is assumed to give data in mV
-        Phoenix
-        Internal
-        
-        The data readers return data using field units. Therefore:
-        Electric field channels are returned in mV/km
-        Magnetic fields are in mV 
-        To get magnetic fields in nT, calibration needs to be performed
 
         Parameters
         ----------
@@ -465,8 +494,6 @@ class DataReaderPhoenix(DataReader):
         chanH["sensor_type"] = ""
         chanH["channel_type"] = ""
         chanH["ts_lsb"] = 1
-        # the lsb/scaling is not applied. data is raw voltage which needs to be scaled
-        # an lsb is constructed from the scaling in the XTR/XTRX file to take the data to mV
         chanH["lsb_applied"] = False  # check this
         chanH["pos_x1"] = 0
         chanH["pos_x2"] = 0
@@ -477,15 +504,10 @@ class DataReaderPhoenix(DataReader):
         chanH["sensor_sernum"] = 0
         return chanH
 
-    # extend a method in the base class
-    # read in header (table) file
-    # this is binary
     def readHeader(self):
-        """Read header files
+        """Read header file
 
-        For SPAM data, the may be more than one header file as data can be split up into smaller files as it is recorded. In that case, the header information should be somehow merged.
-    
-        All sampling frequencies should be the same
+        For phoenix data, the header file is the table file and it is binary formatted.
         """
 
         # first, find which ts files are available (2,3,4,5)
@@ -681,7 +703,7 @@ class DataReaderPhoenix(DataReader):
         return tableData
 
     def removeControl(self, inBytes: bytes) -> str:
-        """Remove control characters
+        """Remove control characters from byte strings
         
         Parameters
         ----------
@@ -693,9 +715,10 @@ class DataReaderPhoenix(DataReader):
         str :
             Decodes bytes object with control character removed
         """
+
         inBytes = inBytes.strip(b"\x00")
         return inBytes.decode()
- 
+
     def headersFromTable(self, tableData: Dict) -> Tuple[Dict, List]:
         """Populate the headers from the table values
         
@@ -710,7 +733,7 @@ class DataReaderPhoenix(DataReader):
             Dictionary of general headers
         chanHeaders : Dict
             List of channel headers
-        """        
+        """
 
         # initialise storage
         headers = {}
@@ -815,7 +838,7 @@ class DataReaderPhoenix(DataReader):
             Date of last sample as string
         lastTime : str
             Time of last sample as string
-        """ 
+        """
 
         firstSecond = tableData["FTIM"][0]
         firstMinute = tableData["FTIM"][1]
@@ -873,7 +896,7 @@ class DataReaderPhoenix(DataReader):
             dFile = open(dFileName, "rb")
             while bytesread < numBytes:
                 # read 32 bytes tag
-                numScans, numChans, dateString = self.readTag(dFile)  
+                numScans, numChans, dateString = self.readTag(dFile)
                 self.recordBytes[ts].append(bytesread + self.tagByteSize)
                 dataBytes = numScans * numChans * self.sampleByteSize
                 dFile.seek(dataBytes, 1)
@@ -918,18 +941,7 @@ class DataReaderPhoenix(DataReader):
             Directory to write out the reformatted time series
         ts : List[int], optional
             A list of the high frequency ts files to reformat. By default, all of the higher frequency recordings are reformatted
-
-        Returns
-        -------
-        firstDate : str
-            Date of first sample as string
-        firstTime : str
-            Time of first sample as string
-        lastDate : str
-            Date of last sample as string
-        lastTime : str
-            Time of last sample as string
-        """ 
+        """
 
         writer = DataWriterInternal()
         for idx, ts in enumerate(self.tsNums):
@@ -1080,14 +1092,14 @@ class DataReaderPhoenix(DataReader):
         -------
         List[str]
             List of information about the data files
-        """ 
+        """
 
         textLst = []
         textLst.append("TS File\t\tSampling frequency (Hz)\t\tNum Samples")
         for dF, tsF, tsN in zip(self.dataF, self.tsSampleFreqs, self.tsNumSamples):
             textLst.append("{}\t\t{}\t\t{}".format(os.path.basename(dF), tsF, tsN))
         return textLst
-    
+
     def printDataFileInfo(self):
         """Print a list of the data files"""
 
@@ -1116,4 +1128,4 @@ class DataReaderPhoenix(DataReader):
         blockPrint(
             "{} Table File Info".format(self.__class__.__name__),
             self.printTableFileList(),
-        )        
+        )

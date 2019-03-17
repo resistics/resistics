@@ -10,9 +10,9 @@ from resistics.ioHandlers.dataReader import DataReader
 
 class DataReaderATS(DataReader):
     """Data reader for ATS formatted data
-
-    For ATS files, header information is written out to an XML file. 
     
+    For ATS files, header information is XML formatted. The end time in ATS header files is actually one sample past the time of the last sample. The dataReader handles this and gives an end time corresponding to the actual time of the last sample.
+
     Methods
     -------
     setParameters()
@@ -26,7 +26,21 @@ class DataReaderATS(DataReader):
 
     Notes
     -----
-    The end time in ATS files is actually one sample past the time of the last sample. The dataReader handles this and gives an end time corresponding to the time of the actual last sample.
+    The raw data units for ATS data are in counts. To get data in field units, ATS data is first multipled by the least significat bit (lsb) defined in the header files,
+
+    .. code-block:: text  
+    
+        data = data * leastSignificantBit,
+    
+    giving data in mV. The lsb includes the gain removal, so no separate gain removal needs to be performed.
+    
+    For electrical channels, there is additional step of dividing by the electrode spacing, which is provided in metres. The extra factor of a 1000 is to convert this to km to give mV/km for electric channels
+    
+    .. code-block:: text  
+        
+        data = (1000 * data)/electrodeSpacing
+    
+    Finally, to get magnetic channels in nT, the magnetic channels need to be calibrated.
     """
 
     def setParameters(self) -> None:
@@ -80,7 +94,10 @@ class DataReaderATS(DataReader):
         )
 
     def readHeader(self):
-        """Read time data header file for internal format"""
+        """Read time data header file for ATS format
+        
+        Headers for ATS files are XML formatted.
+        """
 
         if len(self.headerF) > 1:
             self.printWarning(
