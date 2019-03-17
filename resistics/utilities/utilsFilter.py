@@ -23,6 +23,7 @@ def normalise(timeData: TimeData) -> TimeData:
         Normalised time data
     """
 
+    timeData = timeData.copy()
     timeData.data = normaliseData(timeData.data)
     timeData.addComment("Data normalised")
     return timeData
@@ -65,6 +66,7 @@ def lowPass(timeData: TimeData, cutoff: float) -> TimeData:
         Filtered time data
     """
 
+    timeData = timeData.copy()
     timeData.data = lowPassData(timeData.data, timeData.sampleFreq, cutoff)
     timeData.addComment("Low pass filter applied with cutoff {} Hz".format(cutoff))
     return timeData
@@ -111,6 +113,7 @@ def highPass(timeData: TimeData, cutoff: float) -> TimeData:
         Filtered time data
     """
 
+    timeData = timeData.copy()
     timeData.data = highPassData(timeData.data, timeData.sampleFreq, cutoff)
     timeData.addComment("High pass filter applied with cutoff {} Hz".format(cutoff))
     return timeData
@@ -156,6 +159,7 @@ def bandPass(timeData: TimeData, cutoffLow: float, cutoffHigh: float) -> TimeDat
         Filtered time data
     """
 
+    timeData = timeData.copy()
     timeData.data = bandPassData(
         timeData.data, timeData.sampleFreq, cutoffLow, cutoffHigh
     )
@@ -241,6 +245,7 @@ def notchFilter(timeData: TimeData, notch: float) -> TimeData:
         Filtered time data
     """
 
+    timeData = timeData.copy()
     timeData.data = notchFilterData(
         timeData.data, timeData.sampleFreq, notch, notch / 5.0
     )
@@ -304,6 +309,7 @@ def resample(timeData: TimeData, resampFreq: float) -> TimeData:
         Filtered time data
     """
 
+    timeData = timeData.copy()
     timeData.data = resampleData(timeData.data, timeData.sampleFreq, resampFreq)
     # update the time info
     timeData.sampleFreq = resampFreq
