@@ -79,7 +79,7 @@ class CalibrationData(DataObject):
         self.chopper: bool = chopper
         self.serial = 1
 
-    def view(self, **kwargs):
+    def view(self, **kwargs) -> plt.figure:
         """Plot of the calibration function
 
         Parameters
@@ -96,12 +96,19 @@ class CalibrationData(DataObject):
             Limits for the magnitude y axis
         ylim_phase : List, optional
             Limits for the phase y axis
+        legened : bool
+            Boolean flag for adding a legend
+        
+        Returns
+        -------
+        plt.figure
+            Matplotlib figure object            
         """
 
         if "fig" in kwargs:
-            plt.figure(kwargs["fig"].number)
+            fig = plt.figure(kwargs["fig"].number)
         else :
-            plt.figure(figsize=(8, 8))
+            fig = plt.figure(figsize=(8, 8))
         plotFonts = kwargs["plotFonts"] if "plotFonts" in kwargs else getViewFonts()
 
         # plot magnitude
@@ -130,12 +137,16 @@ class CalibrationData(DataObject):
         plt.xlabel("Frequency [Hz]")
         plt.ylabel("Phase [{}]".format(self.phaseUnit))   
         plt.grid(True)   
-        plt.legend(loc=1)
+        # legend
+        if "legend" in kwargs and kwargs["legend"]:
+            plt.legend(loc=4)   
 
         # show if the figure is not in keywords
         if "fig" not in kwargs:
             plt.tight_layout(rect=[0, 0.02, 1, 0.96])
             plt.show()
+        
+        return fig
 
     def printList(self) -> List[str]:
         """Class information as a list of strings

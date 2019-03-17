@@ -201,7 +201,7 @@ class TransferFunctionData(DataObject):
         tipperAngleIm = np.arctan(tyIm / txIm)
         return tipperLength, tipperAngleRe, tipperAngleIm
 
-    def view(self, **kwargs) -> None:
+    def view(self, **kwargs) -> plt.figure:
         """Plots the transfer function data
 
         For resistivity data, both axes are log scale (period and resistivity). For phase data, period is in log scale and phase is linear scale.
@@ -230,7 +230,12 @@ class TransferFunctionData(DataObject):
         res_ylim : List, optional
             Limits for the resistivity y axis
         phase_ylim : List, optional
-            Limits for the phase y axis            
+            Limits for the phase y axis 
+
+        Returns
+        -------
+        plt.figure
+            Matplotlib figure object            
         """
 
         polarisations = (
@@ -364,6 +369,8 @@ class TransferFunctionData(DataObject):
             plt.tight_layout()
             fig.subplots_adjust(top=0.92)
             plt.show()
+
+        return fig
 
     def viewTipper(self, **kwargs):
         """Plots tipper data where available

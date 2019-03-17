@@ -45,6 +45,8 @@ class SpectrumData(DataObject):
         Get a deepcopy of the comments        
     addComment(comment)
         Add a comment to the dataset
+    copy()
+        Get a copy of the spectrum data
     view(kwargs)
         View the spectra data 
     printList()
@@ -179,7 +181,26 @@ class SpectrumData(DataObject):
 
         self.comments.append(comment)
 
-    def view(self, **kwargs):
+    def copy(self):
+        """Get a copy of the time data object
+
+        Returns
+        -------
+        TimeData
+            A copy of the time data object
+        """
+        
+        return SpectrumData(
+            self.windowSize,
+            self.dataSize, 
+            self.sampleFreq,
+            self.startTime,
+            self.stopTime,
+            deepcopy(self.data),
+            self.getComments(),
+        )
+
+    def view(self, **kwargs) -> plt.figure:
         """Plot spectra data
 
         Parameters
@@ -194,6 +215,13 @@ class SpectrumData(DataObject):
             Label for the plots
         xlim : List, optional
             Limits for the x axis
+        legend : bool
+            Boolean flag for adding a legend
+
+        Returns
+        -------
+        plt.figure
+            Matplotlib figure object
         """
 
         f = self.freqArray
@@ -234,10 +262,16 @@ class SpectrumData(DataObject):
             # set tick sizes
             for label in ax.get_xticklabels() + ax.get_yticklabels():
                 label.set_fontsize(plotFonts["axisTicks"])
+            # legend
+            if "legend" in kwargs and kwargs["legend"]:
+                plt.legend(loc=4)
+
         # show if the figure is not in keywords
         if "fig" not in kwargs:
             plt.tight_layout(rect=[0, 0.02, 1, 0.96])
             plt.show()
+        
+        return fig
 
     def printList(self) -> List[str]:
         """Class information as a list of strings

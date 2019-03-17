@@ -45,6 +45,8 @@ class TimeData(DataObject):
         Get a deepcopy of the comments
     addComment(comment)
         Add a comment to the dataset
+    copy()
+        Get a copy of the timeseries data
     view(kwargs)
         View the spectra data 
     printList()
@@ -57,7 +59,7 @@ class TimeData(DataObject):
         startTime: Union[datetime, str],
         stopTime: Union[datetime, str],
         data,
-        comments: Union[str, List[str]] = [] ,
+        comments: Union[str, List[str]] = [],
     ) -> None:
         """Initialise and set object parameters
 
@@ -156,7 +158,24 @@ class TimeData(DataObject):
 
         self.comments.append(comment)
 
-    def view(self, **kwargs):
+    def copy(self):
+        """Get a copy of the time data object
+
+        Returns
+        -------
+        TimeData
+            A copy of the time data object
+        """
+
+        return TimeData(
+            self.sampleFreq,
+            self.startTime,
+            self.stopTime,
+            deepcopy(self.data),
+            self.getComments(),
+        )
+
+    def view(self, **kwargs) -> plt.figure:
         """Plot statistics for evaluation frequency index
 
         Plots a simple scatter of each statistic with datetime on the xaxis (datetime of the window start dates). Number of subplots is equal to numStaStatPerWindow.
@@ -177,6 +196,13 @@ class TimeData(DataObject):
             Label for the plots
         xlim : List, optional
             Limits for the x axis
+        legened : bool
+            Boolean flag for adding a legend
+        
+        Returns
+        -------
+        plt.figure
+            Matplotlib figure object
         """
 
         # the number of samples to plot
@@ -240,10 +266,16 @@ class TimeData(DataObject):
             # set tick sizes
             for label in ax.get_xticklabels() + ax.get_yticklabels():
                 label.set_fontsize(plotFonts["axisTicks"])
+            # legend
+            if "legend" in kwargs and kwargs["legend"]:
+                plt.legend(loc=4)
+
         # show if the figure is not in keywords
         if "fig" not in kwargs:
             plt.tight_layout(rect=[0, 0.02, 1, 0.96])
             plt.show()
+        
+        return fig
 
     def printList(self) -> List[str]:
         """Class information as a list of strings

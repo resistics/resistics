@@ -392,7 +392,7 @@ class StatisticData(DataObject):
 
         self.comments.append(comment)
 
-    def view(self, eFreqI: int, **kwargs) -> None:
+    def view(self, eFreqI: int, **kwargs) -> plt.figure:
         """Plot statistics for evaluation frequency index
 
         Plots a simple scatter of each statistic with datetime on the xaxis (datetime of the window start dates). Number of subplots is equal to numStaStatPerWindow.
@@ -417,6 +417,13 @@ class StatisticData(DataObject):
             Limits for the y axis
         colortitle : str, optional
             Title for the colourbar
+        legened : bool
+            Boolean flag for adding a legend
+        
+        Returns
+        -------
+        plt.figure
+            Matplotlib figure object        
         """
 
         # get windows to plot and global dates
@@ -502,6 +509,9 @@ class StatisticData(DataObject):
             for label in ax.get_xticklabels() + ax.get_yticklabels():
                 label.set_fontsize(plotfonts["axisTicks"])
             plt.grid(True, ls="--")
+            # legend
+            if "legend" in kwargs and kwargs["legend"]:
+                plt.legend(loc=4)
 
         # show if the figure is not in keywords
         if "fig" not in kwargs:
@@ -516,7 +526,9 @@ class StatisticData(DataObject):
                 self.addColourbar(scat, cax, colourtitle, plotfonts)
             plt.show()
 
-    def histogram(self, eFreqI: int, **kwargs) -> None:
+        return fig
+
+    def histogram(self, eFreqI: int, **kwargs) -> plt.figure:
         """Plot statistics for evaluation frequency index
 
         Plots a histogram of each statistic with bins on the xaxis and count on the yaxis. Ideal for exploring the distribution of statistic values over the windows.
@@ -537,6 +549,13 @@ class StatisticData(DataObject):
             Label for the plots
         xlim : List, optional
             Limits for the x axis
+        legened : bool
+            Boolean flag for adding a legend
+        
+        Returns
+        -------
+        plt.figure
+            Matplotlib figure object            
         """
 
         # deal with maskwindows, which are global indices
@@ -589,6 +608,9 @@ class StatisticData(DataObject):
             for label in ax.get_xticklabels() + ax.get_yticklabels():
                 label.set_fontsize(plotfonts["axisTicks"])
             plt.grid(True, ls="--")
+            # legend
+            if "legend" in kwargs and kwargs["legend"]:
+                plt.legend(loc=4)
 
         # show if the figure is not in keywords
         if "fig" not in kwargs:
@@ -596,7 +618,9 @@ class StatisticData(DataObject):
             fig.subplots_adjust(top=0.88)
             plt.show()
 
-    def crossplot(self, eFreqI: int, **kwargs) -> None:
+        return fig
+
+    def crossplot(self, eFreqI: int, **kwargs) -> plt.figure:
         """Plots crossplots of statistic components for evaluation frequency index
 
         Notes
@@ -632,6 +656,13 @@ class StatisticData(DataObject):
             Limits for the y axis
         colortitle : str, optional
             Title for the colourbar
+        legened : bool
+            Boolean flag for adding a legend
+        
+        Returns
+        -------
+        plt.figure
+            Matplotlib figure object            
         """
 
         # deal with maskwindows, which are global indices
@@ -712,6 +743,9 @@ class StatisticData(DataObject):
             for label in ax.get_xticklabels() + ax.get_yticklabels():
                 label.set_fontsize(plotfonts["axisTicks"])
             plt.grid(True, ls="--")
+            # legend
+            if "legend" in kwargs and kwargs["legend"]:
+                plt.legend(loc=4)
 
         # show if the figure is not in keywords
         if "fig" not in kwargs:
@@ -726,6 +760,8 @@ class StatisticData(DataObject):
                 )
                 self.addColourbar(scat, cax, colourtitle, plotfonts)
             plt.show()
+
+        return fig
 
     def addColourbar(self, plot: plt.plot, cax, title: str, plotfonts: Dict) -> None:
         """Add a colourbar to a plot
