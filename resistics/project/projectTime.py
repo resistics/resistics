@@ -307,7 +307,7 @@ def viewTime(
                 )
             )
 
-            # # apply various options
+            # apply various options
             applyCalibrationOptions(options, cal, timeData, reader)
             applyFilterOptions(options, timeData)
             applyNotchOptions(options, timeData)

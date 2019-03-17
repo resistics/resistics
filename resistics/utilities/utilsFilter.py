@@ -9,13 +9,15 @@ from resistics.utilities.utilsPrint import generalPrint, arrayToStringInt
 from resistics.utilities.utilsMath import intdiv
 
 
-def normalise(timeData: TimeData) -> TimeData:
+def normalise(timeData: TimeData, inplace: bool = True) -> TimeData:
     """Normalise time data
     
     Parameters
     ----------
     timeData : TimeData
         timeData to normalise
+    inplace : bool, optional
+        Whether to manipulate the data inplace
 
     Returns
     -------
@@ -23,7 +25,8 @@ def normalise(timeData: TimeData) -> TimeData:
         Normalised time data
     """
 
-    timeData = timeData.copy()
+    if not inplace:
+        timeData = timeData.copy()
     timeData.data = normaliseData(timeData.data)
     timeData.addComment("Data normalised")
     return timeData
@@ -50,7 +53,7 @@ def normaliseData(data: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
     return data
 
 
-def lowPass(timeData: TimeData, cutoff: float) -> TimeData:
+def lowPass(timeData: TimeData, cutoff: float, inplace: bool = True) -> TimeData:
     """Lowpass butterworth filter for time data
     
     Parameters
@@ -59,6 +62,8 @@ def lowPass(timeData: TimeData, cutoff: float) -> TimeData:
         timeData to filter
     cutoff : float
         Cutoff frequency in Hz
+    inplace : bool, optional
+        Whether to manipulate the data inplace
 
     Returns
     -------
@@ -66,7 +71,8 @@ def lowPass(timeData: TimeData, cutoff: float) -> TimeData:
         Filtered time data
     """
 
-    timeData = timeData.copy()
+    if not inplace:
+        timeData = timeData.copy()
     timeData.data = lowPassData(timeData.data, timeData.sampleFreq, cutoff)
     timeData.addComment("Low pass filter applied with cutoff {} Hz".format(cutoff))
     return timeData
@@ -97,7 +103,7 @@ def lowPassData(
     return filterData(data, b, a)
 
 
-def highPass(timeData: TimeData, cutoff: float) -> TimeData:
+def highPass(timeData: TimeData, cutoff: float, inplace: bool = True) -> TimeData:
     """Highpass butterworth filter for time data
     
     Parameters
@@ -106,6 +112,8 @@ def highPass(timeData: TimeData, cutoff: float) -> TimeData:
         timeData to filter
     cutoff : float
         Cutoff frequency in Hz
+    inplace : bool, optional
+        Whether to manipulate the data inplace        
 
     Returns
     -------
@@ -113,7 +121,8 @@ def highPass(timeData: TimeData, cutoff: float) -> TimeData:
         Filtered time data
     """
 
-    timeData = timeData.copy()
+    if not inplace:
+        timeData = timeData.copy()
     timeData.data = highPassData(timeData.data, timeData.sampleFreq, cutoff)
     timeData.addComment("High pass filter applied with cutoff {} Hz".format(cutoff))
     return timeData
@@ -143,7 +152,7 @@ def highPassData(
     return filterData(data, b, a)
 
 
-def bandPass(timeData: TimeData, cutoffLow: float, cutoffHigh: float) -> TimeData:
+def bandPass(timeData: TimeData, cutoffLow: float, cutoffHigh: float, inplace: bool = True) -> TimeData:
     """Bandpass butterworth filter for time data
     
     Parameters
@@ -152,6 +161,8 @@ def bandPass(timeData: TimeData, cutoffLow: float, cutoffHigh: float) -> TimeDat
         timeData to filter
     cutoff : float
         Cutoff frequency in Hz
+    inplace : bool, optional
+        Whether to manipulate the data inplace        
 
     Returns
     -------
@@ -159,7 +170,8 @@ def bandPass(timeData: TimeData, cutoffLow: float, cutoffHigh: float) -> TimeDat
         Filtered time data
     """
 
-    timeData = timeData.copy()
+    if not inplace:
+        timeData = timeData.copy()
     timeData.data = bandPassData(
         timeData.data, timeData.sampleFreq, cutoffLow, cutoffHigh
     )
@@ -229,7 +241,7 @@ def filterData(data: Dict[str, np.ndarray], b, a) -> Dict[str, np.ndarray]:
     return filteredData
 
 
-def notchFilter(timeData: TimeData, notch: float) -> TimeData:
+def notchFilter(timeData: TimeData, notch: float, inplace: bool = True) -> TimeData:
     """Bandpass butterworth filter for time data
     
     Parameters
@@ -238,6 +250,8 @@ def notchFilter(timeData: TimeData, notch: float) -> TimeData:
         timeData to filter
     notch : float
         Frequency to notch filter in Hz
+    inplace : bool, optional
+        Whether to manipulate the data inplace        
 
     Returns
     -------
@@ -245,7 +259,8 @@ def notchFilter(timeData: TimeData, notch: float) -> TimeData:
         Filtered time data
     """
 
-    timeData = timeData.copy()
+    if not inplace:
+        timeData = timeData.copy()
     timeData.data = notchFilterData(
         timeData.data, timeData.sampleFreq, notch, notch / 5.0
     )
@@ -293,7 +308,7 @@ def notchFilterData(
     return filteredData
 
 
-def resample(timeData: TimeData, resampFreq: float) -> TimeData:
+def resample(timeData: TimeData, resampFreq: float, inplace: bool = True) -> TimeData:
     """Resample time data
     
     Parameters
@@ -302,6 +317,8 @@ def resample(timeData: TimeData, resampFreq: float) -> TimeData:
         timeData to filter
     resampFreq : float
         The frequency to resample to
+    inplace : bool, optional
+        Whether to manipulate the data inplace        
 
     Returns
     -------
@@ -309,7 +326,8 @@ def resample(timeData: TimeData, resampFreq: float) -> TimeData:
         Filtered time data
     """
 
-    timeData = timeData.copy()
+    if not inplace:
+        timeData = timeData.copy()
     timeData.data = resampleData(timeData.data, timeData.sampleFreq, resampFreq)
     # update the time info
     timeData.sampleFreq = resampFreq
