@@ -37,26 +37,3 @@ Resistics is available for free under the MIT licence. The resistics source code
 Support and feature requests can be submitted on the in the [GitHub repository](https://github.com/resistics/resistics) page.
 
 
-
-
-
-
-
-
-Getting started
-~~~~~~~~~~~~~~~
-
-Read more about the magnetotelluric method and resistics in the :doc:`introduction <introduction>`. Installation instructions are provided :doc:`here <installation>`. The quickest way to get started with resistics is to install it from pip, the python package repository, and continue through to the :doc:`tutorial <tutorial>`.
-
-.. code-block:: bash
-    
-    python -m pip install resistics
-
-Find out about the useful features of resistics in the :doc:`features <features>` section. Resistics uses a number of conventions which are described :doc:`here <conventions>`.
-
-The :doc:`tutorial <tutorial>` section covers the resistics project environment and basic processing of magnetotelluric data. More advanced processing, including pre-processing of timeseries data, remote reference processing and remote reference statistics are detailed in the :doc:`advanced <advanced>` section. More specialised functionality or examples will be added in the :doc:`cookbook <cookbook>` as and when it is developed. A complete API reference can be found :doc:`here <api>`. 
-
-A roadmap for future development can be accessed :doc:`here <roadmap>`. For those interested in contributing to the project, information can be found in this section.
-
-Useful magnetotelluric references are provided in the :doc:`References <references>` section.
-
