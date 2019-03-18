@@ -15,7 +15,7 @@ project -> maskData -> site -> specdir -> maskData (a different file for each un
 
 # need the project path for loading
 # let's use our configuration file
-projectPath = os.path.join("exampleProject2")
+projectPath = os.path.join("advancedProject")
 projData = loadProject(projectPath)
 
 # # get a mask data object and specify the sampling frequency to mask (128Hz)

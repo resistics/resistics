@@ -1,12 +1,8 @@
-from resistics.utilities.utilsConfig import copyDefaultConfig
-copyDefaultConfig("ex1_config.ini")
-
 import os
 from resistics.project.projectIO import loadProject
-
 #  load the project and also provide a config file
 projectPath = os.path.join("tutorialProject")
-projData = loadProject(projectPath, configFile="ex1_04_config.ini")
+projData = loadProject(projectPath, configFile="tutorialConfig.ini")
 projData.printInfo()
 
 # calculate spectrum using the new configuration

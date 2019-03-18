@@ -11,12 +11,26 @@ from resistics.project.projectSpectra import calculateSpectra
 calculateSpectra(projData, sampleFreqs=[128], notch=[16.667, 50], specdir="notch")
 projData.refresh()
 
+# view the spectra 
+from resistics.utilities.utilsPlotter import plotOptionsSpec, getPaperFonts
+from resistics.project.projectSpectra import viewSpectraSection
+plotOptions = plotOptionsSpec(plotfonts=getPaperFonts())
+viewSpectraSection(
+    projData,
+    "site1",
+    "meas_2012-02-10_11-30-00",
+    specdir="notch",
+    plotoptions=plotOptions,
+    show=True,
+    save=True,
+)
+
 # process the new set of spectra
 from resistics.project.projectTransferFunction import processProject
 processProject(projData, sites=["site1"], specdir="notch")
 projData.refresh()
 # plot the transfer functions, again with specifying the relevant specdir
-from resistics.project.projectTransferFunction import processProject, viewTransferFunction
+from resistics.project.projectTransferFunction import viewTransferFunction
 viewTransferFunction(
     projData,
     sites=["site1"],

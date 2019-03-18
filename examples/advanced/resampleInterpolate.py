@@ -8,7 +8,7 @@ Look at the project data.
 """
 
 # need the project path for loading
-projectPath = os.path.join("exampleProject2")
+projectPath = os.path.join("advancedProject")
 # load the project
 projData = loadProject(projectPath)
 

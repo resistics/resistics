@@ -16,7 +16,7 @@ project -> statData -> site -> measurement -> specdir -> statName -> statData
 """
 
 # need the project path for loading
-projectPath = os.path.join("exampleProject2")
+projectPath = os.path.join("advancedProject")
 projData = loadProject(projectPath)
 
 # get a list of all statistic names

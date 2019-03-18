@@ -26,7 +26,7 @@ project -> timeData -> outputsite -> prepend_measA_postpend
 
 # need the project path for loading
 # let's use our configuration file
-projectPath = os.path.join("exampleProject")
+projectPath = os.path.join("advancedProject")
 projData = loadProject(projectPath)
 
 # let's notch the data and save it to a new time file
