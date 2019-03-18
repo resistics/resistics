@@ -1,0 +1,4 @@
+include README.md
+include LICENCE.txt
+include resistics/resisticsConfig.ini
+include CHANGELOG.txt
