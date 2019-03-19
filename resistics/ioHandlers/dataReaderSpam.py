@@ -106,18 +106,12 @@ class DataReaderSPAM(DataReader):
 
         Parameters
         ----------
-        chans : List[str]
+        chans : List[str], optional
             List of channels to return if not all are required
-        startSample : int
+        startSample : int, optional
             First sample to return
-        endSample : int
+        endSample : int, optional
             Last sample to return
-        remaverage : bool
-            Remove average from the data
-        remzeros : bool
-            Remove zeroes from the data
-        remnans: bool
-            Remove NanNs from the data
 
         Returns
         -------
@@ -179,19 +173,23 @@ class DataReaderSPAM(DataReader):
         startTime, stopTime = self.sample2time(
             options["startSample"], options["endSample"]
         )
-        comment = "Unscaled data {} to {} read in from measurement {}, samples {} to {}".format(
-            startTime,
-            stopTime,
-            self.dataPath,
-            options["startSample"],
-            options["endSample"],
+        comments = []
+        comments.append(
+            "Unscaled data {} to {} read in from measurement {}, samples {} to {}".format(
+                startTime,
+                stopTime,
+                self.dataPath,
+                options["startSample"],
+                options["endSample"],
+            )
         )
+        comments.append("Sampling frequency {}".format(self.getSampleFreq()))
         return TimeData(
             sampleFreq=self.getSampleFreq(),
             startTime=startTime,
             stopTime=stopTime,
             data=data,
-            comments=comment,
+            comments=comments,
         )
 
     def getDataFilesForSamples(
@@ -395,17 +393,18 @@ class DataReaderSPAM(DataReader):
 
         Notes
         -----
-        The raw data for SPAM is in single precision floats and record the raw Voltage measurements of the sensors. However, if there are multiple data files for a single recording, each one may have a different gain. Therefore, a scaling has to be calculated for each data file. 
+        The raw data for SPAM is in single precision floats and record the raw Voltage measurements of the sensors. However, if there are multiple data files for a single continuous recording, each one may have a different gain. Therefore, a scaling has to be calculated for each data file. 
 
-        For electric channels, the scaling begins with the scaling provided in the header file in the DATA section. This incorporates any gain occuring in the device. This scaling is further amended by,
+        For electric channels, the scaling begins with the scaling provided in the header file in the DATA section. This incorporates any gain occuring in the device. This scaling is further amended by a conversion to mV and polarity reversal,
 
         .. code-block:: text
         
-            scaling = 1000000 * scaling ,
-            scaling = -1 * scaling ,
+            scaling = read scaling from DATA section of header file
+            scaling = 1000 * scaling , 
+            scaling = -1000 * scaling ,
             ts_lsb = scaling ,
         
-        where the reason for the 1000000 factor is not clear, nor is the polarity reversal. However, this information was provided by people more familiar with the data format.
+        where the reason for the 1000 factor in line 2 is not clear, nor is the polarity reversal. However, this information was provided by people more familiar with the data format.
         
         For magnetic channels, the scaling in the header file DATA section is ignored. This is because it includes a static gain correction, which would be duplicated at the calibration stage. Therefore, this is not included at this point.
 
@@ -506,17 +505,19 @@ class DataReaderSPAM(DataReader):
                 if "LF" in calLine:
                     chanH["echopper"] = 1
 
-            # the scaling - recall, the data is raw voltage of sensors       
-            # the E fields also need their polarity reversed (from email with Reinhard)
+            # data is raw voltage of sensors
+            # both E and H fields need polarity reversal (from email with Reinhard)
+            # get scaling from headers
             scaling = float(dataSplit[-2])
             if isElectric(chanH["channel_type"]):
-                # the factor of 100000 is not entirely clear
-                lsb = 1000000.0 * scaling
-                lsb = -1 * lsb  # reverse polarity
+                # the factor of 1000 is not entirely clear
+                lsb = 1000.0 * scaling
+                # volts to millivolts and a minus to switch polarity giving data in mV
+                lsb = -1000.0 * lsb
             else:
                 # volts to millivolts and a minus to switch polarity giving data in mV
                 # scaling in header file is ignored because it duplicates static gain correction in calibration
-                lsb = -1000.0  
+                lsb = -1000.0
             chanH["ts_lsb"] = lsb
 
             # the distances

@@ -11,11 +11,11 @@ class DataWriterInternal(DataWriter):
     This is simply header files and binary data files. The header file saved is relevant only to this software and needs to be read in using DataReaderInternal.
     The header file means less processing to read the header information
 
-	Methods
-	-------
+    Methods
+    -------
     writeDataFiles(chans, timeData)
         Write out time series data
-	"""
+    """
 
     def writeDataFiles(self, chans, timeData) -> None:
         for idx, c in enumerate(chans):

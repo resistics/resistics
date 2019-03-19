@@ -104,6 +104,7 @@ class DataWriter(IOHandler):
         """Set the global headers
 
         Before writing out data, global headers are set. The priority order is:
+
         1. keywords[headername] if headername exists in keywords
         2. headers[headername] if headername exists in headers
         3. "" where the header is not defined in either keywords or headers
@@ -132,6 +133,7 @@ class DataWriter(IOHandler):
         """Set the channel headers
 
         Before writing out data, channel headers are set. The priority order is:
+
         1. keywords[headername] if headername exists in keywords
         2. headers[headername] if headername exists in headers
         3. "" where the channel header is not defined in either keywords or headers
@@ -254,10 +256,10 @@ class DataWriter(IOHandler):
         chanHeaders, chanMap = reader.getChanHeaders()
         # now write depending on whether lsb_applied or not
         if "lsb_applied" in kwargs and kwargs["lsb_applied"]:
+            self.dtype = np.float32
             self.write(
                 headers, chanHeaders, chanMap, reader.getPhysicalSamples(), **kwargs
             )
-            self.dtype = np.float32
         else:
             self.write(
                 headers, chanHeaders, chanMap, reader.getUnscaledSamples(), **kwargs

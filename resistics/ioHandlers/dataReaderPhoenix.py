@@ -156,18 +156,12 @@ class DataReaderPhoenix(DataReader):
         
         Parameters
         ----------
-        chans : List[str]
+        chans : List[str], optional
             List of channels to return if not all are required
-        startSample : int
+        startSample : int, optional
             First sample to return
-        endSample : int
+        endSample : int, optional
             Last sample to return
-        remaverage : bool
-            Remove average from the data
-        remzeros : bool
-            Remove zeroes from the data
-        remnans: bool
-            Remove NanNs from the data
 
         Returns
         -------
@@ -1071,7 +1065,7 @@ class DataReaderPhoenix(DataReader):
         writer.setOutPath(outpath)
         headers = self.getHeaders()
         chanHeaders, chanMap = self.getChanHeaders()
-        writer.writeData(headers, chanHeaders, self.getUnscaledSamples())
+        writer.writeData(headers, chanHeaders, self.getPhysicalSamples(), lsb_applied=True)
 
     def reformat(self, path):
         """Write out all recorded time series to internal format

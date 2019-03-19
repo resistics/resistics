@@ -183,7 +183,7 @@ class DataReader(IOHandler):
         # get a list of the xml files in the folder
         self.setParameters()
         if not self.checkFiles():
-            self.printError("No header or data files found...exiting", quitRun=True)
+            self.printError("No header or data files found", quitRun=True)
         self.readHeader()
         self.formatHeaderData()
         self.prepare()
@@ -626,18 +626,12 @@ class DataReader(IOHandler):
         
         Parameters
         ----------
-        chans : List[str]
+        chans : List[str], optional
             List of channels to return if not all are required
-        startSample : int
+        startSample : int, optional
             First sample to return
-        endSample : int
+        endSample : int, optional
             Last sample to return
-        remaverage : bool
-            Remove average from the data
-        remzeros : bool
-            Remove zeroes from the data
-        remnans: bool
-            Remove NanNs from the data
 
         Returns
         -------
@@ -706,14 +700,8 @@ class DataReader(IOHandler):
             Start time of data to read
         endTime : datetime
             End time of data to read       
-        chans : List[str]
+        chans : List[str], optional
             List of channels to return if not all are required
-        remaverage : bool
-            Remove average from the data
-        remzeros : bool
-            Remove zeroes from the data
-        remnans: bool
-            Remove NanNs from the data
 
         Returns
         -------
@@ -802,6 +790,8 @@ class DataReader(IOHandler):
                     timeData.data[chan] = (
                         1000 * timeData.data[chan] / self.getChanDy(chan)
                     )
+                # add comments
+                timeData.addComment("Removing gain and scaling electric channels to mV/km")
 
             # if remove zeros - False by default
             if options["remzeros"]:
@@ -816,8 +806,6 @@ class DataReader(IOHandler):
                     timeData.data[chan]
                 )
 
-        # add comments
-        timeData.addComment("Removing gain and scaling electric channels to mV/km")
         timeData.addComment(
             "Remove zeros: {}, remove nans: {}, remove average: {}".format(
                 options["remzeros"], options["remnans"], options["remaverage"]
