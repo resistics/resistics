@@ -17,8 +17,8 @@ from resistics.ioHandlers.spectrumReader import SpectrumReader
 from resistics.ioHandlers.transferFunctionReader import TransferFunctionReader
 from resistics.ioHandlers.transferFunctionWriter import TransferFunctionWriter
 from resistics.utilities.utilsChecks import parseKeywords, isElectric, isMagnetic
-from resistics.utilities.utilsIO import checkFilepath
-from resistics.utilities.utilsPrint import arrayToStringInt
+from resistics.utilities.utilsIO import checkFilepath, fileFormatSampleFreq
+from resistics.utilities.utilsPrint import floatListToString
 from resistics.utilities.utilsPlotter import (
     plotOptionsTransferFunction,
     getTransferFunctionFigSize,
@@ -37,7 +37,7 @@ from resistics.utilities.utilsProject import (
 
 
 def getTransferFunctionData(
-    projData: ProjectData, site: str, sampleFreq: Union[int, float], **kwargs
+    projData: ProjectData, site: str, sampleFreq: float, **kwargs
 ) -> TransferFunctionData:
     """Get transfer function data
 
@@ -67,10 +67,11 @@ def getTransferFunctionData(
         postpend = options["postpend"]
 
     siteData = projData.getSiteData(site)
+    sampleFreqStr = fileFormatSampleFreq(sampleFreq)
     path = os.path.join(
         siteData.transFuncPath,
-        "{:d}".format(int(sampleFreq)),
-        "{}_fs{:d}_{}{}".format(site, int(sampleFreq), options["specdir"], postpend),
+        "{:s}".format(sampleFreqStr),
+        "{}_fs{:s}_{}{}".format(site, sampleFreqStr, options["specdir"], postpend),
     )
     # check path
     if not checkFilepath(path):
@@ -138,7 +139,7 @@ def processProject(projData: ProjectData, **kwargs) -> None:
         siteFreqs = siteData.getSampleFreqs()
         for sampleFreq in siteFreqs:
             # check if not included
-            if int(sampleFreq) not in options["sampleFreqs"]:
+            if sampleFreq not in options["sampleFreqs"]:
                 continue
             processSite(projData, site, sampleFreq, **options)
 
@@ -150,9 +151,7 @@ def processSite(
 
     The site passed is assumed to be the output site (the output channels will come from this site). If channels from a different site are desired to be used as the input channels, this can be done by specifying the optional inputsite argument.
 
-    Examples
-    --------
-    Give a few different examples here
+    .. todo:: Give a few different examples here
 
     Parameters
     ----------
@@ -313,9 +312,12 @@ def viewTransferFunction(projData: ProjectData, **kwargs) -> None:
     for site in options["sites"]:
         siteData = projData.getSiteData(site)
         sampleFreqs = set(siteData.getSampleFreqs())
+        print(sampleFreqs)
+        print(options["sampleFreqs"])
         # find the intersection with the options["freqs"]
         sampleFreqs = sampleFreqs.intersection(options["sampleFreqs"])
         sampleFreqs = sorted(list(sampleFreqs))
+        print(sampleFreqs)
 
         # if prepend is a string, then make it a list
         if isinstance(options["postpend"], str):
@@ -377,7 +379,7 @@ def viewTransferFunction(projData: ProjectData, **kwargs) -> None:
 
             # sup title
             sub = "Site {}: {}".format(site, options["specdir"] + postpend)
-            sub = "{}\nfs = {}".format(sub, arrayToStringInt(includedFreqs))
+            sub = "{}\nfs = {}".format(sub, floatListToString(includedFreqs))
             st = fig.suptitle(sub, fontsize=plotfonts["suptitle"])
             st.set_y(0.99)
             fig.tight_layout()
@@ -491,7 +493,7 @@ def viewTipper(projData: ProjectData, **kwargs) -> None:
 
             # sup title
             sub = "Site {} tipper: {}".format(site, options["specdir"] + postpend)
-            sub = "{}\nfs = {}".format(sub, arrayToStringInt(includedFreqs))
+            sub = "{}\nfs = {}".format(sub, floatListToString(includedFreqs))
             st = fig.suptitle(sub, fontsize=plotfonts["suptitle"])
             st.set_y(0.99)
             fig.tight_layout()

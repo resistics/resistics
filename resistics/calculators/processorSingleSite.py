@@ -8,7 +8,7 @@ from typing import List, Dict, Tuple
 from resistics.calculators.calculator import Calculator
 from resistics.ioHandlers.transferFunctionWriter import TransferFunctionWriter
 from resistics.dataObjects.transferFunctionData import TransferFunctionData
-from resistics.utilities.utilsIO import checkAndMakeDir
+from resistics.utilities.utilsIO import checkAndMakeDir, fileFormatSampleFreq
 from resistics.utilities.utilsPrint import generalPrint, warningPrint, blockPrint
 from resistics.utilities.utilsSmooth import smooth1d
 from resistics.utilities.utilsRobust import (
@@ -142,31 +142,20 @@ class ProcessorSingleSite(Calculator):
         self.allChannels = self.inChannels + self.outChannels
         self.crossChannels = self.allChannels
 
-    # def setPostpend(self, postpend: str) -> None:
-    #     """Set the postpend for the output file
-    
-    #     Parameters
-    #     ----------
-    #     postpend : str
-    #         String to postpend to output file
-    #     """
-
-    #     if postpend != "":
-    #         postpend = "_{}".format(postpend)
-    #     self.postpend = postpend
-
     def process(self) -> None:
         """Process spectra data
 
-        The processing sequence is as below:
+        The processing sequence for each decimation level is as below:
 
-        For each decimation level
-            Get shared (unmasked) windows for all relevant sites (inSite and outSite)
-            For shared unmasked windows
-                Calculate out the spectral power data
-                Interpolate calculated spectral power data to the evaluation frequencies for the decimation level 
-            For each evaluation frequency
-                Do the robust processing to calculate the transfer function at that evaluation frequency
+        1. Get shared (unmasked) windows for all relevant sites (inSite and outSite)
+        2. For shared unmasked windows
+            
+            - Calculate out the spectral power data
+            - Interpolate calculated spectral power data to the evaluation frequencies for the decimation level 
+        
+        3. For each evaluation frequency
+            
+            - Do the robust processing to calculate the transfer function at that evaluation frequency
 
 
         NOTES
@@ -577,12 +566,14 @@ class ProcessorSingleSite(Calculator):
 
     def writeTF(self, specdir: str, postpend: str, freq, data, variances, **kwargs):
         # path for writing out to
-        sampleFreq = int(self.decParams.sampleFreq)
-        if postpend == "": 
-            filename = "{}_fs{:d}_{}".format(self.outSite, sampleFreq, specdir)
+        sampleFreqStr = fileFormatSampleFreq(self.decParams.sampleFreq)
+        if postpend == "":
+            filename = "{}_fs{:s}_{}".format(self.outSite, sampleFreqStr, specdir)
         else:
-            filename = "{}_fs{:d}_{}_{}".format(self.outSite, sampleFreq, specdir, postpend)
-        datapath = os.path.join(self.outpath, "{}".format(sampleFreq))
+            filename = "{}_fs{:s}_{}_{}".format(
+                self.outSite, sampleFreqStr, specdir, postpend
+            )
+        datapath = os.path.join(self.outpath, sampleFreqStr)
         checkAndMakeDir(datapath)
         outfile = os.path.join(datapath, filename)
         # now construct the transferFunctionData object
@@ -603,7 +594,7 @@ class ProcessorSingleSite(Calculator):
         # now make the writer and write out
         tfWriter = TransferFunctionWriter(outfile, tfData)
         tfWriter.setHeaders(
-            sampleFreq=sampleFreq,
+            sampleFreq=self.decParams.sampleFreq,
             insite=self.inSite,
             inchans=self.inChannels,
             outsite=self.outSite,

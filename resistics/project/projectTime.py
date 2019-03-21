@@ -282,7 +282,7 @@ def viewTime(
         # loop over measurements and save data for each one
         for meas in measurements:
             sampleFreq = siteData.getMeasurementSampleFreq(meas)
-            if int(sampleFreq) not in options["sampleFreqs"]:
+            if sampleFreq not in options["sampleFreqs"]:
                 continue
 
             # check if data contributes to user defined time period

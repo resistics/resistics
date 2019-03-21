@@ -138,7 +138,7 @@ class TransferFunctionReader(IOHandler):
         """Format  header values for the internal transfer function file format"""
 
         if "sampleFreq" in self.headers:
-            self.headers["sampleFreq"] = int(self.headers["sampleFreq"])
+            self.headers["sampleFreq"] = float(self.headers["sampleFreq"])
         test = ["insite", "outsite", "remotesite"]
         for header in test:
             if header in self.headers and self.headers[header] == "False":

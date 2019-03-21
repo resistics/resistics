@@ -211,6 +211,24 @@ def checkFilepath(path: str) -> bool:
     return True
 
 
+def fileFormatSampleFreq(sampleFreq: float) -> str:
+    """Provide a consistent way to represent floating numbers in filenames
+
+    Pameters
+    --------
+    sampleFreq : float
+        The sampling frequency
+    
+    Returns
+    -------
+    str
+        Float converted for string for the purposes of a filename
+    """
+
+    sampleFreqStr: str = "{:.3f}".format(sampleFreq)
+    return sampleFreqStr.replace(".", "_")
+
+
 def lineToKeyAndValue(line: str, delim="=") -> Tuple[str, str]:
     """Helper function to read headers
 

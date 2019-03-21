@@ -7,7 +7,7 @@ from typing import List, Tuple
 # import from package
 from resistics.ioHandlers.ioHandler import IOHandler
 from resistics.dataObjects.maskData import MaskData
-from resistics.utilities.utilsIO import checkAndMakeDir
+from resistics.utilities.utilsIO import checkAndMakeDir, fileFormatSampleFreq
 from resistics.utilities.utilsPrint import listToString
 
 
@@ -187,7 +187,8 @@ class MaskIO(IOHandler):
         """
 
         checkAndMakeDir(self.datapath)
-        name: str = maskName + "_{:d}".format(int(sampleFreq))
+        sampleFreqStr = fileFormatSampleFreq(sampleFreq)
+        name: str = maskName + "_{}".format(sampleFreqStr)
         infoFile: str = os.path.join(self.datapath, name + ".info")
         winFile: str = os.path.join(
             self.datapath, name

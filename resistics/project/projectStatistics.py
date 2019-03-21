@@ -15,6 +15,7 @@ from resistics.calculators.statisticCalculator import StatisticCalculator
 from resistics.ioHandlers.spectrumReader import SpectrumReader
 from resistics.ioHandlers.statisticIO import StatisticIO
 from resistics.project.projectMask import getMaskData
+from resistics.utilities.utilsIO import fileFormatSampleFreq
 from resistics.utilities.utilsPrint import listToString
 from resistics.utilities.utilsPlotter import plotOptionsSpec, getPlotRowsAndCols
 from resistics.utilities.utilsChecks import parseKeywords
@@ -526,10 +527,11 @@ def viewStatistic(
     # plot show and save
     if options["save"]:
         impath = projData.imagePath
-        filename = "stat_{:s}_{:s}_{:d}_dec{:d}_efreq{:d}_{:s}".format(
+        sampleFreqStr = fileFormatSampleFreq(sampleFreq)
+        filename = "stat_{:s}_{:s}_{:s}_dec{:d}_efreq{:d}_{:s}".format(
             stat,
             site,
-            int(sampleFreq),
+            sampleFreqStr,
             options["declevel"],
             options["eFreqI"],
             options["specdir"],
@@ -673,10 +675,11 @@ def viewStatisticHistogram(
     # plot show and save
     if options["save"]:
         impath = projData.imagePath
-        filename = "statHist_{:s}_{:s}_{:d}_dec{:d}_efreq{:d}_{:s}".format(
+        sampleFreqStr = fileFormatSampleFreq(sampleFreq)
+        filename = "statHist_{:s}_{:s}_{:s}_dec{:d}_efreq{:d}_{:s}".format(
             stat,
             site,
-            int(sampleFreq),
+            sampleFreqStr,
             options["declevel"],
             options["eFreqI"],
             options["specdir"],
