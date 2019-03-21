@@ -216,10 +216,16 @@ class Calibrator(Calculator):
         calFormat : str
             The calibration format
         """
+        
+        if self.numCalFiles == 0:
+            # no calibration files to calibrate with
+            return "", ""
 
         for extension, fileformat in zip(self.calExt, self.calFormats):
             # get the name for this format
             calName = getCalName(fileformat, extension, sensor, serial, chopper)
+            if calName is None:
+                continue
             # search to find a calibration file with that name and take the first encountered
             for calFile in self.calFiles:
                 if calName in calFile:

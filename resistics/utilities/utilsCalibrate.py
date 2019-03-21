@@ -20,7 +20,7 @@ def getKnownCalibrationFormats() -> Tuple[List, List]:
     return calExt, calFormats
 
 
-def getCalName(format, ext: str, sensor: str, serial, chopper) -> str:
+def getCalName(format, ext: str, sensor: str, serial: int, chopper) -> str:
     """Get the calibration file name
     
     Parameters
@@ -54,7 +54,7 @@ def getCalName(format, ext: str, sensor: str, serial, chopper) -> str:
         return metronixName(ext, sensor, serial, chopper)
 
 
-def inductionName(ext: str, sensor: str, serial, chopper: bool) -> str:
+def inductionName(ext: str, sensor: str, serial: int, chopper: bool) -> str:
     """Get internal format induction coil calibration file name
     
     Parameters
@@ -77,7 +77,7 @@ def inductionName(ext: str, sensor: str, serial, chopper: bool) -> str:
     return "IC_{}.{}".format(serial, ext)
 
 
-def metronixName(ext: str, sensor: str, serial, chopper: bool) -> str:
+def metronixName(ext: str, sensor: str, serial: int, chopper: bool) -> str:
     """Get Metronix calibration file name
     
     Parameters
@@ -100,7 +100,7 @@ def metronixName(ext: str, sensor: str, serial, chopper: bool) -> str:
     return "{}{}.{}".format(sensor, serial, ext)
 
 
-def rspName(ext: str, sensor: str, serial, chopper: bool) -> str:
+def rspName(ext: str, sensor: str, serial: int, chopper: bool) -> str:
     """Get RSP calibration file name
     
     Parameters
@@ -120,6 +120,10 @@ def rspName(ext: str, sensor: str, serial, chopper: bool) -> str:
         Name of calibration file
     """
 
+    if len(sensor) < 6:
+        # not possible to get a sensor number
+        return None
+
     board = "HF"
     if chopper:
         board = "LF"
@@ -129,7 +133,7 @@ def rspName(ext: str, sensor: str, serial, chopper: bool) -> str:
     )
 
 
-def rspxName(ext: str, sensor: str, serial, chopper: bool) -> str:
+def rspxName(ext: str, sensor: str, serial: int, chopper: bool) -> str:
     """Get RSPX calibration file name
     
     Parameters
@@ -148,6 +152,10 @@ def rspxName(ext: str, sensor: str, serial, chopper: bool) -> str:
     out : str
         Name of calibration file
     """
+
+    if len(sensor) < 6:
+        # not possible to get a sensor number
+        return None
 
     board = "HF"
     if chopper:
