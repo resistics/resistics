@@ -26,3 +26,29 @@ asciiData = asciiReader.getPhysicalSamples()
 asciiData.printInfo()
 asciiData.view()
 
+# now write out as internal format
+from resistics.ioHandlers.dataWriterInternal import DataWriterInternal
+
+ascii_2intenrnal = os.path.join("timeData", "asciiInternal")
+writer = DataWriterInternal()
+writer.setOutPath(ascii_2intenrnal)
+writer.writeDataset(asciiReader, physical=True)
+
+# read in internal format
+from resistics.ioHandlers.dataReaderInternal import DataReaderInternal
+
+internalReader = DataReaderInternal(ascii_2intenrnal)
+internalReader.printInfo()
+internalReader.printComments()
+internalData = internalReader.getPhysicalSamples()
+internalData.printInfo()
+
+# now plot the two datasets together
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(20, 2 * asciiData.numChans))
+asciiData.view(fig=fig, sampleStop=500, label="ASCII format", legend=True)
+internalData.view(fig=fig, sampleStop=500, label="Internal format", legend=True)
+fig.tight_layout(rect=[0, 0.02, 1, 0.96])
+plt.show()
+fig.savefig(os.path.join("images", "ascii_vs_internal.png"))

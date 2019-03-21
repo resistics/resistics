@@ -1,5 +1,6 @@
 import os
 from resistics.ioHandlers.dataReaderATS import DataReaderATS
+
 # read ats data
 atsPath = os.path.join("timeData", "ats")
 atsReader = DataReaderATS(atsPath)
@@ -47,7 +48,7 @@ physicalInternalData.printInfo()
 # now plot the two datasets together
 import matplotlib.pyplot as plt
 
-fig = plt.figure(figsize=(20, 2*physicalATSData.numChans))
+fig = plt.figure(figsize=(20, 2 * physicalATSData.numChans))
 physicalATSData.view(fig=fig, sampleStop=500, label="ATS format", legend=True)
 physicalInternalData.view(fig=fig, sampleStop=500, label="Internal format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
@@ -74,7 +75,7 @@ physicalAsciiData.printInfo()
 # now plot the two datasets together
 import matplotlib.pyplot as plt
 
-fig = plt.figure(figsize=(20, 2*physicalATSData.numChans))
+fig = plt.figure(figsize=(20, 2 * physicalATSData.numChans))
 physicalATSData.view(fig=fig, sampleStop=500, label="ATS format", legend=True)
 physicalAsciiData.view(fig=fig, sampleStop=500, label="Ascii format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
