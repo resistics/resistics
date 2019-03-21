@@ -13,9 +13,16 @@ class DataWriterAscii(DataWriter):
 
 	Methods
 	-------
+    setExtension()
+        Set the data file extension
     writeDataFiles(chans, timeData)
         Write out time series data
 	"""
+
+    def setExtension(self) -> None:
+        """For subclasses to set their own extension type"""
+        
+        self.extension = ".ascii"
 
     def writeDataFiles(self, chans, timeData):
         self.extension = ".ascii"

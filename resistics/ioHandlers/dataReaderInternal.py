@@ -18,7 +18,7 @@ class DataReaderInternal(DataReader):
 
     - Get physical data from the raw data files (ATS, SPAM, Phoenix)
     - Perform any pre-processing required
-    - Save as internal format, ensuring to set the lsb_applied channel header for every channel to True. This will avoid any further scaling when the data is read in again.
+    - Save as internal format, ensuring to set the scaling_applied channel header for every channel to True. This will avoid any further scaling when the data is read in again.
     
     Methods
     -------
@@ -29,23 +29,6 @@ class DataReaderInternal(DataReader):
     lineToKeyAndValue(line)
         Separate a line into key and value with = as a delimiter
     """
-
-    # def __init__(self, dataPath: str):
-    #     self.dataPath: str = dataPath
-    #     # get a list of data files in folder
-    #     self.headerF = glob.glob(os.path.join(self.dataPath, "*.hdr"))
-    #     self.dataF = glob.glob(os.path.join(self.dataPath, "*.dat"))
-    #     self.dataByteOffset = 0
-    #     self.dataByteSize = 4
-    #     self.readHeader()
-    #     self.formatHeaderData()
-    #     self.prepare()
-
-    # def setParameters(self) -> None:
-    #     self.headerF = glob.glob(os.path.join(self.dataPath, "*.hdr"))
-    #     self.dataF = glob.glob(os.path.join(self.dataPath, "*.dat"))
-    #     self.dataByteOffset = 0
-    #     self.dataByteSize = 4
 
     def dataHeaders(self) -> Tuple[List[str], List[str], List[str], List[str]]:
         """Return the data headers in the internal file format
@@ -62,7 +45,7 @@ class DataReaderInternal(DataReader):
             Channel recording headers      
         """
 
-        # note, in comparison to ats headers, this also has one called lsb_applied
+        # note, in comparison to ats headers, this also has one called scaling_applied
         recordingHeaders = ["start_time", "start_date", "stop_time", "stop_date"]
         globalHeaders = ["meas_channels", "sample_freq"]
         channelHeadersInput = ["gain_stage1", "gain_stage2", "hchopper", "echopper"]
@@ -75,7 +58,7 @@ class DataReaderInternal(DataReader):
             "sensor_type",
             "channel_type",
             "ts_lsb",
-            "lsb_applied",
+            "scaling_applied",
             "pos_x1",
             "pos_x2",
             "pos_y1",
@@ -140,6 +123,3 @@ class DataReaderInternal(DataReader):
             f.close()
         else:
             self.comments = []
-
-
-

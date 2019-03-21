@@ -183,6 +183,10 @@ class DataReaderSPAM(DataReader):
                 options["endSample"],
             )
         )
+        comments.append("Data read from {} files in total".format(len(dataFilesToRead)))
+        comments.append(
+            "Data scaled to mV for all channels using scalings in header files"
+        )
         comments.append("Sampling frequency {}".format(self.getSampleFreq()))
         return TimeData(
             sampleFreq=self.getSampleFreq(),
@@ -277,15 +281,25 @@ class DataReaderSPAM(DataReader):
             startSample=options["startSample"],
             endSample=options["endSample"],
         )
-        # the LSB is applied in getUnscaledSamples - this is for ease of calculation and because each data file in the run might have a separate lsb
+        # Ais applied in getUnscaledSamples to convert to mV - this is for ease of calculation and because each data file in the run might have a separate scaling
         # so all that is left is to divide by the dipole length in km and remove the average
         for chan in options["chans"]:
             if chan == "Ex":
                 # multiply by 1000/self.getChanDx same as dividing by dist in km
                 timeData.data[chan] = 1000 * timeData.data[chan] / self.getChanDx(chan)
+                timeData.addComment(
+                    "Dividing channel {} by electrode distance {} km to give mV/km".format(
+                        chan, self.getChanDx(chan) / 1000.0
+                    )
+                )
             if chan == "Ey":
                 # multiply by 1000/self.getChanDy same as dividing by dist in km
                 timeData.data[chan] = 1000 * timeData.data[chan] / self.getChanDy(chan)
+                timeData.addComment(
+                    "Dividing channel {} by electrode distance {} km to give mV/km".format(
+                        chan, self.getChanDy(chan) / 1000.0
+                    )
+                )
 
             # if remove zeros - False by default
             if options["remzeros"]:
@@ -300,7 +314,6 @@ class DataReaderSPAM(DataReader):
                 )
 
         # add comments
-        timeData.addComment("Removing gain and scaling electric channels to mV/km")
         timeData.addComment(
             "Remove zeros: {}, remove nans: {}, remove average: {}".format(
                 options["remzeros"], options["remnans"], options["remaverage"]
@@ -350,7 +363,7 @@ class DataReaderSPAM(DataReader):
         chanH["ts_lsb"] = 1
         # the lsb/scaling is not applied. data is raw voltage which needs to be scaled
         # an lsb is constructed from the scaling in the XTR/XTRX file to take the data to mV
-        chanH["lsb_applied"] = False  # check this
+        chanH["scaling_applied"] = False  # check this
         chanH["pos_x1"] = 0
         chanH["pos_x2"] = 0
         chanH["pos_y1"] = 0

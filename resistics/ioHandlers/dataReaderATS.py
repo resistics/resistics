@@ -151,7 +151,7 @@ class DataReaderATS(DataReader):
         # set the lsb applied header in chans
         # for ats files, this is not applied in the raw data files
         for idx, ch in enumerate(self.chanHeaders):
-            self.chanHeaders[idx]["lsb_applied"] = False
+            self.chanHeaders[idx]["scaling_applied"] = False
             self.chanHeaders[idx]["ts_lsb"] = "-{}".format(
                 self.chanHeaders[idx]["ts_lsb"]
             )

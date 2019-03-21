@@ -206,7 +206,7 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
                     stop_date=timeData.stopTime.strftime("%Y-%m-%d"),
                     numSamples=timeData.numSamples,
                     sample_freq=timeData.sampleFreq,
-                    lsb_applied=True,
+                    physical=True,
                 )
                 writer.printInfo()
 

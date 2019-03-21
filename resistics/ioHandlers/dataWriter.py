@@ -2,11 +2,12 @@ import os
 import glob
 from datetime import datetime, timedelta
 import numpy as np
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Any
 
 # import from package
 from resistics.dataObjects.timeData import TimeData
 from resistics.ioHandlers.ioHandler import IOHandler
+from resistics.ioHandlers.dataReader import DataReader
 from resistics.utilities.utilsIO import checkAndMakeDir
 
 
@@ -40,6 +41,8 @@ class DataWriter(IOHandler):
         Get the path to write out to
     setOutPath(path)
         Set the path to write out to
+    setExtension()
+        For subclasses to set their extension
     setGlobalHeadersFromKeywords(headers, keywords)
         Set the global headers 
     setChanHeadersFromKeywords(chanHeaders, keywords)
@@ -50,6 +53,8 @@ class DataWriter(IOHandler):
         Get a list of the global headers of interest
     chanHeaderwords()
         Get a list of the channel headers of interest
+    writeTemplateHeaderFiles(chans, chanFileMap, sampleFreq, numSamples, startDate)    
+        Write out a set of template header files for a case in which ASCII data without headers is to be loaded in
     writeDataset(reader, **kwargs)
         Write an existing dataset as a different format
     writeData(headers, chanHeaders, timeData, **kwargs)
@@ -68,8 +73,8 @@ class DataWriter(IOHandler):
 
     def __init__(self):
         self.outPath: str = ""
-        # in subclasses, extension might change i.e. .ats
-        self.extension: str = ".dat"
+        # in subclasses, extension might change i.e. .ascii
+        self.setExtension()
         # data type - the format of the data being written out
         self.dtype = np.int32
         # information about data being written
@@ -99,6 +104,11 @@ class DataWriter(IOHandler):
         """
 
         self.outPath = path
+
+    def setExtension(self) -> None:
+        """For subclasses to set their own extension type"""
+        
+        self.extension = ".dat"
 
     def setGlobalHeadersFromKeywords(self, headers: Dict, keywords: Dict) -> Dict:
         """Set the global headers
@@ -173,7 +183,7 @@ class DataWriter(IOHandler):
         datetimeStart : datetime
             The time of the first sample
         """
-        
+
         # calculate duration in seconds
         # numSamples - 1 because have to remove the initial sample which is taken at start time
         duration = 1.0 * (numSamples - 1) / sampleFreq
@@ -220,7 +230,7 @@ class DataWriter(IOHandler):
             "sensor_type",
             "channel_type",
             "ts_lsb",
-            "lsb_applied",
+            "scaling_applied",
             "pos_x1",
             "pos_x2",
             "pos_y1",
@@ -235,7 +245,59 @@ class DataWriter(IOHandler):
         ]
         return cHeaders
 
-    def writeDataset(self, reader, **kwargs) -> None:
+    def writeTemplateHeaderFiles(
+        self,
+        chans: List[str],
+        chanFileMap: Dict,
+        sampleFreq: float,
+        numSamples: int,
+        startDate: str,
+    ):
+        """Write a set of blank headers
+
+        Blank headers might be useful for reading in ascii files where no headers are existing. By giving a few header words, many options can be set 
+
+        Paramters
+        ---------
+        chans : List[str]
+            List of chans (e.g. Ex, Ey, Hx, Hy, Hz)
+        chanFileMap : Dict[str, str]
+            Map from channel to file 
+        numsamples : int
+            Number of samples of data
+        startdate : str
+            The start date of the recording in format %Y-%m-%d %H:%M:%S
+        """
+
+        # calculate start and end datetime
+        datetimeStart = datetime.strptime(startDate, "%Y-%m-%d %H:%M:%S")
+        datetimeStop = self.calcStopDateTime(sampleFreq, numSamples, datetimeStart)
+        # set global header words
+        globalKeywords = dict()
+        globalKeywords["sample_freq"] = sampleFreq
+        globalKeywords["num_samples"] = numSamples
+        globalKeywords["start_date"] = datetimeStart.strftime("%Y-%m-%d")
+        globalKeywords["start_time"] = datetimeStart.strftime("%H:%M:%S.%f")
+        globalKeywords["stop_date"] = datetimeStop.strftime("%Y-%m-%d")
+        globalKeywords["stop_time"] = datetimeStop.strftime("%H:%M:%S.%f")
+        globalKeywords["meas_channels"] = len(chans)
+
+        # empty dictionary so that some headers get defaulted
+        emptyDict = dict()
+        # set global headers for keyword arguments
+        headers = self.setGlobalHeadersFromKeywords(emptyDict, globalKeywords)
+        # set channel headers for keyword arguments
+        chanMap: Dict = dict()
+        chanHeaders: List = list()
+        for idx, chan in enumerate(chans):
+            chanMap[chan] = idx
+            chanKeywords: Dict = dict(globalKeywords)
+            chanKeywords["ats_data_file"] = chanFileMap[chan]
+            chanHeaders.append(self.setChanHeadersFromKeywords(emptyDict, chanKeywords))
+
+        self.writeHeaders(headers, chans, chanMap, chanHeaders, rename=False)
+
+    def writeDataset(self, reader: DataReader, physical: bool = True, **kwargs) -> None:
         """Write out a dataset by passing a data reader
 
         This method is intended to transform an existing dataset into internal format
@@ -244,8 +306,8 @@ class DataWriter(IOHandler):
         ----------
         reader : DataReader
             A list of the global header words of interest for writing out
-        lsb_applied : bool, optional
-            An optional flag designating whether the lsb has been applied. For example, SPAM format already has the lsb applied in the raw data.
+        physical : bool, optional
+            An optional flag designating whether to use physical samples or not. Default is true
         """
 
         if self.getOutPath() == "":
@@ -254,18 +316,28 @@ class DataWriter(IOHandler):
         # write using information from a reader file
         headers = reader.getHeaders()
         chanHeaders, chanMap = reader.getChanHeaders()
-        # now write depending on whether lsb_applied or not
-        if "lsb_applied" in kwargs and kwargs["lsb_applied"]:
+        # now write depending on whether scaling_applied or not
+        if physical:
+            # make sure dataset is written out in float and with scaling_applied header set to True
             self.dtype = np.float32
+            kwargs["scaling_applied"] = True
+            # write out
             self.write(
                 headers, chanHeaders, chanMap, reader.getPhysicalSamples(), **kwargs
             )
         else:
+            # write out unscaled samples
+            self.printWarning(
+                "Wrinting out of unscaled samples is not recommended due to scaling differences between the formats."
+            )
+            self.printWarning(
+                "Dataset will be written out but problems may be encountered in the future."
+            )
             self.write(
                 headers, chanHeaders, chanMap, reader.getUnscaledSamples(), **kwargs
             )
 
-    def writeData(self, headers, chanHeaders, timeData, **kwargs):
+    def writeData(self, headers, chanHeaders, timeData, physical: bool = True, **kwargs):
         """Write out time data 
 
         This method requires the user to pass global headers and chan headers explicitly.
@@ -278,8 +350,8 @@ class DataWriter(IOHandler):
             List of channel headers
         timeData : TimeData
             Time series data to write out
-        lsb_applied : bool, optional
-            An optional flag designating whether the lsb has been applied. For example, SPAM format already has the lsb applied in the raw data.   
+        physical : bool, optional
+            An optional flag designating whether the data is in field units (i.e. all scalings have been applied). This will result in the scaling_applied header being set to True. Default value for physical is True (i.e. data is assumed to be in field units).
         """
 
         if self.getOutPath() == "":
@@ -292,8 +364,9 @@ class DataWriter(IOHandler):
         for iChan in range(0, len(chanHeaders)):
             chanType = chanHeaders[iChan]["channel_type"]
             chanMap[chanType] = iChan
-        # check the data type
-        if "lsb_applied" in kwargs and kwargs["lsb_applied"]:
+        # check if in physical units
+        if physical:
+            kwargs["scaling_applied"] = True
             self.dtype = np.float32
         # write the data
         self.write(headers, chanHeaders, chanMap, timeData, **kwargs)
@@ -433,7 +506,14 @@ class DataWriter(IOHandler):
         # write out the data files
         self.writeDataFiles(chans, timeData)
 
-    def writeHeaders(self, headers, chans, chanMap, chanHeaders) -> bool:
+    def writeHeaders(
+        self,
+        headers: Dict[str, Any],
+        chans: List[str],
+        chanMap: Dict[str, int],
+        chanHeaders: List[List],
+        rename: bool = True,
+    ) -> bool:
         """Write out the header file
 
         Parameters
@@ -446,6 +526,8 @@ class DataWriter(IOHandler):
             Maps channel to index for chanHeaders
         chanHeaders : List
             List of channel headers
+        rename : bool, optional
+            Rename the output ats_data_files. Default is True and this is the case when writing out data which has been read in from a different source with pre-existing headers. However, if creating template header files, then set this to False.
         """
 
         # write out the global headers
@@ -463,12 +545,14 @@ class DataWriter(IOHandler):
                 os.path.join(self.getOutPath(), "chan_{:02d}.hdr".format(idx)), "w"
             )
             cf.write("HEADER = CHANNEL\n")
-            # now need to use the cMap to get the index of the cHeaders array
+            # use the chanMap to get the index of the chanHeaders list
             cIndex = chanMap[c]
-            # change the data file
-            chanHeaders[cIndex]["ats_data_file"] = "chan_{:02d}{}".format(
-                idx, self.extension
-            )
+            # change the data file if necessary
+            if rename:
+                chanHeaders[cIndex]["ats_data_file"] = "chan_{:02d}{}".format(
+                    idx, self.extension
+                )
+            # write out all the header words
             for cH in chanHeaderwords:
                 cf.write("{} = {}\n".format(cH, chanHeaders[cIndex][cH]))
             cf.close()

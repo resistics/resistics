@@ -100,7 +100,7 @@ class DataReader(IOHandler):
         Get sampling frequency for a channel
     getChanLSB(chan)
         Get the channel least significant bit
-    getChanLSBApplied(chan)
+    getChanScalingApplied(chan)
         Get a bool flag designating whether LSB has been applied
     getChanDataFile(chan)
         Get the channel data file
@@ -440,7 +440,7 @@ class DataReader(IOHandler):
 
         return self.getChanHeader(chan, "ts_lsb")
 
-    def getChanLSBApplied(self, chan) -> bool:
+    def getChanScalingApplied(self, chan) -> bool:
         """A flag to mark whether a channel has the lsb applied
 
         Returns
@@ -449,7 +449,7 @@ class DataReader(IOHandler):
             Flag to designate whether channel lsb applied
         """
 
-        return self.getChanHeader(chan, "lsb_applied")
+        return self.getChanHeader(chan, "scaling_applied")
 
     def getChanDataFile(self, chan) -> str:
         """Get the data file for the channel 
@@ -622,7 +622,7 @@ class DataReader(IOHandler):
         The raw data units for ATS and internal data formats are as follows: 
 
         - ATS data format has raw data in counts.
-        - The raw data unit of the internal format is dependent on what happened to the data before writing it out in the internal format. If the channel header lsb_applied is set to True, no scaling happens in either getUnscaledSamples or getPhysicalSamples. However, if the channel header lsb_applied is set to False, the internal format data will be treated like ATS data, meaning raw data in counts.
+        - The raw data unit of the internal format is dependent on what happened to the data before writing it out in the internal format. If the channel header scaling_applied is set to True, no scaling happens in either getUnscaledSamples or getPhysicalSamples. However, if the channel header scaling_applied is set to False, the internal format data will be treated like ATS data, meaning raw data in counts.
         
         Parameters
         ----------
@@ -654,7 +654,7 @@ class DataReader(IOHandler):
             # get the data
             byteOff = self.dataByteOffset + options["startSample"] * self.dataByteSize
             # now check if lsb applied or not and read data as float32 or int32 accordingly
-            if self.getChanLSBApplied(chan):
+            if self.getChanScalingApplied(chan):
                 data[chan] = np.memmap(
                     dFile, dtype="float32", mode="r", offset=byteOff, shape=(dSamples)
                 )
@@ -726,7 +726,7 @@ class DataReader(IOHandler):
         - Magnetic channels in mV
         - To get magnetic fields in nT, calibration needs to be performed
         
-        If the channel header lsb_applied is set to True, no scaling of the unscaled data is done. This is to cover the internal data format where all scalings may already have been applied.
+        If the channel header scaling_applied is set to True, no scaling of the unscaled data is done. This is to cover the internal data format where all scalings may already have been applied.
 
         Notes
         -----
@@ -775,9 +775,15 @@ class DataReader(IOHandler):
         )
         # multiply each chan by least significant bit of chan
         for chan in options["chans"]:
-            if not self.getChanLSBApplied(chan):
+            if not self.getChanScalingApplied(chan):
                 # apply LSB to give data in mV
                 timeData.data[chan] = timeData.data[chan] * self.getChanLSB(chan)
+                timeData.addComment(
+                    "Scaling channel {} with scalar {} to give mV".format(
+                        chan, self.getChanLSB(chan)
+                    )
+                )
+
                 # divide by the distance - this should only be for the electric channels
                 # again, this might already be applied
                 if chan == "Ex":
@@ -785,13 +791,21 @@ class DataReader(IOHandler):
                     timeData.data[chan] = (
                         1000 * timeData.data[chan] / self.getChanDx(chan)
                     )
+                    timeData.addComment(
+                        "Dividing channel {} by electrode distance {} km to give mV/km".format(
+                            chan, self.getChanDx(chan) / 1000.0
+                        )
+                    )
                 if chan == "Ey":
                     # multiply by 1000/self.getChanDy same as dividing by dist in km
                     timeData.data[chan] = (
                         1000 * timeData.data[chan] / self.getChanDy(chan)
                     )
-                # add comments
-                timeData.addComment("Removing gain and scaling electric channels to mV/km")
+                    timeData.addComment(
+                        "Dividing channel {} by electrode distance {} km to give mV/km".format(
+                            chan, self.getChanDy(chan) / 1000.0
+                        )
+                    )
 
             # if remove zeros - False by default
             if options["remzeros"]:
@@ -1107,7 +1121,7 @@ class DataReader(IOHandler):
         """
 
         boolGlobal = []
-        boolChan = ["lsb_applied"]
+        boolChan = ["scaling_applied"]
         return boolGlobal, boolChan
 
     def prepare(self) -> None:
@@ -1179,7 +1193,9 @@ class DataReader(IOHandler):
         """
 
         if chan not in self.chans:
-            self.printError("Error - Channel {} does not exist".format(chan), quitRun=True)
+            self.printError(
+                "Error - Channel {} does not exist".format(chan), quitRun=True
+            )
 
     def printList(self) -> List[str]:
         """Class information as a list of strings

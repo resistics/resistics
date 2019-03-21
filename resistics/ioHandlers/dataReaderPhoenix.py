@@ -436,16 +436,31 @@ class DataReaderPhoenix(DataReader):
         )
         # need to remove the gain
         for chan in options["chans"]:
-            # apply the lsb
             # remove the gain
             timeData.data[chan] = 1.0 * timeData.data[chan] / self.getChanGain1(chan)
+            timeData.addComment(
+                "Scaling channel {} with scalar {} to give mV".format(
+                    chan, 1.0/self.getChanGain1(chan)
+                )
+            )
+
             # divide by distance in km
             if chan == "Ex":
                 # multiply by 1000/self.getChanDx same as dividing by dist in km
                 timeData.data[chan] = 1000 * timeData.data[chan] / self.getChanDx(chan)
+                timeData.addComment(
+                    "Dividing channel {} by electrode distance {} km to give mV/km".format(
+                        chan, self.getChanDx(chan) / 1000.0
+                    )
+                )
             if chan == "Ey":
                 # multiply by 1000/self.getChanDy same as dividing by dist in km
                 timeData.data[chan] = 1000 * timeData.data[chan] / self.getChanDy(chan)
+                timeData.addComment(
+                    "Dividing channel {} by electrode distance {} km to give mV/km".format(
+                        chan, self.getChanDy(chan) / 1000.0
+                    )
+                )                
 
             # if remove zeros - False by default
             if options["remzeros"]:
@@ -460,7 +475,9 @@ class DataReaderPhoenix(DataReader):
                 )
 
         # add comments
-        timeData.addComment("Removing gain and scaling electric channels to mV/km")
+        timeData.addComment(
+            "The required Phoneix scaling to field units is still unverified. This is experimental and use cautiously."
+        )
         timeData.addComment(
             "Remove zeros: {}, remove nans: {}, remove average: {}".format(
                 options["remzeros"], options["remnans"], options["remaverage"]
@@ -488,7 +505,7 @@ class DataReaderPhoenix(DataReader):
         chanH["sensor_type"] = ""
         chanH["channel_type"] = ""
         chanH["ts_lsb"] = 1
-        chanH["lsb_applied"] = False  # check this
+        chanH["scaling_applied"] = False  # check this
         chanH["pos_x1"] = 0
         chanH["pos_x2"] = 0
         chanH["pos_y1"] = 0
@@ -1065,7 +1082,9 @@ class DataReaderPhoenix(DataReader):
         writer.setOutPath(outpath)
         headers = self.getHeaders()
         chanHeaders, chanMap = self.getChanHeaders()
-        writer.writeData(headers, chanHeaders, self.getPhysicalSamples(), lsb_applied=True)
+        writer.writeData(
+            headers, chanHeaders, self.getPhysicalSamples(), physical=True
+        )
 
     def reformat(self, path):
         """Write out all recorded time series to internal format
