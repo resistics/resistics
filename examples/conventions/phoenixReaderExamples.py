@@ -1,6 +1,5 @@
 import os
 from resistics.ioHandlers.dataReaderPhoenix import DataReaderPhoenix
-
 # read in spam data
 phoenixPath = os.path.join("testData", "phoenix")
 phoenixReader = DataReaderPhoenix(phoenixPath)
@@ -36,9 +35,9 @@ internalData = internalReader.getPhysicalData(startTime, stopTime)
 
 # plot this against the original
 import matplotlib.pyplot as plt
-fig = plt.figure(figsize=(16,8))
+fig = plt.figure(figsize=(20, 2*physicalData.numChans))
 physicalData.view(fig = fig, label="Phoenix format data")
-internalData.view(fig = fig, label="Internal format data")
+internalData.view(fig = fig, label="Internal format data", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
 fig.savefig(os.path.join("images", "phoenix_vs_internal_continuous.png"))

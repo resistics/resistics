@@ -10,13 +10,19 @@ from resistics.ioHandlers.dataWriterInternal import DataWriterInternal
 spam_2internal = os.path.join("testData", "spamInternal")
 writer = DataWriterInternal()
 writer.setOutPath(spam_2internal)
-writer.writeDataset(spamReader, lsb_applied=True)
+writer.writeDataset(spamReader, physical=True)
 
 # get physical data from SPAM
+import matplotlib.pyplot as plt
 startTime = "2016-02-07 02:10:00"
 stopTime = "2016-02-07 02:30:00"
 physicalSPAMData = spamReader.getPhysicalData(startTime, stopTime, remnans=True)
 physicalSPAMData.printInfo()
+fig = plt.figure(figsize=(20, 2*physicalSPAMData.numChans))
+physicalSPAMData.view(fig = fig, sampleStop=2000)
+fig.tight_layout(rect=[0, 0.02, 1, 0.96])
+plt.show()
+fig.savefig(os.path.join("images", "spam.png"))
 
 # read in the internal format dataset and see what's in the comments
 from resistics.ioHandlers.dataReaderInternal import DataReaderInternal
@@ -27,10 +33,9 @@ physicalInternalData = internalReader.getPhysicalData(startTime, stopTime)
 physicalInternalData.printInfo()
 
 # now plot the two datasets together
-import matplotlib.pyplot as plt
-fig = plt.figure(figsize=(16,8))
-physicalSPAMData.view(fig = fig, label="SPAM format", legend=True)
-physicalInternalData.view(fig = fig, label="Internal format", legend=True)
+fig = plt.figure(figsize=(20, 2*physicalSPAMData.numChans))
+physicalSPAMData.view(fig = fig, sampleStop=500, label="SPAM format")
+physicalInternalData.view(fig = fig, sampleStop=500, label="Internal format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
 fig.savefig(os.path.join("images", "spam_vs_internal.png"))
@@ -44,7 +49,7 @@ filteredSPAMData.printInfo()
 spam_2filteredSubset = os.path.join("testData", "spamInternalFiltered")
 writer.setOutPath(spam_2filteredSubset)
 chanHeaders, chanMap = spamReader.getChanHeaders()
-writer.writeData(spamReader.getHeaders(), chanHeaders, filteredSPAMData, lsb_applied=True)
+writer.writeData(spamReader.getHeaders(), chanHeaders, filteredSPAMData, physical=True)
 
 # let's try reading in again
 internalReaderFiltered = DataReaderInternal(spam_2filteredSubset)
@@ -56,10 +61,9 @@ filteredInternalData = internalReaderFiltered.getPhysicalSamples()
 filteredInternalData.printInfo()
 
 # plot this against the original
-import matplotlib.pyplot as plt
-fig = plt.figure(figsize=(16,8))
-filteredSPAMData.view(fig = fig, label="filtered SPAM format")
-filteredInternalData.view(fig = fig, label="filtered internal format")
+fig = plt.figure(figsize=(20, 2*physicalSPAMData.numChans))
+filteredSPAMData.view(fig = fig, sampleStop=5000, label="filtered SPAM format")
+filteredInternalData.view(fig = fig, sampleStop=5000, label="filtered internal format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
 fig.savefig(os.path.join("images", "spam_vs_internal_filtered.png"))
