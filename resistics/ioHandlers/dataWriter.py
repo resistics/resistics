@@ -288,13 +288,33 @@ class DataWriter(IOHandler):
         headers = self.setGlobalHeadersFromKeywords(emptyDict, globalKeywords)
         # set channel headers for keyword arguments
         chanMap: Dict = dict()
-        chanHeaders: List = list()
+        chanHeaders: List[Dict] = list()
         for idx, chan in enumerate(chans):
             chanMap[chan] = idx
-            chanKeywords: Dict = dict(globalKeywords)
-            chanKeywords["ats_data_file"] = chanFileMap[chan]
-            chanHeaders.append(self.setChanHeadersFromKeywords(emptyDict, chanKeywords))
-
+            chanKeywords = dict(globalKeywords)
+            chanKeywords["scaling_applied"] = True
+            chanKeywords["ts_lsb"] = 1
+            chanKeywords["gain_stage1"] = 1
+            chanKeywords["gain_stage2"] = 1
+            chanKeywords["hchopper"] = 0
+            chanKeywords["echopper"] = 0 
+            chanKeywords["pos_x1"] = 0
+            chanKeywords["pos_x2"] = 1
+            chanKeywords["pos_y1"] = 0
+            chanKeywords["pos_y2"] = 1
+            chanKeywords["pos_z1"] = 0
+            chanKeywords["pos_z2"] = 1  
+            chanKeywords["sensor_sernum"] = 1                     
+            chanHeaders.append(chanKeywords)
+        # set the chan header words
+        self.setChanHeadersFromKeywords(chanHeaders, emptyDict)
+        for idx, chan in enumerate(chans):   
+            # amend the data file in the chan headers     
+            chanHeaders[idx]["ats_data_file"] = chanFileMap[chan]
+            chanHeaders[idx]["channel_type"] = chan
+            for cH in chanHeaders[idx].keys():
+                if chanHeaders[idx][cH] == "":
+                    chanHeaders[idx][cH] = "None"
         self.writeHeaders(headers, chans, chanMap, chanHeaders, rename=False)
 
     def writeDataset(self, reader: DataReader, physical: bool = True, **kwargs) -> None:
@@ -511,7 +531,7 @@ class DataWriter(IOHandler):
         headers: Dict[str, Any],
         chans: List[str],
         chanMap: Dict[str, int],
-        chanHeaders: List[List],
+        chanHeaders: List[Dict],
         rename: bool = True,
     ) -> bool:
         """Write out the header file
