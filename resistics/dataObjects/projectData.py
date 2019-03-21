@@ -147,11 +147,6 @@ class ProjectData(DataObject):
         checkAndMakeDir(self.transFuncPath)
         # calibration directories
         checkAndMakeDir(self.calPath)
-        self.printText(
-            "Note: Calibration data needs to be at the top level in directory {}".format(
-                self.calPath
-            )
-        )
         # image directory
         checkAndMakeDir(self.imagePath)
 
