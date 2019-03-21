@@ -1,7 +1,7 @@
 import os
 from resistics.ioHandlers.dataReaderPhoenix import DataReaderPhoenix
 # read in spam data
-phoenixPath = os.path.join("testData", "phoenix")
+phoenixPath = os.path.join("timeData", "phoenix")
 phoenixReader = DataReaderPhoenix(phoenixPath)
 phoenixReader.printInfo()
 
@@ -23,7 +23,7 @@ filteredData = highPass(physicalData, 4, inplace=False)
 filteredData.view(sampleEnd=20000)
 
 # only reformat the continuous for now
-phoenix_2internal = os.path.join("testData", "phoenixInternal")
+phoenix_2internal = os.path.join("timeData", "phoenixInternal")
 phoenixReader.reformatContinuous(phoenix_2internal)
 
 # reading output

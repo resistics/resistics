@@ -13,13 +13,13 @@ from resistics.ioHandlers.dataWriterAscii import DataWriterAscii
 from resistics.utilities.utilsIO import *
 
 # data paths
-atsPath = os.path.join("testData", "ats")
-ats_2ascii = os.path.join("testData", "atsAscii")
-spamPath = os.path.join("testData", "spam")
-spam_2internal = os.path.join("testData", "spamInternal")
-spam_2internalSubset = os.path.join("testData", "spamInternalSubset")
-phoenixPath = os.path.join("testData", "phoenix")
-phoenix_2internal = os.path.join("testData", "phoenixInternal")
+atsPath = os.path.join("timeData", "ats")
+ats_2ascii = os.path.join("timeData", "atsAscii")
+spamPath = os.path.join("timeData", "spam")
+spam_2internal = os.path.join("timeData", "spamInternal")
+spam_2internalSubset = os.path.join("timeData", "spamInternalSubset")
+phoenixPath = os.path.join("timeData", "phoenix")
+phoenix_2internal = os.path.join("timeData", "phoenixInternal")
 
 
 def testATS():

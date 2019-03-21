@@ -1,13 +1,13 @@
 import os
 from resistics.ioHandlers.dataReaderSpam import DataReaderSPAM
 # read in spam data
-spamPath = os.path.join("testData", "spam")    
+spamPath = os.path.join("timeData", "spam")    
 spamReader = DataReaderSPAM(spamPath)
 spamReader.printInfo()
 
 # write out as the internal format
 from resistics.ioHandlers.dataWriterInternal import DataWriterInternal
-spam_2internal = os.path.join("testData", "spamInternal")
+spam_2internal = os.path.join("timeData", "spamInternal")
 writer = DataWriterInternal()
 writer.setOutPath(spam_2internal)
 writer.writeDataset(spamReader, physical=True)
@@ -46,7 +46,7 @@ filteredSPAMData = bandPass(physicalSPAMData, 0.2, 16, inplace=False)
 filteredSPAMData.printInfo()
 
 # write out a filtered data - this is a subset of the data
-spam_2filteredSubset = os.path.join("testData", "spamInternalFiltered")
+spam_2filteredSubset = os.path.join("timeData", "spamInternalFiltered")
 writer.setOutPath(spam_2filteredSubset)
 chanHeaders, chanMap = spamReader.getChanHeaders()
 writer.writeData(spamReader.getHeaders(), chanHeaders, filteredSPAMData, physical=True)

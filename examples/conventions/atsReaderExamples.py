@@ -1,7 +1,7 @@
 import os
 from resistics.ioHandlers.dataReaderATS import DataReaderATS
 # read ats data
-atsPath = os.path.join("testData", "ats")
+atsPath = os.path.join("timeData", "ats")
 atsReader = DataReaderATS(atsPath)
 atsReader.printInfo()
 
@@ -30,7 +30,7 @@ fig.savefig(os.path.join("images", "ats_filteredData.png"))
 # now write out as internal format
 from resistics.ioHandlers.dataWriterInternal import DataWriterInternal
 
-ats_2intenrnal = os.path.join("testData", "atsInternal")
+ats_2intenrnal = os.path.join("timeData", "atsInternal")
 writer = DataWriterInternal()
 writer.setOutPath(ats_2intenrnal)
 writer.writeDataset(atsReader, physical=True)
@@ -57,7 +57,7 @@ fig.savefig(os.path.join("images", "ats_vs_internal.png"))
 # now write out as ascii format
 from resistics.ioHandlers.dataWriterAscii import DataWriterAscii
 
-ats_2ascii = os.path.join("testData", "atsAscii")
+ats_2ascii = os.path.join("timeData", "atsAscii")
 writer = DataWriterAscii()
 writer.setOutPath(ats_2ascii)
 writer.writeDataset(atsReader, physical=True)
