@@ -98,7 +98,7 @@ def breakComment() -> str:
     return "---------------------------------------------------"
 
 
-def arrayToString(data: np.ndarray, tabs: bool = False) -> str:
+def arrayToString(data: np.ndarray, tabs: bool = False, decimals: int = 8) -> str:
     """Convert an array to a string separated by commas
 
     Parameters
@@ -107,8 +107,8 @@ def arrayToString(data: np.ndarray, tabs: bool = False) -> str:
         Data array
     tabs : bool, optional
         Bool flag for using tabs instead of commas 
-    threeDP : bool, optional
-        Flag for writing to only 3 decimal places
+    decimals : int, optional
+        Number of decimal places to print
 
     Returns
     -------
@@ -122,7 +122,9 @@ def arrayToString(data: np.ndarray, tabs: bool = False) -> str:
         sep = "\t"
 
     for d in data:
-        outputStr = outputStr + "{:.8f}{:s}".format(d, sep)
+        outputStr = outputStr + "{num:.{dec}f}{sep}".format(
+            num=d, dec=decimals, sep=sep
+        )
     outputStr = outputStr.strip()
     outputStr = outputStr.rstrip(",")
     return outputStr
@@ -172,7 +174,7 @@ def arrayToStringInt(data: np.ndarray) -> str:
     return outputStr.rstrip(",")
 
 
-def listToString(lst: List) -> str:
+def listToString(lst: List, floatlim: bool = True) -> str:
     """Convert a list to a comma separated string
 
     Parameters
@@ -191,29 +193,6 @@ def listToString(lst: List) -> str:
         outputStr = outputStr + "{}, ".format(val)
     outputStr = outputStr.strip()
     return outputStr.rstrip(",")
-
-
-def floatListToString(lst: List) -> str:
-    """Convert a float list to a comma separated string 
-
-    Writes 3 decimal places for all the floats
-
-    Parameters
-    ----------
-    lst : list
-        List
-
-    Returns
-    -------
-    out : str
-        Output string
-    """
-
-    outputStr = ""
-    for val in lst:
-        outputStr = outputStr + "{:.3f}, ".format(val)
-    outputStr = outputStr.strip()
-    return outputStr.rstrip(",")    
 
 
 def list2rangesFormatter(

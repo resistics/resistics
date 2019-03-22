@@ -18,7 +18,7 @@ from resistics.ioHandlers.transferFunctionReader import TransferFunctionReader
 from resistics.ioHandlers.transferFunctionWriter import TransferFunctionWriter
 from resistics.utilities.utilsChecks import parseKeywords, isElectric, isMagnetic
 from resistics.utilities.utilsIO import checkFilepath, fileFormatSampleFreq
-from resistics.utilities.utilsPrint import floatListToString
+from resistics.utilities.utilsPrint import arrayToString
 from resistics.utilities.utilsPlotter import (
     plotOptionsTransferFunction,
     getTransferFunctionFigSize,
@@ -312,8 +312,6 @@ def viewTransferFunction(projData: ProjectData, **kwargs) -> None:
     for site in options["sites"]:
         siteData = projData.getSiteData(site)
         sampleFreqs = set(siteData.getSampleFreqs())
-        print(sampleFreqs)
-        print(options["sampleFreqs"])
         # find the intersection with the options["freqs"]
         sampleFreqs = sampleFreqs.intersection(options["sampleFreqs"])
         sampleFreqs = sorted(list(sampleFreqs))
@@ -379,7 +377,7 @@ def viewTransferFunction(projData: ProjectData, **kwargs) -> None:
 
             # sup title
             sub = "Site {}: {}".format(site, options["specdir"] + postpend)
-            sub = "{}\nfs = {}".format(sub, floatListToString(includedFreqs))
+            sub = "{}\nfs = {}".format(sub, arrayToString(includedFreqs, decimals=3))
             st = fig.suptitle(sub, fontsize=plotfonts["suptitle"])
             st.set_y(0.99)
             fig.tight_layout()
@@ -493,7 +491,7 @@ def viewTipper(projData: ProjectData, **kwargs) -> None:
 
             # sup title
             sub = "Site {} tipper: {}".format(site, options["specdir"] + postpend)
-            sub = "{}\nfs = {}".format(sub, floatListToString(includedFreqs))
+            sub = "{}\nfs = {}".format(sub, arrayToString(includedFreqs, decimals=3))
             st = fig.suptitle(sub, fontsize=plotfonts["suptitle"])
             st.set_y(0.99)
             fig.tight_layout()
