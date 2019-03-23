@@ -88,7 +88,10 @@ viewStatisticHistogram(
 )
 
 # Process the data with this mask
-from resistics.project.projectTransferFunction import processProject, viewTransferFunction
+from resistics.project.projectTransferFunction import (
+    processProject,
+    viewTransferFunction,
+)
 
 processProject(
     projData,

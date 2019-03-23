@@ -6,7 +6,11 @@ projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath)
 
 # process the spectra with tippers
-from resistics.project.projectTransferFunction import processProject, viewTransferFunction
+from resistics.project.projectTransferFunction import (
+    processProject,
+    viewTransferFunction,
+)
+
 processProject(
     projData, sites=["site1"], outchans=["Ex", "Ey", "Hz"], postpend="with_Hz"
 )
@@ -21,6 +25,7 @@ viewTransferFunction(
 
 # plot the tippers
 from resistics.project.projectTransferFunction import viewTipper
+
 viewTipper(projData, sites=["site1"], postpend="with_Hz", save=True)
 
 

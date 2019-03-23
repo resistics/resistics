@@ -7,10 +7,12 @@ projData = loadProject(projectPath)
 
 # setting the plot options
 from resistics.utilities.utilsPlotter import plotOptionsSpec, getPaperFonts
+
 plotOptions = plotOptionsSpec(plotfonts=getPaperFonts())
 
 # view the spectra at 128 Hz
 from resistics.project.projectSpectra import viewSpectra
+
 viewSpectra(
     projData,
     "site1",
@@ -21,6 +23,7 @@ viewSpectra(
 )
 
 from resistics.project.projectSpectra import viewSpectraSection
+
 plotOptions = plotOptionsSpec(plotfonts=getPaperFonts())
 viewSpectraSection(
     projData,
@@ -32,6 +35,7 @@ viewSpectraSection(
 )
 
 from resistics.project.projectSpectra import viewSpectraStack
+
 viewSpectraStack(
     projData,
     "site1",

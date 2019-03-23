@@ -7,6 +7,7 @@ projData = loadProject(projectPath)
 
 # load the viewing method
 from resistics.project.projectTime import viewTime
+
 # view data between certain date range
 viewTime(projData, "2012-02-11 01:00:00", "2012-02-11 01:10:00")
 
@@ -25,7 +26,7 @@ viewTime(
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
     sites=["site1"],
-    chans=["Ex", "Hy"], 
+    chans=["Ex", "Hy"],
     calibrate=True,
 )
 
@@ -35,7 +36,7 @@ viewTime(
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
     sites=["site1"],
-    chans=["Ex", "Hy"], 
+    chans=["Ex", "Hy"],
     calibrate=True,
     filter={"lpfilt": 0.5},
 )
@@ -46,7 +47,7 @@ viewTime(
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
     sites=["site1"],
-    chans=["Ex", "Hy"], 
+    chans=["Ex", "Hy"],
     calibrate=True,
     filter={"hpfilt": 10},
 )
@@ -57,7 +58,7 @@ viewTime(
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
     sites=["site1"],
-    chans=["Ex", "Hy"], 
+    chans=["Ex", "Hy"],
     calibrate=True,
     filter={"bpfilt": [1, 10]},
 )
@@ -68,7 +69,7 @@ viewTime(
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
     sites=["site1"],
-    chans=["Ex", "Hy"], 
+    chans=["Ex", "Hy"],
     calibrate=True,
     normalise=True,
 )
@@ -79,7 +80,7 @@ viewTime(
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
     sites=["site1"],
-    chans=["Ex", "Hy"], 
+    chans=["Ex", "Hy"],
     calibrate=True,
     notch=[16.6667, 50],
 )
@@ -90,9 +91,9 @@ viewTime(
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
     sites=["site1"],
-    chans=["Ex", "Hy"], 
+    chans=["Ex", "Hy"],
     calibrate=True,
-    filter={"bpfilt": [1, 8]},   
+    filter={"bpfilt": [1, 8]},
     save=True,
     show=False,
 )
