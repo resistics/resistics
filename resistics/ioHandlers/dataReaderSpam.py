@@ -22,7 +22,8 @@ class DataReaderSPAM(DataReader):
 
     SPAM data has the following characteristics:
 
-    - SPAM raw data is already scaled by the least significant bit and is single precision floats with unit Volts. Therefore, getting unscaled samples returns data with unit Volts for both the electric and magnetic fields
+    - SPAM raw data is single precision floats with unit Volts. 
+    - Getting unscaled samples returns data with unit mV for both the electric and magnetic fields. This is because gain is removed in unscaled samples to ensure consistency when a single recording is made up of multiple data files, each with different gain settings
     - The start time in XTR files is the time of the first sample in the data
     - The end time in XTR files is the time of the last sample in the data
 

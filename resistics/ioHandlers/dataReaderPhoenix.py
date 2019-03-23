@@ -206,7 +206,6 @@ class DataReaderPhoenix(DataReader):
             # read the data - numpy does not support 24 bit two's complement (3 bytes) - hence use struct
             dFile.seek(byteReadStart, 0)  # seek to start byte from start of file
             dataBytes = dFile.read(bytesToRead)
-            # dataBytes = struct.unpack("{}s".format(bytesToRead), dFile.read(bytesToRead))[0]
             dataRead = self.twosComplement(dataBytes)
             # now need to unpack this
             for chan in options["chans"]:
@@ -440,7 +439,7 @@ class DataReaderPhoenix(DataReader):
             timeData.data[chan] = 1.0 * timeData.data[chan] / self.getChanGain1(chan)
             timeData.addComment(
                 "Scaling channel {} with scalar {} to give mV".format(
-                    chan, 1.0/self.getChanGain1(chan)
+                    chan, 1.0 / self.getChanGain1(chan)
                 )
             )
 
@@ -460,7 +459,7 @@ class DataReaderPhoenix(DataReader):
                     "Dividing channel {} by electrode distance {} km to give mV/km".format(
                         chan, self.getChanDy(chan) / 1000.0
                     )
-                )                
+                )
 
             # if remove zeros - False by default
             if options["remzeros"]:
@@ -505,7 +504,7 @@ class DataReaderPhoenix(DataReader):
         chanH["sensor_type"] = ""
         chanH["channel_type"] = ""
         chanH["ts_lsb"] = 1
-        chanH["scaling_applied"] = False  # check this
+        chanH["scaling_applied"] = False
         chanH["pos_x1"] = 0
         chanH["pos_x2"] = 0
         chanH["pos_y1"] = 0
@@ -1082,9 +1081,7 @@ class DataReaderPhoenix(DataReader):
         writer.setOutPath(outpath)
         headers = self.getHeaders()
         chanHeaders, chanMap = self.getChanHeaders()
-        writer.writeData(
-            headers, chanHeaders, self.getPhysicalSamples(), physical=True
-        )
+        writer.writeData(headers, chanHeaders, self.getPhysicalSamples(), physical=True)
 
     def reformat(self, path):
         """Write out all recorded time series to internal format
@@ -1111,6 +1108,9 @@ class DataReaderPhoenix(DataReader):
         textLst.append("TS File\t\tSampling frequency (Hz)\t\tNum Samples")
         for dF, tsF, tsN in zip(self.dataF, self.tsSampleFreqs, self.tsNumSamples):
             textLst.append("{}\t\t{}\t\t{}".format(os.path.basename(dF), tsF, tsN))
+        textLst.append(
+            "Continuous data file: {}".format(os.path.basename(self.continuousF))
+        )
         return textLst
 
     def printDataFileInfo(self):
