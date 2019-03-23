@@ -257,8 +257,8 @@ class DataWriter(IOHandler):
 
         Blank headers might be useful for reading in ascii files where no headers are existing. By giving a few header words, many options can be set 
 
-        Paramters
-        ---------
+        Parameters
+        ----------
         chans : List[str]
             List of chans (e.g. Ex, Ey, Hx, Hy, Hz)
         chanFileMap : Dict[str, str]

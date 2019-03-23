@@ -214,8 +214,8 @@ def checkFilepath(path: str) -> bool:
 def fileFormatSampleFreq(sampleFreq: float) -> str:
     """Provide a consistent way to represent floating numbers in filenames
 
-    Pameters
-    --------
+    Parameters
+    ----------
     sampleFreq : float
         The sampling frequency
     
