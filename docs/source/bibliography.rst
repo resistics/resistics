@@ -1,5 +1,5 @@
-References
-----------
+Bibliography
+------------
 
 This code is based on work by a number of people. In particular, the papers below helped steer the writing of this code.
 

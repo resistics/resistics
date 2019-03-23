@@ -56,7 +56,7 @@ Spectra data files are stored in project specData directory. The folder structur
     ├── images
     └── mtProj.prj
 
-By default spectra are stored in a folder called spectra under the dataFolder. The reason for this will become clearer in the section covering :doc:`multiple spectra <multipleSpectra>`.
+By default spectra are stored in a folder called spectra under the dataFolder. The reason for this will become clearer in the section covering :doc:`multiple spectra <multiple-spectra>`.
 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:

@@ -1,7 +1,7 @@
 Configuration Parameters
 ------------------------
 
-A detailed explanation of parameters available for configuration is given below.
+A detailed explanation of parameters available for configuration is given below. 
 
 General
 ~~~~~~~
@@ -23,15 +23,15 @@ Parameters related to calibration data and calibrating of time data.
     :Default value: True
     :Description: Extrapolate out calibration data to cover a greater range of frequencies.
 
-.. topic:: useTheoretical
+.. topic:: usetheoretical
 
     :Type: bool (True or False) 
     :Default value: False
-    :Description: Theoretical calibration for magnetic channels when a matching calibration file is not found.
+    :Description: Use a theoretical calibration for magnetic channels when a matching calibration file is not found.
 
 Decimation
 ~~~~~~~~~~
-Parameters to define the decimation scheme. Note that depending on the length of timeseries recording, not all decimation levels may be calculated.
+Parameters to define the decimation scheme to use. Note that depending on the length of timeseries recording, not all decimation levels may be calculated.
 
 .. topic:: numlevels
 
@@ -63,7 +63,7 @@ Evaluation frequency related parameters. If evaluation frequencies are not expli
 
 Window
 ~~~~~~
-timeseries windowing parameters. This defines how the timeseries data will be windowed and the overlap between windows. Resistics will automatically calculate window sizes using windowfactor and overlapfraction. If for any decimation level, the calculation results in a window size less than minwindowsize or overlap lower the minoverlapsize, the window and overlap sizes will be set to their minimum allowable values.
+Timeseries windowing parameters. This defines how the timeseries data will be windowed and the overlap between windows. Resistics will automatically calculate window sizes using windowfactor and overlapfraction. If for any decimation level, the calculation results in a window size less than minwindowsize or overlap lower the minoverlapsize, the window and overlap sizes will be set to their minimum allowable values.
 
 Window and overlap sizes can be set explicitly using the windowsizes and overlap sizes. If windowsizes are explicitly set, overlapsizes needs to be set too.
 

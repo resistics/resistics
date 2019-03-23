@@ -52,13 +52,13 @@ In most cases, only the API for the project functionality will be of interest. H
     :glob:
     :hidden:
 
-    tutorial/projectEnvironment.rst
-    tutorial/viewingData.rst
-    tutorial/firstProject.rst
+    tutorial/project-environment.rst
+    tutorial/viewing-data.rst
+    tutorial/up-and-running.rst
     tutorial/tipper.rst
-    tutorial/viewingSpectra.rst
-    tutorial/multipleSpectra.rst
-    tutorial/configurationFiles.rst
+    tutorial/viewing-spectra.rst
+    tutorial/multiple-spectra.rst
+    tutorial/configuration-files.rst
     tutorial/statistics.rst
     tutorial/masks.rst
-    tutorial/maskProcessing.rst
+    tutorial/mask-processing.rst

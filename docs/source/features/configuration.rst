@@ -1,5 +1,5 @@
 Configuration files
-===================
+-------------------
 
 Resistics allows users to set various parameters through configuration files. The package itself comes with its default configuration. Users can change certain parameters by specifying them in a configuration file. Below is the default configuration:
 
@@ -27,42 +27,48 @@ When using resistics, information about the configuraiton being used can be prin
 
 .. code-block:: text
 
-    21:02:15 ConfigData: Configuration Parameters:
-    21:02:15 ConfigData: Name = dec8_5
-    21:02:15 ConfigData: Calibration:
-    21:02:15 ConfigData:    usetheoretical = False
-    21:02:15 ConfigData:    Defaulted options = usetheoretical
-    21:02:15 ConfigData: Decimation:
-    21:02:15 ConfigData:    numlevels = 8
-    21:02:15 ConfigData:    minsamples = 100
-    21:02:15 ConfigData:    Defaulted options = minsamples
-    21:02:15 ConfigData: Frequencies:
-    21:02:15 ConfigData:    perlevel = 5
-    21:02:15 ConfigData:    frequencies = []
-    21:02:15 ConfigData:    Defaulted options = frequencies
-    21:02:15 ConfigData: Window:
-    21:02:15 ConfigData:    minwindowsize = 256
-    21:02:15 ConfigData:    minoverlapsize = 64
-    21:02:15 ConfigData:    minwindows = 5
-    21:02:15 ConfigData:    windowfactor = 2.0
-    21:02:15 ConfigData:    overlappercentage = 0.25
-    21:02:15 ConfigData:    windowsizes = []
-    21:02:15 ConfigData:    overlapsizes = []
-    21:02:15 ConfigData:    Defaulted options = minwindows, windowfactor, overlappercentage, windowsizes, overlapsizes
-    21:02:15 ConfigData: Spectra:
-    21:02:15 ConfigData:    specdir = dec8_5
-    21:02:15 ConfigData:    applywindow = True
-    21:02:15 ConfigData:    windowfunc = hamming
-    21:02:15 ConfigData:    Defaulted options = applywindow, windowfunc
-    21:02:15 ConfigData: Statistics:
-    21:02:15 ConfigData:    stats = ['coherence', 'transFunc']
-    21:02:15 ConfigData:    remotestats = ['coherenceRR', 'transFuncRR']
-    21:02:15 ConfigData:    Defaulted options = stats, remotestats
-    21:02:15 ConfigData: Solver:
-    21:02:15 ConfigData:    intercept = False
-    21:02:15 ConfigData:    boostrap = True
-    21:02:15 ConfigData:    windowfunc = hamming
-    21:02:15 ConfigData:    Defaulted options = intercept, boostrap, windowfunc
+    23:17:45 ConfigData: Configuration file = Default configuration
+    23:17:45 ConfigData: Configuration name = default
+    23:17:45 ConfigData: Flags:
+    23:17:45 ConfigData: customfrequencies = False
+    23:17:45 ConfigData: customwindows = False
+    23:17:45 ConfigData: Configuration Parameters:
+    23:17:45 ConfigData: Name = default
+    23:17:45 ConfigData: Calibration:
+    23:17:45 ConfigData:    extend = True
+    23:17:45 ConfigData:    usetheoretical = False
+    23:17:45 ConfigData:    Defaulted options = extend, usetheoretical
+    23:17:45 ConfigData: Decimation:
+    23:17:45 ConfigData:    numlevels = 7
+    23:17:45 ConfigData:    minsamples = 100
+    23:17:45 ConfigData:    Defaulted options = numlevels, minsamples
+    23:17:45 ConfigData: Frequencies:
+    23:17:45 ConfigData:    frequencies = []
+    23:17:45 ConfigData:    perlevel = 7
+    23:17:45 ConfigData:    Defaulted options = frequencies, perlevel
+    23:17:45 ConfigData: Window:
+    23:17:45 ConfigData:    minwindows = 5
+    23:17:45 ConfigData:    windowfactor = 2.0
+    23:17:45 ConfigData:    minwindowsize = 512
+    23:17:45 ConfigData:    minoverlapsize = 128
+    23:17:45 ConfigData:    overlapfraction = 0.25
+    23:17:45 ConfigData:    windowsizes = []
+    23:17:45 ConfigData:    overlapsizes = []
+    23:17:45 ConfigData:    Defaulted options = minwindows, windowfactor, minwindowsize, minoverlapsize, overlapfraction, windowsizes, overlapsizes
+    23:17:45 ConfigData: Spectra:
+    23:17:45 ConfigData:    specdir = spectra
+    23:17:45 ConfigData:    applywindow = True
+    23:17:45 ConfigData:    windowfunc = hamming
+    23:17:45 ConfigData:    Defaulted options = specdir, applywindow, windowfunc
+    23:17:45 ConfigData: Statistics:
+    23:17:45 ConfigData:    stats = ['coherence', 'transferFunction']
+    23:17:45 ConfigData:    remotestats = ['RR_coherence', 'RR_transferFunction']
+    23:17:45 ConfigData:    Defaulted options = stats, remotestats
+    23:17:45 ConfigData: Solver:
+    23:17:45 ConfigData:    intercept = False
+    23:17:45 ConfigData:    boostrap = True
+    23:17:45 ConfigData:    windowfunc = hamming
+    23:17:45 ConfigData:    Defaulted options = intercept, boostrap, windowfunc
 
 .. toctree::
     :maxdepth: 2

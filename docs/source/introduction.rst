@@ -36,7 +36,7 @@ Resistics is a native Python 3 package for the processing of magnetotelluric dat
 - Use auto power and cross power spectra from across all windows to estimate impedance tensor components for each evaluation frequency by using robust regression
 - Decimation and repeat 
 
-Resistics currently supports the reading in of ATS, SPAM and Phoenix data and has an internal data format too, which is simply based on the python numpy library. However, resistics does not yet support the Phoenix calibration file format, though ASCII calibration files can be used.
+Resistics currently supports the reading in of ATS, SPAM, Phoenix and ASCII data and has an internal data format too, which is simply based on the python numpy library. However, resistics does not yet support the Phoenix calibration file format, though ASCII calibration files can be used.
 
 Whilst other codes exist, resistics was written for the following purpose:
 

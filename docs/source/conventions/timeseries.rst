@@ -1,7 +1,7 @@
 Timeseries data
 ---------------
 
-Resistics currently supports four data formats:
+Resistics currently supports five data formats:
 
 - :doc:`ATS <timeseries/ATS-timeseries>`
 - :doc:`SPAM <timeseries/SPAM-timeseries>`

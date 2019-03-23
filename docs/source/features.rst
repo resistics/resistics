@@ -17,4 +17,4 @@ Any timeseries, frequency or statistic data written out using resistics is writt
     features/configuration.rst
     features/comments.rst
     features/statistics.rst
-    features/remoteStatistics.rst
+    features/remote-statistics.rst
