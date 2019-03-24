@@ -236,8 +236,9 @@ class TimeData(DataObject):
         st.set_y(0.98)
         # now plot the data
         dataChans = kwargs["chans"] if "chans" in kwargs else self.chans
+        numDataChans = len(dataChans)
         for idx, chan in enumerate(dataChans):
-            ax = plt.subplot(self.numChans, 1, idx + 1)
+            ax = plt.subplot(numDataChans, 1, idx + 1)
             # title and label for the plot
             plt.title("Channel {}".format(chan), fontsize=plotFonts["title"])
             lab = (
@@ -252,7 +253,7 @@ class TimeData(DataObject):
                 label=lab,
             )
             # add time label
-            if idx == self.numChans - 1:
+            if idx == numDataChans - 1:
                 plt.xlabel("Time", fontsize=plotFonts["axisLabel"])
             # set the xlim
             xlim = kwargs["xlim"] if "xlim" in kwargs else [start, stop]
