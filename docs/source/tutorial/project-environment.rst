@@ -11,7 +11,7 @@ Resistics uses a project structure for processing magnetotelluric data. There ar
 
 The reference time should be a time before any time data was recorded and gives a reference point for time windowing the entire project. 
 
-Below is an example of setting up a new project in the folder exampleProject. The newProject method create new folders as required and returns a :doc:`ProjectData <../api/dataObjects.projectData>` object which holds the project information. 
+Below is an example of setting up a new project in the folder exampleProject. The newProject method create new folders as required and returns a :class:`~resistics.dataObjects.projectData.ProjectData` object which holds the project information. 
 
 .. literalinclude:: ../../../examples/tutorial/createProject.py
     :linenos:
@@ -148,7 +148,7 @@ Another useful function is to view the project timeline. This can be done with :
 
     The exampleProject timeline
 
-Site information can be accessed by using :python:`projData.getSiteData(siteName)`. :doc:`SiteData <../api/dataObjects.projectData>` objects hold information about sites which can be printed in the same way as project information.
+Site information can be accessed by using :python:`projData.getSiteData(siteName)`. :class:`~resistics.dataObjects.siteData.SiteData` objects hold information about sites which can be printed in the same way as project information.
 
 .. literalinclude:: ../../../examples/tutorial/loadProject.py
     :linenos:

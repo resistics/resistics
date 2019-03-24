@@ -14,19 +14,19 @@
 #
 import os
 import sys
-basepath = os.path.abspath(os.path.join("..", "..", "resistics"))
+basepath = os.path.abspath(os.path.join("..", ".."))
 sys.path.insert(0, basepath)
 
 # -- Project information -----------------------------------------------------
 
-project = "Resistics"
+project = "resistics"
 copyright = "2019, Neeraj Shah"
 author = "Neeraj Shah"
 
 # The short X.Y version
 version = ""
 # The full version, including alpha/beta/rc tags
-release = "0.1"
+release = "0.0.5"
 
 
 # -- General configuration ---------------------------------------------------

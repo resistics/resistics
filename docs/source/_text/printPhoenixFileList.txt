@@ -1,0 +1,11 @@
+16:49:46 DataReaderPhoenix Data File List: ####################
+16:49:46 DataReaderPhoenix Data File List: DATAREADERPHOENIX DATA FILE LIST INFO BEGIN
+16:49:46 DataReaderPhoenix Data File List: ####################
+16:49:46 DataReaderPhoenix Data File List: TS File              Sampling frequency (Hz)         Num Samples
+16:49:46 DataReaderPhoenix Data File List: 1463N13.TS3          2400            3086400
+16:49:46 DataReaderPhoenix Data File List: 1463N13.TS4          150             1542750
+16:49:46 DataReaderPhoenix Data File List: 1463N13.TS5          15              1157175
+16:49:46 DataReaderPhoenix Data File List: Continuous data file: 1463N13.TS5
+16:49:46 DataReaderPhoenix Data File List: ####################
+16:49:46 DataReaderPhoenix Data File List: DATAREADERPHOENIX DATA FILE LIST INFO END
+16:49:46 DataReaderPhoenix Data File List: ####################

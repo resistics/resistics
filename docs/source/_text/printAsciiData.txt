@@ -1,0 +1,17 @@
+22:55:38 TimeData: ####################
+22:55:38 TimeData: TIMEDATA INFO BEGIN
+22:55:38 TimeData: ####################
+22:55:38 TimeData: Sampling frequency [Hz] = 0.5
+22:55:38 TimeData: Sample rate [s] = 2.0
+22:55:38 TimeData: Number of samples = 430000
+22:55:38 TimeData: Number of channels = 5
+22:55:38 TimeData: Channels = ['Ex', 'Ey', 'Hx', 'Hy', 'Hz']
+22:55:38 TimeData: Start time = 2018-01-01 12:00:00
+22:55:38 TimeData: Stop time = 2018-01-11 10:53:18
+22:55:38 TimeData: Comments
+22:55:38 TimeData:      Unscaled data 2018-01-01 12:00:00 to 2018-01-11 10:53:18 read in from measurement timeData\ascii, samples 0 to 429999
+22:55:38 TimeData:      Sampling frequency 0.5
+22:55:38 TimeData:      Remove zeros: False, remove nans: False, remove average: True
+22:55:38 TimeData: ####################
+22:55:38 TimeData: TIMEDATA INFO END
+22:55:38 TimeData: ####################

@@ -1,0 +1,26 @@
+22:55:35 DataReaderAscii: ####################
+22:55:35 DataReaderAscii: DATAREADERASCII INFO BEGIN
+22:55:35 DataReaderAscii: ####################
+22:55:35 DataReaderAscii: Data Path = timeData\ascii
+22:55:35 DataReaderAscii: Global Headers
+22:55:35 DataReaderAscii: {'sample_freq': 0.5, 'num_samples': 430000, 'start_time': '12:00:00.000000', 'start_date': '2018-01-01', 'stop_time': '10:53:18.000000', 'stop_date': '2018-01-11', 'meas_channels': 5}
+22:55:35 DataReaderAscii: Channels found:
+22:55:35 DataReaderAscii: ['Ex', 'Ey', 'Hx', 'Hy', 'Hz']
+22:55:35 DataReaderAscii: Channel Map
+22:55:35 DataReaderAscii: {'Ex': 0, 'Ey': 1, 'Hx': 2, 'Hy': 3, 'Hz': 4}
+22:55:35 DataReaderAscii: Channel Headers
+22:55:35 DataReaderAscii: Ex
+22:55:35 DataReaderAscii: {'sample_freq': 0.5, 'num_samples': 430000, 'start_time': '12:00:00.000000', 'start_date': '2018-01-01', 'stop_time': '10:53:18.000000', 'stop_date': '2018-01-11', 'ats_data_file': 'exmuVm.ascii', 'sensor_type': 'None', 'channel_type': 'Ex', 'ts_lsb': 1.0, 'scaling_applied': True, 'pos_x1': 0.0, 'pos_x2': 1.0, 'pos_y1': 0.0, 'pos_y2': 1.0, 'pos_z1': 0.0, 'pos_z2': 1.0, 'sensor_sernum': 1, 'gain_stage1': 1, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0}
+22:55:35 DataReaderAscii: Ey
+22:55:35 DataReaderAscii: {'sample_freq': 0.5, 'num_samples': 430000, 'start_time': '12:00:00.000000', 'start_date': '2018-01-01', 'stop_time': '10:53:18.000000', 'stop_date': '2018-01-11', 'ats_data_file': 'eymuVm.ascii', 'sensor_type': 'None', 'channel_type': 'Ey', 'ts_lsb': 1.0, 'scaling_applied': True, 'pos_x1': 0.0, 'pos_x2': 1.0, 'pos_y1': 0.0, 'pos_y2': 1.0, 'pos_z1': 0.0, 'pos_z2': 1.0, 'sensor_sernum': 1, 'gain_stage1': 1, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0}
+22:55:35 DataReaderAscii: Hx
+22:55:35 DataReaderAscii: {'sample_freq': 0.5, 'num_samples': 430000, 'start_time': '12:00:00.000000', 'start_date': '2018-01-01', 'stop_time': '10:53:18.000000', 'stop_date': '2018-01-11', 'ats_data_file': 'bxnT.ascii', 'sensor_type': 'None', 'channel_type': 'Hx', 'ts_lsb': 1.0, 'scaling_applied': True, 'pos_x1': 0.0, 'pos_x2': 1.0, 'pos_y1': 0.0, 'pos_y2': 1.0, 'pos_z1': 0.0, 'pos_z2': 1.0, 'sensor_sernum': 1, 'gain_stage1': 1, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0}
+22:55:35 DataReaderAscii: Hy
+22:55:35 DataReaderAscii: {'sample_freq': 0.5, 'num_samples': 430000, 'start_time': '12:00:00.000000', 'start_date': '2018-01-01', 'stop_time': '10:53:18.000000', 'stop_date': '2018-01-11', 'ats_data_file': 'bynT.ascii', 'sensor_type': 'None', 'channel_type': 'Hy', 'ts_lsb': 1.0, 'scaling_applied': True, 'pos_x1': 0.0, 'pos_x2': 1.0, 'pos_y1': 0.0, 'pos_y2': 1.0, 'pos_z1': 0.0, 'pos_z2': 1.0, 'sensor_sernum': 1, 'gain_stage1': 1, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0}
+22:55:35 DataReaderAscii: Hz
+22:55:35 DataReaderAscii: {'sample_freq': 0.5, 'num_samples': 430000, 'start_time': '12:00:00.000000', 'start_date': '2018-01-01', 'stop_time': '10:53:18.000000', 'stop_date': '2018-01-11', 'ats_data_file': 'bznT.ascii', 'sensor_type': 'None', 'channel_type': 'Hz', 'ts_lsb': 1.0, 'scaling_applied': True, 'pos_x1': 0.0, 'pos_x2': 1.0, 'pos_y1': 0.0, 'pos_y2': 1.0, 'pos_z1': 0.0, 'pos_z2': 1.0, 'sensor_sernum': 1, 'gain_stage1': 1, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0}
+22:55:35 DataReaderAscii: Note: Field units used. Physical data has units mV/km for electric fields and mV for magnetic fields
+22:55:35 DataReaderAscii: Note: To get magnetic field in nT, please calibrate
+22:55:35 DataReaderAscii: ####################
+22:55:35 DataReaderAscii: DATAREADERASCII INFO END
+22:55:35 DataReaderAscii: ####################

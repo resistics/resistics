@@ -32,7 +32,7 @@ Read more about the magnetotelluric method and resistics in the :doc:`introducti
 
 Find out about the useful features of resistics in the :doc:`features <features>` section. Resistics uses a number of conventions which are described :doc:`here <conventions>`.
 
-The :doc:`tutorial <tutorial>` section covers the resistics project environment and basic processing of magnetotelluric data. More advanced processing, including pre-processing of timeseries data, remote reference processing and remote reference statistics are detailed in the :doc:`advanced <advanced>` section. More specialised functionality or examples will be added in the :doc:`cookbook <cookbook>` as and when it is developed. A complete API reference can be found :doc:`here <api>`. 
+The :doc:`tutorial <tutorial>` section covers the resistics project environment and basic processing of magnetotelluric data. More advanced processing, including pre-processing of timeseries data, remote reference processing and remote reference statistics are detailed in the :doc:`advanced <advanced>` section. More specialised functionality or examples will be added in the :doc:`cookbook <cookbook>` as and when it is developed. A complete API reference can be found :doc:`here <modules>`. 
 
 A roadmap for future development can be accessed :doc:`here <roadmap>`. Useful magnetotelluric references are provided in the :doc:`Bibliography <bibliography>`.
 
@@ -43,12 +43,6 @@ Open-source
 ~~~~~~~~~~~
 Resistics is available for free under the MIT licence. The resistics source code can be found in the `GitHub repository <https://github.com/resistics/resistics>`_. Contributors are welcome. 
 
-
-API Index
-~~~~~~~~~
-An index for the resistics package:
-
-* :ref:`modindex`
 
 .. toctree::
     :maxdepth: 4
@@ -67,4 +61,5 @@ An index for the resistics package:
     roadmap.rst   
     bibliography.rst   
     credits.rst
-    donate.rst     
+    donate.rst
+    contact.rst     

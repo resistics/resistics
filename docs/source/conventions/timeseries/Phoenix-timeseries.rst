@@ -16,126 +16,172 @@
 Phoenix timeseries
 ------------------
 
-ATS format is a one of the more straight-forward formats to support. Header files come in XML format and the data is stored in binary format with a single file for each channel. The data files have extension .ats. An example data folder for ATS is shown below. 
+Phoenix recordings are the most challenging to support as they do not nicely fit the resistics model of data. A typical phoenix data directory will have a .tbl header file and three data files, one for three different sampling frequencies.
 
 .. code-block:: text
 
-    meas_2012-02-10_11-05-00 
-    ├── 059_V01_2012-02-10_11-05-00_0.xml 
-    ├── 059_V01_C00_R000_TEx_BL_4096H.ats   
-    ├── 059_V01_C01_R000_TEy_BL_4096H.ats 
-    ├── 059_V01_C02_R000_THx_BL_4096H.ats 
-    ├── 059_V01_C02_R000_THy_BL_4096H.ats              
-    └── 059_V01_C02_R000_THz_BL_4096H.ats 
+    phnx01 
+    ├── 1463N13.TBL 
+    ├── 1463N13.TS3
+    ├── 1463N13.TS4 
+    └── 1463N13.TS5   
 
-ATS files are opened in resistics using the :doc:`DataReaderATS <../../api/ioHandlers.dataReaderATS>`. An example is shown below:
+The highest TS number is the file with the continuously sampled data, which is normally the lowest sampling frequency.  
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. note::
+
+    In order for resistics to recognise a Phoenix data folder, the following have to be present:
+
+    - A header file with extension .TBL
+    - Data files with extension .TS? where ? represents an integer
+
+.. warning::
+
+    The scaling currently applied for phoenix data has not been verified and requires further testing. Therefore, it is not currently known what 
+    
+    Phoenix binary formatted calibration files are also not supported but ASCII files can be used instead as required.
+
+Phoenix recordings are opened in resistics using the :class:`~resistics.ioHandlers.dataReaderPhoenix.DataReaderPhoenix` class. An example is provided below:
+
+.. literalinclude:: ../../../../examples/conventions/phoenixReaderExamples.py
     :linenos:
     :language: python
-    :lines: 1-6
+    :lines: 1-8
     :lineno-start: 1
 
-:python:`atsReader.printInfo()` prints information out to the terminal:
+The phoenix data reader can show information about the sampling frequencies for the various data files by using the :meth:`~resistics.ioHandlers.dataReaderPhoenix.DataReaderPhoenix.printDataFileList` method.
 
-.. code-block:: text
+.. literalinclude:: ../../_text/printPhoenixFileList.txt
+    :linenos:
+    :language: text
 
-    14:18:00 DataReaderATS: ####################
-    14:18:00 DataReaderATS: DATAREADERATS INFO BEGIN
-    14:18:00 DataReaderATS: ####################
-    14:18:00 DataReaderATS: Data Path = testData\ats
-    14:18:00 DataReaderATS: Global Headers
-    14:18:00 DataReaderATS: {'start_time': '02:35:00.000000', 'start_date': '2016-02-21', 'stop_time': '06:27:12.375000', 'stop_date': '2016-02-21', 'meas_channels': 5, 'sample_freq': 128.0, 'num_samples': 1783345}
-    14:18:00 DataReaderATS: Channels found:
-    14:18:00 DataReaderATS: ['Ex', 'Ey', 'Hx', 'Hy', 'Hz']
-    14:18:00 DataReaderATS: Channel Map
-    14:18:00 DataReaderATS: {'Ex': 0, 'Ey': 1, 'Hx': 2, 'Hy': 3, 'Hz': 4}
-    14:18:00 DataReaderATS: Channel Headers
-    14:18:00 DataReaderATS: Ex
-    14:18:00 DataReaderATS: {'gain_stage1': 16, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0, 'start_time': '02:35:00.000000', 'start_date': '2016-02-21', 'sample_freq': 128.0, 'num_samples': 1783345, 'ats_data_file': '443_V01_C00_R001_TEx_BL_128H.ats', 'sensor_type': 'EFP06', 'channel_type': 'Ex', 'ts_lsb': -1.76666e-06, 'pos_x1': -45.0, 'pos_x2': 41.0, 'pos_y1': 0.0, 'pos_y2': 0.0, 'pos_z1': 0.0, 'pos_z2': 0.0, 'sensor_sernum': 0, 'lsb_applied': False, 'stop_date': '2016-02-21', 'stop_time': '06:27:12.375000'}
-    14:18:00 DataReaderATS: Ey
-    14:18:00 DataReaderATS: {'gain_stage1': 16, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0, 'start_time': '02:35:00.000000', 'start_date': '2016-02-21', 'sample_freq': 128.0, 'num_samples': 1783345, 'ats_data_file': '443_V01_C01_R001_TEy_BL_128H.ats', 'sensor_type': 'EFP06', 'channel_type': 'Ey', 'ts_lsb': -1.76514e-06, 'pos_x1': 0.0, 'pos_x2': 0.0, 'pos_y1': -45.0, 'pos_y2': 41.1, 'pos_z1': 0.0, 'pos_z2': 0.0, 'sensor_sernum': 0, 'lsb_applied': False, 'stop_date': '2016-02-21', 'stop_time': '06:27:12.375000'}
-    14:18:00 DataReaderATS: Hx
-    14:18:00 DataReaderATS: {'gain_stage1': 2, 'gain_stage2': 1, 'hchopper': 1, 'echopper': 0, 'start_time': '02:35:00.000000', 'start_date': '2016-02-21', 'sample_freq': 128.0, 'num_samples': 1783345, 'ats_data_file': '443_V01_C02_R001_THx_BL_128H.ats', 'sensor_type': 'MFS06e', 'channel_type': 'Hx', 'ts_lsb': -0.000112802, 'pos_x1': 0.0, 'pos_x2': 0.0, 'pos_y1': 0.0, 'pos_y2': 0.0, 'pos_z1': 0.0, 'pos_z2': 0.0, 'sensor_sernum': 612, 'lsb_applied': False, 'stop_date': '2016-02-21', 'stop_time': '06:27:12.375000'}
-    14:18:00 DataReaderATS: Hy
-    14:18:00 DataReaderATS: {'gain_stage1': 1, 'gain_stage2': 1, 'hchopper': 1, 'echopper': 0, 'start_time': '02:35:00.000000', 'start_date': '2016-02-21', 'sample_freq': 128.0, 'num_samples': 1783345, 'ats_data_file': '443_V01_C03_R001_THy_BL_128H.ats', 'sensor_type': 'MFS06e', 'channel_type': 'Hy', 'ts_lsb': -0.000225735, 'pos_x1': 0.0, 'pos_x2': 0.0, 'pos_y1': 0.0, 'pos_y2': 0.0, 'pos_z1': 0.0, 'pos_z2': 0.0, 'sensor_sernum': 613, 'lsb_applied': False, 'stop_date': '2016-02-21', 'stop_time': '06:27:12.375000'}
-    14:18:00 DataReaderATS: Hz
-    14:18:00 DataReaderATS: {'gain_stage1': 16, 'gain_stage2': 1, 'hchopper': 1, 'echopper': 0, 'start_time': '02:35:00.000000', 'start_date': '2016-02-21', 'sample_freq': 128.0, 'num_samples': 1783345, 'ats_data_file': '443_V01_C04_R001_THz_BL_128H.ats', 'sensor_type': 'MFS06e', 'channel_type': 'Hz', 'ts_lsb': -1.41103e-05, 'pos_x1': 0.0, 'pos_x2': 0.0, 'pos_y1': 0.0, 'pos_y2': 0.0, 'pos_z1': 0.0, 'pos_z2': 0.0, 'sensor_sernum': 0, 'lsb_applied': False, 'stop_date': '2016-02-21', 'stop_time': '06:27:12.375000'}
-    14:18:00 DataReaderATS: Note: Field units used. Physical data has units mV/km for electric fields and mV for magnetic fields
-    14:18:00 DataReaderATS: Note: To get magnetic field in nT, please calibrate
-    14:18:00 DataReaderATS: ####################
-    14:18:00 DataReaderATS: DATAREADERATS INFO END
-    14:18:00 DataReaderATS: ####################
+Three data files are listed, along with their sampling frequencies and the number of samples in each. Further, the continuous recording file is shown.
 
-This shows the headers read in by resistics and their values. There are both global headers which apply to all the channels and also channel specific headers. 
+The phoenix data reader essentially only supports the continuous data file. When data is requested, only data from the continuous data channel is returned. Similarly, headers refer to the continuous recording data file as can been seen when printing the recording information out using :python:`phoenixReader.printInfo()`.
 
-After reading in some data, it is natural to want to view it. This can be achieved in the following way:
+.. literalinclude:: ../../_text/printPhoenix.txt
+    :linenos:
+    :language: text
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+Much like the other data readers, there are both global headers, which apply to all the channels, and channel specific headers. 
+
+Resistics does not immediately load timeseries data into memory. In order to read the data from the files, it needs to be requested.
+
+.. literalinclude:: ../../../../examples/conventions/phoenixReaderExamples.py
     :linenos:
     :language: python
-    :lines: 8-12
-    :lineno-start: 8
+    :lines: 10-14
+    :lineno-start: 10
 
-:python:`atsReader.getUnscaledData()` returns a :doc:`TimeData <../../api/dataObjects.timeData>` object. Unscaled data is the raw data without any conversion to field units. The units for unscaled data are not consistent between data formats. Time data can be viewed using the view method. 
+:python:`phoenixReader.getUnscaledData(startTime, stopTime)` will read timeseries data from the data files and returns a :class:`~resistics.dataObjects.timeData.TimeData` object with data in the raw data units. Alternatively, to get all the data without any time restrictions, use :python:`phoenixReader.getUnscaledSamples()`. 
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+Information about the time data can be printed using either :python:`unscaledData.printInfo()` or simply :python:`print(unscaledData)`. An example of the time data information is below:
+
+.. literalinclude:: ../../_text/printPhoenixData.txt
+    :linenos:
+    :language: text
+
+After reading in some data, it is natural to view it. Time data can be viewed using the :meth:`~resistics.dataObjects.timeData.TimeData.view` method of the class. By additionally providing a matplotlib figure object, the style and layout of the plot can be controlled.
+
+.. literalinclude:: ../../../../examples/conventions/phoenixReaderExamples.py
     :linenos:
     :language: python
-    :lines: 13-15
-    :lineno-start: 13
+    :lines: 16-23
+    :lineno-start: 16
 
-.. figure:: ../../../../examples/conventions/images/ats_unscaledData.png
+.. figure:: ../../../../examples/conventions/images/phoenixUnscaled.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Viewing unscaled data
+    Viewing unscaled data  
 
-Physical data, which is converted to field units, can be returned and viewed as below:
+Unscaled data is generally not of use. More useful is data scaled to physically meaningful units. Resistics uses magnetotelluric field units and the method,
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. code-block:: python
+
+    phoenixReader.getPhysicalData(startTime, stopTime) 
+    
+returns a time data object in physical units. This time data object can also be visualised.
+
+.. literalinclude:: ../../../../examples/conventions/phoenixReaderExamples.py
     :linenos:
     :language: python
-    :lines: 17-21
-    :lineno-start: 17
+    :lines: 25-32
+    :lineno-start: 25
 
-.. figure:: ../../../../examples/conventions/images/ats_physicalData.png
+.. figure:: ../../../../examples/conventions/images/phoenixPhysical.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Viewing data scaled to field units
+    Viewing physically scaled data
 
-There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :doc:`resitics.utilities <../api/utilities>. In the example below, a the time data is low pass filtered at 4Hz to remove any powerline or rail noise that might be in the data.
+There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`utilities`. In the example below, the time data is high pass filtered 4 Hz and then plotted.
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/conventions/phoenixReaderExamples.py
     :linenos:
     :language: python
-    :lines: 23-27
-    :lineno-start: 23
+    :lines: 34-42
+    :lineno-start: 34
 
-.. figure:: ../../../../examples/conventions/images/ats_filteredData.png
+.. figure:: ../../../../examples/conventions/images/phoenixFiltered.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Viewing physical data low pass filtered to 4Hz    
+    Viewing physically scaled and then high pass filtered data
 
-Resistics supports the writing out of data in an :doc:'internal <resistics-timeseries>` format. An examples of converting a whole dataset from ATS format to internal format is shown below.
+The phoenix reader has a helpful function for reformatting the continuous phoenix channel to the internal binary data format. The below example shows how this is done:
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/conventions/phoenixReaderExamples.py
     :linenos:
     :language: python
-    :lines: 29-34
-    :lineno-start: 29
+    :lines: 44-46
+    :lineno-start: 44
 
-Additionally, resistics can write out data in ASCII format, which allows users to view the data values, plot them in other software or otherwise transport the data for external analysis. An example is shown below.
+To check the fidelity of this function, the internally formatted data can be read back in and plotted with the original data. To read the data back in, use the :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class. 
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/conventions/phoenixReaderExamples.py
     :linenos:
     :language: python
-    :lines: 36-41
-    :lineno-start: 36
+    :lines: 48-56
+    :lineno-start: 48
 
-.. note:: ASCII data is not an efficient way of storing data as it requires much more space than binary data. Further, opening up large ASCII files in text readers will generally not be pleasant depending on the text reader being used. Therefore, this is only recommended when there is a specific reason to have ASCII data.
+The comments of this reformatted dataset show the various scalings and modifications that have been applied to the data. 
+
+.. literalinclude:: ../../../../examples/conventions/timeData/phoenixInternal/meas_ts5_2011-11-13-17-04-02_2011-11-14-14-29-46/comments.txt
+    :linenos:
+    :language: text
+
+The datasets can be compared by plotting them together. First, read in some physical data from the internal data reader.
+
+.. literalinclude:: ../../../../examples/conventions/phoenixReaderExamples.py
+    :linenos:
+    :language: python
+    :lines: 57-58
+    :lineno-start: 57
+
+And then plot both the original data and the internally formatted data on the same plot:
+
+.. literalinclude:: ../../../../examples/conventions/phoenixReaderExamples.py
+    :linenos:
+    :language: python
+    :lines: 60-66
+    :lineno-start: 60
+
+.. figure:: ../../../../examples/conventions/images/phoenix_vs_internal_continuous.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Phoenix original data versus the reformatted data in the internal data format
+
+Complete example script
+~~~~~~~~~~~~~~~~~~~~~~~
+
+For the purposes of clarity, the complete example script is shown below.
+
+.. literalinclude:: ../../../../examples/conventions/phoenixReaderExamples.py
+    :linenos:
+    :language: python

@@ -16,126 +16,191 @@
 SPAM timeseries
 ---------------
 
-ATS format is a one of the more straight-forward formats to support. Header files come in XML format and the data is stored in binary format with a single file for each channel. The data files have extension .ats. An example data folder for ATS is shown below. 
+SPAM recordings are more complex than ATS recordings. Continuous recordings can either be stored in a single data file or multiple smaller data files. All channels are in the same data file. 
+
+Therefore, a typical SPAM data directory can look like this,
 
 .. code-block:: text
 
-    meas_2012-02-10_11-05-00 
-    ├── 059_V01_2012-02-10_11-05-00_0.xml 
-    ├── 059_V01_C00_R000_TEx_BL_4096H.ats   
-    ├── 059_V01_C01_R000_TEy_BL_4096H.ats 
-    ├── 059_V01_C02_R000_THx_BL_4096H.ats 
-    ├── 059_V01_C02_R000_THy_BL_4096H.ats              
-    └── 059_V01_C02_R000_THz_BL_4096H.ats 
+    run01 
+    ├── 0996_LP00100Hz_HP00000s_R016_W038.XTR            
+    └── 0996_LP00100Hz_HP00000s_R016_W038.RAW   
 
-ATS files are opened in resistics using the :doc:`DataReaderATS <../../api/ioHandlers.dataReaderATS>`. An example is shown below:
+or this,
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. code-block:: text
+
+    run02 
+    ├── 0996_LP00100Hz_HP00000s_R016_W079.XTR 
+    ├── 0996_LP00100Hz_HP00000s_R016_W079.RAW
+    ├── 0996_LP00100Hz_HP00000s_R016_W080.XTR 
+    ├── 0996_LP00100Hz_HP00000s_R016_W080.RAW   
+    ├── 0996_LP00100Hz_HP00000s_R016_W081.XTR                              
+    └── 0996_LP00100Hz_HP00000s_R016_W081.RAW   
+
+as long as together, the recordings are continuous and without gaps.
+
+.. warning::
+
+    Resistics requires that each data folder represents a continuous recording without gaps. If gaps are encountered, resistics will quit execution and state where gaps were encountered.
+
+.. note::
+
+    In order for resistics to recognise a SPAM data folder, the following have to be present:
+
+    - A header file with extension .XTR or .XTRX
+    - Data files with extension .RAW
+
+    Note that .XTRX headers are not yet supported. But where a .XTRX header is present, header information is read from the header of the binary data file.
+
+.. note::
+
+    Unscaled units for SPAM data are as follows:
+
+    - All channels are floats in mV
+
+    Raw SPAM timeseries data in the data files is in Volts. However, some scaling is applied to give "unscaled" data in mV. The reason for this is due to varying gains between SPAM data files, even when they together constitute a single continuous recording. Therefore, for the data to make sense as a single data source, gains are removed, leaving "unscaled" data in mV. When getting "physical" samples, electric channels are further divided by the electrode spacing in km.
+
+SPAM recordings are opened in resistics using the :class:`~resistics.ioHandlers.dataReaderSpam.DataReaderSPAM` class. An example is provided below:
+
+.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
     :linenos:
     :language: python
-    :lines: 1-6
+    :lines: 1-7
     :lineno-start: 1
 
-:python:`atsReader.printInfo()` prints information out to the terminal:
+:python:`spamReader.printInfo()` prints the measurement information out to the terminal and displays various recording parameters.
 
-.. code-block:: text
+.. literalinclude:: ../../_text/printSPAM.txt
+    :linenos:
+    :language: text
 
-    14:18:00 DataReaderATS: ####################
-    14:18:00 DataReaderATS: DATAREADERATS INFO BEGIN
-    14:18:00 DataReaderATS: ####################
-    14:18:00 DataReaderATS: Data Path = testData\ats
-    14:18:00 DataReaderATS: Global Headers
-    14:18:00 DataReaderATS: {'start_time': '02:35:00.000000', 'start_date': '2016-02-21', 'stop_time': '06:27:12.375000', 'stop_date': '2016-02-21', 'meas_channels': 5, 'sample_freq': 128.0, 'num_samples': 1783345}
-    14:18:00 DataReaderATS: Channels found:
-    14:18:00 DataReaderATS: ['Ex', 'Ey', 'Hx', 'Hy', 'Hz']
-    14:18:00 DataReaderATS: Channel Map
-    14:18:00 DataReaderATS: {'Ex': 0, 'Ey': 1, 'Hx': 2, 'Hy': 3, 'Hz': 4}
-    14:18:00 DataReaderATS: Channel Headers
-    14:18:00 DataReaderATS: Ex
-    14:18:00 DataReaderATS: {'gain_stage1': 16, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0, 'start_time': '02:35:00.000000', 'start_date': '2016-02-21', 'sample_freq': 128.0, 'num_samples': 1783345, 'ats_data_file': '443_V01_C00_R001_TEx_BL_128H.ats', 'sensor_type': 'EFP06', 'channel_type': 'Ex', 'ts_lsb': -1.76666e-06, 'pos_x1': -45.0, 'pos_x2': 41.0, 'pos_y1': 0.0, 'pos_y2': 0.0, 'pos_z1': 0.0, 'pos_z2': 0.0, 'sensor_sernum': 0, 'lsb_applied': False, 'stop_date': '2016-02-21', 'stop_time': '06:27:12.375000'}
-    14:18:00 DataReaderATS: Ey
-    14:18:00 DataReaderATS: {'gain_stage1': 16, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0, 'start_time': '02:35:00.000000', 'start_date': '2016-02-21', 'sample_freq': 128.0, 'num_samples': 1783345, 'ats_data_file': '443_V01_C01_R001_TEy_BL_128H.ats', 'sensor_type': 'EFP06', 'channel_type': 'Ey', 'ts_lsb': -1.76514e-06, 'pos_x1': 0.0, 'pos_x2': 0.0, 'pos_y1': -45.0, 'pos_y2': 41.1, 'pos_z1': 0.0, 'pos_z2': 0.0, 'sensor_sernum': 0, 'lsb_applied': False, 'stop_date': '2016-02-21', 'stop_time': '06:27:12.375000'}
-    14:18:00 DataReaderATS: Hx
-    14:18:00 DataReaderATS: {'gain_stage1': 2, 'gain_stage2': 1, 'hchopper': 1, 'echopper': 0, 'start_time': '02:35:00.000000', 'start_date': '2016-02-21', 'sample_freq': 128.0, 'num_samples': 1783345, 'ats_data_file': '443_V01_C02_R001_THx_BL_128H.ats', 'sensor_type': 'MFS06e', 'channel_type': 'Hx', 'ts_lsb': -0.000112802, 'pos_x1': 0.0, 'pos_x2': 0.0, 'pos_y1': 0.0, 'pos_y2': 0.0, 'pos_z1': 0.0, 'pos_z2': 0.0, 'sensor_sernum': 612, 'lsb_applied': False, 'stop_date': '2016-02-21', 'stop_time': '06:27:12.375000'}
-    14:18:00 DataReaderATS: Hy
-    14:18:00 DataReaderATS: {'gain_stage1': 1, 'gain_stage2': 1, 'hchopper': 1, 'echopper': 0, 'start_time': '02:35:00.000000', 'start_date': '2016-02-21', 'sample_freq': 128.0, 'num_samples': 1783345, 'ats_data_file': '443_V01_C03_R001_THy_BL_128H.ats', 'sensor_type': 'MFS06e', 'channel_type': 'Hy', 'ts_lsb': -0.000225735, 'pos_x1': 0.0, 'pos_x2': 0.0, 'pos_y1': 0.0, 'pos_y2': 0.0, 'pos_z1': 0.0, 'pos_z2': 0.0, 'sensor_sernum': 613, 'lsb_applied': False, 'stop_date': '2016-02-21', 'stop_time': '06:27:12.375000'}
-    14:18:00 DataReaderATS: Hz
-    14:18:00 DataReaderATS: {'gain_stage1': 16, 'gain_stage2': 1, 'hchopper': 1, 'echopper': 0, 'start_time': '02:35:00.000000', 'start_date': '2016-02-21', 'sample_freq': 128.0, 'num_samples': 1783345, 'ats_data_file': '443_V01_C04_R001_THz_BL_128H.ats', 'sensor_type': 'MFS06e', 'channel_type': 'Hz', 'ts_lsb': -1.41103e-05, 'pos_x1': 0.0, 'pos_x2': 0.0, 'pos_y1': 0.0, 'pos_y2': 0.0, 'pos_z1': 0.0, 'pos_z2': 0.0, 'sensor_sernum': 0, 'lsb_applied': False, 'stop_date': '2016-02-21', 'stop_time': '06:27:12.375000'}
-    14:18:00 DataReaderATS: Note: Field units used. Physical data has units mV/km for electric fields and mV for magnetic fields
-    14:18:00 DataReaderATS: Note: To get magnetic field in nT, please calibrate
-    14:18:00 DataReaderATS: ####################
-    14:18:00 DataReaderATS: DATAREADERATS INFO END
-    14:18:00 DataReaderATS: ####################
+This shows the headers read in by resistics and their values. There are both global headers, which apply to all the channels, and channel specific headers. 
 
-This shows the headers read in by resistics and their values. There are both global headers which apply to all the channels and also channel specific headers. 
+Resistics does not immediately load timeseries data into memory. In order to read the data from the files, it needs to be requested.
 
-After reading in some data, it is natural to want to view it. This can be achieved in the following way:
-
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
     :linenos:
     :language: python
-    :lines: 8-12
-    :lineno-start: 8
+    :lines: 9-20
+    :lineno-start: 9
 
-:python:`atsReader.getUnscaledData()` returns a :doc:`TimeData <../../api/dataObjects.timeData>` object. Unscaled data is the raw data without any conversion to field units. The units for unscaled data are not consistent between data formats. Time data can be viewed using the view method. 
+:python:`spamReader.getPhysicalData(startTime, stopTime)` will read timeseries data from the data files and returns a :class:`~resistics.dataObjects.timeData.TimeData` object with data in field units. Alternatively, to get all the data without any time restrictions, use the :meth:`~resistics.ioHandlers.dataReaderSpam.DataReaderSPAM.getPhysicalSamples` method. Information about the time data can be printed using either the :meth:`~resistics.ioHandlers.ioHandler.IOHandler.printInfo` method or by simply printing a :class:`~resistics.dataObjects.timeData.TimeData` object. An example of the time data information is below:
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../_text/printSPAMData.txt
     :linenos:
-    :language: python
-    :lines: 13-15
-    :lineno-start: 13
+    :language: text
 
-.. figure:: ../../../../examples/conventions/images/ats_unscaledData.png
+After reading in some data, it is natural to view it. Time data can be viewed using the :meth:`~resistics.dataObjects.timeData.TimeData.view` method of the class. By providing a matplotlib figure object to the call to view, 
+
+.. code-block:: python
+    
+    physicalSPAMData.view(fig=fig, sampleStop=2000), 
+
+plots can be formatted in more detail. In this case, the figure size and layout is being set external of the view method.
+
+.. figure:: ../../../../examples/conventions/images/spam.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Viewing unscaled data
+    Viewing physical data  
 
-Physical data, which is converted to field units, can be returned and viewed as below:
+SPAM data can be converted to the internal data format using the :class:`~resistics.ioHandlers.dataWriterInternal.DataWriterInternal`. In nearly all cases, it is better to write out physical data.
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
     :linenos:
     :language: python
-    :lines: 17-21
-    :lineno-start: 17
+    :lines: 22-28
+    :lineno-start: 22
 
-.. figure:: ../../../../examples/conventions/images/ats_physicalData.png
+.. warning::
+
+    Data can be written out in unscaled format. However, each format applies different scalings when data is read in, so it is possible to write out unscaled samples in internal format and then upon reading, have it scaled incorrectly. Therefore, it is nearly always best to write out physical samples. 
+
+Writing out an internally formatted dataset will additionally write out a set of comments. These comments keep track of what has been done to the timeseries data and are there to improve repoducibility and traceability. Read more about comments :doc:`here <../../features/comments>`. The comments for this internally formatted dataset are:
+
+.. literalinclude:: ../../../../examples/conventions/timeData/spamInternal/comments.txt
+    :linenos:
+    :language: text
+
+The internal format data can be read in and compared to the original data.
+
+.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
+    :linenos:
+    :language: python
+    :lines: 30-45
+    :lineno-start: 30
+
+.. figure:: ../../../../examples/conventions/images/spam_vs_internal.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Viewing data scaled to field units
+    Original SPAM data versus the internally formatted data
 
-There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :doc:`resitics.utilities <../api/utilities>. In the example below, a the time data is low pass filtered at 4Hz to remove any powerline or rail noise that might be in the data.
+There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`utilities`. In the example below, the time data is band pass filtered between 0.2 Hz and 16 Hz.
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
     :linenos:
     :language: python
-    :lines: 23-27
-    :lineno-start: 23
+    :lines: 47-51
+    :lineno-start: 47
 
-.. figure:: ../../../../examples/conventions/images/ats_filteredData.png
+Printing the new time data information using :python:`filteredSPAMData.printInfo()` now includes the application of the filter in the time data comments.
+
+.. literalinclude:: ../../_text/printSPAMDataFiltered.txt
+    :linenos:
+    :language: text
+
+It is possible to write out a modified time data object in internal (or ASCII) format. To do this, instead of using,
+
+.. code-block:: python
+ 
+    writer.writeDataset(spamReader, physical=True) 
+
+which writes out a whole dataset given a DataReader object, use
+
+.. code-block:: python
+    
+    writer.writeData(spamReader.getHeaders(), chanHeaders, filteredSPAMData, physical=True)
+
+to write out a TimeData object directly. Header information needs to be explicitly passed to this function. For more information, see the example below and :class:`~resistics.ioHandlers.dataWriter.DataWriter>`. In the below example, the filtered time data is written out.
+
+.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
+    :linenos:
+    :language: python
+    :lines: 53-57
+    :lineno-start: 53
+
+Opening the comments file for the newly written dataset, it can be seen that a line has been added which records the application of a filter to the dataset.
+
+.. literalinclude:: ../../../../examples/conventions/timeData/spamInternalFiltered/comments.txt
+    :linenos:
+    :language: text
+
+Finally, to check everything is fine with the new dataset, the internal formatted  filtered dataset can be read in and the data compared to the original filtered time data.
+
+.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
+    :linenos:
+    :language: python
+    :lines: 59-76
+    :lineno-start: 59
+
+Plotting the two time data objects on the same plot results in the image below. 
+
+.. figure:: ../../../../examples/conventions/images/spam_vs_internal_filtered.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Viewing physical data low pass filtered to 4Hz    
+    Filtered SPAM data versus the internally formatted filtered data
 
-Resistics supports the writing out of data in an :doc:'internal <resistics-timeseries>` format. An examples of converting a whole dataset from ATS format to internal format is shown below.
+Complete example script
+~~~~~~~~~~~~~~~~~~~~~~~
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+For the purposes of clarity, the complete example script is shown below.
+
+.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
     :linenos:
     :language: python
-    :lines: 29-34
-    :lineno-start: 29
-
-Additionally, resistics can write out data in ASCII format, which allows users to view the data values, plot them in other software or otherwise transport the data for external analysis. An example is shown below.
-
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
-    :linenos:
-    :language: python
-    :lines: 36-41
-    :lineno-start: 36
-
-.. note:: ASCII data is not an efficient way of storing data as it requires much more space than binary data. Further, opening up large ASCII files in text readers will generally not be pleasant depending on the text reader being used. Therefore, this is only recommended when there is a specific reason to have ASCII data.

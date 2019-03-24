@@ -11,7 +11,7 @@ Resistics is the `Python package repository <https://pypi.org/project/resistics/
 
 This is the simplest method of installing resistics and deals with all the dependencies.
 
-.. note::
+.. warning::
 
     resistics requires Python 3.6 or higher. Python can be downloaded from the `Python downloads <https://www.python.org/downloads/>`_  page and is available for all major operating systems.
 

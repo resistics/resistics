@@ -14,7 +14,7 @@ Resistics adopts a number of conventions which are outlined below:
 - Electric channels are named |Ex|, |Ey|.
 - Resistics operates with field units. When timeseries data is read in, it is automatically converted to the following units:
     
-    - Electric channels |Ex|, |Ey| are in mV/m
+    - Electric channels |Ex|, |Ey| are in mV/km
     - Magnetic channels |Hx|, |Hy| and |Hz| are in mV
     - Calibrated magnetic channels are in nT
 

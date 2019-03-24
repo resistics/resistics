@@ -1,0 +1,15 @@
+16:49:46 TimeData: ####################
+16:49:46 TimeData: TIMEDATA INFO BEGIN
+16:49:46 TimeData: ####################
+16:49:46 TimeData: Sampling frequency [Hz] = 15.0
+16:49:46 TimeData: Sample rate [s] = 0.06666666666666667
+16:49:46 TimeData: Number of samples = 54001
+16:49:46 TimeData: Number of channels = 5
+16:49:46 TimeData: Channels = ['Ex', 'Ey', 'Hx', 'Hy', 'Hz']
+16:49:46 TimeData: Start time = 2011-11-14 02:00:00
+16:49:46 TimeData: Stop time = 2011-11-14 03:00:00
+16:49:46 TimeData: Comments
+16:49:46 TimeData:      Unscaled data 2011-11-14 02:00:00 to 2011-11-14 03:00:00 read in from measurement timeData\phoenix, samples 482370 to 536370
+16:49:46 TimeData: ####################
+16:49:46 TimeData: TIMEDATA INFO END
+16:49:46 TimeData: ####################
