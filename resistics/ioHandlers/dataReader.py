@@ -1209,15 +1209,15 @@ class DataReader(IOHandler):
         textLst = []
         textLst.append("Data Path = {}".format(self.dataPath))
         textLst.append("Global Headers")
-        textLst.append(self.headers)
+        textLst.append("{}".format(self.headers))
         textLst.append("Channels found:")
-        textLst.append(self.chans)
+        textLst.append("{}".format(self.chans))
         textLst.append("Channel Map")
-        textLst.append(self.chanMap)
+        textLst.append("{}".format(self.chanMap))
         textLst.append("Channel Headers")
         for c in self.chans:
             textLst.append(c)
-            textLst.append(self.chanHeaders[self.chanMap[c]])
+            textLst.append("{}".format(self.chanHeaders[self.chanMap[c]]))
         textLst.append(
             "Note: Field units used. Physical data has units mV/km for electric fields and mV for magnetic fields"
         )
