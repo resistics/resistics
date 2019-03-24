@@ -9,7 +9,7 @@ from resistics.utilities.utilsMath import intdiv
 from resistics.utilities.utilsPrint import errorPrint
 
 
-def interpolateToSecond(timeData: TimeData) -> TimeData:
+def interpolateToSecond(timeData: TimeData, inplace: bool = True) -> TimeData:
     """Interpolate data to be on the second
 
     Some formats of time data (e.g. SPAM) do not start on the second with their sampling. This method interpolates so that sampling starts on the second and improves interoperability with other recording formats. 
@@ -18,6 +18,8 @@ def interpolateToSecond(timeData: TimeData) -> TimeData:
     ----------
     timeData : TimeData
         Time data to interpolate onto the second
+    inplace :  bool, optional
+        Whether to do the interpolation inplace or not. Default is True.
     
     Returns
     -------
@@ -28,6 +30,8 @@ def interpolateToSecond(timeData: TimeData) -> TimeData:
     startTimeInterp, numSamplesInterp, dataInterp = interpolateToSecondData(
         timeData.data, timeData.sampleFreq, timeData.startTime
     )
+    if not inplace:
+        timeData = timeData.copy()
     timeData.numSamples = numSamplesInterp
     timeData.startTime = startTimeInterp
     # calculate end timeEnd
