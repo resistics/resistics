@@ -4,27 +4,44 @@ from resistics.ioHandlers.dataReaderPhoenix import DataReaderPhoenix
 # read in spam data
 phoenixPath = os.path.join("timeData", "phoenix")
 phoenixReader = DataReaderPhoenix(phoenixPath)
+phoenixReader.printDataFileInfo()
 phoenixReader.printInfo()
 
 # get some data
 startTime = "2011-11-14 02:00:00"
 stopTime = "2011-11-14 03:00:00"
 unscaledData = phoenixReader.getUnscaledData(startTime, stopTime)
-unscaledData.printInfo()
-unscaledData.view(sampleEnd=20000)
+print(unscaledData)
 
-# let's try physical data
+# plot data
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(20, 2 * unscaledData.numChans))
+unscaledData.view(fig=fig, sampleEnd=20000)
+fig.tight_layout(rect=[0, 0.02, 1, 0.96])
+plt.show()
+fig.savefig(os.path.join("images", "phoenixUnscaled.png"))
+
+# let's try physical data and view it
 physicalData = phoenixReader.getPhysicalData(startTime, stopTime)
 physicalData.printInfo()
-physicalData.view(sampleEnd=20000)
+fig = plt.figure(figsize=(20, 2 * physicalData.numChans))
+physicalData.view(fig=fig, sampleEnd=20000)
+fig.tight_layout(rect=[0, 0.02, 1, 0.96])
+plt.show()
+fig.savefig(os.path.join("images", "phoenixPhysical.png"))
 
-# all we see is 50Hz and 16Hz noise - apply low pass filter
+# can filter the data
 from resistics.utilities.utilsFilter import highPass
 
 filteredData = highPass(physicalData, 4, inplace=False)
-filteredData.view(sampleEnd=20000)
+fig = plt.figure(figsize=(20, 2 * physicalData.numChans))
+filteredData.view(fig=fig, sampleEnd=20000)
+fig.tight_layout(rect=[0, 0.02, 1, 0.96])
+plt.show()
+fig.savefig(os.path.join("images", "phoenixFiltered.png"))
 
-# only reformat the continuous for now
+# reformat the continuous sampling frequency
 phoenix_2internal = os.path.join("timeData", "phoenixInternal")
 phoenixReader.reformatContinuous(phoenix_2internal)
 
@@ -36,11 +53,11 @@ internalReader = DataReaderInternal(
 )
 internalReader.printInfo()
 internalReader.printComments()
+
+# read in physical data
 internalData = internalReader.getPhysicalData(startTime, stopTime)
 
-# plot this against the original
-import matplotlib.pyplot as plt
-
+# plot the two together
 fig = plt.figure(figsize=(20, 2 * physicalData.numChans))
 physicalData.view(fig=fig, label="Phoenix format data")
 internalData.view(fig=fig, label="Internal format data", legend=True)

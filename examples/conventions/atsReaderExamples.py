@@ -49,8 +49,8 @@ physicalInternalData.printInfo()
 import matplotlib.pyplot as plt
 
 fig = plt.figure(figsize=(20, 2 * physicalATSData.numChans))
-physicalATSData.view(fig=fig, sampleStop=500, label="ATS format", legend=True)
-physicalInternalData.view(fig=fig, sampleStop=500, label="Internal format", legend=True)
+physicalATSData.view(fig=fig, sampleStop=200, label="ATS format", legend=True)
+physicalInternalData.view(fig=fig, sampleStop=200, label="Internal format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
 fig.savefig(os.path.join("images", "ats_vs_internal.png"))
@@ -76,8 +76,8 @@ physicalAsciiData.printInfo()
 import matplotlib.pyplot as plt
 
 fig = plt.figure(figsize=(20, 2 * physicalATSData.numChans))
-physicalATSData.view(fig=fig, sampleStop=500, label="ATS format", legend=True)
-physicalAsciiData.view(fig=fig, sampleStop=500, label="Ascii format", legend=True)
+physicalATSData.view(fig=fig, sampleStop=200, label="ATS format", legend=True)
+physicalAsciiData.view(fig=fig, sampleStop=200, label="Ascii format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
 fig.savefig(os.path.join("images", "ats_vs_ascii.png"))

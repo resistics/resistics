@@ -6,14 +6,6 @@ spamPath = os.path.join("timeData", "spam")
 spamReader = DataReaderSPAM(spamPath)
 spamReader.printInfo()
 
-# write out as the internal format
-from resistics.ioHandlers.dataWriterInternal import DataWriterInternal
-
-spam_2internal = os.path.join("timeData", "spamInternal")
-writer = DataWriterInternal()
-writer.setOutPath(spam_2internal)
-writer.writeDataset(spamReader, physical=True)
-
 # get physical data from SPAM
 import matplotlib.pyplot as plt
 
@@ -26,6 +18,14 @@ physicalSPAMData.view(fig=fig, sampleStop=2000)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
 fig.savefig(os.path.join("images", "spam.png"))
+
+# write out as the internal format
+from resistics.ioHandlers.dataWriterInternal import DataWriterInternal
+
+spam_2internal = os.path.join("timeData", "spamInternal")
+writer = DataWriterInternal()
+writer.setOutPath(spam_2internal)
+writer.writeDataset(spamReader, physical=True)
 
 # read in the internal format dataset and see what's in the comments
 from resistics.ioHandlers.dataReaderInternal import DataReaderInternal
@@ -45,7 +45,7 @@ plt.show()
 fig.savefig(os.path.join("images", "spam_vs_internal.png"))
 
 # all we see is 50Hz and 16Hz noise - apply a band pass filter
-from resistics.utilities.utilsFilter import bandPass, lowPass
+from resistics.utilities.utilsFilter import bandPass
 
 filteredSPAMData = bandPass(physicalSPAMData, 0.2, 16, inplace=False)
 filteredSPAMData.printInfo()
