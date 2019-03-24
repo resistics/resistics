@@ -13,7 +13,7 @@ startTime = "2016-02-07 02:10:00"
 stopTime = "2016-02-07 02:30:00"
 physicalSPAMData = spamReader.getPhysicalData(startTime, stopTime, remnans=True)
 physicalSPAMData.printInfo()
-fig = plt.figure(figsize=(20, 2 * physicalSPAMData.numChans))
+fig = plt.figure(figsize=(16, 3 * physicalSPAMData.numChans))
 physicalSPAMData.view(fig=fig, sampleStop=2000)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
@@ -37,7 +37,7 @@ physicalInternalData = internalReader.getPhysicalData(startTime, stopTime)
 physicalInternalData.printInfo()
 
 # now plot the two datasets together
-fig = plt.figure(figsize=(20, 2 * physicalSPAMData.numChans))
+fig = plt.figure(figsize=(16, 3 * physicalSPAMData.numChans))
 physicalSPAMData.view(fig=fig, sampleStop=500, label="SPAM format")
 physicalInternalData.view(fig=fig, sampleStop=500, label="Internal format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
@@ -66,7 +66,7 @@ filteredInternalData = internalReaderFiltered.getPhysicalSamples()
 filteredInternalData.printInfo()
 
 # plot this against the original
-fig = plt.figure(figsize=(20, 2 * physicalSPAMData.numChans))
+fig = plt.figure(figsize=(16, 3 * physicalSPAMData.numChans))
 filteredSPAMData.view(fig=fig, sampleStop=5000, label="filtered SPAM format")
 filteredInternalData.view(
     fig=fig, sampleStop=5000, label="filtered internal format", legend=True

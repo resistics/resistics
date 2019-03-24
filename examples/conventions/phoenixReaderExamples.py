@@ -16,7 +16,7 @@ print(unscaledData)
 # plot data
 import matplotlib.pyplot as plt
 
-fig = plt.figure(figsize=(20, 2 * unscaledData.numChans))
+fig = plt.figure(figsize=(16, 3 * unscaledData.numChans))
 unscaledData.view(fig=fig, sampleEnd=20000)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
@@ -25,7 +25,7 @@ fig.savefig(os.path.join("images", "phoenixUnscaled.png"))
 # let's try physical data and view it
 physicalData = phoenixReader.getPhysicalData(startTime, stopTime)
 physicalData.printInfo()
-fig = plt.figure(figsize=(20, 2 * physicalData.numChans))
+fig = plt.figure(figsize=(16, 3 * physicalData.numChans))
 physicalData.view(fig=fig, sampleEnd=20000)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
@@ -35,7 +35,7 @@ fig.savefig(os.path.join("images", "phoenixPhysical.png"))
 from resistics.utilities.utilsFilter import highPass
 
 filteredData = highPass(physicalData, 4, inplace=False)
-fig = plt.figure(figsize=(20, 2 * physicalData.numChans))
+fig = plt.figure(figsize=(16, 3 * physicalData.numChans))
 filteredData.view(fig=fig, sampleEnd=20000)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
@@ -58,7 +58,7 @@ internalReader.printComments()
 internalData = internalReader.getPhysicalData(startTime, stopTime)
 
 # plot the two together
-fig = plt.figure(figsize=(20, 2 * physicalData.numChans))
+fig = plt.figure(figsize=(16, 3 * physicalData.numChans))
 physicalData.view(fig=fig, label="Phoenix format data")
 internalData.view(fig=fig, label="Internal format data", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])

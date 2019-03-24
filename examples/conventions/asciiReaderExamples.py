@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 
 asciiData = asciiReader.getPhysicalSamples()
 asciiData.printInfo()
-fig = plt.figure(figsize=(20, 2 * asciiData.numChans))
+fig = plt.figure(figsize=(16, 3 * asciiData.numChans))
 asciiData.view(fig=fig, label="ASCII format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
@@ -51,7 +51,7 @@ internalData = internalReader.getPhysicalSamples()
 internalData.printInfo()
 
 # now plot the two datasets together
-fig = plt.figure(figsize=(20, 2 * asciiData.numChans))
+fig = plt.figure(figsize=(16, 3 * asciiData.numChans))
 asciiData.view(fig=fig, sampleStop=500, label="ASCII format", legend=True)
 internalData.view(fig=fig, sampleStop=500, label="Internal format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])

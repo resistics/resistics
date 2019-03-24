@@ -11,21 +11,33 @@ startTime = "2016-02-21 03:00:00"
 stopTime = "2016-02-21 04:00:00"
 unscaledData = atsReader.getUnscaledData(startTime, stopTime)
 unscaledData.printInfo()
+
 # view unscaled data
-fig = unscaledData.view(sampleStop=20000)
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(16, 3 * unscaledData.numChans))
+unscaledData.view(fig=fig, sampleStop=20000)
+fig.tight_layout(rect=[0, 0.02, 1, 0.96])
+plt.show()
 fig.savefig(os.path.join("images", "ats_unscaledData.png"))
 
 # get physical data, which is converted to field units
 physicalATSData = atsReader.getPhysicalData(startTime, stopTime)
 physicalATSData.printInfo()
-fig = physicalATSData.view(sampleStop=20000)
+fig = plt.figure(figsize=(16, 3 * physicalATSData.numChans))
+fig = physicalATSData.view(fig=fig, sampleStop=20000)
+fig.tight_layout(rect=[0, 0.02, 1, 0.96])
+plt.show()
 fig.savefig(os.path.join("images", "ats_physicalData.png"))
 
 # all we see is 50Hz and 16Hz noise - apply low pass filter
 from resistics.utilities.utilsFilter import lowPass
 
 filteredATSData = lowPass(physicalATSData, 4, inplace=False)
-fig = filteredATSData.view(sampleStop=20000)
+fig = plt.figure(figsize=(16, 3 * filteredATSData.numChans))
+fig = filteredATSData.view(fig=fig, sampleStop=20000)
+fig.tight_layout(rect=[0, 0.02, 1, 0.96])
+plt.show()
 fig.savefig(os.path.join("images", "ats_filteredData.png"))
 
 # now write out as internal format
@@ -46,9 +58,7 @@ physicalInternalData = internalReader.getPhysicalData(startTime, stopTime)
 physicalInternalData.printInfo()
 
 # now plot the two datasets together
-import matplotlib.pyplot as plt
-
-fig = plt.figure(figsize=(20, 2 * physicalATSData.numChans))
+fig = plt.figure(figsize=(16, 3 * physicalATSData.numChans))
 physicalATSData.view(fig=fig, sampleStop=200, label="ATS format", legend=True)
 physicalInternalData.view(fig=fig, sampleStop=200, label="Internal format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
@@ -75,7 +85,7 @@ physicalAsciiData.printInfo()
 # now plot the two datasets together
 import matplotlib.pyplot as plt
 
-fig = plt.figure(figsize=(20, 2 * physicalATSData.numChans))
+fig = plt.figure(figsize=(16, 3 * physicalATSData.numChans))
 physicalATSData.view(fig=fig, sampleStop=200, label="ATS format", legend=True)
 physicalAsciiData.view(fig=fig, sampleStop=200, label="Ascii format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
