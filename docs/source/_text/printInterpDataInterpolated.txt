@@ -1,0 +1,23 @@
+17:10:15 TimeData: ####################
+17:10:15 TimeData: TIMEDATA INFO BEGIN
+17:10:15 TimeData: ####################
+17:10:15 TimeData: Sampling frequency [Hz] = 250.0
+17:10:15 TimeData: Sample rate [s] = 0.004
+17:10:15 TimeData: Number of samples = 21599750
+17:10:15 TimeData: Number of channels = 4
+17:10:15 TimeData: Channels = ['Ex', 'Ey', 'Hx', 'Hy']
+17:10:15 TimeData: Start time = 2016-02-07 00:00:01
+17:10:15 TimeData: Stop time = 2016-02-07 23:59:59.996000
+17:10:15 TimeData: Comments
+17:10:15 TimeData:      Unscaled data 2016-02-07 00:00:00.003200 to 2016-02-07 23:59:59.999200 read in from measurement
+timeData\spam, samples 0 to 21599999
+17:10:15 TimeData:      Data read from 1 files in total
+17:10:15 TimeData:      Data scaled to mV for all channels using scalings in header files
+17:10:15 TimeData:      Sampling frequency 250.0
+17:10:15 TimeData:      Dividing channel Ex by electrode distance 0.0587 km to give mV/km
+17:10:15 TimeData:      Dividing channel Ey by electrode distance 0.0564 km to give mV/km
+17:10:15 TimeData:      Remove zeros: False, remove nans: False, remove average: True
+17:10:15 TimeData:      Time data interpolated to nearest second. New start time 2016-02-07 00:00:01, new end time 2016-02-07 23:59:59.996000, new number of samples 21599750
+17:10:15 TimeData: ####################
+17:10:15 TimeData: TIMEDATA INFO END
+17:10:15 TimeData: ####################

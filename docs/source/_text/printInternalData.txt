@@ -1,0 +1,28 @@
+13:40:33 TimeData: ####################
+13:40:33 TimeData: TIMEDATA INFO BEGIN
+13:40:33 TimeData: ####################
+13:40:33 TimeData: Sampling frequency [Hz] = 128.0
+13:40:33 TimeData: Sample rate [s] = 0.0078125
+13:40:33 TimeData: Number of samples = 20001
+13:40:33 TimeData: Number of channels = 5
+13:40:33 TimeData: Channels = ['Ex', 'Ey', 'Hx', 'Hy', 'Hz']
+13:40:33 TimeData: Start time = 2016-02-21 02:35:00
+13:40:33 TimeData: Stop time = 2016-02-21 02:37:36.250000
+13:40:33 TimeData: Comments
+13:40:33 TimeData:      Unscaled data 2016-02-21 02:35:00 to 2016-02-21 06:27:12.375000 read in from measurement timeData\ats, samples 0 to 1783344
+13:40:33 TimeData:      Sampling frequency 128.0
+13:40:33 TimeData:      Scaling channel Ex with scalar -1.76666e-06 to give mV
+13:40:33 TimeData:      Dividing channel Ex by electrode distance 0.086 km to give mV/km
+13:40:33 TimeData:      Scaling channel Ey with scalar -1.76514e-06 to give mV
+13:40:33 TimeData:      Dividing channel Ey by electrode distance 0.0861 km to give mV/km
+13:40:33 TimeData:      Scaling channel Hx with scalar -0.000112802 to give mV
+13:40:33 TimeData:      Scaling channel Hy with scalar -0.000225735 to give mV
+13:40:33 TimeData:      Scaling channel Hz with scalar -1.41103e-05 to give mV
+13:40:33 TimeData:      Remove zeros: False, remove nans: False, remove average: True
+13:40:33 TimeData:      Dataset written to timeData\atsInternal on 2019-03-23 11:54:11.625577
+13:40:33 TimeData:      Unscaled data 2016-02-21 02:35:00 to 2016-02-21 02:37:36.250000 read in from measurement timeData\atsInternal, samples 0 to 20000
+13:40:33 TimeData:      Sampling frequency 128.0
+13:40:33 TimeData:      Remove zeros: False, remove nans: False, remove average: True
+13:40:33 TimeData: ####################
+13:40:33 TimeData: TIMEDATA INFO END
+13:40:33 TimeData: ####################

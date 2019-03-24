@@ -1,7 +1,7 @@
 Configuration files
 -------------------
 
-Resistics allows users to set various parameters through configuration files. The package itself comes with its default configuration. Users can change certain parameters by specifying them in a configuration file. Below is the default configuration:
+Resistics allows users to set various parameters through configuration files. The package itself comes with its default configuration. Users can change certain parameters by specifying them in a separate configuration file. Below is the default configuration:
 
 .. literalinclude:: ../../../examples/features/resisticsDefaultConfig.ini
     :linenos:
@@ -9,7 +9,7 @@ Resistics allows users to set various parameters through configuration files. Th
 
 Configuration files are separated into several sections which describe which part of the process the parameters affect. The parameters are detailed in the :doc:`configuration parameters <configuration/parameters>` section. The first thing to note is that all configuration files have a name. This is to help traceability. Configuration names are always entered into dataset comments.
 
-A good way to begin creating a custom configuration file is to copy the default parameterisation. This can be done by using inbuilt functionality:
+A good way to begin creating a custom configuration file is to copy the default parameterisation. This can be done by using the inbuilt :meth:`~resistics.utilities.utilsConfig.copyDefaultConfig` functionality:
 
 .. literalinclude:: ../../../examples/features/copyconfig.py
     :linenos:

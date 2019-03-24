@@ -139,7 +139,7 @@ The internal format data can be read in and compared to the original data.
 
     Original SPAM data versus the internally formatted data
 
-There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`utilities`. In the example below, the time data is band pass filtered between 0.2 Hz and 16 Hz.
+There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`~resistics.utilities`. In the example below, the time data is band pass filtered between 0.2 Hz and 16 Hz.
 
 .. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
     :linenos:

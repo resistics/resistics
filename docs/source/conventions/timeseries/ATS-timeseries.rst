@@ -67,13 +67,13 @@ Resistics does not immediately load timeseries data into memory. In order to rea
 
 :python:`atsReader.getUnscaledData(startTime, stopTime)` will read timeseries data from the data files and returns a :class:`~resistics.dataObjects.timeData.TimeData` object. Unscaled data is the raw data without any conversion to field units. The units for unscaled data are not consistent between data formats and in the case of ATS data are integer counts.
 
-After reading in some data, it is natural to view it. Time data can be viewed using the :meth:`~resistics.dataObjects.timeData.TimeData.view` method of the class. 
+After reading in some data, it is natural to view it. :class:`~resistics.dataObjects.timeData.TimeData` can be viewed using the :meth:`~resistics.dataObjects.timeData.TimeData.view` method of the class. Passing a matplotlib figure object to this method allows for more control over the layout of the plot.
 
 .. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
     :linenos:
     :language: python
-    :lines: 14-16
-    :lineno-start: 14
+    :lines: 15-22
+    :lineno-start: 15
 
 .. figure:: ../../../../examples/conventions/images/ats_unscaledData.png
     :align: center
@@ -87,8 +87,8 @@ Physical data, which is converted to field units, can be returned by using the :
 .. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
     :linenos:
     :language: python
-    :lines: 18-22
-    :lineno-start: 18
+    :lines: 24-31
+    :lineno-start: 24
 
 .. figure:: ../../../../examples/conventions/images/ats_physicalData.png
     :align: center
@@ -97,13 +97,13 @@ Physical data, which is converted to field units, can be returned by using the :
 
     Viewing data scaled to field units
 
-There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`utilities`. In the example below, the time data is low pass filtered at 4Hz to remove any powerline or rail noise that might be in the data.
+There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`~resistics.utilities`. In the example below, the time data is low pass filtered at 4Hz to remove any powerline or rail noise that might be in the data.
 
 .. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
     :linenos:
     :language: python
-    :lines: 24-29
-    :lineno-start: 24
+    :lines: 33-41
+    :lineno-start: 33
 
 .. figure:: ../../../../examples/conventions/images/ats_filteredData.png
     :align: center
@@ -112,13 +112,13 @@ There are a few helpful methods built in to resistics for manipulating timeserie
 
     Viewing physical data low pass filtered to 4Hz    
 
-Resistics supports the writing out of data in an :doc:`internal <resistics-timeseries>` format. An examples of converting a whole dataset from ATS format to internal format is shown below.
+Resistics supports the writing out of data in an :doc:`internal <internal-binary-format>` format. An examples of converting a whole dataset from ATS format to internal format is shown below.
 
 .. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
     :linenos:
     :language: python
-    :lines: 31-37
-    :lineno-start: 31
+    :lines: 43-49
+    :lineno-start: 43
 
 In nearly every case, it is best to write out data in physical format. When this is done, no further scaling will be applied when the data is read in again.
 
@@ -132,13 +132,13 @@ Writing out an internally formatted dataset will additionally write out a set of
     :linenos:
     :language: text
 
-The internal format data can be read in and compared to the original data.
+The internal format data can be read in and visually compared to the original data.
 
 .. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
     :linenos:
     :language: python
-    :lines: 39-55
-    :lineno-start: 39
+    :lines: 51-66
+    :lineno-start: 51
 
 .. figure:: ../../../../examples/conventions/images/ats_vs_internal.png
     :align: center
@@ -152,8 +152,8 @@ Additionally, resistics can write out data in ASCII format, which allows users t
 .. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
     :linenos:
     :language: python
-    :lines: 58-64
-    :lineno-start: 58
+    :lines: 68-74
+    :lineno-start: 68
 
 Again, this dataset is written out with a set of comments. 
 
@@ -166,8 +166,8 @@ The same exercise of reading back the ascii data and comparing it to the origina
 .. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
     :linenos:
     :language: python
-    :lines: 66-83
-    :lineno-start: 66
+    :lines: 76-93
+    :lineno-start: 76
 
 .. figure:: ../../../../examples/conventions/images/ats_vs_ascii.png
     :align: center

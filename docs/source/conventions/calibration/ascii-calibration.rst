@@ -1,4 +1,6 @@
 ASCII Calibration
 -----------------
 
-Something here
+.. literalinclude:: ../../../../examples/conventions/calData/IC_365.txt
+    :linenos:
+    :language: text

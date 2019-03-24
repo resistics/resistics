@@ -63,7 +63,7 @@ Evaluation frequency related parameters. If evaluation frequencies are not expli
 
 Window
 ~~~~~~
-Timeseries windowing parameters. This defines how the timeseries data will be windowed and the overlap between windows. Resistics will automatically calculate window sizes using windowfactor and overlapfraction. If for any decimation level, the calculation results in a window size less than minwindowsize or overlap lower the minoverlapsize, the window and overlap sizes will be set to their minimum allowable values.
+Timeseries windowing parameters. This defines how the timeseries data will be windowed and the overlap between windows. Resistics will automatically calculate window sizes using windowfactor and overlapfraction. If for any decimation level, the calculation results in a window size less than minwindowsize or overlap lower than the minoverlapsize, the window and overlap sizes will be set to their minimum allowable values.
 
 Window and overlap sizes can be set explicitly using the windowsizes and overlap sizes. If windowsizes are explicitly set, overlapsizes needs to be set too.
 

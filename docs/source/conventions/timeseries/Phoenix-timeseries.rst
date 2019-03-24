@@ -117,7 +117,7 @@ returns a time data object in physical units. This time data object can also be 
 
     Viewing physically scaled data
 
-There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`utilities`. In the example below, the time data is high pass filtered 4 Hz and then plotted.
+There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`~resistics.utilities`. In the example below, the time data is high pass filtered 4 Hz and then plotted.
 
 .. literalinclude:: ../../../../examples/conventions/phoenixReaderExamples.py
     :linenos:

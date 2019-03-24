@@ -66,7 +66,7 @@ Interpolating to the second will change the sample times to:
 
 .. code-block:: text
 
-    0.10 0.20 0.30 0.40 0.50 0.60 0.70 0.80 0.90 1.10 1.20 ...
+    0.10 0.20 0.30 0.40 0.50 0.60 0.70 0.80 0.90 1.00 1.10 1.20 ...
 
 Whenever operating with multiple different file formats in one project, it is best practice to ensure that all datasets are sampled on the second prior to estimating impedance tensors.
 
