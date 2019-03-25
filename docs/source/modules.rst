@@ -1,8 +1,6 @@
 API reference
 -------------
 
-Resistics is split up into a number of submodules that deal with 
-
 .. include:: api.rst
 
 Reference

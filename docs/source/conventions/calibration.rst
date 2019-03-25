@@ -1,14 +1,24 @@
 Calibration data
 ----------------
 
-Calibration data for magnetotelluric recordings come in many different flavours. Again, resistics aims to support the main formats, though this becomes harder when they are binary formatted. 
+Calibration data for magnetotelluric recordings come in many different flavours. Again, resistics aims to support the major formats, though this becomes harder when they are binary formatted. 
 
 Currently, there are four supported calibration formats. These are:
 
 - :doc:`Metronix <calibration/metronix-calibration>`
 - :doc:`RSP <calibration/rsp-calibration>`
 - :doc:`RSPX <calibration/rspx-calibration>`
-- A simple :doc:`ASCII <calibration/ascii-calibration>` format
+- A simple :doc:`ASCII <calibration/ascii-calibration>` format for when none of the others make sense
+
+.. note::
+
+    Currently, resistics only supports calibration of data channels based on:
+    
+    - sensor type
+    - sensor serial number
+    - chopper information (low frequency or high frequency recording mode) 
+    
+    This will cover the calibration of magnetic channels. However, there is presently no easy way of doing a recording instrument calibration. Depending on the need for this feature, it can be implemented. Please get in touch if this is something that is required by visiting the :doc:`Contact <../contact>` page.
 
 
 Extending calibration data

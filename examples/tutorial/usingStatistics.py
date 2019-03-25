@@ -26,7 +26,10 @@ calculateStatistics(projData, stats=stats)
 
 # to get statistic data, we need the site, the measurement and the statistic we want
 from resistics.project.projectStatistics import getStatisticData
-statData = getStatisticData(projData, "site1", "meas_2012-02-10_11-30-00", "coherence", declevel=0)
+
+statData = getStatisticData(
+    projData, "site1", "meas_2012-02-10_11-30-00", "coherence", declevel=0
+)
 # view statistic value over time
 statData.view(0)
 # view statistic histogram
@@ -37,8 +40,9 @@ statData.crossplot(0, crossplots=[["cohExHy", "cohEyHx"], ["cohExHx", "cohEyHy"]
 # plot statistics for all data of a of a sampling frequency for a site
 from resistics.project.projectStatistics import viewStatistic, viewStatisticHistogram
 from resistics.utilities.utilsPlotter import plotOptionsSpec
+
 options = plotOptionsSpec()
-options["figsize"] = (20,7)
+options["figsize"] = (20, 7)
 # statistic in time
 viewStatistic(projData, "site1", 128, "transferFunction", save=True, show=False)
 # statistic histogram
@@ -49,7 +53,14 @@ viewStatisticHistogram(
 viewStatistic(
     projData, "site1", 128, "transferFunction", eFreqI=1, save=True, show=False
 )
-# change the decimation level 
+# change the decimation level
 viewStatistic(
-    projData, "site1", 128, "transferFunction", declevel=1, eFreqI=0, save=True, show=False
+    projData,
+    "site1",
+    128,
+    "transferFunction",
+    declevel=1,
+    eFreqI=0,
+    save=True,
+    show=False,
 )

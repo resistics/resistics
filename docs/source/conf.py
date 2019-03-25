@@ -135,7 +135,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "Resistics.tex", "Resistics Documentation", "Neeraj Shah", "manual")
+    (master_doc, "resistics.tex", "resistics documentation", "Neeraj Shah", "manual")
 ]
 
 
@@ -143,7 +143,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "Resistics", "Resistics Documentation", [author], 1)]
+man_pages = [(master_doc, "resistics", "resistics Documentation", [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -154,10 +154,10 @@ man_pages = [(master_doc, "Resistics", "Resistics Documentation", [author], 1)]
 texinfo_documents = [
     (
         master_doc,
-        "Resistics",
-        "Resistics Documentation",
+        "resistics",
+        "resistics documentation",
         author,
-        "Resistics",
+        "resistics",
         "Python 3 magnetotelluric processing code",
         "Miscellaneous",
     )

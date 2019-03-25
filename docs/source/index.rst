@@ -3,6 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. meta::
+   :description: resistics, a Python 3 magnetotelluric processing package
+   :keywords: magnetotellurics, electromagnetics, geophysics, statistics, robust regression
+
 Welcome to resistics
 --------------------
 Resistics is a native Python 3 package for the processing of magnetotelluric (MT) data. It incorporates standard robust processing methods and adopts a modular approach to processing which allows for customisation and future improvements to be quickly adopted. 
@@ -30,7 +34,7 @@ Read more about the magnetotelluric method and resistics in the :doc:`introducti
     
     python -m pip install --user resistics
 
-Find out about the useful features of resistics in the :doc:`features <features>` section. Resistics uses a number of conventions which are described :doc:`here <conventions>`.
+Find out about the useful features of resistics in the :doc:`features <features>` section. Resistics uses a number of conventions which are described :doc:`here <conventions>`. Information about supported data and calibration formats is also provided in the :doc:`conventions <conventions>` section.
 
 The :doc:`tutorial <tutorial>` section covers the resistics project environment and basic processing of magnetotelluric data. More advanced processing, including pre-processing of timeseries data, remote reference processing and remote reference statistics are detailed in the :doc:`advanced <advanced>` section. More specialised functionality or examples will be added in the :doc:`cookbook <cookbook>` as and when it is developed. A complete API reference can be found :doc:`here <modules>`. 
 
