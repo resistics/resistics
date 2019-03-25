@@ -123,7 +123,9 @@ class CalibrationData(DataObject):
         plt.xlabel("Frequency [Hz]")
         plt.ylabel("Magnitude [{}]".format(self.magnitudeUnit))     
         plt.grid(True)  
-        plt.legend(loc=4)
+        # legend
+        if "legend" in kwargs and kwargs["legend"]:
+            plt.legend(loc=2)  
 
         # plot phase
         plt.subplot(2, 1, 2)
@@ -139,7 +141,7 @@ class CalibrationData(DataObject):
         plt.grid(True)   
         # legend
         if "legend" in kwargs and kwargs["legend"]:
-            plt.legend(loc=4)   
+            plt.legend(loc=3)   
 
         # show if the figure is not in keywords
         if "fig" not in kwargs:
