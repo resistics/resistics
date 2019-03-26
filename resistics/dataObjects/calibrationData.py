@@ -83,7 +83,11 @@ class CalibrationData(DataObject):
         """Plot of the calibration function
 
         Parameters
-        ----------                
+        ----------
+        staticgain : bool, optional
+            Boolean flag for having static gain on, default is True
+        degrees : bool, optional
+            Plot phase in degreesm default is False
         fig : matplotlib.pyplot.figure, optional
             A figure object
         plotFonts : Dict, optional
@@ -111,11 +115,23 @@ class CalibrationData(DataObject):
             fig = plt.figure(figsize=(8, 8))
         plotFonts = kwargs["plotFonts"] if "plotFonts" in kwargs else getViewFonts()
 
+        # static gain
+        magnitude = self.magnitude
+        if "staticgain" in kwargs and not kwargs["staticgain"]:
+            print("HERE")
+            magnitude = magnitude/self.staticGain
+        # phase
+        phaseUnit = self.phaseUnit
+        phase = self.phase
+        if "degrees" in kwargs and kwargs["degrees"]:
+            phaseUnit = "degrees"
+            phase = self.phase*(180/np.pi)
+
         # plot magnitude
         plt.subplot(2, 1, 1)
         plt.title("Impulse response magnitude", fontsize=plotFonts["title"])
         lab = kwargs["label"] if "label" in kwargs else self.filename
-        plt.loglog(self.freqs, self.magnitude, label=lab)
+        plt.loglog(self.freqs, magnitude, label=lab)
         if "xlim" in kwargs:
             plt.xlim(kwargs["xlim"])
         if "ylim_mag" in kwargs:
@@ -131,13 +147,13 @@ class CalibrationData(DataObject):
         plt.subplot(2, 1, 2)
         plt.title("Impulse response phase", fontsize=plotFonts["title"])
         lab = kwargs["label"] if "label" in kwargs else self.filename
-        plt.semilogx(self.freqs, self.phase, label=lab)
+        plt.semilogx(self.freqs, phase, label=lab)
         if "xlim" in kwargs:
             plt.xlim(kwargs["xlim"])
         if "ylim_phase" in kwargs:
             plt.ylim(kwargs["ylim_phase"])   
         plt.xlabel("Frequency [Hz]")
-        plt.ylabel("Phase [{}]".format(self.phaseUnit))   
+        plt.ylabel("Phase [{}]".format(phaseUnit))   
         plt.grid(True)   
         # legend
         if "legend" in kwargs and kwargs["legend"]:
@@ -168,7 +184,7 @@ class CalibrationData(DataObject):
         textLst.append("Calibration data:")
         for ii in range(0, self.numSamples):
             textLst.append(
-                "\t{:.2f}\t{:.2f}\t{:.2f}".format(
+                "\t{:17.8f}\t{:6.2f}\t{:6.2f}".format(
                     self.freqs[ii], self.magnitude[ii], self.phase[ii]
                 )
             )

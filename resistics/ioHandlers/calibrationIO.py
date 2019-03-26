@@ -362,7 +362,7 @@ class CalibrationIO(IOHandler):
         # sort and extend
         data = self.sortCalData(data)
         if self.extend:
-            data = self.extendCalData(data)        
+            data = self.extendCalData(data)
         # apply static gain
         data[:, 1] = data[:, 1] * staticGain
         if phaseUnit == "degrees":
@@ -459,10 +459,14 @@ class CalibrationIO(IOHandler):
             f.write("Chopper = {}\n".format(calData.chopper))
             f.write("\n")
             f.write("CALIBRATION DATA\n")
+            # remove static gain from magnitude
+            magnitude = np.array(calData.magnitude)
+            magnitude = magnitude / calData.staticGain
+            # write out magnitude without static gain
             for ii in range(0, calData.numSamples):
                 f.write(
                     "{:+.4e}  {:+.4e}  {:+.4e}\n".format(
-                        calData.freqs[ii], calData.magnitude[ii], calData.phase[ii]
+                        calData.freqs[ii], magnitude[ii], calData.phase[ii]
                     )
                 )
 
