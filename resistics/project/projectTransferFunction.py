@@ -99,7 +99,7 @@ def processProject(projData: ProjectData, **kwargs) -> None:
     sites : List[str], optional
         List of sites 
     sampleFreqs : List[float], optional
-        List of sample frequencies to plot
+        List of sample frequencies to process
     specdir : str, optional
         The spectra directories to use
     inchans : List[str], optional

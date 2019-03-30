@@ -32,7 +32,7 @@ def newProject(
         Path for the project directory
     refTime : datetime
         The reference time for the project
-    configFile : str
+    configFile : str, optional
         Path to a configuration file
     name : str, optional (default is "mtProj")
         The name of the project file

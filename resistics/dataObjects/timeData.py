@@ -48,7 +48,7 @@ class TimeData(DataObject):
     copy()
         Get a copy of the timeseries data
     view(kwargs)
-        View the spectra data 
+        View the time data 
     printList()
         Class status returned as list of strings          
     """
