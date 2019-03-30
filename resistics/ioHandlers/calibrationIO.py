@@ -23,6 +23,10 @@ class CalibrationIO(IOHandler):
     ----------
     datafile : str
         Path to calibration data file
+    fileformat : str
+        The file format of the calibration file
+    chopper : bool
+        Boolean flag for reading chopper on or off or writing chopper on or off
     extend : bool
         Boolean flag for extending (extrapolating) the calibration data
 
@@ -54,6 +58,8 @@ class CalibrationIO(IOHandler):
         Convert a set of data lines in a calibration file into a list    
     writeInternalFormat()
         Write internal format calibration file
+    writeInternalTemplate()
+        Write a template file for internal calibration format
     printList()
         Class status returned as list of strings       
 	"""
@@ -69,14 +75,14 @@ class CalibrationIO(IOHandler):
 
         Parameters
         ----------
-        datafile : str, optional
+        datafile : str, optional, optional
             Path to calibration data file
-        format : str, optional
+        format : str, optional, optional
             Calibration file format
-        chopper : bool
-            Boolean flag for reading chopper on or off data, mostly used with metronix data
-        extend : bool
-            Boolean flag for extrapolating the calibration data
+        chopper : bool, optional
+            Boolean flag for reading chopper on or off data, mostly used with metronix data. Default is False.
+        extend : bool, optional
+            Boolean flag for extrapolating the calibration data. Default is True.
         """
 
         self.refresh(datafile, fileformat, chopper, extend)
@@ -84,7 +90,7 @@ class CalibrationIO(IOHandler):
     def refresh(
         self,
         datafile: str = "",
-        fileformat: str = "inductiontxt",
+        fileformat: str = "induction",
         chopper: bool = False,
         extend: bool = True,
     ) -> None:
@@ -168,6 +174,9 @@ class CalibrationIO(IOHandler):
             lines = f.readlines()
         numLines = len(lines)
 
+        # serial and sensor - there is no sensor information in the file
+        serial: int = 1
+        sensor: str = ""
         # no static gain - already included
         staticGain: float = 1
         # variables to save line numbers
@@ -177,6 +186,9 @@ class CalibrationIO(IOHandler):
         for il in range(0, numLines):
             # remove whitespace and new line characters
             lines[il] = lines[il].strip()
+            if "Magnetometer" in lines[il]:
+                split1 = lines[il].split(":")[1].strip()
+                serial = int(split1.split()[0].strip())
             if "Chopper On" in lines[il]:
                 chopperOn = il
             if "Chopper Off" in lines[il]:
@@ -212,6 +224,8 @@ class CalibrationIO(IOHandler):
             data[:, 2],
             staticGain=staticGain,
             chopper=self.chopper,
+            serial=serial,
+            sensor=sensor,
         )
 
     def readRSPData(self) -> CalibrationData:
@@ -232,11 +246,20 @@ class CalibrationIO(IOHandler):
             lines = f.readlines()
         numLines = len(lines)
 
-        staticGain = 1
-        dataReadFrom = 0
+        serial: int = 1
+        staticGain: float = 1
+        sensor: str = ""
+        dataReadFrom: int = 0
         for il in range(0, numLines):
             # remove whitespace and new line characters
             lines[il] = lines[il].strip()
+            # find serial
+            if "induction coil no" in lines[il]:
+                split1 = lines[il].split(":")[1]
+                serial = int(split1.split("-")[0].strip())
+            # find sensor
+            if "SensorType" in lines[il]:
+                sensor = lines[il].split()[1]
             # find static gain value
             if "StaticGain" in lines[il]:
                 staticGain = float(lines[il].split()[1])
@@ -261,7 +284,14 @@ class CalibrationIO(IOHandler):
             data = self.extendCalData(data)
 
         return CalibrationData(
-            self.datafile, data[:, 0], data[:, 1], data[:, 2], staticGain
+            self.datafile,
+            data[:, 0],
+            data[:, 1],
+            data[:, 2],
+            staticGain,
+            chopper=self.chopper,
+            sensor=sensor,
+            serial=serial,
         )
 
     def readRSPXData(self) -> CalibrationData:
@@ -283,8 +313,16 @@ class CalibrationIO(IOHandler):
 
         tree = ET.parse(self.datafile)
         root = tree.getroot()
+        # serial
+        serial: int = 1
+        if root.find("SensorId") is not None:
+            serial = int(root.find("SensorId").text)
+        # sensor
+        sensor: str = ""
+        if root.find("SensorSpecification") is not None:
+            sensor = root.find("SensorSpecification").text
         # static gain
-        staticGain = 1
+        staticGain: float = 1.0
         if root.find("StaticGain") is not None:
             staticGain = float(root.find("StaticGain").text)
         # get the calibration data
@@ -308,22 +346,14 @@ class CalibrationIO(IOHandler):
             data = self.extendCalData(data)
 
         return CalibrationData(
-            self.datafile, data[:, 0], data[:, 1], data[:, 2], staticGain
-        )
-
-    def unitCalibration(self) -> CalibrationData:
-        """Return a unit calibration
-
-        Returns
-        -------
-        CalibrationData
-            A calibration data object
-        """
-
-        data = np.array([[0.0000001, 1, 0], [100000000, 1, 0]])
-        staticGain = 1
-        return CalibrationData(
-            self.datafile, data[:, 0], data[:, 1], data[:, 2], staticGain
+            self.datafile,
+            data[:, 0],
+            data[:, 1],
+            data[:, 2],
+            staticGain,
+            chopper=self.chopper,
+            sensor=sensor,
+            serial=serial,
         )
 
     def readInternalFormat(self):
@@ -345,6 +375,8 @@ class CalibrationIO(IOHandler):
         for il, line in enumerate(lines):
             if "Serial" in line:
                 serial = int(line.split("=")[1].strip())
+            if "Sensor" in line:
+                sensor = line.split("=")[1].strip()
             if "Static gain" in line:
                 staticGain = float(line.split("=")[1].strip())
             if "Magnitude unit" in line:
@@ -352,7 +384,11 @@ class CalibrationIO(IOHandler):
             if "Phase unit" in line:
                 phaseUnit = line.split("=")[1].strip()
             if "Chopper" in line:
-                chopper = bool(line.split("=")[1].strip())
+                chopperStr = line.split("=")[1].strip()
+                if chopperStr == "True":
+                    chopper = True
+                else:
+                    chopper = False
             if "CALIBRATION DATA" in line:
                 dataReadFrom = il + 1
                 break
@@ -369,12 +405,33 @@ class CalibrationIO(IOHandler):
             data[:, 2] = data[:, 2] * (math.pi / 180)
 
         calData = CalibrationData(
-            self.datafile, data[:, 0], data[:, 1], data[:, 2], staticGain, chopper
+            self.datafile,
+            data[:, 0],
+            data[:, 1],
+            data[:, 2],
+            staticGain,
+            chopper=chopper,
+            serial=serial,
+            sensor=sensor,
         )
         calData.magnitudeUnit = magnitudeUnit
         calData.phaseUnit = "radians"
-        calData.serial = serial
         return calData
+
+    def unitCalibration(self) -> CalibrationData:
+        """Return a unit calibration
+
+        Returns
+        -------
+        CalibrationData
+            A calibration data object
+        """
+
+        data = np.array([[0.0000001, 1, 0], [100000000, 1, 0]])
+        staticGain = 1
+        return CalibrationData(
+            self.datafile, data[:, 0], data[:, 1], data[:, 2], staticGain
+        )
 
     def sortCalData(self, data: np.ndarray) -> np.ndarray:
         """Sort calibration data by frequency ascending (low to high)
@@ -453,6 +510,7 @@ class CalibrationIO(IOHandler):
 
         with open(filepath, "w") as f:
             f.write("Serial = {}\n".format(calData.serial))
+            f.write("Sensor = {}\n".format(calData.sensor))
             f.write("Static gain = {}\n".format(calData.staticGain))
             f.write("Magnitude unit = {}\n".format(calData.magnitudeUnit))
             f.write("Phase unit = {}\n".format(calData.phaseUnit))
@@ -469,6 +527,48 @@ class CalibrationIO(IOHandler):
                         calData.freqs[ii], magnitude[ii], calData.phase[ii]
                     )
                 )
+
+    def writeInternalTemplate(
+        self,
+        filepath: str,
+        serial: int = 1,
+        sensor: str = "",
+        staticgain: float = 1.0,
+        chopper: bool = False,
+        magnitudeUnit: str = "mV/nT",
+        phaseUnit: str = "degrees",
+    ) -> None:
+        """Write out a calibration data template file
+
+        This make it easier for the creation of a custom calibration file
+
+        Parameters
+        ----------
+        filepath : str
+            The file to write out to
+        serial : int, optional
+            The serial number of the sensor/instrument
+        sensor : str, optional
+            The sensor type
+        staticgain : float, optional
+            The static gain
+        chopper : bool, optional
+            The chopper on or off
+        magnitudeUnit : str, optional
+            The units of the magnitude. This should be mV/nT because that is what the internal format expects
+        phaseUnit : str, optional
+            Can be either degrees or radians
+        """
+
+        with open(filepath, "w") as f:
+            f.write("Serial = {}\n".format(serial))
+            f.write("Sensor = {}\n".format(sensor))
+            f.write("Static gain = {}\n".format(staticgain))
+            f.write("Magnitude unit = {}\n".format(magnitudeUnit))
+            f.write("Phase unit = {}\n".format(phaseUnit))
+            f.write("Chopper = {}\n".format(chopper))
+            f.write("\n")
+            f.write("CALIBRATION DATA\n")                
 
     def printList(self) -> List[str]:
         """Class information as a list of strings

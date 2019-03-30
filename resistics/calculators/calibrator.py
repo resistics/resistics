@@ -222,14 +222,18 @@ class Calibrator(Calculator):
             return "", ""
 
         for extension, fileformat in zip(self.calExt, self.calFormats):
-            # get the name for this format
-            calName = getCalName(fileformat, extension, sensor, serial, chopper)
-            if calName is None:
+            # get the name for this format - there could be more than one acceptable name
+            calNames = getCalName(fileformat, extension, sensor, serial, chopper)
+            if calNames is None:
                 continue
+            # if a string rather than a list
+            if isinstance(calNames, str):
+                calNames = [calNames]
             # search to find a calibration file with that name and take the first encountered
-            for calFile in self.calFiles:
-                if calName in calFile:
-                    return calFile, fileformat
+            for calName in calNames:    
+                for calFile in self.calFiles:
+                    if calName in calFile:
+                        return calFile, fileformat
         # else return empty strings
         return "", ""
 

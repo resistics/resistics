@@ -100,7 +100,7 @@ def metronixName(ext: str, sensor: str, serial: int, chopper: bool) -> str:
     return "{}{}.{}".format(sensor, serial, ext)
 
 
-def rspName(ext: str, sensor: str, serial: int, chopper: bool) -> str:
+def rspName(ext: str, sensor: str, serial: int, chopper: bool) -> List[str]:
     """Get RSP calibration file name
     
     Parameters
@@ -116,8 +116,8 @@ def rspName(ext: str, sensor: str, serial: int, chopper: bool) -> str:
 
     Returns
     -------
-    out : str
-        Name of calibration file
+    out : List[str]
+        Name of calibration files
     """
 
     if len(sensor) < 6:
@@ -128,12 +128,13 @@ def rspName(ext: str, sensor: str, serial: int, chopper: bool) -> str:
     if chopper:
         board = "LF"
     sensorNum = int(sensor[3:5])
-    return "Metronix_Coil-----TYPE-{:03d}_{}-ID-{:06d}.{}".format(
-        sensorNum, board, serial, ext
-    )
+    names = []
+    names.append("TYPE-{:03d}_{}-ID-{:06d}.{}".format(sensorNum, board, serial, ext))
+    names.append("TYPE-{:03d}_BB-ID-{:06d}.{}".format(sensorNum, serial, ext))
+    return names
 
 
-def rspxName(ext: str, sensor: str, serial: int, chopper: bool) -> str:
+def rspxName(ext: str, sensor: str, serial: int, chopper: bool) -> List[str]:
     """Get RSPX calibration file name
     
     Parameters
@@ -149,8 +150,8 @@ def rspxName(ext: str, sensor: str, serial: int, chopper: bool) -> str:
 
     Returns
     -------
-    out : str
-        Name of calibration file
+    out : List[str]
+        Name of calibration files
     """
 
     if len(sensor) < 6:
@@ -161,9 +162,10 @@ def rspxName(ext: str, sensor: str, serial: int, chopper: bool) -> str:
     if chopper:
         board = "LF"
     sensorNum = int(sensor[3:5])
-    return "Metronix_Coil-----TYPE-{:03d}_{}-ID-{:06d}.{}".format(
-        sensorNum, board, serial, ext
-    )
+    names = []
+    names.append("TYPE-{:03d}_{}-ID-{:06d}.{}".format(sensorNum, board, serial, ext))
+    names.append("TYPE-{:03d}_BB-ID-{:06d}.{}".format(sensorNum, serial, ext))
+    return names
 
 
 def defaultCalibration():
