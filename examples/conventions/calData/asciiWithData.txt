@@ -1,8 +1,9 @@
-Serial = 1
+Serial = 307
+Sensor = MFS06
 Static gain = 1
 Magnitude unit = mV/nT
 Phase unit = radians
-Chopper = True
+Chopper = False
 
 CALIBRATION DATA
 +1.0000e-01  +1.9967e+01  +1.5452e+00

@@ -44,5 +44,7 @@ plt.show()
 fig.savefig(os.path.join("images", "calibrationMetronixChopperOn.png"))
 
 # write as the ASCII format
-calIO.writeInternalFormat(calDataChopperOn, os.path.join("calData", "test.TXT"))
+calIO.writeInternalFormat(
+    calDataChopperOn, os.path.join("calData", "metronix2ascii.TXT")
+)
 

@@ -1,0 +1,39 @@
+12:26:24 CalibrationData: ####################
+12:26:24 CalibrationData: CALIBRATIONDATA INFO BEGIN
+12:26:24 CalibrationData: ####################
+12:26:24 CalibrationData: Filename = calData\Hz_MFS06307.TXT
+12:26:24 CalibrationData: Serial = 307
+12:26:24 CalibrationData: Sensor =
+12:26:24 CalibrationData: Static gain = 1.00
+12:26:24 CalibrationData: Chopper = False
+12:26:24 CalibrationData: Number of frequency points = 25
+12:26:24 CalibrationData: Calibration data:
+12:26:24 CalibrationData:          Frequency [Hz]       Mag. [mv/nT]    Phase [rad]
+12:26:24 CalibrationData:              1.00000000           185.76            1.99
+12:26:24 CalibrationData:              1.46780000           297.86            1.68
+12:26:24 CalibrationData:              2.15440000           431.76            1.37
+12:26:24 CalibrationData:              3.16230000           564.44            1.06
+12:26:24 CalibrationData:              4.64160000           673.50            0.79
+12:26:24 CalibrationData:              6.81300000           745.68            0.56
+12:26:24 CalibrationData:             10.00000000           787.25            0.39
+12:26:24 CalibrationData:             14.67800000           809.83            0.27
+12:26:24 CalibrationData:             21.54400000           819.17            0.18
+12:26:24 CalibrationData:             31.62300000           823.40            0.12
+12:26:24 CalibrationData:             46.41600000           825.83            0.08
+12:26:24 CalibrationData:             68.13000000           821.44            0.04
+12:26:24 CalibrationData:            100.00000000           826.59            0.03
+12:26:24 CalibrationData:            146.78000000           827.91            0.01
+12:26:24 CalibrationData:            215.45000000           827.59           -0.01
+12:26:24 CalibrationData:            316.23000000           827.04           -0.03
+12:26:24 CalibrationData:            464.16000000           827.32           -0.05
+12:26:24 CalibrationData:            681.30000000           828.12           -0.08
+12:26:24 CalibrationData:           1000.00000000           829.22           -0.12
+12:26:24 CalibrationData:           1467.80000000           828.29           -0.19
+12:26:24 CalibrationData:           2154.50000000           816.08           -0.28
+12:26:24 CalibrationData:           3162.30000000           797.63           -0.42
+12:26:24 CalibrationData:           4641.70000000           720.48           -0.63
+12:26:24 CalibrationData:           6813.00000000           619.91           -0.74
+12:26:24 CalibrationData:          10000.00000000           571.23           -0.97
+12:26:24 CalibrationData: ####################
+12:26:24 CalibrationData: CALIBRATIONDATA INFO END
+12:26:24 CalibrationData: ####################

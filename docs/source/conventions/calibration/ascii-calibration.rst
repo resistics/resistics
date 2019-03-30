@@ -1,44 +1,114 @@
 ASCII Calibration
 -----------------
 
-Metronix calibration files are ASCII files with some metadata and calibration information for when the induction coil is operating with either chopper on or chopper off. 
+The internal ASCII calibration format is a simple ASCII format meant to be used when no other format is available. Each file only contains one set of calibration data (no chopper on or off) and there is no provision for different chopper on and off files.  
 
-The units of metronix calibration files are interpreted to be:
+The units of the internal format ASCII calibration files are interpreted to be:
 
 - Frequency in Hz
-- Magnitude in mV/(nT*Hz)
-- Phase in degrees
+- Magnitude in mV/nT
+- Phase in degrees or radians depending on the "Phase unit" header
 
+Resistics will automatically convert these units to:
+
+- Frequency in Hz
+- Magnitude in mV/nT (including any static gain)
+- Phase in radians
 
 Naming in the project environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When using the project environment, resistics automatically searches for calibration files in the calData folder. 
-Metronix files should be named according to the following specification:
+Internal format ASCII files should be named according to the following specification:
 
 .. important::
 
-    [SENSOR][SERIAL].txt
+    [*]IC_[SERIAL].txt
     
-    Where SENSOR is the sensor type and SERIAL is the sensor serial number
+    where, 
+    
+    - SERIAL is the sensor serial number
+    - [*] represents any general string
 
 As an example, consider an induction coil with:
 
-- sensor type MFS06
-- sensor serial number 365
+- sensor serial number 307
 
-Then the file should be named 
+Then the file should be named:
 
+- IC_307.TXT
+- Or with any leading text, e.g. magcal_IC_307.TXT
+
+As can be seen, there is no ability to distinguish different sensors with the same serial number or situations where chopper is on or off. For those cases, :doc:`RSP <rsp-calibration>` or :doc:`Metronix <metronix-calibration>` formats are better.
+
+Example
+~~~~~~~
+
+The internal ASCII format calibration file will not usually be provided and will have to be created from scratch. The :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` class provides the handy :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.writeInternalTemplate` method for producing a template internal ASCII format calibration file. A template can be made as follows:
+
+.. literalinclude:: ../../../../examples/conventions/calibrationInductionExample.py
+    :linenos:
+    :language: python
+    :lines: 1-8
+    :lineno-start: 1 
+
+This produces an empty calibration file with some basic information in:
+
+.. literalinclude:: ../../../../examples/conventions/calData/ascii.TXT
+    :linenos:
+    :language: text
+
+The basic metadata can either be corrected in the file or passed as keywords to :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.writeInternalTemplate`. The actual calibration data needs to be copied in and should be in the units:
+
+- Magnitude in mV/nT without static gain
+- Phase in units which match the "Phase unit" header, which can either be degrees or radians
+
+An example file with calibration data copied is provided below.
+
+.. literalinclude:: ../../../../examples/conventions/calData/asciiWithData.TXT
+    :linenos:
+    :language: text
+
+This internal format ASCII calibration file can now be read in using the :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` class. First, the reading parameters need to be reset using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.refresh` method. Using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.read` method will return a :class:`~resistics.dataObjects.calibrationData.CalibrationData` object.
+
+.. literalinclude:: ../../../../examples/conventions/calibrationInductionExample.py
+    :linenos:
+    :language: python
+    :lines: 10-14
+    :lineno-start: 10
+
+The :meth:`~resistics.dataObjects.dataObject.DataObject.printInfo` method prints information about the calibration data.
+
+.. literalinclude:: ../../_text/calibrationInductionPrint.txt
+    :linenos:
+    :language: text
+ 
+To view the calibration data, the :meth:`~resistics.dataObjects.calibrationData.CalibrationData.view` method of :class:`~resistics.dataObjects.calibrationData.CalibrationData` can be used. By passing a matplotlib figure to this, the layout of the plot can be controlled.
+
+.. literalinclude:: ../../../../examples/conventions/calibrationInductionExample.py
+    :linenos:
+    :language: python
+    :lines: 16-23
+    :lineno-start: 16
+
+This produces the following plot:
+
+.. figure:: ../../../../examples/conventions/images/calibrationASCII.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Viewing the unextended calibration data from the internal format ASCII file
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 For the purposes of clarity, the example script in full.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPExample.py
+.. literalinclude:: ../../../../examples/conventions/calibrationInductionExample.py
     :linenos:
     :language: python
 
-.. literalinclude:: ../../../../examples/conventions/calData/IC_365.txt
+.. literalinclude:: ../../../../examples/conventions/calData/asciiWithData.txt
     :linenos:
     :language: text

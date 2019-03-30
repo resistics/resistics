@@ -1,16 +1,23 @@
 import os
-import matplotlib.pyplot as plt
 from resistics.ioHandlers.calibrationIO import CalibrationIO
 from resistics.ioHandlers.calibrationIO import CalibrationData
 
-fig = plt.figure(figsize=(8, 8))
+# we can write a template into which to paste our data
+writepath = os.path.join("calData", "ascii.txt")
+calIO = CalibrationIO()
+calIO.writeInternalTemplate(writepath, 307, "MFS06", 1)
 
-# read internal format calibration data
-filepath = os.path.join("calData", "IC_307.TXT")
-calIO = CalibrationIO(filepath, "induction", extend=False)
+# read back the internal template file
+filepath = os.path.join("calData", "asciiWithData.txt")
+calIO.refresh(filepath, "induction", extend=False)
 calData = calIO.read()
-print(calData)
-calData.view(fig=fig, label="induction")
+calData.printInfo()
 
-fig.tight_layout()
+# plot
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(8, 8))
+calData.view(fig=fig, label="Internal ASCII format", legend=True)
+fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
+fig.savefig(os.path.join("images", "calibrationASCII.png"))

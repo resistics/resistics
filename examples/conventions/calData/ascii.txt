@@ -1,0 +1,8 @@
+Serial = 307
+Sensor = MFS06
+Static gain = 1
+Magnitude unit = mV/nT
+Phase unit = degrees
+Chopper = False
+
+CALIBRATION DATA

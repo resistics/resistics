@@ -1,0 +1,45 @@
+15:15:46 CalibrationData: ####################
+15:15:46 CalibrationData: CALIBRATIONDATA INFO BEGIN
+15:15:46 CalibrationData: ####################
+15:15:46 CalibrationData: Filename = calData\asciiWithData.txt
+15:15:46 CalibrationData: Serial = 307
+15:15:46 CalibrationData: Sensor = MFS06
+15:15:46 CalibrationData: Static gain = 1.00
+15:15:46 CalibrationData: Chopper = False
+15:15:46 CalibrationData: Number of frequency points = 31
+15:15:46 CalibrationData: Calibration data:
+15:15:46 CalibrationData:          Frequency [Hz]       Mag. [mv/nT]    Phase [rad]
+15:15:46 CalibrationData:              0.10000000            19.97            1.55
+15:15:46 CalibrationData:              0.14678000            29.30            1.53
+15:15:46 CalibrationData:              0.21544000            42.93            1.52
+15:15:46 CalibrationData:              0.31623000            62.90            1.49
+15:15:46 CalibrationData:              0.46416000            91.94            1.46
+15:15:46 CalibrationData:              0.68130000           134.18            1.41
+15:15:46 CalibrationData:              1.00000000           194.04            1.34
+15:15:46 CalibrationData:              1.46780000           275.51            1.23
+15:15:46 CalibrationData:              2.15440000           381.11            1.09
+15:15:46 CalibrationData:              3.16230000           500.78            0.92
+15:15:46 CalibrationData:              4.64160000           616.36            0.73
+15:15:46 CalibrationData:              6.81300000           706.64            0.55
+15:15:46 CalibrationData:             10.00000000           764.00            0.39
+15:15:46 CalibrationData:             14.67800000           796.69            0.27
+15:15:46 CalibrationData:             21.54500000           812.31            0.19
+15:15:46 CalibrationData:             31.62300000           820.62            0.13
+15:15:46 CalibrationData:             46.41600000           824.53            0.08
+15:15:46 CalibrationData:             68.13000000           822.19            0.05
+15:15:46 CalibrationData:            100.00000000           826.09            0.03
+15:15:46 CalibrationData:            146.78000000           825.67            0.01
+15:15:46 CalibrationData:            215.45000000           826.60           -0.01
+15:15:46 CalibrationData:            316.23000000           826.31           -0.03
+15:15:46 CalibrationData:            464.17000000           826.36           -0.05
+15:15:46 CalibrationData:            681.30000000           827.30           -0.08
+15:15:46 CalibrationData:           1000.00000000           827.95           -0.12
+15:15:46 CalibrationData:           1467.80000000           827.21           -0.19
+15:15:46 CalibrationData:           2154.50000000           815.48           -0.28
+15:15:46 CalibrationData:           3162.30000000           796.39           -0.42
+15:15:46 CalibrationData:           4641.70000000           719.28           -0.63
+15:15:46 CalibrationData:           6813.00000000           619.71           -0.74
+15:15:46 CalibrationData:          10000.00000000           571.45           -0.97
+15:15:46 CalibrationData: ####################
+15:15:46 CalibrationData: CALIBRATIONDATA INFO END
+15:15:46 CalibrationData: ####################
