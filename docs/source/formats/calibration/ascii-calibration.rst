@@ -46,7 +46,7 @@ Example
 
 The internal ASCII format calibration file will not usually be provided and will have to be created from scratch. The :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` class provides the handy :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.writeInternalTemplate` method for producing a template internal ASCII format calibration file. A template can be made as follows:
 
-.. literalinclude:: ../../../../examples/conventions/calibrationInductionExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationInductionExample.py
     :linenos:
     :language: python
     :lines: 1-8
@@ -54,7 +54,7 @@ The internal ASCII format calibration file will not usually be provided and will
 
 This produces an empty calibration file with some basic information in:
 
-.. literalinclude:: ../../../../examples/conventions/calData/ascii.TXT
+.. literalinclude:: ../../../../examples/formats/calData/ascii.TXT
     :linenos:
     :language: text
 
@@ -65,13 +65,13 @@ The basic metadata can either be corrected in the file or passed as keywords to 
 
 An example file with calibration data copied is provided below.
 
-.. literalinclude:: ../../../../examples/conventions/calData/asciiWithData.TXT
+.. literalinclude:: ../../../../examples/formats/calData/asciiWithData.TXT
     :linenos:
     :language: text
 
 This internal format ASCII calibration file can now be read in using the :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` class. First, the reading parameters need to be reset using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.refresh` method. Using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.read` method will return a :class:`~resistics.dataObjects.calibrationData.CalibrationData` object.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationInductionExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationInductionExample.py
     :linenos:
     :language: python
     :lines: 10-14
@@ -85,7 +85,7 @@ The :meth:`~resistics.dataObjects.dataObject.DataObject.printInfo` method prints
  
 To view the calibration data, the :meth:`~resistics.dataObjects.calibrationData.CalibrationData.view` method of :class:`~resistics.dataObjects.calibrationData.CalibrationData` can be used. By passing a matplotlib figure to this, the layout of the plot can be controlled.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationInductionExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationInductionExample.py
     :linenos:
     :language: python
     :lines: 16-23
@@ -93,7 +93,7 @@ To view the calibration data, the :meth:`~resistics.dataObjects.calibrationData.
 
 This produces the following plot:
 
-.. figure:: ../../../../examples/conventions/images/calibrationASCII.png
+.. figure:: ../../../../examples/formats/images/calibrationASCII.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -105,10 +105,10 @@ Complete example script
 
 For the purposes of clarity, the example script in full.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationInductionExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationInductionExample.py
     :linenos:
     :language: python
 
-.. literalinclude:: ../../../../examples/conventions/calData/asciiWithData.txt
+.. literalinclude:: ../../../../examples/formats/calData/asciiWithData.txt
     :linenos:
     :language: text

@@ -79,7 +79,7 @@ Example
 
 The class :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` can be used to read in RSPX calibration files. 
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPXExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPXExample.py
     :linenos:
     :language: python
     :lines: 1-9
@@ -95,13 +95,13 @@ The method :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.read` return
 
 Once the calibration data file is read in, the calibration curve can be viewed by using the :meth:`~resistics.dataObjects.calibrationData.CalibrationData.view` method of :class:`~resistics.dataObjects.calibrationData.CalibrationData`. By passing a matplotlib figure to this, the layout of the plot can be controlled.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPXExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPXExample.py
     :linenos:
     :language: python
     :lines: 11-18
     :lineno-start: 11
 
-.. figure:: ../../../../examples/conventions/images/calibrationRSPX.png
+.. figure:: ../../../../examples/formats/images/calibrationRSPX.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -112,13 +112,13 @@ The calibration static gain is applied to the magnitude data by default. To view
 
 To visualise the influence of the static gain correction, the calibration data can be plotted with and without static gain as shown in the following example.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPXExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPXExample.py
     :linenos:
     :language: python
     :lines: 20-28
     :lineno-start: 20
 
-.. figure:: ../../../../examples/conventions/images/calibrationRSPX_staticGainAndDegrees.png
+.. figure:: ../../../../examples/formats/images/calibrationRSPX_staticGainAndDegrees.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -127,7 +127,7 @@ To visualise the influence of the static gain correction, the calibration data c
 
 The same calibration file can be read again, but this time with extension of the data too. The parameters of :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` can be reset by using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.refresh` method.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPXExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPXExample.py
     :linenos:
     :language: python
     :lines: 30-33
@@ -135,13 +135,13 @@ The same calibration file can be read again, but this time with extension of the
 
 To see the effect of the extension, which is a simple edge extrapolation, the original and extended data can be viewed on the same plot.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPXExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPXExample.py
     :linenos:
     :language: python
     :lines: 35-41
     :lineno-start: 35
 
-.. figure:: ../../../../examples/conventions/images/calibrationRSPX_extended.png
+.. figure:: ../../../../examples/formats/images/calibrationRSPX_extended.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -150,7 +150,7 @@ To see the effect of the extension, which is a simple edge extrapolation, the or
 
 The calibration data can be written out in the internal ASCII format using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.writeInternalFormat` method of :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO`.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPXExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPXExample.py
     :linenos:
     :language: python
     :lines: 43-45
@@ -163,7 +163,7 @@ The internal ascii calibration format writes out values in the following units:
 
 This gives the file below:
 
-.. literalinclude:: ../../../../examples/conventions/calData/rspx2ascii.TXT
+.. literalinclude:: ../../../../examples/formats/calData/rspx2ascii.TXT
     :linenos:
     :language: text
 
@@ -173,7 +173,7 @@ This gives the file below:
 
 To read in the internal ASCII format calibration file, the parameters of :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` need to be reset using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.refresh` method. This time, the fileformat needs to be set to "induction".
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPXExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPXExample.py
     :linenos:
     :language: python
     :lines: 47-50
@@ -181,7 +181,7 @@ To read in the internal ASCII format calibration file, the parameters of :class:
 
 Finally, plotting the original data and the internal ASCII format data can be done in the following way:
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPXExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPXExample.py
     :linenos:
     :language: python
     :lines: 52-58
@@ -189,7 +189,7 @@ Finally, plotting the original data and the internal ASCII format data can be do
 
 The resultant figure is:
 
-.. figure:: ../../../../examples/conventions/images/calibrationRSPXvsASCII.png
+.. figure:: ../../../../examples/formats/images/calibrationRSPXvsASCII.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -201,10 +201,10 @@ Complete example script
 
 For the purposes of clarity, the example script in full.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPXExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPXExample.py
     :linenos:
     :language: python
 
-.. literalinclude:: ../../../../examples/conventions/calData/Metronix_Coil-----TYPE-006_HF-ID-000133.RSPX
+.. literalinclude:: ../../../../examples/formats/calData/Metronix_Coil-----TYPE-006_HF-ID-000133.RSPX
     :linenos:
     :language: text

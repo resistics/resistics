@@ -79,7 +79,7 @@ Example
 
 The class :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` can be used to read in RSP calibration files. 
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
     :lines: 1-9
@@ -95,13 +95,13 @@ The method :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.read` return
 
 Once the calibration data file is read in, the calibration curve can be viewed by using the :meth:`~resistics.dataObjects.calibrationData.CalibrationData.view` method of :class:`~resistics.dataObjects.calibrationData.CalibrationData`. By passing a matplotlib figure to this, the layout of the plot can be controlled.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
     :lines: 11-18
     :lineno-start: 11
 
-.. figure:: ../../../../examples/conventions/images/calibrationRSP.png
+.. figure:: ../../../../examples/formats/images/calibrationRSP.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -112,13 +112,13 @@ The calibration static gain is applied to the magnitude data by default. To view
 
 To visualise the influence of the static gain correction, the calibration data can be plotted with and without static gain as shown in the following example.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
     :lines: 20-30
     :lineno-start: 20
 
-.. figure:: ../../../../examples/conventions/images/calibrationRSP_staticGainAndDegrees.png
+.. figure:: ../../../../examples/formats/images/calibrationRSP_staticGainAndDegrees.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -127,7 +127,7 @@ To visualise the influence of the static gain correction, the calibration data c
 
 The calibration data can be written out in the internal ASCII format using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.writeInternalFormat` method of :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO`.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
     :lines: 32-34
@@ -140,7 +140,7 @@ The internal ascii calibration format writes out values in the following units:
 
 This gives the file below:
 
-.. literalinclude:: ../../../../examples/conventions/calData/rsp2ascii.TXT
+.. literalinclude:: ../../../../examples/formats/calData/rsp2ascii.TXT
     :linenos:
     :language: text
 
@@ -150,7 +150,7 @@ This gives the file below:
 
 To read in the internal ASCII format calibration file, the parameters of :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` need to be reset using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.refresh` method. This time, the fileformat needs to be set to "induction".
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
     :lines: 36-39
@@ -158,7 +158,7 @@ To read in the internal ASCII format calibration file, the parameters of :class:
 
 Finally, plotting the original data and the internal ASCII format data can be done in the following way:
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
     :lines: 41-47
@@ -166,7 +166,7 @@ Finally, plotting the original data and the internal ASCII format data can be do
 
 The resultant figure is:
 
-.. figure:: ../../../../examples/conventions/images/calibrationRSPvsASCII.png
+.. figure:: ../../../../examples/formats/images/calibrationRSPvsASCII.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -179,10 +179,10 @@ Complete example script
 
 For the purposes of clarity, the example script in full.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationRSPExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
 
-.. literalinclude:: ../../../../examples/conventions/calData/Metronix_Coil-----TYPE-006_BB-ID-000365.RSP
+.. literalinclude:: ../../../../examples/formats/calData/Metronix_Coil-----TYPE-006_BB-ID-000365.RSP
     :linenos:
     :language: text

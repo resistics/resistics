@@ -70,7 +70,7 @@ Remember, ASCII data files need to have the extension .ascii (otherwise it would
 
 The :class:`~resistics.ioHandlers.dataWriter.DataWriter` class has a handy function for autogenerating header files named :meth:`~resistics.ioHandlers.dataWriter.DataWriter.writeTemplateHeaderFiles`. Its use is shown below:
 
-.. literalinclude:: ../../../../examples/conventions/asciiReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/asciiReaderExamples.py
     :linenos:
     :language: python
     :lines: 1-17
@@ -103,19 +103,19 @@ Given this information, resistics will produce a set of header files such that t
 
 The end time of the recording is automatically calculated given the start time, sampling frequency and number of samples. This information is inserted into the header files. The global header file contains the following information: 
 
-.. literalinclude:: ../../../../examples/conventions/timeData/ascii/global.hdr
+.. literalinclude:: ../../../../examples/formats/timeData/ascii/global.hdr
     :linenos:
     :language: text
 
 Channel metadata is stored in the channel header files. For example, the header file for channel |Ex| contains the following information:
 
-.. literalinclude:: ../../../../examples/conventions/timeData/ascii/chan_00.hdr
+.. literalinclude:: ../../../../examples/formats/timeData/ascii/chan_00.hdr
     :linenos:
     :language: text
 
 The data is now ready to be read in by resistics, which is achieved with the :class:`~resistics.ioHandlers.dataReaderAscii.DataReaderAscii` class. 
 
-.. literalinclude:: ../../../../examples/conventions/asciiReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/asciiReaderExamples.py
     :linenos:
     :language: python
     :lines: 19-23
@@ -129,7 +129,7 @@ The recording information can be printed to the terminal using the :meth:`~resis
 
 The next step is to read some data and plot it. Resistics does not load the data into memory until it is requested. Further, the package only reads the requested data. The full dataset can be read by using the :meth:`~resistics.ioHandlers.dataReaderAscii.DataReaderAscii.getPhysicalSamples` method. Note again that no scaling is applied anywhere for ASCII data and :meth:`~resistics.ioHandlers.dataReaderAscii.DataReaderAscii.getPhysicalSamples` will return the same result as :meth:`~resistics.ioHandlers.dataReaderAscii.DataReaderAscii.getUnscaledSamples`. Both of these return a :class:`~resistics.dataObjects.timeData.TimeData` object.
 
-.. literalinclude:: ../../../../examples/conventions/asciiReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/asciiReaderExamples.py
     :linenos:
     :language: python
     :lines: 25-34
@@ -143,7 +143,7 @@ The next step is to read some data and plot it. Resistics does not load the data
 
 Time data can be plotted by using the class :meth:`~resistics.dataObjects.timeData.TimeData.view` method. By passing a matplotlib figure to this, the layout can be controlled as required. The resulting image is:
 
-.. figure:: ../../../../examples/conventions/images/ascii.png
+.. figure:: ../../../../examples/formats/images/ascii.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -152,7 +152,7 @@ Time data can be plotted by using the class :meth:`~resistics.dataObjects.timeDa
 
 Ascii time data objects are like any other time data objects returned by the other data readers. The time data object can be written out in the internal binary format to increase reading speed and reduce storage cost. This can be done with the :class:`~resistics.ioHandlers.dataWriterInternal.DataWriterInternal` class. 
 
-.. literalinclude:: ../../../../examples/conventions/asciiReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/asciiReaderExamples.py
     :linenos:
     :language: python
     :lines: 36-42
@@ -160,13 +160,13 @@ Ascii time data objects are like any other time data objects returned by the oth
 
 This dataset will be written out with a comments file that tracks the history of the data. For this example, the comments file looks like:
 
-.. literalinclude:: ../../../../examples/conventions/timeData/asciiInternal/comments.txt
+.. literalinclude:: ../../../../examples/formats/timeData/asciiInternal/comments.txt
     :linenos:
     :language: text
 
 To validate the output against the input, the internally formatted data can be read back in using the :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class and compared to the original ASCII data.
 
-.. literalinclude:: ../../../../examples/conventions/asciiReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/asciiReaderExamples.py
     :linenos:
     :language: python
     :lines: 44-59
@@ -174,7 +174,7 @@ To validate the output against the input, the internally formatted data can be r
 
 Reading in the internal data is very similar to reading in the ASCII data. Another benefit of creating a figure and passing it through to the :meth:`~resistics.dataObjects.timeData.TimeData.view` method is that multiple datasets can be plotted on the same figure. The final data comparison figure is shown below.
 
-.. figure:: ../../../../examples/conventions/images/ascii_vs_internal.png
+.. figure:: ../../../../examples/formats/images/ascii_vs_internal.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -186,6 +186,6 @@ Complete example script
 
 For the purposes of clarity, the complete example script is shown below.
 
-.. literalinclude:: ../../../../examples/conventions/asciiReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/asciiReaderExamples.py
     :linenos:
     :language: python

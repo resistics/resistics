@@ -15,7 +15,7 @@ Interpolating to the second will change the sample times to:
 
 The easiest way to show how to do this is with a practical example. First read in some SPAM data and look at the recording information.
 
-.. literalinclude:: ../../../../examples/conventions/interpolationToSecond.py
+.. literalinclude:: ../../../../examples/formats/interpolationToSecond.py
     :linenos:
     :language: python
     :lines: 1-9
@@ -35,7 +35,7 @@ And the time data information:
 
 This dataset is sampled at 250 Hz, which equates to a sampling period of 0.004 seconds. Looking at the start time, the data starts at 00:00:00.003200. This combination of start time and sampling period will not give data sampled on the second. Resistics includes the :meth:`~resistics.utilities.utilsInterp.interpolateToSecond` for interpolating time data to the second. This method uses spline interpolation.
 
-.. literalinclude:: ../../../../examples/conventions/interpolationToSecond.py
+.. literalinclude:: ../../../../examples/formats/interpolationToSecond.py
     :linenos:
     :language: python
     :lines: 11-15
@@ -55,7 +55,7 @@ The new start time of this time data is 00:00:01.000000, which means a few sampl
 
 It is possible to now write out this dataset using the :class:`~resistics.ioHandlers.dataWriterInternal.DataWriterInternal` class. However, header information needs to be passed to this class and can be taken from the :class:`~resistics.ioHandlers.dataReader.DataReader` object. Where there is a mismatch between the headers and the time data (for example, the start time of the headers will no longer match the start time of the interpolated data), the information in the :class:`~resistics.dataObjects.timeData.TimeData` object is preferentially used.
 
-.. literalinclude:: ../../../../examples/conventions/interpolationToSecond.py
+.. literalinclude:: ../../../../examples/formats/interpolationToSecond.py
     :linenos:
     :language: python
     :lines: 17-31
@@ -63,13 +63,13 @@ It is possible to now write out this dataset using the :class:`~resistics.ioHand
 
 The comments associated with the new dataset are shown below.
 
-.. literalinclude:: ../../../../examples/conventions/timeData/spamInterp/comments.txt
+.. literalinclude:: ../../../../examples/formats/timeData/spamInterp/comments.txt
     :linenos:
     :language: text
 
 To visualise the difference between the original and interpolated data, the interpolated data can be read back in using the :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class.
 
-.. literalinclude:: ../../../../examples/conventions/interpolationToSecond.py
+.. literalinclude:: ../../../../examples/formats/interpolationToSecond.py
     :linenos:
     :language: python
     :lines: 33-38
@@ -77,7 +77,7 @@ To visualise the difference between the original and interpolated data, the inte
 
 Next, request data from both the original and new reader for a given date range so that the data overlaps.
 
-.. literalinclude:: ../../../../examples/conventions/interpolationToSecond.py
+.. literalinclude:: ../../../../examples/formats/interpolationToSecond.py
     :linenos:
     :language: python
     :lines: 40-44
@@ -85,7 +85,7 @@ Next, request data from both the original and new reader for a given date range 
 
 Finally, plot the data on the same plot using a matplotlib figure object to help out with this.
 
-.. literalinclude:: ../../../../examples/conventions/interpolationToSecond.py
+.. literalinclude:: ../../../../examples/formats/interpolationToSecond.py
     :linenos:
     :language: python
     :lines: 46-54
@@ -93,7 +93,7 @@ Finally, plot the data on the same plot using a matplotlib figure object to help
 
 The figure shows that the interpolated and original data are close, but the sample timings are different. Note again that interpolation uses a spline interpolation rather than linear interpolation. 
 
-.. figure:: ../../../../examples/conventions/images/interpolation.png
+.. figure:: ../../../../examples/formats/images/interpolation.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -105,6 +105,6 @@ Complete example script
 
 For the purposes of clarity, the complete example script is shown below.
 
-.. literalinclude:: ../../../../examples/conventions/interpolationToSecond.py
+.. literalinclude:: ../../../../examples/formats/interpolationToSecond.py
     :linenos:
     :language: python

@@ -63,17 +63,6 @@ viewTime(
     filter={"bpfilt": [1, 10]},
 )
 
-# normalise
-viewTime(
-    projData,
-    "2012-02-11 01:00:00",
-    "2012-02-11 01:02:00",
-    sites=["site1"],
-    chans=["Ex", "Hy"],
-    calibrate=True,
-    normalise=True,
-)
-
 # notch
 viewTime(
     projData,
@@ -83,6 +72,17 @@ viewTime(
     chans=["Ex", "Hy"],
     calibrate=True,
     notch=[16.6667, 50],
+)
+
+# normalise
+viewTime(
+    projData,
+    "2012-02-11 01:00:00",
+    "2012-02-11 01:02:00",
+    sites=["site1"],
+    chans=["Ex", "Hy"],
+    calibrate=True,
+    normalise=True,
 )
 
 # save with band pass filter

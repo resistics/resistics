@@ -24,16 +24,25 @@ Good references for magnetotelluric theory are:
 * Wikipedia: https://en.wikipedia.org/wiki/Magnetotellurics
 * Practical Magnetotellurics (Simpson and Bahr)
 * The Magnetotelluric Method (Chave and Jones)
+* Models and Methods of Magnetotellurics (Berdichevsky and Dmitriev)
 
-First steps with Resistics
+First steps with resistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-To install Resistics, follow the instructions in the Install section.
+To install resistics, follow the instructions in the :doc:`installation <installation>` section.
 
-The following sections detail basic and advanced features and requirements of Resistics. Resistics is a project based package, which means the first step in learning Resistics is to set up a new project and place the time data files in the appropriate location. A dataset has been made available for new starters to practice with. This includes two recordings, one at 128Hz and the other at 4096Hz. The dataset is available here:
+The following sections detail basic features and requirements of resistics. Resistics is a project based package, which means the first step in learning how to use the package is to set up a new project and place the time data files in the appropriate location. A dataset has been made available for new starters to practice with. This includes two recordings, one at 128Hz and the other at 4096Hz. The dataset is available here:
 
-Dataset link.
+`Dataset link <https://1drv.ms/f/s!ApKs8ZhVotKMavU3EpQTeEwuxoc>`_
 
-In most cases, only the API for the project functionality will be of interest. However, for even more advanced examples, have a look at the :doc:`cookbook <cookbook>` section, which will explicitly use the lower level Resistics API. 
+| **For more information about this dataset, see the paper:**
+| `3-D analysis and interpretation of magnetotelluric data from the Aluto-Langano geothermal field, Ethiopia <https://academic.oup.com/gji/article/202/3/1923/614429>`_
+| F. Samrock  A. Kuvshinov  J. Bakker  A. Jackson  S. Fisseha
+| *Geophysical Journal International, Volume 202, Issue 3, September, 2015* 
+| *Pages 1923–1948* 
+| https://doi.org/10.1093/gji/ggv270
+
+
+In most cases, only the API for the project functionality will be of interest. However, for even more advanced examples, have a look at the :doc:`advanced <advanced>` and :doc:`cookbook <cookbook>` sections, which will demonstrate more advanced processing of magnetotelluric data or usage of lower level resistics API. 
 
 .. |Ex| replace:: E\ :sub:`x`
 .. |Ey| replace:: E\ :sub:`y`

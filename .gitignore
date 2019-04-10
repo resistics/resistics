@@ -16,10 +16,13 @@ resistics.egg-info/
 # data directory
 tests/testData
 
+# cookbook
+cookbook/usingAscii/asciiProject
+
 # exampleProject
 examples/tutorial/exampleProject
 examples/tutorial/tutorialProject
 examples/advanced/advancedProject
-examples/conventions/testData
+examples/formats/timeData
 examples/seedData
 

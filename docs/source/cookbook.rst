@@ -1,4 +1,12 @@
 Cookbook
 --------
 
-The resistics cookbook is intended to demonstrate what is possible when using resistics lower-level API. Cookbook examples will be added as and when they are developed. If you have anything you would like to contribute to the cookbook, please contact us through the `GitHub repository <https://github.com/resistics/resistics>`_.
+The resistics cookbook is intended to demonstrate what is possible when using resistics lower-level API. Cookbook examples will be added as and when they are developed. If you have anything you would like to contribute to the cookbook, please contact using the information on the :doc:`Contact <contact>` page.
+
+
+.. toctree::
+    :maxdepth: 2
+    :titlesonly:
+    :glob:
+
+    cookbook/ascii-project.rst

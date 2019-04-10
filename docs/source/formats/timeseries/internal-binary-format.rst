@@ -49,13 +49,13 @@ Internal format data folders tend to look like:
 
 The global header file contains the following information:
 
-.. literalinclude:: ../../../../examples/conventions/timeData/atsInternal/global.hdr
+.. literalinclude:: ../../../../examples/formats/timeData/atsInternal/global.hdr
     :linenos:
     :language: text
 
 And channel headers have channel specific header information:
 
-.. literalinclude:: ../../../../examples/conventions/timeData/atsInternal/chan_00.hdr
+.. literalinclude:: ../../../../examples/formats/timeData/atsInternal/chan_00.hdr
     :linenos:
     :language: text
 
@@ -72,7 +72,7 @@ And channel headers have channel specific header information:
 
 Internally formatted binary data is usually written out with comments in a separate file. An example comments file for internally formatted data is given below.
 
-.. literalinclude:: ../../../../examples/conventions/timeData/atsInternal/comments.txt
+.. literalinclude:: ../../../../examples/formats/timeData/atsInternal/comments.txt
     :linenos:
     :language: text
 
@@ -80,7 +80,7 @@ The easiest method of formatting ASCII data as the internal binary format is to 
 
 The following will show how to read internally formatted binary data with numpy. To begin with, read an internally formatted dataset with the inbuilt :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class.
 
-.. literalinclude:: ../../../../examples/conventions/internalReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
     :language: python
     :lines: 1-7
@@ -94,7 +94,7 @@ The :meth:`~resistics.ioHandlers.IOHandlers.printInfo` method shows information 
 
 The :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class does not automatically load the data into memory. Data has to be requested, which can be done using the :meth:`~resistics.ioHandlers.dataReader.DataReader.getPhysicalSamples` or :meth:`~resistics.ioHandlers.dataReader.DataReader.getUnscaledSamples` methods if all the data is required or only a sample range. To request data using dates, the :meth:`~resistics.ioHandlers.dataReader.DataReader.getPhysicalData` or :meth:`~resistics.ioHandlers.dataReader.DataReader.getUnscaledData` methods should be used. All of these return a :class:`~resistics.dataObjects.timeData.TimeData` object. In this case, a range of samples are requested and then information about the timeseries data is printed out to the terminal.
 
-.. literalinclude:: ../../../../examples/conventions/internalReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
     :language: python
     :lines: 9-11
@@ -106,13 +106,13 @@ The :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class d
 
 The data can be plotted by using the :meth:`~resistics.dataObjects.timeData.TimeData.view` method of :class:`~resistics.dataObjects.timeData.TimeData`. By passing a matplotlib figure, the layout of the plot can be further controlled. 
 
-.. literalinclude:: ../../../../examples/conventions/internalReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
     :language: python
     :lines: 13-20
     :lineno-start: 13
 
-.. figure:: ../../../../examples/conventions/images/internalData.png
+.. figure:: ../../../../examples/formats/images/internalData.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -121,7 +121,7 @@ The data can be plotted by using the :meth:`~resistics.dataObjects.timeData.Time
 
 To show how the internal data format can be read using numpy, first create a map between channels and the channel data files. The map is simply a Python dictionary.
 
-.. literalinclude:: ../../../../examples/conventions/internalReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
     :language: python
     :lines: 22-26
@@ -129,7 +129,7 @@ To show how the internal data format can be read using numpy, first create a map
 
 To read in channel |Ex|, all that is required is to use the numpy fromfile method and the filename along with a specification of the data type, which is np.float32 for data in field units.
 
-.. literalinclude:: ../../../../examples/conventions/internalReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
     :language: python
     :lines: 28-32
@@ -137,13 +137,13 @@ To read in channel |Ex|, all that is required is to use the numpy fromfile metho
 
 This method can be compared to the :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class by plotting the two on the same plot. Matplotlib can help out with this. 
 
-.. literalinclude:: ../../../../examples/conventions/internalReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
     :language: python
     :lines: 34-40
     :lineno-start: 34
 
-.. figure:: ../../../../examples/conventions/images/internalData_vs_npLoad.png
+.. figure:: ../../../../examples/formats/images/internalData_vs_npLoad.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -152,7 +152,7 @@ This method can be compared to the :class:`~resistics.ioHandlers.dataReaderInter
 
 As can be seen in the image, there is a shift between the two methods. This is because the get data methods of the various :class:`~resistics.ioHandlers.dataReader.DataReader` classes return data minus the average value of the data. This can be optionally turned off as in the example below.
 
-.. literalinclude:: ../../../../examples/conventions/internalReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
     :language: python
     :lines: 43-54
@@ -160,7 +160,7 @@ As can be seen in the image, there is a shift between the two methods. This is b
 
 Replotting the data now shows that the two are comparable.
 
-.. figure:: ../../../../examples/conventions/images/internalDataWithAvg_vs_npLoad.png
+.. figure:: ../../../../examples/formats/images/internalDataWithAvg_vs_npLoad.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -172,6 +172,6 @@ Complete example script
 
 For the purposes of clarity, the complete example script is shown below.
 
-.. literalinclude:: ../../../../examples/conventions/internalReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
     :language: python

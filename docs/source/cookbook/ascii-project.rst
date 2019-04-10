@@ -12,7 +12,7 @@
 .. |Zyy| replace:: Z\ :sub:`yy`
 .. |fs| replace:: f\ :sub:`s`
 
-Pre-processing timeseries data
-------------------------------
+Processing ASCII data
+---------------------
 
 Coming soon...

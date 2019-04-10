@@ -15,12 +15,12 @@
 Viewing timeseries data
 ------------------------
 
-After time data files are in place, they can be visualised. Begin by loading the project and then using the methods in the :doc:`projectTime <../api/project.projectTime>` module.
+After time data files are in place, they can be visualised. Begin by loading the project and then using the methods in the :mod:`~resistics.project.projectTime` module.
 
 .. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
-    :lines: 1-11
+    :lines: 1-12
     :lineno-start: 1
 
 This produces the below plot:
@@ -37,8 +37,8 @@ By default, channels |Ex|, |Ey|, |Hx|, |Hy|, |Hz| are all plotted. However, the 
 .. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
-    :lines: 13-20
-    :lineno-start: 13
+    :lines: 14-21
+    :lineno-start: 14
 
 .. figure:: ../_images/projectViewTime_2.png
     :align: center
@@ -52,8 +52,8 @@ There are a number of pre-processing options that can be optionally applied to t
 .. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
-    :lines: 22-30
-    :lineno-start: 22
+    :lines: 23-31
+    :lineno-start: 23
 
 .. figure:: ../_images/projectViewTime_3.png
     :align: center
@@ -67,8 +67,8 @@ Low pass filters can be applied to the data as shown below:
 .. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
-    :lines: 32-41
-    :lineno-start: 32
+    :lines: 33-42
+    :lineno-start: 33
 
 .. figure:: ../_images/projectViewTime_4.png
     :align: center
@@ -79,13 +79,19 @@ Low pass filters can be applied to the data as shown below:
 
 High pass, band pass and notch filters can also be applied to the data in a similar fashion. 
 
+.. literalinclude:: ../../../examples/tutorial/viewTime.py
+    :linenos:
+    :language: python
+    :lines: 44-75
+    :lineno-start: 44
+
 Resistics can automatically save plots as images in the project images directory. When batching, it can often be useful to not show the plots (which tend to block the progress of the code) but rather save the plot without showing it. This can be achieved in the following way:
 
 .. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
-    :lines: 87-98
-    :lineno-start: 87
+    :lines: 88-99
+    :lineno-start: 88
 
 .. figure:: ../_images/projectViewTime_5.png
     :align: center
@@ -94,5 +100,13 @@ Resistics can automatically save plots as images in the project images directory
 
     Example of a plot saved as an image
 
+Complete example scripts
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+For clarity, the complete example scripts are provided here.
+
+.. literalinclude:: ../../../examples/tutorial/viewTime.py
+    :linenos:
+    :language: python
 
 

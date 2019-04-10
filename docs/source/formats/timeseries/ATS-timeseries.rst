@@ -43,7 +43,7 @@ ATS format is a one of the more straight-forward formats to support. Header file
 
 ATS files are opened in resistics using the :class:`~resistics.ioHandlers.dataReaderATS.DataReaderATS` class. An example is provided below:
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
     :language: python
     :lines: 1-7
@@ -59,7 +59,7 @@ This shows the headers read in by resistics and their values. There are both glo
 
 Resistics does not immediately load timeseries data into memory. In order to read the data from the files, it needs to be requested.
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
     :language: python
     :lines: 9-13
@@ -69,13 +69,13 @@ Resistics does not immediately load timeseries data into memory. In order to rea
 
 After reading in some data, it is natural to view it. :class:`~resistics.dataObjects.timeData.TimeData` can be viewed using the :meth:`~resistics.dataObjects.timeData.TimeData.view` method of the class. Passing a matplotlib figure object to this method allows for more control over the layout of the plot.
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
     :language: python
     :lines: 15-22
     :lineno-start: 15
 
-.. figure:: ../../../../examples/conventions/images/ats_unscaledData.png
+.. figure:: ../../../../examples/formats/images/ats_unscaledData.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -84,13 +84,13 @@ After reading in some data, it is natural to view it. :class:`~resistics.dataObj
 
 Physical data, which is converted to field units, can be returned by using the :meth:`~resistics.ioHandlers.dataReader.DataReader.getPhysicalData` method. If physical data for the whole recording is required, an alternative is to use :meth:`~resistics.ioHandlers.dataReader.DataReader.getPhysicalSamples`, which does not require specification of a start and end time.
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
     :language: python
     :lines: 24-31
     :lineno-start: 24
 
-.. figure:: ../../../../examples/conventions/images/ats_physicalData.png
+.. figure:: ../../../../examples/formats/images/ats_physicalData.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -99,13 +99,13 @@ Physical data, which is converted to field units, can be returned by using the :
 
 There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`~resistics.utilities`. In the example below, the time data is low pass filtered at 4Hz to remove any powerline or rail noise that might be in the data.
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
     :language: python
     :lines: 33-41
     :lineno-start: 33
 
-.. figure:: ../../../../examples/conventions/images/ats_filteredData.png
+.. figure:: ../../../../examples/formats/images/ats_filteredData.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -114,7 +114,7 @@ There are a few helpful methods built in to resistics for manipulating timeserie
 
 Resistics supports the writing out of data in an :doc:`internal <internal-binary-format>` format. An examples of converting a whole dataset from ATS format to internal format is shown below.
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
     :language: python
     :lines: 43-49
@@ -128,19 +128,19 @@ In nearly every case, it is best to write out data in physical format. When this
 
 Writing out an internally formatted dataset will additionally write out a set of comments. These comments keep track of what has been done to the timeseries data and are there to improve repoducibility and traceability. Read more about comments :doc:`here <../../features/comments>`. The comments for this internally formatted dataset are:
 
-.. literalinclude:: ../../../../examples/conventions/timeData/atsInternal/comments.txt
+.. literalinclude:: ../../../../examples/formats/timeData/atsInternal/comments.txt
     :linenos:
     :language: text
 
 The internal format data can be read in and visually compared to the original data.
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
     :language: python
     :lines: 51-66
     :lineno-start: 51
 
-.. figure:: ../../../../examples/conventions/images/ats_vs_internal.png
+.. figure:: ../../../../examples/formats/images/ats_vs_internal.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -149,7 +149,7 @@ The internal format data can be read in and visually compared to the original da
 
 Additionally, resistics can write out data in ASCII format, which allows users to view the data values, plot them in other software or otherwise transport the data for external analysis. 
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
     :language: python
     :lines: 68-74
@@ -157,19 +157,19 @@ Additionally, resistics can write out data in ASCII format, which allows users t
 
 Again, this dataset is written out with a set of comments. 
 
-.. literalinclude:: ../../../../examples/conventions/timeData/atsAscii/comments.txt
+.. literalinclude:: ../../../../examples/formats/timeData/atsAscii/comments.txt
     :linenos:
     :language: text
 
 The same exercise of reading back the ascii data and comparing it to the original can be done. The procedure is as below:
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
     :language: python
     :lines: 76-93
     :lineno-start: 76
 
-.. figure:: ../../../../examples/conventions/images/ats_vs_ascii.png
+.. figure:: ../../../../examples/formats/images/ats_vs_ascii.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -181,6 +181,6 @@ Complete example script
 
 For the purposes of clarity, the complete example script is shown below.
 
-.. literalinclude:: ../../../../examples/conventions/atsReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
     :language: python

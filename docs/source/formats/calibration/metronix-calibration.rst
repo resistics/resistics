@@ -60,7 +60,7 @@ Example
 
 The class :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` can be used to read in Metronix calibration files. 
 
-.. literalinclude:: ../../../../examples/conventions/calibrationMetronixExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationMetronixExample.py
     :linenos:
     :language: python
     :lines: 1-9
@@ -78,13 +78,13 @@ Notice that the sensor information is blank. This is because Metronix files do n
 
 Once the calibration data file is read in, the calibration curve can be viewed by using the :meth:`~resistics.dataObjects.calibrationData.CalibrationData.view` method of :class:`~resistics.dataObjects.calibrationData.CalibrationData`. By passing a matplotlib figure to this, the layout of the plot can be controlled.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationMetronixExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationMetronixExample.py
     :linenos:
     :language: python
     :lines: 11-18
     :lineno-start: 11
 
-.. figure:: ../../../../examples/conventions/images/calibrationMetronixChopperOff.png
+.. figure:: ../../../../examples/formats/images/calibrationMetronixChopperOff.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -93,7 +93,7 @@ Once the calibration data file is read in, the calibration curve can be viewed b
 
 The same calibration file can be read again, but this time with extension of the data too. The parameters of :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` can be reset by using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.refresh` method.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationMetronixExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationMetronixExample.py
     :linenos:
     :language: python
     :lines: 20-23
@@ -101,7 +101,7 @@ The same calibration file can be read again, but this time with extension of the
 
 Now the extended calibration data can be plotted against the original, unextended version.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationMetronixExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationMetronixExample.py
     :linenos:
     :language: python
     :lines: 25-31
@@ -109,7 +109,7 @@ Now the extended calibration data can be plotted against the original, unextende
 
 Giving the possibly unexpected plot below.
 
-.. figure:: ../../../../examples/conventions/images/calibrationMetronixExtend.png
+.. figure:: ../../../../examples/formats/images/calibrationMetronixExtend.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -122,7 +122,7 @@ Giving the possibly unexpected plot below.
 
 The chopper on data in the Metronix calibration file can be read by specifying :python:`chopper=True` to :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` as shown below.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationMetronixExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationMetronixExample.py
     :linenos:
     :language: python
     :lines: 33-44
@@ -130,7 +130,7 @@ The chopper on data in the Metronix calibration file can be read by specifying :
 
 And the the chopper on data can be compared to the chopper off data in much the same way as the above comparison with the extended data. The comparison is shown in the following plot.
 
-.. figure:: ../../../../examples/conventions/images/calibrationMetronixChopperOn.png
+.. figure:: ../../../../examples/formats/images/calibrationMetronixChopperOn.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -139,7 +139,7 @@ And the the chopper on data can be compared to the chopper off data in much the 
 
 Finally, calibration data can be written out in a simple ASCII format. 
 
-.. literalinclude:: ../../../../examples/conventions/calibrationMetronixExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationMetronixExample.py
     :linenos:
     :language: python
     :lines: 46-47
@@ -147,7 +147,7 @@ Finally, calibration data can be written out in a simple ASCII format.
 
 Giving the file below:
 
-.. literalinclude:: ../../../../examples/conventions/calData/metronix2ascii.TXT
+.. literalinclude:: ../../../../examples/formats/calData/metronix2ascii.TXT
     :linenos:
     :language: text
 
@@ -165,13 +165,13 @@ Complete example script
 
 For the purposes of clarity, the example script in full.
 
-.. literalinclude:: ../../../../examples/conventions/calibrationMetronixExample.py
+.. literalinclude:: ../../../../examples/formats/calibrationMetronixExample.py
     :linenos:
     :language: python
 
 The calibration file the script is reading.
 
-.. literalinclude:: ../../../../examples/conventions/calData/Hx_MFS06365.txt
+.. literalinclude:: ../../../../examples/formats/calData/Hx_MFS06365.txt
     :linenos:
     :language: text
 

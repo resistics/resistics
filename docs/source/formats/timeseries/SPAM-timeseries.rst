@@ -63,7 +63,7 @@ as long as together, the recordings are continuous and without gaps.
 
 SPAM recordings are opened in resistics using the :class:`~resistics.ioHandlers.dataReaderSpam.DataReaderSPAM` class. An example is provided below:
 
-.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/spamReaderExamples.py
     :linenos:
     :language: python
     :lines: 1-7
@@ -79,7 +79,7 @@ This shows the headers read in by resistics and their values. There are both glo
 
 Resistics does not immediately load timeseries data into memory. In order to read the data from the files, it needs to be requested.
 
-.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/spamReaderExamples.py
     :linenos:
     :language: python
     :lines: 9-20
@@ -99,7 +99,7 @@ After reading in some data, it is natural to view it. Time data can be viewed us
 
 plots can be formatted in more detail. In this case, the figure size and layout is being set external of the view method.
 
-.. figure:: ../../../../examples/conventions/images/spam.png
+.. figure:: ../../../../examples/formats/images/spam.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -108,7 +108,7 @@ plots can be formatted in more detail. In this case, the figure size and layout 
 
 SPAM data can be converted to the internal data format using the :class:`~resistics.ioHandlers.dataWriterInternal.DataWriterInternal`. In nearly all cases, it is better to write out physical data.
 
-.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/spamReaderExamples.py
     :linenos:
     :language: python
     :lines: 22-28
@@ -120,19 +120,19 @@ SPAM data can be converted to the internal data format using the :class:`~resist
 
 Writing out an internally formatted dataset will additionally write out a set of comments. These comments keep track of what has been done to the timeseries data and are there to improve repoducibility and traceability. Read more about comments :doc:`here <../../features/comments>`. The comments for this internally formatted dataset are:
 
-.. literalinclude:: ../../../../examples/conventions/timeData/spamInternal/comments.txt
+.. literalinclude:: ../../../../examples/formats/timeData/spamInternal/comments.txt
     :linenos:
     :language: text
 
 The internal format data can be read in and compared to the original data.
 
-.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/spamReaderExamples.py
     :linenos:
     :language: python
     :lines: 30-45
     :lineno-start: 30
 
-.. figure:: ../../../../examples/conventions/images/spam_vs_internal.png
+.. figure:: ../../../../examples/formats/images/spam_vs_internal.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -141,7 +141,7 @@ The internal format data can be read in and compared to the original data.
 
 There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`~resistics.utilities`. In the example below, the time data is band pass filtered between 0.2 Hz and 16 Hz.
 
-.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/spamReaderExamples.py
     :linenos:
     :language: python
     :lines: 47-51
@@ -167,7 +167,7 @@ which writes out a whole dataset given a DataReader object, use
 
 to write out a TimeData object directly. Header information needs to be explicitly passed to this function. For more information, see the example below and :class:`~resistics.ioHandlers.dataWriter.DataWriter>`. In the below example, the filtered time data is written out.
 
-.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/spamReaderExamples.py
     :linenos:
     :language: python
     :lines: 53-57
@@ -175,13 +175,13 @@ to write out a TimeData object directly. Header information needs to be explicit
 
 Opening the comments file for the newly written dataset, it can be seen that a line has been added which records the application of a filter to the dataset.
 
-.. literalinclude:: ../../../../examples/conventions/timeData/spamInternalFiltered/comments.txt
+.. literalinclude:: ../../../../examples/formats/timeData/spamInternalFiltered/comments.txt
     :linenos:
     :language: text
 
 Finally, to check everything is fine with the new dataset, the internal formatted  filtered dataset can be read in and the data compared to the original filtered time data.
 
-.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/spamReaderExamples.py
     :linenos:
     :language: python
     :lines: 59-76
@@ -189,7 +189,7 @@ Finally, to check everything is fine with the new dataset, the internal formatte
 
 Plotting the two time data objects on the same plot results in the image below. 
 
-.. figure:: ../../../../examples/conventions/images/spam_vs_internal_filtered.png
+.. figure:: ../../../../examples/formats/images/spam_vs_internal_filtered.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -201,6 +201,6 @@ Complete example script
 
 For the purposes of clarity, the complete example script is shown below.
 
-.. literalinclude:: ../../../../examples/conventions/spamReaderExamples.py
+.. literalinclude:: ../../../../examples/formats/spamReaderExamples.py
     :linenos:
     :language: python

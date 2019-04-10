@@ -1,5 +1,8 @@
 import setuptools
 
+# options
+ver = "0.0.5.dev2"
+
 # See note below for more information about classifiers
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -21,7 +24,7 @@ dependencies = ["numpy", "scipy", "pyfftw", "matplotlib", "configobj"]
 
 setuptools.setup(
     name="resistics",
-    version="0.0.5.dev1",
+    version=ver,
     description="Robust magnetotelluric processing package",
     long_description=long_description,
     long_description_content_type="text/markdown",

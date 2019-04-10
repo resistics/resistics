@@ -38,3 +38,13 @@ Resistics supports the calculation of multiple spectra for each data folder. Thi
     ├── transFuncData 
     ├── images
     └── mtProj.prj
+
+
+Complete example script
+~~~~~~~~~~~~~~~~~~~~~~~
+
+For the purposes of clarity, the complete example script is provided below.
+
+.. literalinclude:: ../../../examples/tutorial/multipleSpectra.py
+    :linenos:
+    :language: python

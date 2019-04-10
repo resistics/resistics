@@ -20,7 +20,7 @@ Resistics is a native Python 3 package for the processing of magnetotelluric (MT
 
 About
 ~~~~~
-Resistics began as a set of python classes to help analyse noisy MT timeseries data acquired in northern Switzerland through increased use of statistics and time window based features. Since then, it has grown into a MT data processing package. The name is an amalgamation of resistivty and statistics...resistics!
+Resistics began as a set of Python classes to help analyse noisy MT timeseries data acquired in northern Switzerland through increased use of statistics and time window based features. Since then, it has grown into a MT data processing package. The name is an amalgamation of resistivty and statistics...resistics!
 
 Audience
 ~~~~~~~~
@@ -57,7 +57,8 @@ Resistics is available for free under the MIT licence. The resistics source code
     introduction.rst
     installation.rst
     features.rst
-    conventions.rst    
+    conventions.rst 
+    formats.rst   
     tutorial.rst
     advanced.rst
     cookbook.rst

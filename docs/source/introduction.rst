@@ -20,11 +20,12 @@ Magnetotellurics (MT) is a passive geophysical method for estimating the electri
 
 In the field, electrodes are used to measure potential difference variations  in the x direction (|Ex|) and y direction (|Ey|). Induction coils measure variations of the geomagnetic field in the x, y and z directions (|Hx|, |Hy| and |Hz| respectively). Commonly, x represents East-West and y represents North-South, though only orthongonality is really required. 
 
-For more information, see the following references:
+For more information, see the following references or have a look in the bibliography:
 
 * Wikipedia: https://en.wikipedia.org/wiki/Magnetotellurics
 * Practical Magnetotellurics (Simpson and Bahr)
 * The Magnetotelluric Method (Chave and Jones)
+* Models and Methods of Magnetotellurics (Berdichevsky and Dmitriev)
 
 Resistics
 ~~~~~~~~~

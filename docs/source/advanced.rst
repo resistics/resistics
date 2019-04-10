@@ -26,3 +26,4 @@ This section introduces some of the more advanced features of Resistics includin
     advanced/remote-reference.rst
     advanced/remote-reference-statistics.rst
     advanced/remote-reference-masking.rst
+    advanced/intersite-transfer-function.rst

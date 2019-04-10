@@ -15,14 +15,14 @@
 Up and running
 --------------
 
-Resistics can quickly run projects with default settings by using the :doc:`Project API <../api/project>`. Default configuration options are detailed in :doc:`Configuration Parameters <../features/configuration/parameters>` section.
+Resistics can quickly run projects with default settings by using the :mod:`~resistics.project` API. Default configuration options are detailed in :doc:`Configuration Parameters <../features/configuration/parameters>` section.
 
-Begin by loading the project and calculating spectra.
+Begin by loading the project and calculating spectra. Spectra can be batch calculated using the :meth:`~resistics.project.projectSpectra.calculateSpectra` method in :mod:`~resistics.project.projecSpectra`. The are several options for calculating spectra, which are detailed in the API documentation.
 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 1-11
+    :lines: 1-12
     :lineno-start: 1
 
 Spectra data files are stored in project specData directory. The folder structure is similar to the timeData folder
@@ -58,11 +58,13 @@ Spectra data files are stored in project specData directory. The folder structur
 
 By default spectra are stored in a folder called spectra under the dataFolder. The reason for this will become clearer in the section covering :doc:`multiple spectra <multiple-spectra>`.
 
+The next step is to process the spectra to estimate the impedance tensor. This is done using the :meth:`~resistics.project.projectTransferFunction.processProject` method in :mod:`~resistics.project.projectTransferFunction`. 
+
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 13-16
-    :lineno-start: 13
+    :lines: 14-18
+    :lineno-start: 14
 
 Transfer function data is stored under the transFuncData folder as shown below. As transfer functions are calculated out for each unique sampling frequency in a site, the data is stored with respect to sampling frequencies. 
 
@@ -98,19 +100,21 @@ Transfer function data is stored under the transFuncData folder as shown below. 
     ├── images
     └── mtProj.prj
 
-Transfer functions are saved in an internal format. This is a minimal format currently and could possibly be amended in the future.
+Transfer functions are saved in an internal format. This is a minimal format currently and could possibly be amended in the future. An example transfer function data file is given below.
 
+.. literalinclude:: ../../../examples/tutorial/tutorialProject/transFuncData/site1/128_000/site1_fs128_000_spectra
+    :linenos:
+    :language: text
 
---- Example transfer function data format
+The reason to use this rather than EDI for now is an intention to build this out further to include more information about uncertainty that can be taken further into an inversion process.
 
-
-Once the components of the impedance tensor have been calculated, it is possible to visualise them using the methods available in the :doc:`projectTransferFunction <../api/project.projectTransferFunction>` module.
+Once the components of the impedance tensor have been calculated, it is possible to visualise them using the :meth:`~resistics.project.projectTransferFunction.viewTransferFunction` method available in the :mod:`~resistics.project.projectTransferFunction` module.
 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 18-20
-    :lineno-start: 18
+    :lines: 20-23
+    :lineno-start: 20
 
 .. figure:: ../_images/transFunction_simpleRun_onePlot.png
     :align: center
@@ -125,8 +129,8 @@ However, this plot is quite busy. One way to simplify the plot is to explicitly 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 22-23
-    :lineno-start: 22
+    :lines: 25-28
+    :lineno-start: 25
 
 .. figure:: ../_images/transFunction_simpleRun_onePlot_polarisations.png
     :align: center
@@ -141,8 +145,8 @@ On occasion, it can be more useful to plot each component separately. This can b
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 25-26
-    :lineno-start: 25
+    :lines: 30-31
+    :lineno-start: 30
 
 This results in the following plot.
 
@@ -152,3 +156,13 @@ This results in the following plot.
     :figclass: align-center
 
     Polarisations of impedance tensor plotted on separate plots
+
+
+Complete example script
+~~~~~~~~~~~~~~~~~~~~~~~
+
+For clarity, the complete example script is provided below.
+
+.. literalinclude:: ../../../examples/tutorial/simpleRun.py
+    :linenos:
+    :language: python

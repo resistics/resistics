@@ -78,7 +78,21 @@ Each spectra file that is calculated is written out with a set of comments. The 
     Spectra data written out to exampleProject\specData\site1\meas_2012-02-10_11-05-00\spectra on 2019-03-03 19:33:27.595114
     ---------------------------------------------------
 
-There are a number of methods in :doc:`projectSpectra <../api/project.projectSpectra>` that can be used to visualise spectra.
+There are a few methods in :mod:`~resistics.project.projectSpectra` that can be used to visualise spectra. These are:
+
+- View raw spectra data for time windows
+- View spectra sections - an image of spectras calculated over the period of recording
+- View spectra periodograms
+
+To begin looking at spectra, load the project in the standard way.
+
+.. literalinclude:: ../../../examples/tutorial/viewSpectra.py
+    :linenos:
+    :language: python
+    :lines: 1-6
+    :lineno-start: 1
+
+
 
 .. figure:: ../_images/spectraData_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
     :align: center
@@ -118,3 +132,12 @@ For the 128Hz data
 
     Plot of the tipper result when |Hz| is set as the only output channel
 
+
+Complete example script
+~~~~~~~~~~~~~~~~~~~~~~~
+
+For the purposes of clarity, the complete example script is provided below.
+
+.. literalinclude:: ../../../examples/tutorial/viewSpectra.py
+    :linenos:
+    :language: python
