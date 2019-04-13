@@ -258,7 +258,7 @@ def viewSpectra(projData: ProjectData, site: str, meas: str, **kwargs) -> plt.fi
     declevel : int, optional
         Decimation level to plot
     plotwindow : int, str, Dict, optional
-        Windows to plot (local). If int, the window with local window plotwindow will be plotted. If string and "all", all the windows will be plotted if there are less than 20 windows, otherwise 20 windows throughout the whole spectra dataset will be splotted. If a dictionary, needs to have start and stop to define a range.
+        Windows to plot (local). If int, the window with local index plotwindow will be plotted. If string and "all", all the windows will be plotted if there are less than 20 windows, otherwise 20 windows throughout the whole spectra dataset will be plotted. If a dictionary, needs to have start and stop to define a range.
     specdir : str, optional
         String that specifies spectra directory for the measurement
     show : bool, optional
@@ -348,7 +348,7 @@ def viewSpectra(projData: ProjectData, site: str, meas: str, **kwargs) -> plt.fi
     # fig legend and formatting
     ax = plt.gca()
     h, l = ax.get_legend_handles_labels()
-    fig.legend(h, l, ncol=numChans, loc="lower center", fontsize=plotfonts["legend"])
+    fig.legend(h, l, ncol=3, loc="lower center", fontsize=plotfonts["legend"])
     fig.tight_layout()
     fig.subplots_adjust(top=0.92)
     fig.subplots_adjust(bottom=0.08 + 0.03 * len(windows) / numChans)

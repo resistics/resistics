@@ -239,8 +239,9 @@ class SpectrumData(DataObject):
         st.set_y(0.98)
         # now plot the data
         dataChans = kwargs["chans"] if "chans" in kwargs else self.chans
+        numPlotChans = len(dataChans)
         for idx, chan in enumerate(dataChans):
-            ax = plt.subplot(self.numChans, 1, idx + 1)
+            ax = plt.subplot(numPlotChans, 1, idx + 1)
             plt.title("Channel {}".format(chan), fontsize=plotFonts["title"])
             # plot the data
             if "label" in kwargs:
@@ -248,7 +249,7 @@ class SpectrumData(DataObject):
             else:
                 plt.plot(f, np.absolute(self.data[chan]))
             # add frequency label
-            if idx == self.numChans - 1:
+            if idx == numPlotChans - 1:
                 plt.xlabel("Frequency [Hz]", fontsize=plotFonts["axisLabel"])
             # x axis options
             xlim = kwargs["xlim"] if "xlim" in kwargs else [f[0], f[-1]]
