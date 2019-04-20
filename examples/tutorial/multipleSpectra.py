@@ -1,11 +1,6 @@
 import os
 from resistics.project.projectIO import loadProject
-from resistics.project.projectTransferFunction import (
-    processProject,
-    viewTransferFunction,
-)
 
-# need the project path for loading
 projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath)
 
@@ -35,10 +30,11 @@ from resistics.project.projectTransferFunction import processProject
 
 processProject(projData, sites=["site1"], specdir="notch")
 projData.refresh()
-# plot the transfer functions, again with specifying the relevant specdir
-from resistics.project.projectTransferFunction import viewTransferFunction
 
-viewTransferFunction(
+# plot the transfer functions, again with specifying the relevant specdir
+from resistics.project.projectTransferFunction import viewImpedance
+
+viewImpedance(
     projData,
     sites=["site1"],
     sampleFreqs=[128],
@@ -47,7 +43,7 @@ viewTransferFunction(
     save=True,
 )
 # and compare to the original
-viewTransferFunction(
+viewImpedance(
     projData,
     sites=["site1"],
     sampleFreqs=[128],

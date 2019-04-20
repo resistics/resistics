@@ -19,9 +19,9 @@ from resistics.project.projectTransferFunction import viewTipper
 viewTipper(projData, sites=["site1"], postpend="with_Hz", save=True)
 
 # plot the transfer function
-from resistics.project.projectTransferFunction import viewTransferFunction
+from resistics.project.projectTransferFunction import viewImpedance
 
-viewTransferFunction(
+viewImpedance(
     projData,
     sites=["site1"],
     polarisations=["ExHy", "EyHx"],
