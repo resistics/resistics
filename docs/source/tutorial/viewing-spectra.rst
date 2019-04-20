@@ -48,35 +48,9 @@ Spectra data is stored in the following locations.
 
 Each spectra file that is calculated is written out with a set of comments. The comment file is a text file that can be opened in any text editor and records the various parameters used when calculating out spectra. An example is given below.
 
-.. code-block:: text
-
-    Unscaled data 2012-02-10 11:05:00 to 2012-02-10 11:24:59.999756 read in from measurement exampleProject\timeData\site1\meas_2012-02-10_11-05-00, samples 0 to 4915199
-    Sampling frequency 4096.0
-    Removing gain and scaling electric channels to mV/km
-    Remove zeros: False, remove nans: False, remove average: True
-    ---------------------------------------------------
-    Calculating project spectra
-    Using default configuration
-    Channel Ex not calibrated
-    Channel Ey not calibrated
-    Channel Hx calibrated with calibration data from file exampleProject\calData\Hx_MFS06365.TXT
-    Channel Hy calibrated with calibration data from file exampleProject\calData\Hy_MFS06357.TXT
-    Channel Hz calibrated with calibration data from file exampleProject\calData\Hz_MFS06307.TXT
-    Decimating with 7 levels and 7 frequencies per level
-    Evaluation frequencies for this level 1024.0, 724.0773439350246, 512.0, 362.0386719675123, 256.0, 181.01933598375615, 128.0
-    Windowing with window size 2048 samples and overlap 512 samples
-    Time data decimated from 4096.0 Hz to 512.0 Hz, new start time 2012-02-10 11:05:00, new end time 2012-02-10 11:24:59.998047
-    Evaluation frequencies for this level 90.50966799187808, 64.0, 45.25483399593904, 32.0, 22.62741699796952, 16.0, 11.31370849898476
-    Windowing with window size 512 samples and overlap 128 samples
-    Time data decimated from 512.0 Hz to 64.0 Hz, new start time 2012-02-10 11:05:00, new end time 2012-02-10 11:24:59.984375
-    Evaluation frequencies for this level 8.0, 5.65685424949238, 4.0, 2.82842712474619, 2.0, 1.414213562373095, 1.0
-    Windowing with window size 512 samples and overlap 128 samples
-    Time data decimated from 64.0 Hz to 8.0 Hz, new start time 2012-02-10 11:05:00, new end time 2012-02-10 11:24:59.875000
-    Time data decimated from 8.0 Hz to 4.0 Hz, new start time 2012-02-10 11:05:00, new end time 2012-02-10 11:24:59.750000
-    Evaluation frequencies for this level 0.7071067811865475, 0.5, 0.35355339059327373, 0.25, 0.17677669529663687, 0.125, 0.08838834764831843
-    Windowing with window size 512 samples and overlap 128 samples
-    Spectra data written out to exampleProject\specData\site1\meas_2012-02-10_11-05-00\spectra on 2019-03-03 19:33:27.595114
-    ---------------------------------------------------
+.. literalinclude:: ../../../examples/tutorial/tutorialProject/specData/site1/meas_2012-02-10_11-30-00/spectra/comments.txt
+    :linenos:
+    :language: text
 
 There are a few methods in :mod:`~resistics.project.projectSpectra` that can be used to visualise spectra. These are:
 
@@ -92,46 +66,139 @@ To begin looking at spectra, load the project in the standard way.
     :lines: 1-6
     :lineno-start: 1
 
+The fourier spectra can be viewed using the :meth:`~resistics.project.projectSpectra.viewSpectra` method, which takes a site and measurement as arguments. 
 
+.. literalinclude:: ../../../examples/tutorial/viewSpectra.py
+    :linenos:
+    :language: python
+    :lines: 8-17
+    :lineno-start: 8
 
-.. figure:: ../_images/spectraData_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
+This gives the following output: 
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Plot of the tipper result when |Hz| is set as the only output channel
+    Plot of the first time window spectrum
 
-.. figure:: ../_images/spectraSection_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
+Plotting options can be defined using the :python:`plotoptions` keyword for :meth:`~resistics.project.projectSpectra.viewSpectra`. This needs to be a dictionary defining layout options (limits etc). There are some built-in plot options for different types of plots. In the below example, :meth:`~resistics.utilities.utilsPlotter.plotOptionsSpec` returns a dictionary of standard plot options for spectra. Further, :meth:`~resistics.utilities.utilsPlotter.getPaperFonts` returns a dictionary of font sizes to use for the plot targetted at papers. 
+
+.. literalinclude:: ../../../examples/tutorial/viewSpectra.py
+    :linenos:
+    :language: python
+    :lines: 19-23
+    :lineno-start: 19
+
+The plot options dictionary looks like this:
+
+.. code-block:: text
+
+    {'figsize': (20, 12), 'plotfonts': {'suptitle': 18, 'title': 17, 'axisLabel': 16, 'axisTicks': 15, 'legend': 15}, 'block': True, 'amplim': []}
+
+Now plotting the spectra again with the new plot options gives the same plot but with bigger font sizes which might be useful for an academic paper. 
+
+.. literalinclude:: ../../../examples/tutorial/viewSpectra.py
+    :linenos:
+    :language: python
+    :lines: 25-33
+    :lineno-start: 25
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.1.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Plot of the tipper result when |Hz| is set as the only output channel
+    Plot of the first time window spectrum using a different set of plot options
 
-.. figure:: ../_images/spectraStack_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
+Currently, this is only plotting the spectrum of the first time window. To explore variation, more than a single time window can be plotted. This is achieved using the :python:`plotwindow` keyword. The plotwindow keyword can be:
+
+- An integer which is the local index of the time window (local index means referenced to the start time of the time series)
+- "all", which will plot 20 windows across the duration of the whole measurement
+- A dictionary with a start and stop, i.e. {start: 30, stop:40}, which will then define the range 30, 31, 32, 33, 34, 35, 36, 37, 38, 39 and 40
+
+In the below example, :python:`plotwindow = "all"` which means that 20 windows across the time series measurement will be plotted. 
+
+.. literalinclude:: ../../../examples/tutorial/viewSpectra.py
+    :linenos:
+    :language: python
+    :lines: 35-45
+    :lineno-start: 35
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Plot of the tipper result when |Hz| is set as the only output channel
+    Plot of multiple window spectra
 
+Another useful way to inspect the variation of spectra across the time series measurement is to plot a spectra section using the :meth:`~resistics.project.projectSpectra.viewSpectraSection` method of :mod:`~resistics.project.projectSpectra`. This is a 2-D image of the spectra with time across the x-axis and frequency across the y-axis with colour representing the amplitude. An example of plotting a spectra section and the image is shown below.
 
-For the 128Hz data
+.. literalinclude:: ../../../examples/tutorial/viewSpectra.py
+    :linenos:
+    :language: python
+    :lines: 47-58
+    :lineno-start: 47
 
-.. figure:: ../_images/spectraSection_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Plot of the tipper result when |Hz| is set as the only output channels
+    Plot of a spectra section for 128Hz sampling frequency data
 
-.. figure:: ../_images/spectraStack_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
+Spectra sections plot 250 window spectra across the duration of the time series measurement.
+
+To understand the dominant frequencies in a time series measurement, it can be useful to perform spectral stacking. This can be achieved using the :meth:`~resistics.project.projectSpectra.viewSpectraStack` method of :mod:`~resistics.project.projectSpectra`. Spectra stacking will averages the spectra amplitudes across multiple windows.
+
+.. literalinclude:: ../../../examples/tutorial/viewSpectra.py
+    :linenos:
+    :language: python
+    :lines: 60-71
+    :lineno-start: 60
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Plot of the tipper result when |Hz| is set as the only output channel
+    Plot of a spectra stacking for 128Hz sampling frequency data
 
+Adding the **coherences** keyword also stacks the coherences. The number of stacks to perform across the duration of the time series measurement can be controlled using the **numstacks** keyword. For more information, see the documentation for :meth:`~resistics.project.projectSpectra.viewSpectraStack`.
+
+The above were demonstrated on data sampled at 128Hz sampling rate but can be easily calculated for the 4096Hz data of the tutorial project. 
+
+.. literalinclude:: ../../../examples/tutorial/viewSpectra.py
+    :linenos:
+    :language: python
+    :lines: 73-101
+    :lineno-start: 73
+
+The resultant plots are:
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Plot of a spectra for 20 windows across the 4096Hz measurement
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Plot of spectra section for the 4096Hz measurement
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Plot of spectra stack for the 4096Hz measurement      
+
+All the above are a means to understand the dominant frequencies in the time series data. Ideally, the Schumann resonances should be visible, as they are in the 128Hz data. Other common features are powerline noise - the exact frequency of this is dependent on geographic location, but often 50Hz - and train noise around 16.6Hz.   
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~

@@ -108,7 +108,7 @@ Transfer functions are saved in an internal format. This is a minimal format cur
 
 The reason to use this rather than EDI for now is an intention to build this out further to include more information about uncertainty that can be taken further into an inversion process.
 
-Once the components of the impedance tensor have been calculated, it is possible to visualise them using the :meth:`~resistics.project.projectTransferFunction.viewTransferFunction` method available in the :mod:`~resistics.project.projectTransferFunction` module.
+Once the components of the impedance tensor have been calculated, it is possible to visualise them using the :meth:`~resistics.project.projectTransferFunction.viewImpedance` method available in the :mod:`~resistics.project.projectTransferFunction` module.
 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:

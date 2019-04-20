@@ -7,6 +7,8 @@
 Introduction
 ------------
 
+The below is a short introduction to the magnetotelluric method and a quick breakdown of the 
+
 Magnetotelluric surveying
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 Magnetotellurics (MT) is a passive geophysical method for estimating the electrical properties of the subsurface. The MT method uses variations in the natural geoelectric and geomagnetic fields as the source of energy.
