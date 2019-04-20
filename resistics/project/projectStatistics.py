@@ -17,7 +17,11 @@ from resistics.ioHandlers.statisticIO import StatisticIO
 from resistics.project.projectMask import getMaskData
 from resistics.utilities.utilsIO import fileFormatSampleFreq
 from resistics.utilities.utilsPrint import listToString
-from resistics.utilities.utilsPlotter import plotOptionsSpec, getPlotRowsAndCols
+from resistics.utilities.utilsPlotter import (
+    savePlot,
+    plotOptionsSpec,
+    getPlotRowsAndCols,
+)
 from resistics.utilities.utilsChecks import parseKeywords
 from resistics.utilities.utilsStats import getStatElements
 from resistics.utilities.utilsProject import (
@@ -506,7 +510,7 @@ def viewStatistic(
             clim=options["clim"],
             label=meas,
             plotfonts=options["plotoptions"]["plotfonts"],
-            maskwindows=maskWindows
+            maskwindows=maskWindows,
         )
     # add a legened
     plt.legend()
@@ -518,13 +522,9 @@ def viewStatistic(
         ),
         fontsize=plotfonts["suptitle"],
     )
-    st.set_y(0.98)
 
-    # plot format
-    fig.tight_layout()
-    fig.subplots_adjust(top=0.90)
-
-    # plot show and save
+    # plot format, show and save
+    fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])      
     if options["save"]:
         impath = projData.imagePath
         sampleFreqStr = fileFormatSampleFreq(sampleFreq)
@@ -538,9 +538,8 @@ def viewStatistic(
         )
         if options["maskname"] != "":
             filename = "{}_{}".format(filename, options["maskname"])
-        filepath = os.path.join(impath, filename)
-        fig.savefig(filepath)
-        projectText("Image saved to file {}".format(filename))
+        savename = savePlot(impath, filename, fig)
+        projectText("Image saved to file {}".format(savename))
     if options["show"]:
         plt.show(block=options["plotoptions"]["block"])
     return fig
@@ -668,11 +667,8 @@ def viewStatisticHistogram(
         for label in ax.get_xticklabels() + ax.get_yticklabels():
             label.set_fontsize(plotfonts["axisTicks"])
 
-    # plot format
-    fig.tight_layout()
-    fig.subplots_adjust(top=0.90)
-
-    # plot show and save
+    # plot format, show and save
+    fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])     
     if options["save"]:
         impath = projData.imagePath
         sampleFreqStr = fileFormatSampleFreq(sampleFreq)
@@ -685,10 +681,9 @@ def viewStatisticHistogram(
             options["specdir"],
         )
         if options["maskname"] != "":
-            filename = "{}_{}".format(filename, options["maskname"])        
-        filepath = os.path.join(impath, filename)
-        fig.savefig(filepath)
-        projectText("Image saved to file {}".format(filename))
+            filename = "{}_{}".format(filename, options["maskname"])
+        savename = savePlot(impath, filename, fig)
+        projectText("Image saved to file {}".format(savename))
     if options["show"]:
         plt.show(block=options["plotoptions"]["block"])
     return fig

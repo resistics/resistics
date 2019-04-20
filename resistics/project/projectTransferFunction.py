@@ -20,6 +20,7 @@ from resistics.utilities.utilsChecks import parseKeywords, isElectric, isMagneti
 from resistics.utilities.utilsIO import checkFilepath, fileFormatSampleFreq
 from resistics.utilities.utilsPrint import arrayToString
 from resistics.utilities.utilsPlotter import (
+    savePlot,
     plotOptionsTransferFunction,
     getTransferFunctionFigSize,
     plotOptionsTipper,
@@ -269,8 +270,8 @@ def processSite(
     processor.process()
 
 
-def viewTransferFunction(projData: ProjectData, **kwargs) -> None:
-    """View transfer function data
+def viewImpedance(projData: ProjectData, **kwargs) -> None:
+    """View impedance tensor data
 
     Parameters
     ----------
@@ -358,7 +359,7 @@ def viewTransferFunction(projData: ProjectData, **kwargs) -> None:
                 # plot
                 mk = mks[idx % len(mks)]
                 ls = lstyles[idx % len(lstyles)]
-                tfData.view(
+                tfData.viewImpedance(
                     fig=fig,
                     polarisations=options["polarisations"],
                     mk=mk,
@@ -384,12 +385,12 @@ def viewTransferFunction(projData: ProjectData, **kwargs) -> None:
             fig.subplots_adjust(top=0.92)
 
             if options["save"]:
-                imPath = projData.imagePath
+                impath = projData.imagePath
                 filename = "transFunction_{}_{}{}.png".format(
                     site, options["specdir"], postpend
                 )
-                fig.savefig(os.path.join(imPath, filename))
-                projectText("Image saved to file {}".format(filename))
+                savename = savePlot(impath, filename, fig)
+                projectText("Image saved to file {}".format(savename))
 
         if not options["show"]:
             plt.close("all")
@@ -498,12 +499,12 @@ def viewTipper(projData: ProjectData, **kwargs) -> None:
             fig.subplots_adjust(top=0.85)
 
             if options["save"]:
-                imPath = projData.imagePath
-                filename = "tipper_{}_{}{}.png".format(
+                impath = projData.imagePath
+                filename = "tipper_{}_{}{}".format(
                     site, options["specdir"], postpend
                 )
-                fig.savefig(os.path.join(imPath, filename))
-                projectText("Image saved to file {}".format(filename))
+                savename = savePlot(impath, filename, fig)
+                projectText("Image saved to file {}".format(savename))
 
         if not options["show"]:
             plt.close("all")

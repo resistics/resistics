@@ -15,6 +15,42 @@ from typing import Dict, Tuple
 from resistics.utilities.utilsChecks import parseKeywords
 
 
+def savePlot(path: str, filename: str, fig: plt.figure) -> str:
+    """Save plot whilst checking for overwriting
+    
+    Parameters
+    ----------
+    path : str
+        The path to save the file
+    filename : str
+        Filename to save to
+    fig : plt.figure   
+        Matplotlig figure to save
+    
+    Returns
+    -------
+    str
+        The filename written out to
+    """
+
+    import os
+
+    filenameForWriting = filename
+    fileExists = True
+    counter = 1
+    while fileExists:
+        filepath = os.path.join(path, "{}.png".format(filenameForWriting))
+        if os.path.exists(filepath):
+            filenameForWriting = "{}.{}".format(filename, counter)
+            counter += 1
+        else:
+            fileExists = False
+            break
+    filepath = os.path.join(path, "{}.png".format(filenameForWriting))
+    fig.savefig(filepath)
+    return filenameForWriting
+
+
 def getPlotRowsAndCols(maxCols: int, numPlots: int = 0) -> Tuple[int, int]:
     """Get the numbers of rows and columns for plots
 

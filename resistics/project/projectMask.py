@@ -125,7 +125,6 @@ def calculateMask(projData: ProjectData, maskData: MaskData, **kwargs):
         # calculate masked windows
         maskCalc.applyConstraints(site)
         maskCalc.maskData.printInfo()
-        maskCalc.maskData.view(0)
 
         # write maskIO file
         maskIO.datapath = os.path.join(siteData.getSpecdirMaskPath(options["specdir"]))

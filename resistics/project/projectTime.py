@@ -11,7 +11,7 @@ from resistics.calculators.calibrator import Calibrator
 from resistics.ioHandlers.dataReader import DataReader
 from resistics.ioHandlers.dataWriterInternal import DataWriterInternal
 from resistics.utilities.utilsChecks import parseKeywords, isElectric
-from resistics.utilities.utilsPlotter import plotOptionsTime
+from resistics.utilities.utilsPlotter import savePlot, plotOptionsTime
 from resistics.utilities.utilsProject import (
     projectText,
     projectBlock,
@@ -365,9 +365,8 @@ def viewTime(
         filename = "timeData_{}_{}".format(
             start.strftime("%Y-%m-%d_%H-%M-%S_"), stop.strftime("%Y-%m-%d_%H-%M-%S")
         )
-        filepath = os.path.join(impath, filename)
-        fig.savefig(filepath)
-        projectText("Image saved to file {}".format(filename))
+        savename = savePlot(impath, filename, fig)
+        projectText("Image saved to file {}".format(savename))
     if options["show"]:
         plt.show(block=options["plotoptions"]["block"])
     plt.close("all")

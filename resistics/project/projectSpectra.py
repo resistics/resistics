@@ -19,7 +19,11 @@ from resistics.ioHandlers.spectrumReader import SpectrumReader
 from resistics.ioHandlers.spectrumWriter import SpectrumWriter
 from resistics.utilities.utilsChecks import parseKeywords, isMagnetic
 from resistics.utilities.utilsPrint import listToString, breakComment
-from resistics.utilities.utilsPlotter import colorbar2dSpectra, plotOptionsSpec
+from resistics.utilities.utilsPlotter import (
+    savePlot,
+    colorbar2dSpectra,
+    plotOptionsSpec,
+)
 from resistics.utilities.utilsProject import (
     projectText,
     projectError,
@@ -359,9 +363,8 @@ def viewSpectra(projData: ProjectData, site: str, meas: str, **kwargs) -> plt.fi
         filename = "spectraData_{}_{}_dec{}_{}".format(
             site, meas, options["declevel"], options["specdir"]
         )
-        filepath = os.path.join(impath, filename)
-        fig.savefig(filepath)
-        projectText("Image saved to file {}".format(filename))
+        savename = savePlot(impath, filename, fig)
+        projectText("Image saved to file {}".format(savename))
     if options["show"]:
         plt.show(block=options["plotoptions"]["block"])
     return fig
@@ -494,7 +497,7 @@ def viewSpectraSection(projData: ProjectData, site: str, meas: str, **kwargs):
         plt.grid(True)
 
     # plot format
-    fig.autofmt_xdate()
+    fig.autofmt_xdate(rotation=90)
     fig.tight_layout()
     fig.subplots_adjust(top=0.92)
 
@@ -504,9 +507,8 @@ def viewSpectraSection(projData: ProjectData, site: str, meas: str, **kwargs):
         filename = "spectraSection_{}_{}_dec{}_{}".format(
             site, meas, options["declevel"], options["specdir"]
         )
-        filepath = os.path.join(impath, filename)
-        fig.savefig(filepath)
-        projectText("Image saved to file {}".format(filename))
+        savename = savePlot(impath, filename, fig)
+        projectText("Image saved to file {}".format(savename))
     if options["show"]:
         plt.show(block=options["plotoptions"]["block"])
     return fig
@@ -731,9 +733,8 @@ def viewSpectraStack(
         filename = "spectraStack_{}_{}_dec{}_{}".format(
             site, meas, options["declevel"], options["specdir"]
         )
-        filepath = os.path.join(impath, filename)
-        fig.savefig(filepath)
-        projectText("Image saved to file {}".format(filename))
+        savename = savePlot(impath, filename, fig)
+        projectText("Image saved to file {}".format(savename))
     if options["show"]:
         plt.show(block=options["plotoptions"]["block"])
     return fig
