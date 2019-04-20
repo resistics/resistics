@@ -30,7 +30,7 @@ class MaskData(DataObject):
         Flag stating whether to mask values inside constraints (False) or outside constraints (True), indexed by evaluation frequency, statistic and component
     maskWindows : Dict
         Dictionary for storing the masked windows for each evaluation frequency
-    self.stats : List
+    stats : List
         Statistics to use in the masking
 
     Methods
@@ -123,7 +123,7 @@ class MaskData(DataObject):
             self.addConstraintLevel(stat, constraint, ilevel, insideOut)
 
     def addConstraintLevel(
-        self, stat: str, constraint, level: int, insideOut=[]
+        self, stat: str, constraint, declevel: int, insideOut=[]
     ) -> None:
         """Add a constraint for a whole decimation level
 
@@ -133,17 +133,17 @@ class MaskData(DataObject):
             The statistic to be constrained
         constraint : 
             The constraint parameter
-        level : int
+        declevel : int
             The decimation level
         insideOut : (optional) 
             Inside out parameters
         """
 
-        for eIdx, eFreq in enumerate(self.evalFreq[level]):
-            self.addConstraintFreq(stat, constraint, level, eIdx, insideOut)
+        for eIdx, eFreq in enumerate(self.evalFreq[declevel]):
+            self.addConstraintFreq(stat, constraint, declevel, eIdx, insideOut)
 
     def addConstraintFreq(
-        self, stat: str, constraint, level: int, eIdx: int, insideOut=[]
+        self, stat: str, constraint, declevel: int, eIdx: int, insideOut=[]
     ) -> None:
         """Add a constraint for an evaluation frequency
 
@@ -153,7 +153,7 @@ class MaskData(DataObject):
             The statistic to be constrained
         constraint : 
             The constraint parameter
-        level : int
+        declevel : int
             The decimation level
         eIdx : int
             Evaluation Frequency index
@@ -161,7 +161,7 @@ class MaskData(DataObject):
             Inside out parameters
         """
 
-        eFreq = self.evalFreq[level][eIdx]
+        eFreq = self.evalFreq[declevel][eIdx]
         # insideOut = []
         # if "insideOut" in kwargs:
         #     insideOut = kwargs["insideOut"]
@@ -172,12 +172,12 @@ class MaskData(DataObject):
             else:
                 self.insideOut[eFreq][stat][key] = False
 
-    def getConstraintFreq(self, level: int, eIdx: int, stat: str = ""):
+    def getConstraintFreq(self, declevel: int, eIdx: int, stat: str = ""):
         """Get constraints for an evaluation frequency
 
         Parameters
         ----------
-        level : int
+        declevel : int
             The decimation level
         eIdx : int
             Evaluation Frequency index
@@ -190,32 +190,17 @@ class MaskData(DataObject):
             Constraints for the evaluation frequency
         """
 
-        eFreq = self.evalFreq[level][eIdx]
+        eFreq = self.evalFreq[declevel][eIdx]
         if stat != "":
             return self.constraints[eFreq][stat]
         return self.constraints[eFreq]
 
-    # def getConstraintFreqStat(self, level: int, eIdx: int, stat: str):
-    #     """Get the constraints for an evaluation frequency and a particular statistic
-
-    #     Parameters
-    #     ----------
-    #     level : int
-    #         The decimation level
-    #     eIdx : int
-    #         The evaluation frequency index
-
-    #     """
-
-    #     eFreq = self.evalFreq[level][eIdx]
-    #     return self.constraints[eFreq][stat]
-
-    def getMaskWindowsFreq(self, level: int, eIdx: int) -> Set[int]:
+    def getMaskWindowsFreq(self, declevel: int, eIdx: int) -> Set[int]:
         """Get a set of the masked windows (used by WindowSelector)
 
         Parameters
         ----------
-        level : int
+        declevel : int
             The decimation level
         eIdx : int
             Evaluation Frequency index
@@ -226,7 +211,7 @@ class MaskData(DataObject):
             A set with the indices of the masked windows
         """
 
-        eFreq = self.evalFreq[level][eIdx]
+        eFreq = self.evalFreq[declevel][eIdx]
         return self.maskWindows[eFreq]
 
     def prepareDicts(self) -> None:
@@ -252,35 +237,102 @@ class MaskData(DataObject):
                 # i.e. remove none
                 self.maskWindows[eFreq] = set()
 
-    def view(self, level: int) -> None:
-        """Produces a 2d plot with all the masked windows along the bottom for a decimation level
+    def view(self, declevel: int = 0, **kwargs) -> plt.figure:
+        """Produces a 2-D plot with all the masked windows along the bottom for a decimation level
         
         Parameters
         ----------
-        level : int
-            The decimation level
+        declevel : int, optional
+            The decimation level. Default is 0.
+        fig : matplotlib.pyplot.figure, optional
+            A figure object
+        plotfonts : Dict, optional
+            A dictionary of plot fonts            
         """
 
-        evalFreq = self.evalFreq[level]
-        levelMasked = set()
+        fig: plt.figure = (
+            plt.figure(kwargs["fig"].number)
+            if "fig" in kwargs
+            else plt.figure(figsize=(10, 10))
+        )
+        plotfonts = kwargs["plotfonts"] if "plotfonts" in kwargs else getViewFonts()
+
+        evalFreq = self.evalFreq[declevel]
+        numFreq = len(evalFreq)
+        freqIndex = range(0, numFreq)
+        levelMasked: Set = set()
+        numMasked: List[int] = list()
+        freqLabel: List[str] = list()
         for eFreq in evalFreq:
             levelMasked.update(self.maskWindows[eFreq])
+            numMasked.append(len(self.maskWindows[eFreq]))
+            freqLabel.append("{:.5f}".format(eFreq))
+        
+        numMaskedTotal = len(levelMasked)
         levelMasked = np.array(sorted(list(levelMasked)))
         global2localMap = {}
-        for i in range(0, levelMasked.size):
-            global2localMap[levelMasked[i]] = i
-        numFreq = np.arange(0, len(evalFreq))
-        data = np.zeros(shape=(levelMasked.size, numFreq.size), dtype=int)
+        for idx in range(0, levelMasked.size):
+            global2localMap[levelMasked[idx]] = idx
+        # make array
+        data = np.zeros(shape=(levelMasked.size, numFreq), dtype=int)
         for idx, eFreq in enumerate(evalFreq):
             for gI in self.maskWindows[eFreq]:
                 lI = global2localMap[gI]
                 data[lI, idx] = idx + 1
 
+        st = fig.suptitle(
+            "Masked windows for decimation level: {}".format(declevel),
+            fontsize=plotfonts["suptitle"],
+        )
+        st.set_y(0.98)
+
         # now plot
-        fig = plt.figure()
-        plt.pcolor(levelMasked, numFreq, np.transpose(data), cmap=cm.Dark2_r)
-        plt.colorbar()
+        ax = plt.subplot(2, 1, 1)
+        cmap = cm.get_cmap("Paired", numFreq)
+        cmap.set_under("white")
+        plt.pcolor(np.transpose(data), cmap=cmap, vmin=1, vmax=numFreq + 1)
+        ax.set_yticks(np.array(freqIndex) + 0.5)
+        ax.set_yticklabels(freqLabel)
+        plt.ylabel(
+            "Masked windows for decimation level", fontsize=plotfonts["axisLabel"]
+        )
+        plt.ylabel("Evaluation Frequency [Hz]", fontsize=plotfonts["axisLabel"])
+        plt.title(
+            "Relative masked windows for decimation level {}".format(declevel),
+            fontsize=plotfonts["title"],
+        )
+        # set tick sizes
+        for label in ax.get_xticklabels() + ax.get_yticklabels():
+            label.set_fontsize(plotfonts["axisTicks"])
+        # colourbar
+        cb = plt.colorbar()
+        cb.ax.set_title("Masked\nwindows")
+        cb.set_ticks(np.arange(1, numFreq + 1) + 0.5)
+        cb.set_ticklabels(freqLabel)
+
+        # bar graph
+        ax = plt.subplot(2, 1, 2)
+        # add the total number masked
+        freqIndex = range(0, numFreq + 1)
+        numMasked.append(numMaskedTotal)
+        freqLabel.append("Total masked for\n decimation level")
+        plt.bar(freqIndex, numMasked)
+        ax.set_xticks(freqIndex)
+        ax.set_xticklabels(freqLabel)
+        plt.xlabel("Evaluation Frequency [Hz]", fontsize=plotfonts["axisLabel"])
+        plt.ylabel("Number of masked windows", fontsize=plotfonts["axisLabel"])
+        plt.title(
+            "Number of masked windows per evaluation frequency",
+            fontsize=plotfonts["title"],
+        )
+        # set tick sizes
+        for label in ax.get_xticklabels() + ax.get_yticklabels():
+            label.set_fontsize(plotfonts["axisTicks"])
+
+        fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])
         plt.show()
+
+        return fig
 
     def printList(self) -> List[str]:
         """Class information as a list of strings

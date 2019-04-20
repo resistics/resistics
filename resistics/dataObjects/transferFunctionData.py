@@ -201,7 +201,7 @@ class TransferFunctionData(DataObject):
         tipperAngleIm = np.arctan(tyIm / txIm)
         return tipperLength, tipperAngleRe, tipperAngleIm
 
-    def view(self, **kwargs) -> plt.figure:
+    def viewImpedance(self, **kwargs) -> plt.figure:
         """Plots the transfer function data
 
         For resistivity data, both axes are log scale (period and resistivity). For phase data, period is in log scale and phase is linear scale.

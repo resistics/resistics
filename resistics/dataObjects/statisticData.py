@@ -515,15 +515,15 @@ class StatisticData(DataObject):
 
         # show if the figure is not in keywords
         if "fig" not in kwargs:
-            plt.tight_layout()
-            fig.subplots_adjust(top=0.88)
             if colourbool:
-                fig.subplots_adjust(top=0.88, right=0.85)
-                cax = fig.add_axes([0.88, 0.07, 0.03, 0.83])
+                fig.tight_layout(rect=[0.02, 0.02, 0.85, 0.92])
+                cax = fig.add_axes([0.88, 0.10, 0.03, 0.80])
                 colourtitle = (
                     kwargs["colortitle"] if "colortitle" in kwargs else "Value"
                 )
                 self.addColourbar(scat, cax, colourtitle, plotfonts)
+            else:
+                fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92]) 
             plt.show()
 
         return fig
@@ -614,8 +614,7 @@ class StatisticData(DataObject):
 
         # show if the figure is not in keywords
         if "fig" not in kwargs:
-            plt.tight_layout()
-            fig.subplots_adjust(top=0.88)
+            fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])            
             plt.show()
 
         return fig
@@ -749,9 +748,8 @@ class StatisticData(DataObject):
 
         # show if the figure is not in keywords
         if "fig" not in kwargs:
-            plt.tight_layout()
-            fig.subplots_adjust(top=0.88, right=0.85)
-            cax = fig.add_axes([0.88, 0.07, 0.03, 0.83])
+            fig.tight_layout(rect=[0.02, 0.02, 0.85, 0.92])
+            cax = fig.add_axes([0.88, 0.10, 0.03, 0.80])
             if not colourbool:
                 self.addColourbarDates(scat, cax, "Time", plotfonts)
             else:
@@ -803,7 +801,7 @@ class StatisticData(DataObject):
         cax.set_title(title, y=1.02, fontsize=plotfonts["title"])
 
     def dateTicks(self, gIndices, dates, timeNum):
-        """TODO: Write the documentation
+        """todo: Write the documentation
         """
 
         numVals = len(gIndices)
