@@ -326,6 +326,7 @@ def viewTime(
                 chans=options["chans"],
                 label="{} - {}".format(site, meas),
                 xlim=[start, stop],
+                plotfonts=plotfonts,
             )
 
     # add the suptitle

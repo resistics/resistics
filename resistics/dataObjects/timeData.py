@@ -188,7 +188,7 @@ class TimeData(DataObject):
             Sample to plot to                   
         fig : matplotlib.pyplot.figure, optional
             A figure object
-        plotFonts : Dict, optional
+        plotfonts : Dict, optional
             A dictionary of plot fonts
         chans : List[str]
             Channels to plot
@@ -225,13 +225,13 @@ class TimeData(DataObject):
             if "fig" in kwargs
             else plt.figure(figsize=(20, 2 * self.numChans))
         )
-        plotFonts = kwargs["plotFonts"] if "plotFonts" in kwargs else getViewFonts()
+        plotfonts = kwargs["plotfonts"] if "plotfonts" in kwargs else getViewFonts()
         # suptitle
         st = fig.suptitle(
             "Time data from {} to {}, samples {} to {}".format(
                 start, stop, sampleStart, sampleStop
             ),
-            fontsize=plotFonts["suptitle"],
+            fontsize=plotfonts["suptitle"],
         )
         st.set_y(0.98)
         # now plot the data
@@ -240,7 +240,7 @@ class TimeData(DataObject):
         for idx, chan in enumerate(dataChans):
             ax = plt.subplot(numDataChans, 1, idx + 1)
             # title and label for the plot
-            plt.title("Channel {}".format(chan), fontsize=plotFonts["title"])
+            plt.title("Channel {}".format(chan), fontsize=plotfonts["title"])
             lab = (
                 kwargs["label"]
                 if "label" in kwargs
@@ -254,19 +254,19 @@ class TimeData(DataObject):
             )
             # add time label
             if idx == numDataChans - 1:
-                plt.xlabel("Time", fontsize=plotFonts["axisLabel"])
+                plt.xlabel("Time", fontsize=plotfonts["axisLabel"])
             # set the xlim
             xlim = kwargs["xlim"] if "xlim" in kwargs else [start, stop]
             plt.xlim(xlim)
             # y axis options
             if isElectric(chan):
-                plt.ylabel("mV/km", fontsize=plotFonts["axisLabel"])
+                plt.ylabel("mV/km", fontsize=plotfonts["axisLabel"])
             else:
-                plt.ylabel("nT or mV", fontsize=plotFonts["axisLabel"])
+                plt.ylabel("nT or mV", fontsize=plotfonts["axisLabel"])
             plt.grid()
             # set tick sizes
             for label in ax.get_xticklabels() + ax.get_yticklabels():
-                label.set_fontsize(plotFonts["axisTicks"])
+                label.set_fontsize(plotfonts["axisTicks"])
             # legend
             if "legend" in kwargs and kwargs["legend"]:
                 plt.legend(loc=4)

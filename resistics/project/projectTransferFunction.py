@@ -370,6 +370,7 @@ def viewImpedance(projData: ProjectData, **kwargs) -> None:
                     phase_ylim=options["plotoptions"]["phase_ylim"],
                     xlim=options["plotoptions"]["xlim"],
                     label="{}".format(sampleFreq),
+                    plotfonts=options["plotoptions"]["plotfonts"],
                 )
 
             # check if any files found
@@ -484,6 +485,7 @@ def viewTipper(projData: ProjectData, **kwargs) -> None:
                     xlim=options["plotoptions"]["xlim"],
                     length_ylim=options["plotoptions"]["length_ylim"],
                     angle_ylim=options["plotoptions"]["angle_ylim"],
+                    plotfonts=options["plotoptions"]["plotfonts"],                    
                 )
 
             # check if any files found
@@ -500,9 +502,7 @@ def viewTipper(projData: ProjectData, **kwargs) -> None:
 
             if options["save"]:
                 impath = projData.imagePath
-                filename = "tipper_{}_{}{}".format(
-                    site, options["specdir"], postpend
-                )
+                filename = "tipper_{}_{}{}".format(site, options["specdir"], postpend)
                 savename = savePlot(impath, filename, fig)
                 projectText("Image saved to file {}".format(savename))
 
