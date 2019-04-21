@@ -11,5 +11,3 @@ projData.printInfo()
 # create a new site
 projData.createSite("site1")
 projData.printInfo()
-
-

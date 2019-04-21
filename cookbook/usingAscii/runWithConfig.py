@@ -6,17 +6,15 @@ projectPath = os.path.join("asciiProject")
 projData = loadProject(projectPath, configFile="asciiconfig.ini")
 projData.printInfo()
 
-# # calculate spectrum using the new configuration
-# from resistics.project.projectSpectra import calculateSpectra
+# calculate spectrum using the new configuration
+from resistics.project.projectSpectra import calculateSpectra
 
-# calculateSpectra(projData, calibrate=False)
-# projData.refresh()
+calculateSpectra(projData, calibrate=False)
 
 # calculate transfer function
 from resistics.project.projectTransferFunction import processProject
 
 processProject(projData, outchans=["Ex", "Ey"])
-projData.refresh()
 
 # plot transfer function and save the plot
 from resistics.project.projectTransferFunction import viewImpedance

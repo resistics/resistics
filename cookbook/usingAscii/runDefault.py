@@ -2,29 +2,53 @@ import os
 from resistics.project.projectIO import loadProject
 
 # load the project
-projectPath = os.path.join("asciiProject")
+projectPath = "asciiProject"
 projData = loadProject(projectPath)
-projData.view()
+fig = projData.view()
+fig.savefig(os.path.join(projectPath, "images", "projectTimeline"))
 
 # view site data
 siteData = projData.getSiteData("site1")
-siteData.view()
+fig = siteData.view()
+fig.savefig(os.path.join(projectPath, "images", "siteTimeline"))
 
 from resistics.project.projectTime import viewTime
+from resistics.utilities.utilsPlotter import plotOptionsTime, getPaperFonts
 
-viewTime(projData, "2018-01-03 00:00:00", "2018-01-04 00:00:00")
+plotOptions = plotOptionsTime(plotfonts=getPaperFonts())
+viewTime(
+    projData,
+    "2018-01-03 00:00:00",
+    "2018-01-05 00:00:00",
+    plotoptions=plotOptions,
+    save=True,
+)
 
 # calculate spectrum using standard options
 from resistics.project.projectSpectra import calculateSpectra
 
 calculateSpectra(projData, calibrate=False)
 
-# process the spectra
+from resistics.project.projectSpectra import viewSpectraStack
+from resistics.utilities.utilsPlotter import plotOptionsSpec
+
+plotOptions = plotOptionsSpec(plotfonts=getPaperFonts())
+viewSpectraStack(
+    projData,
+    "site1",
+    "meas",
+    coherences=[["Ex", "Hy"], ["Ey", "Hx"]],
+    plotoptions=plotOptions,
+    save=True,
+    show=False,
+)
+
+# process the spectra to estimate the transfer function
 from resistics.project.projectTransferFunction import processProject
 
 processProject(projData, outchans=["Ex", "Ey"])
 
-# plot transfer function and save the plot
+# plot impedance tensor and save the plot
 from resistics.project.projectTransferFunction import viewImpedance
 from resistics.utilities.utilsPlotter import plotOptionsTransferFunction
 
@@ -43,7 +67,7 @@ viewImpedance(
 # calculate the tipper
 processProject(projData, outchans=["Ex", "Ey", "Hz"], postpend="withHz")
 
-# plot a single file
+# plot the tipper
 from resistics.project.projectTransferFunction import viewTipper
 from resistics.utilities.utilsPlotter import plotOptionsTipper
 
