@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
 from typing import List, Dict, Union, ClassVar
 
 # import from package
@@ -301,18 +302,19 @@ class ProjectData(DataObject):
         checkAndMakeDir(sitePath)
         return True
 
-    def view(self, **kwargs) -> None:
+    def view(self, **kwargs) -> plt.figure:
         """Plot a timeline of the project
         
         Parameters
         ----------
-        figsize : Tuple (width, height)
+        figsize : Tuple (width, height), optional
             The figure size
-        plotfonts : Dict
+        plotfonts : Dict, optional
             Fonts to use for plotting
+        show : bool, optional
+            Boolean flag fow showing plot. Default is True.
         """
 
-        import matplotlib.pyplot as plt
         import matplotlib.dates as mdates
         from matplotlib.patches import Rectangle
         import numpy as np
@@ -320,6 +322,7 @@ class ProjectData(DataObject):
 
         figsize = kwargs["figsize"] if "figsize" in kwargs else (15, 8)
         plotFonts = kwargs["plotFonts"] if "plotFonts" in kwargs else getPlotFonts()
+        show = kwargs["show"] if "show" in kwargs else True
 
         fig = plt.figure(figsize=figsize)
         ax = plt.subplot(1, 1, 1)
@@ -372,7 +375,9 @@ class ProjectData(DataObject):
         plt.title("Project Timeline", fontsize=plotFonts["title"])
 
         fig.tight_layout()
-        plt.show()
+        if show:
+            plt.show()
+        return fig
 
     def printList(self) -> List[str]:
         """Class information as a list of strings
