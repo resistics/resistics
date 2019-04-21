@@ -73,7 +73,7 @@ The tipper can be viewed using the :meth:`~resistics.project.projectTransferFunc
 
 This produces the following plot:
 
-.. figure:: ../_images/tipper_site1_spectra_with_Hz.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/tipper_site1_spectra_with_Hz.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -90,7 +90,7 @@ However, including the tipper in the overall calculation may change the estimati
 
 Running with |Hz| as an output channel produces the below impedance tensor estimate, which is comparable to the one calculated in the previous section.
 
-.. figure:: ../_images/transFunction_site1_spectra_with_Hz.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra_with_Hz.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -98,7 +98,7 @@ Running with |Hz| as an output channel produces the below impedance tensor estim
 
     Plot of the impedance tensor result when |Hz| is added to the output channels
 
-.. figure:: ../_images/transFunction_simpleRun_onePlot_polarisations.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.1.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -116,7 +116,7 @@ As stated earlier, another way to calculate the tipper is to use |Hz| as the onl
 
 The tipper result is given in the below figure. The result here is different to the result above when |Hz| is one of a set of output channels.
 
-.. figure:: ../_images/tipper_site1_spectra_only_Hz.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/tipper_site1_spectra_only_Hz.png
     :align: center
     :alt: alternate text
     :figclass: align-center

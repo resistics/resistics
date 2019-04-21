@@ -189,14 +189,14 @@ However, the windows to mask have not yet been calculated. This is achieved by u
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 22-26
+    :lines: 22-27
     :lineno-start: 22
 
 As statistics are calculated on an evaluation frequency basis, masked windows are calculated for each evaluation frequency too. 
 
 Once the masked windows are calculated, they can then be viewed using the :meth:`~resistics.dataObjects.maskData.MaskData.view` method of :class:`~resistics.dataObjects.maskData.MaskData`. When using the :meth:`~resistics.dataObjects.maskData.MaskData.view` method, the decimation level has to be specified. In the example above, this has been set to 0, which is the first decimation level. The resultant plot is shown below.
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/maskData_128_coh_dec0.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -210,12 +210,12 @@ The same process can be repeated for the 4096 Hz data.
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 28-36
-    :lineno-start: 28
+    :lines: 29-38
+    :lineno-start: 29
 
 The mask data plot for the 4096 Hz data is shown below.
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/maskData_4096_coh_dec0.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -227,12 +227,12 @@ Calculating masks with more than a single statistic can be done too. However, it
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 38-53
-    :lineno-start: 38
+    :lines: 40-56
+    :lineno-start: 40
 
 This produces the plot:
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/maskData_128_coh_tf_dec0.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -244,52 +244,39 @@ Notice that adding more constraints has increased the number of masked windows a
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 55-69
-    :lineno-start: 55
+    :lines: 58-73
+    :lineno-start: 58
 
 This produces the plot:
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/maskData_4096_coh_tf_dec0.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Mask data plot for 4096 Hz data using coherence constraints of 0.70-1.00 and constraints on the transfer function values calculated on an individual window basis. 
 
-Here, the constraints have masked nearly all the windows for evaluation frequencies xx and xx. This is almost certainly over-zealous. Some statistic constraints can be provided on a global basis whereas others should be more targeted. More targeted constraints can be specified using the:
+Here, the constraints have masked many windows for evaluation frequencies 1024 Hz and 724.077344 Hz. This is almost certainly over-zealous for these two evaluation frequencies (but to better understand how over-zealous read further down). 
+
+Up until now, all mask constraints have been specified globally (i.e. as applying to all evaluation frequencies). However, statistic constraints can be defined in a more targeted manner, at evaluation frequencies that are noisier than others. More targeted constraints can be specified using the listed methods.
 
 1. :meth:`~resistics.dataObjects.maskData.MaskData.addConstraintLevel` method of :class:`~resistics.dataObjects.maskData.MaskData`, which allows setting constraints just for a specific decimation level.
 2. :meth:`~resistics.dataObjects.maskData.MaskData.addConstraintFreq` method of :class:`~resistics.dataObjects.maskData.MaskData`, which allows setting constraints for a specific evaluation frequency.
 
-Using the second option requires specification of decimation level and evaluation frequency. In resistics, these are generally specified using indices. To understand what that means, consider the evaluation frequencies in this set up using 8 decimation levels and 5 evaluation frequencies per level with a data sampling frequency of 128 Hz:
+Using the second option requires specification of decimation level and evaluation frequency. In resistics, these are generally specified using indices as shown in the :doc:`Statistics <statistics>` section. 
 
-.. code-block:: text
+.. important::
 
-    Decimation Level = 0: 32.00000000, 22.62741700, 16.00000000, 11.31370850, 8.00000000
-    Decimation Level = 1: 5.65685425, 4.00000000, 2.82842712, 2.00000000, 1.41421356
-    Decimation Level = 2: 1.00000000, 0.70710678, 0.50000000, 0.35355339, 0.25000000
-    Decimation Level = 3: 0.17677670, 0.12500000, 0.08838835, 0.06250000, 0.04419417
-    Decimation Level = 4: 0.03125000, 0.02209709, 0.01562500, 0.01104854, 0.00781250
-    Decimation Level = 5: 0.00552427, 0.00390625, 0.00276214, 0.00195312, 0.00138107
-    Decimation Level = 6: 0.00097656, 0.00069053, 0.00048828, 0.00034527, 0.00024414
-    Decimation Level = 7: 0.00017263, 0.00012207, 0.00008632, 0.00006104, 0.00004316
-
-Decimation level numbering starts from 0 (and with 8 decimation levels, extends to 7). Evaluation frequency numbering begins from 0 (and with 5 evaluation frequencies per decimation level, extends to 4).
-
-The decimation and evaluation frequency indices can be best demonstrated using a few of examples:
-
-- Evaluation frequency 32 Hz, decimation level = 0, evaluation frequency index = 0
-- Evaluation frequency 1 Hz, decimation level = 2, evaluation frequency index = 0
-- Evaluation frequency 0.35355339 Hz, decimation level = 2, evaluation frequency index = 3
-
-The main motivation behind this is the difficulty in manually specifying evaluation frequencies such as 0.35355339 Hz. 
+    It is worth repeating here the meaning of the decimation level index and evaluation frequency index, which was previously covered in :doc:`Statistics <statistics>`. 
+    
+    .. include:: decimation-eval-indices.rst 
 
 The impact of masks on statistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A more useful visualisation of masks is to see how removing selected time windows effects the statistics. In the :doc:`Statistics <statistics>` section, the plotting of statistics was demonstrated. Plotting statistics with masks applied is similar.
 
-Load the project and use the :meth:`~resistics.project.projectMask.getMaskData` method of the :mod:`~resistics.project.projectMask` module to open up a previous calculated mask dataset.
+Load the project and use the :meth:`~resistics.project.projectMask.getMaskData` method of the :mod:`~resistics.project.projectMask` module to open up a previous calculated mask dataset at a sampling frequency of 4096 Hz.
 
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
@@ -297,7 +284,7 @@ Load the project and use the :meth:`~resistics.project.projectMask.getMaskData` 
     :lines: 1-11
     :lineno-start: 1
 
-Next, get a set of masked windows for an evaluation frequency of 32 Hz, which translates to decimation level 0 and evaluation frequency index 0.
+Next, get a set of masked windows for an evaluation frequency of 1024 Hz, which translates to decimation level 0 and evaluation frequency index 0.
 
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
@@ -305,7 +292,7 @@ Next, get a set of masked windows for an evaluation frequency of 32 Hz, which tr
     :lines: 12-13
     :lineno-start: 12
 
-To be able to plot the statistic data, this needs to be loaded to and can be by using the :meth:`~resistics.project.projectStatistics.getStatisticData` method of module :mod:`~resistics.project.projectStatistics`. For more information, see the :doc:`Statistics <statistics>` section.
+To be able to plot the statistic data, this needs to be loaded too and can be by using the :meth:`~resistics.project.projectStatistics.getStatisticData` method of module :mod:`~resistics.project.projectStatistics`. For more information, see the :doc:`Statistics <statistics>` section.
 
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
@@ -320,102 +307,110 @@ Viewing transfer function statistic data:
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 22-24
+    :lines: 22-26
     :lineno-start: 22
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_nomask_view.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic data without masking 
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_maskcoh_view.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic data with masking (constraints on only coherence)
 
+Ideally, the effect of masking should lead to more consistency in the various components of the transfer function, with less scatter. In this case, coherence based time window masking has reduced the scatter around the average value, which will lead to an improvement in the robust regression for transfer funciton estimation. 
+
 Histograms of transfer function statistic data:
 
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 25-27
-    :lineno-start: 22
+    :lines: 27-31
+    :lineno-start: 27
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_nomask_hist.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic histogram without masking 
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_maskcoh_hist.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic histogram with masking (constraints on only coherence) 
 
+For the transfer function statistic, Gaussian distributions across the windows is an indication that the overall transfer function estimate will be good. In situations where window-by-window transfer function estimates are not near Gaussian distributed, the resultant overall transfer function estimation will normally be poor. Here, the data is quite well distributed.  
+
 Crossplots of transfer function statistic data:
 
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 28-51
-    :lineno-start: 28
+    :lines: 32-57
+    :lineno-start: 32
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_nomask_crossplot.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic crossplot without masking 
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_maskcoh_crossplot.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic crossplot with masking (constraints on only coherence)
 
+Plotting the window-by-window transfer function estimation in the complex plane should ideally yield a tight scatter of points around an average point. Where this is not the case, the overall transfer function estimate will tend to be poor. In this case, the data is good.
+
 Repeating the same process with the second mask that was calculated (using both coherence and transfer function constraints) is easily done. 
 
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 53-69
-    :lineno-start: 53
+    :lines: 59-78
+    :lineno-start: 59
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_maskcoh_tf_view.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic with masking (constraints on both coherence and transfer function)
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_maskcoh_tf_hist.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic histogram with masking (constraints on both coherence and transfer function)
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_maskcoh_tf_crossplot.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic crossplot with masking (constraints on both coherence and transfer function)
 
+As suggested earlier, adding the extra mask constraints for this evaluation frequency was over-zealous, mainly due to the ExHyImag and EyHxImag constraints. Only a handful of time windows meet these constraints and the transfer function estimate at this evaluation frequency is likely to be poorer than when simply using the coherence mask.
+
 Remember that statistic data is saved for each individual time series measurement directory. Hence, currently only the statistic values from one time series recordings are being considered. To really understand how masking windows will influence the transfer function calculation, the effect on the statistics for all time series measurements at a single sampling frequency in a site needs to be considered. This information can be plotted using the :meth:`~resistics.project.projectStatistics.viewStatistic` and  :meth:`~resistics.project.projectStatistics.viewStatisticHistogram` of the :mod:`~resistics.project.projectStatistics` module. An example is provided below. 
 
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 71-94
+    :lines: 80-107
     :lineno-start: 71
 
 .. warning::
@@ -424,20 +419,21 @@ Remember that statistic data is saved for each individual time series measuremen
 
 The result plots are shown below.
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/stat_coherence_site1_128_000_dec0_efreq0_dec8_5_coh70_100.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic histogram with masking (constraints on both coherence and transfer function)
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statHist_coherence_site1_128_000_dec0_efreq0_dec8_5_coh70_100.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic crossplot with masking (constraints on both coherence and transfer function)
 
+Now that masks have been calculated, the next stage is to use the masks in the transfer function estimation, which is demonstrated in the :doc:`Processing with masks <mask-processing>` section.
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~

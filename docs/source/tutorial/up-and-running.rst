@@ -22,7 +22,7 @@ Begin by loading the project and calculating spectra. Spectra can be batch calcu
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 1-12
+    :lines: 1-11
     :lineno-start: 1
 
 Spectra data files are stored in project specData directory. The folder structure is similar to the timeData folder
@@ -63,8 +63,8 @@ The next step is to process the spectra to estimate the impedance tensor. This i
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 14-18
-    :lineno-start: 14
+    :lines: 13-16
+    :lineno-start: 13
 
 Transfer function data is stored under the transFuncData folder as shown below. As transfer functions are calculated out for each unique sampling frequency in a site, the data is stored with respect to sampling frequencies. 
 
@@ -113,10 +113,10 @@ Once the components of the impedance tensor have been calculated, it is possible
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 20-23
-    :lineno-start: 20
+    :lines: 18-21
+    :lineno-start: 18
 
-.. figure:: ../_images/transFunction_simpleRun_onePlot.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.png
     :align: center
     :alt: alternate text
     :width: 400
@@ -129,10 +129,10 @@ However, this plot is quite busy. One way to simplify the plot is to explicitly 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 25-28
-    :lineno-start: 25
+    :lines: 23-26
+    :lineno-start: 23
 
-.. figure:: ../_images/transFunction_simpleRun_onePlot_polarisations.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.1.png
     :align: center
     :alt: alternate text
     :width: 400
@@ -145,18 +145,45 @@ On occasion, it can be more useful to plot each component separately. This can b
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 30-31
-    :lineno-start: 30
+    :lines: 28-29
+    :lineno-start: 28
 
 This results in the following plot.
 
-.. figure:: ../_images/transFunction_simpleRun_multPlots.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.2.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Polarisations of impedance tensor plotted on separate plots
 
+To read in a transfer function directly, the :meth:`~resistics.project.projectTransferFunction.getTransferFunctionData` method of the :mod:`~resistics.project.projectTransferFunction` module can be used. The :meth:`~resistics.project.projectTransferFunction.getTransferFunctionData` will read in the transfer function data file and return a :class:`~resistics.dataObjects.transferFunctionData.TransferFunctionData` object with information about the components of the transfer function data.
+
+.. literalinclude:: ../../../examples/tutorial/simpleRun.py
+    :linenos:
+    :language: python
+    :lines: 31-34
+    :lineno-start: 31
+
+.. warning:: 
+
+    Currently, resistics uses a proprietry, but still ASCII, transfer function file format. As .edi files are the standard format for magnetotellurics, these will be properly supported going forwards. However, the intention with current file format is to allow for additional future changes that capture more information that would be useful for geophysical inversion.
+
+The transfer function data can be plotted using the :meth:`~resistics.dataObjects.transferFunctionData.TransferFunctionData.view` method of :class:`~resistics.dataObjects.transferFunctionData`. This is shown below, along with the plot.
+
+.. literalinclude:: ../../../examples/tutorial/simpleRun.py
+    :linenos:
+    :language: python
+    :lines: 35-36
+    :lineno-start: 35
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/transferFunctionViewExample.png
+    :align: center
+    :width: 400    
+    :alt: alternate text
+    :figclass: align-center
+
+    Plotting the transfer function data individually
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~

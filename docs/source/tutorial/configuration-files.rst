@@ -1,3 +1,17 @@
+.. role:: python(code)
+   :language: python
+
+.. |Ex| replace:: E\ :sub:`x`
+.. |Ey| replace:: E\ :sub:`y`
+.. |Hx| replace:: H\ :sub:`x`
+.. |Hy| replace:: H\ :sub:`y`
+.. |Hz| replace:: H\ :sub:`z`
+.. |Zxy| replace:: Z\ :sub:`xy`
+.. |Zxx| replace:: Z\ :sub:`xx`
+.. |Zyx| replace:: Z\ :sub:`yx`
+.. |Zyy| replace:: Z\ :sub:`yy`
+.. |fs| replace:: f\ :sub:`s`
+
 Using configuration files
 -------------------------
 
@@ -28,7 +42,7 @@ Calculating spectra is now straightforward. When passing the :class:`~resistics.
 .. literalinclude:: ../../../examples/tutorial/usingConfigFiles.py
     :linenos:
     :language: python
-    :lines: 9-13
+    :lines: 9-12
     :lineno-start: 9
 
 The spectra will be stored in the following location:
@@ -68,19 +82,19 @@ To process these spectra, it's a similar situation. Passing the :class:`~resisti
 .. literalinclude:: ../../../examples/tutorial/usingConfigFiles.py
     :linenos:
     :language: python
-    :lines: 15-21
-    :lineno-start: 15
+    :lines: 14-18
+    :lineno-start: 14
 
 Now the plot using the new configuration parameters (8 decimation levels with 5 evaluation frequencies per decimation level) can be compared to the default parameterisation.
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_dec8_5.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Using the customised configuration
 
-.. figure:: ../_images/stat_statData_coherence_hist.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.2.png
     :align: center
     :alt: alternate text
     :figclass: align-center

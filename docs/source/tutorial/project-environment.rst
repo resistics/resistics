@@ -136,15 +136,15 @@ Printing the project information now that there is a site with data shows the nu
     13:01:50 ProjectData: site1             start: 2012-02-10 11:05:00      end: 2012-02-11 23:03:43.992188
     13:01:50 ProjectData: Sampling frequencies found in project (Hz): 128.0, 4096.0
 
-Another useful function is to view the project timeline. This can be done with the :meth:`~resistics.dataObjects.projectData.ProjectData.view` method of :class:`~resistics.dataObjects.projectData.ProjectData`.
+Another useful function is to view the project timeline. This can be done with the :meth:`~resistics.dataObjects.projectData.ProjectData.view` method of :class:`~resistics.dataObjects.projectData.ProjectData`. The :meth:`~resistics.dataObjects.projectData.ProjectData.view` method returns a matplotlib figure object, which can then be saved in the usual way for matplotlib figures. 
 
 .. literalinclude:: ../../../examples/tutorial/loadProject.py
     :linenos:
     :language: python
-    :lines: 10-11
+    :lines: 10-12
     :lineno-start: 10    
 
-.. figure:: ../_images/projectTimeline.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/projectTimeline.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -156,8 +156,8 @@ Site information can be accessed by using the :meth:`~resistics.dataObjects.proj
 .. literalinclude:: ../../../examples/tutorial/loadProject.py
     :linenos:
     :language: python
-    :lines: 13-16
-    :lineno-start: 13
+    :lines: 14-16
+    :lineno-start: 14
 
 .. code-block:: text
 
@@ -174,9 +174,15 @@ Site information can be accessed by using the :meth:`~resistics.dataObjects.proj
     13:51:26 SiteData: meas_2012-02-10_11-05-00             4096.0          2012-02-10 11:05:00         2012-02-10 11:24:59.999756
     13:51:26 SiteData: meas_2012-02-10_11-30-00             128.0           2012-02-10 11:30:00         2012-02-11 23:03:43.992188
 
-Site timelines can also be viewed using :meth:`~resistics.dataObjects.siteData.SiteData.view` method of :class:`~resistics.dataObjects.siteData.SiteData`.
+Site timelines can also be viewed using the :meth:`~resistics.dataObjects.siteData.SiteData.view` method of :class:`~resistics.dataObjects.siteData.SiteData`, which again returns a matplotlib figure object allowing the plot to be easily saved. 
 
-.. figure:: ../_images/siteTimeline.png
+.. literalinclude:: ../../../examples/tutorial/loadProject.py
+    :linenos:
+    :language: python
+    :lines: 17-18
+    :lineno-start: 17
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/siteTimeline.png
     :align: center
     :alt: alternate text
     :figclass: align-center

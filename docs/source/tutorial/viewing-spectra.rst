@@ -141,7 +141,7 @@ Another useful way to inspect the variation of spectra across the time series me
     :lines: 47-58
     :lineno-start: 47
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraSection_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -158,7 +158,7 @@ To understand the dominant frequencies in a time series measurement, it can be u
     :lines: 60-71
     :lineno-start: 60
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraStack_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -167,7 +167,7 @@ To understand the dominant frequencies in a time series measurement, it can be u
 
 Adding the **coherences** keyword also stacks the coherences. The number of stacks to perform across the duration of the time series measurement can be controlled using the **numstacks** keyword. For more information, see the documentation for :meth:`~resistics.project.projectSpectra.viewSpectraStack`.
 
-The above were demonstrated on data sampled at 128Hz sampling rate but can be easily calculated for the 4096Hz data of the tutorial project. 
+The above were demonstrated on data sampled at 128Hz sampling rate but can be easily repeated for the 4096Hz data of the tutorial project. 
 
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
@@ -177,28 +177,28 @@ The above were demonstrated on data sampled at 128Hz sampling rate but can be ea
 
 The resultant plots are:
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Plot of a spectra for 20 windows across the 4096Hz measurement
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraSection_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Plot of spectra section for the 4096Hz measurement
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraStack_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Plot of spectra stack for the 4096Hz measurement      
 
-All the above are a means to understand the dominant frequencies in the time series data. Ideally, the Schumann resonances should be visible, as they are in the 128Hz data. Other common features are powerline noise - the exact frequency of this is dependent on geographic location, but often 50Hz - and train noise around 16.6Hz.   
+All the above are a means to understand the dominant frequencies in the time series data. Ideally, the Schumann resonances should be visible, as they are in the 128Hz data. Other common features are powerline noise - the exact frequency of this is dependent on geographic location, but often 50Hz - and trainline noise around 16.6Hz.   
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~

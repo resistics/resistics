@@ -9,4 +9,6 @@ The resistics cookbook is intended to demonstrate what is possible when using re
     :titlesonly:
     :glob:
 
-    cookbook/ascii-project.rst
+    cookbook/processing-ascii.rst
+    cookbook/statistic-plotting.rst
+    cookbook/processing-phoenix.rst

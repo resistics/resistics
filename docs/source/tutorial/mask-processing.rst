@@ -24,30 +24,35 @@ The elements of note in this code block are:
 - masks keyword. A mask needs to be associated with a site and provided in a dictionary. More than a single mask file can be supplied for a site by passing a list of masks.
 - postpend keyword. This is the postpend on the output transfer function data file to avoid overwriting existing transfer function calculation files.
 
-The resultant impedance tensor result can be visualised in the same way as demonstrated in previous secitons. 
+The resultant impedance tensor result can be visualised in the same way as demonstrated in previous sections using the :meth:`~resistics.project.projectTransferFunction.viewImpedance` method of the :mod:`~resistics.project.projectTransferFunction` module. 
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. literalinclude:: ../../../examples/tutorial/runWithMasks.py
+    :linenos:
+    :language: python
+    :lines: 20-24
+    :lineno-start: 1
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_dec8_5_coh70_100.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Transfer function statistic histogram with masking (constraints on both coherence and transfer function)
+    Impedance tensor estimate with the coherence masking
 
 Repeating the process for the mask with additional transfer function constraints gives:
 
 .. literalinclude:: ../../../examples/tutorial/runWithMasks.py
     :linenos:
     :language: python
-    :lines: 26-44
+    :lines: 26-42
     :lineno-start: 26
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_dec8_5_coh70_100_tfConstrained.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Transfer function statistic histogram with masking (constraints on both coherence and transfer function)
-
+    Impedance tensor estimate with both coherence and transfer function masking
 
 .. note::
 

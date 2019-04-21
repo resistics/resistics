@@ -1,7 +1,23 @@
+.. role:: python(code)
+   :language: python
+
+.. |Ex| replace:: E\ :sub:`x`
+.. |Ey| replace:: E\ :sub:`y`
+.. |Hx| replace:: H\ :sub:`x`
+.. |Hy| replace:: H\ :sub:`y`
+.. |Hz| replace:: H\ :sub:`z`
+.. |Zxy| replace:: Z\ :sub:`xy`
+.. |Zxx| replace:: Z\ :sub:`xx`
+.. |Zyx| replace:: Z\ :sub:`yx`
+.. |Zyy| replace:: Z\ :sub:`yy`
+.. |fs| replace:: f\ :sub:`s`
+
 Statistics
 ----------
 
-Statistics are a feature of resistics meant to provide more insight into the data and more options for masking noisy or bad time windows. There are a number of built in statistics and an intention to support custom statistics in the future. The following section covers the usage of statistics. For more information about the available statistics and their meanings, please refer to :doc:`Statistics <../features/statistics>` and :doc:`Remote statistics <../features/remote-statistics>`. 
+Statistics are a feature of resistics meant to provide more insight into the data and more options for masking noisy or bad time windows. **They are calculated out for each evaluation frequency at each decimation level**. As statistics are calculated out for each evaluation frequency, variation in statistic values can be viewed across time and evaluation frequency. 
+
+There are a number of built in statistics and an intention to support custom statistics in the future. The following section covers the usage of statistics. For more information about the available statistics and their meanings, please refer to :doc:`Statistics <../features/statistics>` and :doc:`Remote statistics <../features/remote-statistics>`. 
 
 As normal, begin with loading the project.
 
@@ -167,118 +183,167 @@ There are multiple view methods in :class:`~resistics.dataObjects.statisticData.
 - :meth:`~resistics.dataObjects.statisticData.StatisticData.histogram`, which plots a histogram of the statistic
 - :meth:`~resistics.dataObjects.statisticData.StatisticData.crossplot`, which plots crossplots of the statistic components
 
-An example of viewing those is shown below:
+Examples of using these methods to view statistic values and variation are shown below:
 
 .. literalinclude:: ../../../examples/tutorial/usingStatistics.py
     :linenos:
     :language: python
-    :lines: 31-36
+    :lines: 31-39
     :lineno-start: 31
 
 These produce the following plots:
 
-.. figure:: ../_images/stat_statData_coherence_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_coherence_view.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Coherence plotted using the :meth:`~resistics.dataObjects.statisticData.StatisticData.view` method
+    Coherence data plotted for evaluation frequency 32 Hz using the :meth:`~resistics.dataObjects.statisticData.StatisticData.view` method
 
-.. figure:: ../_images/stat_statData_coherence_hist.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_coherence_histogram.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Coherence plotted using the :meth:`~resistics.dataObjects.statisticData.StatisticData.histogram` method
+    Coherence data plotted for evaluation frequency 32 Hz using the :meth:`~resistics.dataObjects.statisticData.StatisticData.histogram` method
 
-.. figure:: ../_images/stat_statData_coherence_crossplot.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_coherence_crossplot.png
     :align: center
     :alt: alternate text
     :figclass: align-center
-    :width: 400    
+    :width: 500    
 
-    Coherence plotted using the :meth:`~resistics.dataObjects.statisticData.StatisticData.crossplot` method
+    Coherence data plotted for evaluation frequency 32 Hz using the :meth:`~resistics.dataObjects.statisticData.StatisticData.crossplot` method
 
 In the above case, the coherence statistic was read in. Another statistic is the transfer function calculated on a window-by-window basis. The statistic data for this can be read in and plotted in a similar way.
 
 .. literalinclude:: ../../../examples/tutorial/usingStatistics.py
     :linenos:
     :language: python
-    :lines: 38-45
-    :lineno-start: 38
+    :lines: 42-64
+    :lineno-start: 42
 
-.. figure:: ../_images/stat_statData_transferFunction_view.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_transferFunction_view.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Transfer function data plotted using the :meth:`~resistics.dataObjects.statisticData.StatisticData.histogram` method
+    Transfer function data plotted for evaluation frequency 32 Hz using the :meth:`~resistics.dataObjects.statisticData.StatisticData.view` method
 
-.. figure:: ../_images/stat_statData_transferFunction_hist.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_transferFunction_histogram.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Transfer function data plotted using the :meth:`~resistics.dataObjects.statisticData.StatisticData.crossplot` method
+    Transfer function data plotted for evaluation frequency 32 Hz using the :meth:`~resistics.dataObjects.statisticData.StatisticData.histogram` method
 
-The next example if the crossplot for the transfer function statistic. This make more intuitive sense than the coherence crossplot above, as it allows the plotting of the transfer function data on the complex plane. 
+The next example is the crossplot for the transfer function statistic. This make more intuitive sense than the coherence crossplot above, as it allows the plotting of the transfer function data on the complex plane. 
 
-.. figure:: ../_images/stat_statData_coherence_crossplot.png
-    :align: center
-    :alt: alternate text
-    :figclass: align-center
-    :width: 400    
-
-    Transfer function data plotted using the :meth:`~resistics.dataObjects.statisticData.StatisticData.crossplot` method
-
-In all of these cases, a 0 is being passed to the plotting methods. This 0 is the evaluation frequency index for that decimation level. Changing it will plot a different evaluation frequency.
-
-.. literalinclude:: ../../../examples/tutorial/usingStatistics.py
-    :linenos:
-    :language: python
-    :lines: 46-47
-    :lineno-start: 46
-
-.. figure:: ../_images/stat_statData_transferFunction_view_eval1.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_transferFunction_crossplot.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Transfer function data using the :meth:`~resistics.dataObjects.statisticData.StatisticData.crossplot` method for a different evaluation frequency
+    Transfer function data plotted for evaluation frequency 32 Hz using the :meth:`~resistics.dataObjects.statisticData.StatisticData.crossplot` method
+
+In all of these cases, a 0 is being passed to the plotting methods. This 0 is the evaluation frequency index for that decimation level. Changing it will plot a different evaluation frequency. 
 
 .. note:: 
 
     The evaluation frequency index starts from 0 and goes to the number of evaluation frequencies per decimation level - 1. So if there are 7 evaluation frequencies per decimation level, the evaluation frequency indices will be 0, 1, 2, 3, 4, 5, 6.
+
+    Evaluation frequency and decimation level indices will be covered in more detail further down.
+
+.. literalinclude:: ../../../examples/tutorial/usingStatistics.py
+    :linenos:
+    :language: python
+    :lines: 65-67
+    :lineno-start: 65
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_transferFunction_view_eval1.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Transfer function data plotted for evaluation frequency 22.627417 Hz using the :meth:`~resistics.dataObjects.statisticData.StatisticData.view` method.
+
+
+
+Statistics across time series measurements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The above examples were reading in statistic data for a single measurement. However, in many cases, the statistics over all the time series measurements of a certain sampling frequency in a site are of more interest. In order to plot and view these, the methods available in the :mod:`~resistics.project.projectStatistics` module will be more useful. The module :mod:`~resistics.project.projectStatistics` has two plotting methods:
 
 - :meth:`~resistics.project.projectStatistics.viewStatistic`
 - :meth:`~resistics.project.projectStatistics.viewHistogram`
 
-These do much the same as the methods available in the class :class:`~resistics.dataObjects.statisticData.StatisticData`, however, they will bring together all the statistics in a site for measurements of a given sampling frequency. For example:
+These do much the same as the methods available in the class :class:`~resistics.dataObjects.statisticData.StatisticData`, however, they will bring together all the statistics in a site for measurements of a given sampling frequency. 
+
+.. note::
+
+    For the tutorial project, there is only a single measurement at 128 Hz and a single measurement at 4096 Hz, meaning that this is not the best example of the functionality. For more interesting examples, please see :doc:`Statistic plotting <../cookbook/statistic-plotting>` in the cookbook. 
+
+For example, statistic value variation across time can be plotted using :meth:`~resistics.project.projectStatistics.viewStatistic`:
 
 .. literalinclude:: ../../../examples/tutorial/usingStatistics.py
     :linenos:
     :language: python
-    :lines: 61-73
-    :lineno-start: 61
+    :lines: 69-81
+    :lineno-start: 69
 
-This produces the plot below. In this case, as there is only 
+This produces the plot below: 
 
-.. figure:: ../_images/stat_statData_transferFunction_view_eval1.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/stat_transferFunction_site1_128_000_dec0_efreq0_dec8_5.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Transfer function data using the :meth:`~resistics.dataObjects.statisticData.StatisticData.crossplot` method for a different evaluation frequency
+    Transfer function data plotted for all time series measurements of a given sampling frequency in a site using the :meth:`~resistics.project.projectStatistics.viewStatistic` 
 
-And a few more examples of plotting statistics across time series measurements of a specific sampling frequency in a site.
+Statistic histograms over all time series measurements of a specified sampling frequency in a site can be plotted in a similar way.
 
 .. literalinclude:: ../../../examples/tutorial/usingStatistics.py
     :linenos:
     :language: python
-    :lines: 74-100
-    :lineno-start: 74
+    :lines: 83-89
+    :lineno-start: 83
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/statHist_transferFunction_site1_128_000_dec0_efreq0_dec8_5.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Transfer function data plotted for all time series measurements of a given sampling frequency in a site using the :meth:`~resistics.project.projectStatistics.viewHistogram` 
+
+Recall, statistic values are calculated on an evaluation frequency basis. Currently, 32 Hz has been plotted, but other evaluation frequencies can be plotted by using the :python:`declevel` and :python:`eFreqI` keywords`.
+
+.. important::
+
+    The meaning of :python:`declevel` (decimation level index) and :python:`eFreqI` (evaluation frequency index) are best demonstrated with an example. 
+
+    .. include:: decimation-eval-indices.rst
+
+Below are examples of plotting site and sampling frequency wide statistics for different evaluation frequencies. 
+
+.. literalinclude:: ../../../examples/tutorial/usingStatistics.py
+    :linenos:
+    :language: python
+    :lines: 91-114
+    :lineno-start: 91
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/stat_transferFunction_site1_128_000_dec0_efreq1_dec8_5.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Transfer function data plotted for all time series measurements of a given sampling frequency in a site using the :meth:`~resistics.project.projectStatistics.viewStatistic`. Here, evaluation frequency 22.627417 Hz is plotted (decimation level = 0, evaluation frequency index = 1). 
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/stat_transferFunction_site1_128_000_dec1_efreq0_dec8_5.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Transfer function data plotted for all time series measurements of a given sampling frequency in a site using the :meth:`~resistics.project.projectStatistics.viewStatistic`. Here, evaluation frequency 5.65685425 Hz is plotted (decimation level = 1, evaluation frequency index = 0). 
 
 Up until now, statistics have been used to investigate the variance of the time series data. However, they can be used to select which time windows to process. To find out how to use them to select and remove time windows, continue to the :doc:`masks` section. 
 

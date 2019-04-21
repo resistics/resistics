@@ -113,46 +113,67 @@ In the plots below, the default spectra data and the notched spectra data are sh
 
     Default spectra data
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_notch.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Notched spectra data
 
+A spectra section can also be plotted in a similar to way the example shown in :doc:`Viewing Spectra <viewing-spectra>`.
+
+.. literalinclude:: ../../../examples/tutorial/multipleSpectra.py
+    :linenos:
+    :language: python
+    :lines: 28-36
+    :lineno-start: 28
+
+.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraSection_site1_meas_2012-02-10_11-30-00_dec0_notch.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Notched spectra section
+
 The next step is to process the notched spectra data. To do this, **specdir** has to be specified in the call to :meth:`~resistics.project.projectTransferFunction.processProject` as shown below:
 
 .. literalinclude:: ../../../examples/tutorial/multipleSpectra.py
     :linenos:
     :language: python
-    :lines: 28-32
-    :lineno-start: 28
+    :lines: 38-41
+    :lineno-start: 38
 
 Finally, the transfer function data for the notched spectra data can be viewed by once more specifying the **specdir** option in the call to :meth:`~resistics.project.projectTransferFunction.viewImpedance`
 
 .. literalinclude:: ../../../examples/tutorial/multipleSpectra.py
     :linenos:
     :language: python
-    :lines: 34-53
-    :lineno-start: 34
+    :lines: 43-63
+    :lineno-start: 43
 
 The impedance for the default spectra calculated parameters and then for the notch parameters are shown below.
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_notch.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Default impedance tensor estimation
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
+.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.3.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Impedance tensor estimation using the notched spectra data
 
-As mentioned in the note at the top of this page, the simplest way to use the specdir option is through configuration files. More information about configuration files is provided in the :doc:`Configuration files <../features/configuration>` section. An example of using configuration files is provided in the :doc:`Using configuration files <configuration-files>` section.
+As mentioned in the note at the top of this page, the simplest way to use the specdir option is through configuration files. 
+
+.. important:: 
+
+    When specifying specdir in a configuration file, the specdir keyword no longer has to be passed to the various method calls as it is picked up directly from the confiugration file. This makes everything much simpler and removes a source of mistakes.
+
+More information about configuration files is provided in the :doc:`Configuration files <../features/configuration>` section. An example of using configuration files is provided in the :doc:`Using configuration files <configuration-files>` section.
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
