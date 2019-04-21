@@ -71,8 +71,17 @@ def getPlotRowsAndCols(maxCols: int, numPlots: int = 0) -> Tuple[int, int]:
     return nrows, ncols
 
 
-def plotOptionsStandard() -> Dict:
+def plotOptionsStandard(**kwargs) -> Dict:
     """Get a set of standard plot options
+
+    Parameters
+    ----------
+    figsize : Tuple, optional
+        Set the figure size
+    plotfonts : Dict, optional
+        Font sizes to use for plotting fonts
+    block : bool, optional
+        Boolean flag for blocking execution when plot is shown
 
     Returns
     -------
@@ -84,6 +93,7 @@ def plotOptionsStandard() -> Dict:
     default["figsize"] = (20, 12)
     default["plotfonts"] = getViewFonts()
     default["block"] = True
+    default = parseKeywords(default, kwargs)
     return default
 
 
