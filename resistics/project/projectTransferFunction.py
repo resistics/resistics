@@ -386,7 +386,7 @@ def viewImpedance(projData: ProjectData, **kwargs) -> None:
 
             if options["save"]:
                 impath = projData.imagePath
-                filename = "transFunction_{}_{}{}.png".format(
+                filename = "transFunction_{}_{}{}".format(
                     site, options["specdir"], postpend
                 )
                 savename = savePlot(impath, filename, fig)

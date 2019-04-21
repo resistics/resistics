@@ -372,7 +372,7 @@ class TransferFunctionData(DataObject):
 
         return fig
 
-    def viewTipper(self, **kwargs):
+    def viewTipper(self, **kwargs) -> plt.figure:
         """Plots tipper data where available
 
         For length data, both axes are log scale (period and length). For angle data, period is in log scale and phase is linear scale.
@@ -541,6 +541,8 @@ class TransferFunctionData(DataObject):
             plt.tight_layout()
             fig.subplots_adjust(top=0.90)
             plt.show()
+        
+        return fig
 
     def printList(self) -> List[str]:
         """Class information as a list of strings
