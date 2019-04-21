@@ -8,9 +8,11 @@ projData = loadProject(projectPath)
 projData.printInfo()
 
 # view the project timeline
-projData.view()
+fig = projData.view()
+fig.savefig(os.path.join("tutorialProject", "images", "projectTimeline"))
 
 # get site data
 siteData = projData.getSiteData("site1")
 siteData.printInfo()
-siteData.view()
+fig = siteData.view()
+fig.savefig(os.path.join("tutorialProject", "images", "siteTimeline"))

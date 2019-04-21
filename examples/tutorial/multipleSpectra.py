@@ -12,9 +12,19 @@ projData.refresh()
 
 # view the spectra
 from resistics.utilities.utilsPlotter import plotOptionsSpec, getPaperFonts
-from resistics.project.projectSpectra import viewSpectraSection
+from resistics.project.projectSpectra import viewSpectra, viewSpectraSection
 
 plotOptions = plotOptionsSpec(plotfonts=getPaperFonts())
+viewSpectra(
+    projData,
+    "site1",
+    "meas_2012-02-10_11-30-00",
+    specdir="notch",
+    plotoptions=plotOptions,
+    show=True,
+    save=True,
+)
+
 viewSpectraSection(
     projData,
     "site1",
@@ -29,7 +39,6 @@ viewSpectraSection(
 from resistics.project.projectTransferFunction import processProject
 
 processProject(projData, sites=["site1"], specdir="notch")
-projData.refresh()
 
 # plot the transfer functions, again with specifying the relevant specdir
 from resistics.project.projectTransferFunction import viewImpedance
@@ -42,6 +51,7 @@ viewImpedance(
     specdir="notch",
     save=True,
 )
+
 # and compare to the original
 viewImpedance(
     projData,

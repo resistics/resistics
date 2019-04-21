@@ -8,7 +8,7 @@ projData = loadProject(projectPath, configFile="tutorialConfig.ini")
 # get mask data
 from resistics.project.projectMask import getMaskData
 
-maskData = getMaskData(projData, "site1", "coh70_100", 128)
+maskData = getMaskData(projData, "site1", "coh70_100", 4096)
 # get the masked windows for decimation level 0 and evaluation frequency index 0
 maskWindows = maskData.getMaskWindowsFreq(0, 0)
 
@@ -16,17 +16,21 @@ maskWindows = maskData.getMaskWindowsFreq(0, 0)
 from resistics.project.projectStatistics import getStatisticData
 
 statData = getStatisticData(
-    projData, "site1", "meas_2012-02-10_11-30-00", "transferFunction"
+    projData, "site1", "meas_2012-02-10_11-05-00", "transferFunction"
 )
 
 # view masked statistic data again but this with constraints on both coherence and transfer function
-statData.view(0, ylim=[-2000, 2000])
-statData.view(0, maskwindows=maskWindows, ylim=[-2000, 2000])
+fig = statData.view(0, ylim=[-2000, 2000])
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_4096_nomask_view"))
+fig = statData.view(0, maskwindows=maskWindows, ylim=[-2000, 2000])
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_4096_maskcoh_view"))
 # histogram
-statData.histogram(0, xlim=[-500, 500])
-statData.histogram(0, maskwindows=maskWindows, xlim=[-500, 500])
+fig = statData.histogram(0, xlim=[-1000, 1000])
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_4096_nomask_hist"))
+fig = statData.histogram(0, maskwindows=maskWindows, xlim=[-1000, 1000])
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_4096_maskcoh_hist"))
 # crossplot
-statData.crossplot(
+fig = statData.crossplot(
     0,
     crossplots=[
         ["ExHxReal", "ExHxImag"],
@@ -37,7 +41,8 @@ statData.crossplot(
     xlim=[-2500, 2500],
     ylim=[-2500, 2500],
 )
-statData.crossplot(
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_4096_nomask_crossplot"))
+fig = statData.crossplot(
     0,
     maskwindows=maskWindows,
     crossplots=[
@@ -49,13 +54,16 @@ statData.crossplot(
     xlim=[-2500, 2500],
     ylim=[-2500, 2500],
 )
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_4096_maskcoh_crossplot"))
 
 # view statistic data again but this time exclude the masked windows
-maskData = getMaskData(projData, "site1", "coh70_100_tfConstrained", 128)
+maskData = getMaskData(projData, "site1", "coh70_100_tfConstrained", 4096)
 maskWindows = maskData.getMaskWindowsFreq(0, 0)
-statData.view(0, maskwindows=maskWindows, ylim=[-2000, 2000])
-statData.histogram(0, maskwindows=maskWindows, xlim=[-500, 500])
-statData.crossplot(
+fig = statData.view(0, maskwindows=maskWindows, ylim=[-2000, 2000])
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_4096_maskcoh_tf_view"))
+fig = statData.histogram(0, maskwindows=maskWindows, xlim=[-1000, 1000])
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_4096_maskcoh_tf_hist"))
+fig = statData.crossplot(
     0,
     maskwindows=maskWindows,
     crossplots=[
@@ -67,11 +75,14 @@ statData.crossplot(
     xlim=[-2500, 2500],
     ylim=[-2500, 2500],
 )
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_4096_maskcoh_tf_crossplot"))
 
-# if there are more than one data folder of the same site for a sampling frequency
+# if there are more than one data folder for the same site at the same sampling frequency
 # the better way to plot statistics with masks is using the methods in projectStatistics
 from resistics.project.projectStatistics import viewStatistic, viewStatisticHistogram
+from resistics.utilities.utilsPlotter import plotOptionsStandard, getPaperFonts
 
+plotOptions = plotOptionsStandard(plotfonts=getPaperFonts())
 viewStatistic(
     projData,
     "site1",
@@ -81,6 +92,7 @@ viewStatistic(
     ylim=[0, 1],
     save=True,
     show=False,
+    plotoptions=plotOptions,
 )
 viewStatisticHistogram(
     projData,
@@ -91,4 +103,5 @@ viewStatisticHistogram(
     xlim=[0, 1],
     save=True,
     show=False,
+    plotoptions=plotOptions,    
 )

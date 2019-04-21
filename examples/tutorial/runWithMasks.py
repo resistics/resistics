@@ -12,7 +12,7 @@ processProject(
     projData,
     sampleFreqs=[4096, 128],
     sites=["site1"],
-    outchans=["Ex", "Ey", "Hz"],
+    outchans=["Ex", "Ey"],
     masks={"site1": "coh70_100"},
     postpend="coh70_100",
 )
@@ -27,12 +27,10 @@ processProject(
     projData,
     sampleFreqs=[4096, 128],
     sites=["site1"],
-    outchans=["Ex", "Ey", "Hz"],
+    outchans=["Ex", "Ey"],
     masks={"site1": "coh70_100_tfConstrained"},
     postpend="coh70_100_tfConstrained",
 )
-
-from resistics.project.projectTransferFunction import viewImpedance
 
 viewImpedance(
     projData,

@@ -23,7 +23,8 @@ maskData.printConstraints()
 from resistics.project.projectMask import calculateMask
 
 calculateMask(projData, maskData, sites=["site1"])
-maskData.view(0)
+fig = maskData.view(0)
+fig.savefig(os.path.join("tutorialProject", "images", "maskData_128_coh_dec0"))
 
 # do the same for 4096 Hz
 maskData = newMaskData(projData, 4096)
@@ -33,7 +34,8 @@ maskData.maskName = "coh70_100"
 maskData.printInfo()
 maskData.printConstraints()
 calculateMask(projData, maskData, sites=["site1"])
-maskData.view(0)
+fig = maskData.view(0)
+fig.savefig(os.path.join("tutorialProject", "images", "maskData_4096_coh_dec0"))
 
 # calculate out statistics again, but this time use both transfer function and coherence
 maskData = newMaskData(projData, 128)
@@ -50,7 +52,8 @@ maskData.addConstraint(
 )
 maskData.maskName = "coh70_100_tfConstrained"
 calculateMask(projData, maskData, sites=["site1"])
-maskData.view(0)
+fig = maskData.view(0)
+fig.savefig(os.path.join("tutorialProject", "images", "maskData_128_coh_tf_dec0"))
 
 maskData = newMaskData(projData, 4096)
 maskData.setStats(["coherence", "transferFunction"])
@@ -66,5 +69,6 @@ maskData.addConstraint(
 )
 maskData.maskName = "coh70_100_tfConstrained"
 calculateMask(projData, maskData, sites=["site1"])
-maskData.view(0)
+fig = maskData.view(0)
+fig.savefig(os.path.join("tutorialProject", "images", "maskData_4096_coh_tf_dec0"))
 

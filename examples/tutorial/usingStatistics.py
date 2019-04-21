@@ -3,23 +3,23 @@ from resistics.project.projectIO import loadProject
 
 # need the project path for loading
 projectPath = os.path.join("tutorialProject")
-# projData = loadProject(projectPath)
+projData = loadProject(projectPath)
 
-# # get default statistic names
-# from resistics.utilities.utilsStats import getStatNames
+# get default statistic names
+from resistics.utilities.utilsStats import getStatNames
 
-# stats, remotestats = getStatNames()
+stats, remotestats = getStatNames()
 
-# # calculate statistics
-# from resistics.project.projectStatistics import calculateStatistics
+# calculate statistics
+from resistics.project.projectStatistics import calculateStatistics
 
-# calculateStatistics(projData, stats=stats)
+calculateStatistics(projData, stats=stats)
 
 # calculate statistics for a different spectra directory
 # load the project with the tutorial configuration file
 projData = loadProject(projectPath, configFile="tutorialConfig.ini")
 projData.printInfo()
-# calculateStatistics(projData, stats=stats)
+calculateStatistics(projData, stats=stats)
 
 # to get statistic data, we need the site, the measurement and the statistic we want
 from resistics.project.projectStatistics import getStatisticData
@@ -29,22 +29,28 @@ statData = getStatisticData(
     projData, "site1", "meas_2012-02-10_11-30-00", "coherence", declevel=0
 )
 # view statistic value over time
-statData.view(0)
+fig = statData.view(0)
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_coherence_view"))
 # view statistic histogram
-statData.histogram(0)
+fig = statData.histogram(0)
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_coherence_histogram"))
 # view statistic crossplot
-statData.crossplot(0, crossplots=[["cohExHy", "cohEyHx"], ["cohExHx", "cohEyHy"]])
+fig = statData.crossplot(0, crossplots=[["cohExHy", "cohEyHx"], ["cohExHx", "cohEyHy"]])
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_coherence_crossplot"))
+
 
 # transfer function statistic data
 statData = getStatisticData(
     projData, "site1", "meas_2012-02-10_11-30-00", "transferFunction", declevel=0
 )
 # view statistic value over time
-statData.view(0, ylim=[-2000, 2000])
+fig = statData.view(0, ylim=[-2000, 2000])
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_transferfunction_view"))
 # view statistic histogram
-statData.histogram(0, xlim=[-500, 500])
+fig = statData.histogram(0, xlim=[-500, 500])
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_transferfunction_histogram"))
 # view statistic crossplot
-statData.crossplot(
+fig = statData.crossplot(
     0,
     crossplots=[
         ["ExHxReal", "ExHxImag"],
@@ -55,11 +61,13 @@ statData.crossplot(
     xlim=[-2500, 2500],
     ylim=[-2500, 2500],
 )
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_transferfunction_crossplot"))
 # look at the next evaluation frequency
-statData.view(1, ylim=[-2000, 2000])
+fig = statData.view(1, ylim=[-2000, 2000])
+fig.savefig(os.path.join("tutorialProject", "images", "statistic_transferfunction_view_eval1"))
 
-# plot statistics for all data of a of a sampling frequency for a site
-from resistics.project.projectStatistics import viewStatistic, viewStatisticHistogram
+# plot statistic values in time for all data of a specified sampling frequency in a site
+from resistics.project.projectStatistics import viewStatistic
 
 # statistic in time
 viewStatistic(
@@ -71,10 +79,16 @@ viewStatistic(
     save=True,
     show=False,
 )
+
+# plot statistic histogram for all data of a specified sampling frequency in a site
+from resistics.project.projectStatistics import viewStatisticHistogram
+
 # statistic histogram
 viewStatisticHistogram(
     projData, "site1", 128, "transferFunction", xlim=[-500, 500], save=True, show=False
 )
+
+# more examples
 # change the evaluation frequency
 viewStatistic(
     projData,
