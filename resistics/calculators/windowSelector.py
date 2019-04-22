@@ -69,6 +69,70 @@ class WindowSelector(Calculator):
     -------
     __init__(decParams)
         Initialise window selector with information about the decimation parameters
+    getSharedWindowsLevel(iDec)
+        Get the shared windows for a decimation level as a python set
+    getNumSharedWindows(iDec)
+        Get the number of shared windows for a decimation level
+    getWindowsForFreq(iDec, eIdx)
+        Get the number of shared windows for a decimation level and evaluation frequency
+    getUnmaskedWindowsLevel(iDec)
+        Get unmasked windows for a decimation level
+    getDatetimeConstraints()
+        Get the datetime constraints
+    getLevelDatetimeConstraints(iDec)
+        Get the datetime constraints for a decimation level
+    getMasks()
+        Get a dictionary with masks to use for each site in the window selector
+    getSpecReaderForWindow(site, iDec, iWin)
+        Get the spectrum reader for a window
+    getDataSize(iDec)
+        Get the spectrum reader for a window
+    setSites(sites)
+        Set the sites for which to find the shared windows
+    addDatetimeConstraint(start, stop)
+        Add a datetime constraint
+    addLevelDatetimeConstraint(start, stop, iDec):
+        Add a datetime constraint for a decimation level
+    addDateConstraint(dateC)
+        Add a date constraint
+    addLevelDateConstraint(dateC, iDec)
+        Add a date constraint for a decimation level
+    addTimeConstraint(start, stop)
+        Add a time constraint. This will recur on every day of recording
+    addLevelTimeConstraint(start, stop, iDec)
+        Add a time constraint for a decimation level. This will recur on every day of recording
+    addWindowMask(site, maskName)
+        Add a window mask
+    calcSharedWindows()
+        Calculate shared windows between sites
+    calcGlobalIndices()
+        Find all the global indices for the sites
+    calcDatetimeConstraints()
+        Calculate overall datetime constraints
+    calcSiteDates()
+        Calculate a list of days that all the sites were operating
+    printList()
+        Class information as a list of strings
+    printSiteInfo()
+        Print out information about the sites included in the window selection
+    printSiteInfoList(site)
+        Return site window information as a list of strings
+    printSharedWindows() 
+        Print out the shared windows
+    printSharedWindowsList()
+        Shared window information as a list of strings
+    printDatetimeConstraints()
+        Print out the datetime constraints
+    printDatetimeConstraintsList()
+        Datetime constraint information as a list of strings
+    printWindowMasks()
+        Print information about masks being used in the window selection
+    printWindowMasksList()
+        Window mask information as a list of strings
+    printWindowsForFrequency(listwindows=False):
+        Print information about the windows for each evaluation frequency
+    printWindowsForFrequencyList(listwindows=False)
+        Information about windows for each evaluation frequency as a list of strings
     """
 
     def __init__(
@@ -102,8 +166,8 @@ class WindowSelector(Calculator):
         self.sites: List = []
         # shared indices
         self.sharedWindows: Dict = {}
-        # the masks to use for each site
-        self.siteMasks: Dict = {}
+        # the masks to use for each site - there can be multiple masks for each site
+        self.siteMasks: Dict[str, List[str]] = {}
         # the spec files for each site at fs
         self.siteSpecFolders: Dict = {}
         self.siteSpecReaders: Dict = {}
@@ -206,12 +270,13 @@ class WindowSelector(Calculator):
             indices.update(self.getWindowsForFreq(iDec, eIdx))
         return indices
 
-    def getDatetimeConstraints(self):
+    def getDatetimeConstraints(self) -> Dict:
         """Get the datetime constraints
         
         Returns
         -------
-        
+        Dict
+            Dictionary of datetime constraints at all decimation levels
         """
 
         self.calcDatetimeConstraints()
@@ -220,6 +285,8 @@ class WindowSelector(Calculator):
     def getLevelDatetimeConstraints(self, iDec: int):
         """Get the datetime constraints
         
+        todo: check what this is
+
         Returns
         -------
         
@@ -228,12 +295,13 @@ class WindowSelector(Calculator):
         self.calcDatetimeConstraints()
         return self.datetimeConstraints[iDec]
 
-    def getMasks(self):
-        """Get the datetime constraints
+    def getMasks(self) -> Dict:
+        """Get a dictionary with masks to use for each site in the window selector
         
         Returns
         -------
-        
+        Dict
+            Dictionary with masks to use for each site in the window selector
         """
 
         return self.siteMasks
@@ -292,7 +360,7 @@ class WindowSelector(Calculator):
         for sF in specReaders:
             return specReaders[sF].getDataSize()
 
-    def setSites(self, sites) -> None:
+    def setSites(self, sites: List[str]) -> None:
         """Set the sites for which to find the shared windows
 
         Parameters
@@ -316,14 +384,6 @@ class WindowSelector(Calculator):
             self.siteGlobalIndices[s] = {}
         # at the end, calculate global indices
         self.calcGlobalIndices()
-
-    # # this is the spectra director
-    # def setSpecDir(self, specdir):
-    #     specDir = specdir
-
-    # # this is the prepend for the spectra files
-    # def setPrepend(self, prepend):
-    #     self.prepend = prepend
 
     def addDatetimeConstraint(self, start: str, stop: str):
         """Add a datetime constraint
@@ -399,7 +459,7 @@ class WindowSelector(Calculator):
         for iDec in range(0, numLevels):
             self.addLevelTimeConstraint(start, stop, iDec)
 
-    def addLevelTimeConstraint(self, start, stop, iDec):
+    def addLevelTimeConstraint(self, start: str, stop: str, iDec: int):
         """Add a time constraint for a decimation level. This will recur on every day of recording.
 
         Parameters
@@ -604,6 +664,16 @@ class WindowSelector(Calculator):
             self.datetimeConstraints[iDec] = sorted(self.datetimeConstraints[iDec])
 
     def calcSiteDates(self) -> List[datetime]:
+        """Calculate a list of days that all the sites were operating
+        
+        This uses the siteStart and siteEnd datetimes, so does not take into account the start and end of actual time series measurements, which is taken into account later.
+
+        Returns
+        -------
+        List[datetime]
+            A list of dates all the sites were operating
+        """
+
         starts = []
         stops = []
         for site in self.sites:
