@@ -207,7 +207,7 @@ class SpectrumData(DataObject):
         ----------
         fig : matplotlib.pyplot.figure, optional
             A figure object
-        plotFonts : Dict, optional
+        plotfonts : Dict, optional
             A dictionary of plot fonts
         chans : List[str], optional
             A list of channels to plot
@@ -215,6 +215,8 @@ class SpectrumData(DataObject):
             Label for the plots
         xlim : List, optional
             Limits for the x axis
+        color : str, rgba Tuple
+            The color for the line plot
         legend : bool
             Boolean flag for adding a legend
 
@@ -230,7 +232,8 @@ class SpectrumData(DataObject):
             if "fig" in kwargs
             else plt.figure(figsize=(20, 2 * self.numChans))
         )
-        plotFonts = kwargs["plotFonts"] if "plotFonts" in kwargs else getViewFonts()
+        plotFonts = kwargs["plotfonts"] if "plotfonts" in kwargs else getViewFonts()
+        color = kwargs["color"] if "color" in kwargs else None
         # suptitle
         st = fig.suptitle(
             "Spectra data from {} to {}".format(self.startTime, self.stopTime),
@@ -245,9 +248,9 @@ class SpectrumData(DataObject):
             plt.title("Channel {}".format(chan), fontsize=plotFonts["title"])
             # plot the data
             if "label" in kwargs:
-                plt.plot(f, np.absolute(self.data[chan]), label=kwargs["label"])
+                plt.plot(f, np.absolute(self.data[chan]), color=color, label=kwargs["label"])
             else:
-                plt.plot(f, np.absolute(self.data[chan]))
+                plt.plot(f, np.absolute(self.data[chan]), color=color)
             # add frequency label
             if idx == numPlotChans - 1:
                 plt.xlabel("Frequency [Hz]", fontsize=plotFonts["axisLabel"])

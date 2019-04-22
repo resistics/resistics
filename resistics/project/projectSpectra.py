@@ -22,6 +22,7 @@ from resistics.utilities.utilsPrint import listToString, breakComment
 from resistics.utilities.utilsPlotter import (
     savePlot,
     colorbar2dSpectra,
+    colorbarMultiline,
     plotOptionsSpec,
 )
 from resistics.utilities.utilsProject import (
@@ -30,6 +31,7 @@ from resistics.utilities.utilsProject import (
     getCalibrator,
     getDecimationParameters,
     getWindowParameters,
+    applyPolarisationReversalOptions,
     applyCalibrationOptions,
     applyFilterOptions,
     applyNotchOptions,
@@ -102,6 +104,8 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
         The frequencies in Hz for which to calculate the spectra. Either a single frequency or a list of them.
     chans : List[str], optional
         The channels for which to calculate out the spectra
+    polreverse :  Dict[str, bool]
+        Keys are channels and values are boolean flags for reversing
     calibrate : bool, optional
         Flag whether to calibrate the data or not
     notch : List[float], optional
@@ -115,12 +119,13 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
     # default options
     options = {}
     options["sites"] = projData.getSites()
-    options["sampleFreqs"] = projData.getSampleFreqs()
-    options["chans"] = []
-    options["calibrate"] = True
-    options["notch"] = []
-    options["filter"] = {}
-    options["specdir"] = projData.config.configParams["Spectra"]["specdir"]
+    options["sampleFreqs"]: List[float] = projData.getSampleFreqs()
+    options["chans"]: List[str] = []
+    options["polreverse"]: Union[bool, Dict[str, bool]] = False    
+    options["calibrate"]: bool = True
+    options["notch"]: List[float] = []
+    options["filter"]: Dict = {}
+    options["specdir"]: str = projData.config.configParams["Spectra"]["specdir"]
     options = parseKeywords(options, kwargs)
 
     # prepare calibrator
@@ -165,6 +170,7 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
                 timeData.addComment(projData.config.getConfigComment())
 
                 # apply various options
+                applyPolarisationReversalOptions(options, timeData)
                 applyCalibrationOptions(options, cal, timeData, reader)
                 applyFilterOptions(options, timeData)
                 applyNotchOptions(options, timeData)
@@ -246,7 +252,9 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
                     specWrite.closeFile()
 
 
-def viewSpectra(projData: ProjectData, site: str, meas: str, **kwargs) -> plt.figure:
+def viewSpectra(
+    projData: ProjectData, site: str, meas: str, **kwargs
+) -> Union[plt.figure, None]:
     """View spectra for a measurement
 
     Parameters
@@ -274,8 +282,8 @@ def viewSpectra(projData: ProjectData, site: str, meas: str, **kwargs) -> plt.fi
     
     Returns
     -------
-    matplotlib.pyplot.figure
-        Figure handle
+    matplotlib.pyplot.figure or None
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
     """
 
     options = {}
@@ -317,10 +325,12 @@ def viewSpectra(projData: ProjectData, site: str, meas: str, **kwargs) -> plt.fi
 
     # create a figure
     plotfonts = options["plotoptions"]["plotfonts"]
+    cmap = colorbarMultiline()
     fig = plt.figure(figsize=options["plotoptions"]["figsize"])
     for iW in windows:
         if iW >= numWindows:
             break
+        color = cmap(iW/numWindows)
         winData = specReader.readBinaryWindowLocal(iW)
         winData.view(
             fig=fig,
@@ -330,6 +340,7 @@ def viewSpectra(projData: ProjectData, site: str, meas: str, **kwargs) -> plt.fi
                 winData.stopTime.strftime("%m-%d %H:%M:%S"),
             ),
             plotfonts=plotfonts,
+            color=color,
         )
 
     st = fig.suptitle(
@@ -352,10 +363,12 @@ def viewSpectra(projData: ProjectData, site: str, meas: str, **kwargs) -> plt.fi
     # fig legend and formatting
     ax = plt.gca()
     h, l = ax.get_legend_handles_labels()
-    fig.legend(h, l, ncol=3, loc="lower center", fontsize=plotfonts["legend"])
-    fig.tight_layout()
-    fig.subplots_adjust(top=0.92)
-    fig.subplots_adjust(bottom=0.08 + 0.03 * len(windows) / numChans)
+    fig.tight_layout(rect=[0.02, 0.02, 0.77, 0.92])
+    # legend axis
+    legax = plt.axes(position=[0.77, 0.02, 0.23, 0.88], in_layout=False)
+    plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom="False")
+    plt.box(False)
+    legax.legend(h, l, loc="upper left", fontsize=plotfonts["legend"])
 
     # plot show and save
     if options["save"]:
@@ -367,10 +380,15 @@ def viewSpectra(projData: ProjectData, site: str, meas: str, **kwargs) -> plt.fi
         projectText("Image saved to file {}".format(savename))
     if options["show"]:
         plt.show(block=options["plotoptions"]["block"])
+    if not options["show"] and options["save"]:
+        plt.close(fig)
+        return None
     return fig
 
 
-def viewSpectraSection(projData: ProjectData, site: str, meas: str, **kwargs):
+def viewSpectraSection(
+    projData: ProjectData, site: str, meas: str, **kwargs
+) -> Union[plt.figure, None]:
     """View spectra section for a measurement
 
     Parameters
@@ -396,8 +414,8 @@ def viewSpectraSection(projData: ProjectData, site: str, meas: str, **kwargs):
     
     Returns
     -------
-    matplotlib.pyplot.figure
-        Figure handle
+    matplotlib.pyplot.figure or None
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
     """
 
     options = {}
@@ -497,9 +515,8 @@ def viewSpectraSection(projData: ProjectData, site: str, meas: str, **kwargs):
         plt.grid(True)
 
     # plot format
-    fig.autofmt_xdate(rotation=90)
-    fig.tight_layout()
-    fig.subplots_adjust(top=0.92)
+    fig.autofmt_xdate(rotation=90, ha="center")
+    fig.tight_layout(rect=[0.02, 0.02, 0.96, 0.92])
 
     # plot show and save
     if options["save"]:
@@ -511,12 +528,15 @@ def viewSpectraSection(projData: ProjectData, site: str, meas: str, **kwargs):
         projectText("Image saved to file {}".format(savename))
     if options["show"]:
         plt.show(block=options["plotoptions"]["block"])
+    if not options["show"] and options["save"]:
+        plt.close(fig)
+        return None
     return fig
 
 
 def viewSpectraStack(
     projData: ProjectData, site: str, meas: str, **kwargs
-) -> plt.figure:
+) -> Union[plt.figure, None]:
     """View spectra stacks for a measurement
 
     Parameters
@@ -546,8 +566,8 @@ def viewSpectraStack(
     
     Returns
     -------
-    matplotlib.pyplot.figure
-        Figure handle
+    matplotlib.pyplot.figure or None
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
     """
 
     options = {}
@@ -589,6 +609,7 @@ def viewSpectraStack(
 
     # setup the figure
     plotfonts = options["plotoptions"]["plotfonts"]
+    cmap = colorbarMultiline()
     fig = plt.figure(figsize=options["plotoptions"]["figsize"])
     st = fig.suptitle(
         "Spectra stack, fs = {:.6f} [Hz], decimation level = {:2d}, windows in each set = {:d}".format(
@@ -602,6 +623,7 @@ def viewSpectraStack(
     for iP in range(0, options["numstacks"]):
         stackStart = iP * stackSize
         stackStop = min(stackStart + stackSize, numWindows)
+        color = cmap(iP/options["numstacks"])
         # dictionaries to hold data for this section
         stackedData = {}
         ampData = {}
@@ -653,6 +675,7 @@ def viewSpectraStack(
             h = ax1.semilogy(
                 f,
                 ampData[c],
+                color=color,
                 label="{} to {}".format(
                     startTime.strftime("%m-%d %H:%M:%S"),
                     stopTime.strftime("%m-%d %H:%M:%S"),
@@ -679,6 +702,7 @@ def viewSpectraStack(
             ax2.plot(
                 f,
                 phaseData[c],
+                color=color,                
                 label="{} to {}".format(
                     startTime.strftime("%m-%d %H:%M:%S"),
                     stopTime.strftime("%m-%d %H:%M:%S"),
@@ -705,6 +729,7 @@ def viewSpectraStack(
             ax.plot(
                 f,
                 coherence,
+                color=color,
                 label="{} to {}".format(
                     startTime.strftime("%m-%d %H:%M:%S"),
                     stopTime.strftime("%m-%d %H:%M:%S"),
@@ -722,10 +747,12 @@ def viewSpectraStack(
     # fig legend and layout
     ax = plt.gca()
     h, l = ax.get_legend_handles_labels()
-    fig.legend(h, l, ncol=numChans, loc="lower center", fontsize=plotfonts["legend"])
-    fig.tight_layout()
-    fig.subplots_adjust(top=0.92)
-    fig.subplots_adjust(bottom=0.05 + 0.03 * options["numstacks"] / numChans)
+    fig.tight_layout(rect=[0.01, 0.01, 0.98, 0.81])
+    # legend
+    legax = plt.axes(position=[0.01, 0.82, 0.98, 0.12], in_layout=False)
+    plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom="False")
+    plt.box(False)
+    legax.legend(h, l, ncol=4, loc="upper center", fontsize=plotfonts["legend"])
 
     # plot show and save
     if options["save"]:
@@ -737,4 +764,7 @@ def viewSpectraStack(
         projectText("Image saved to file {}".format(savename))
     if options["show"]:
         plt.show(block=options["plotoptions"]["block"])
+    if not options["show"] and options["save"]:
+        plt.close(fig)
+        return None
     return fig
