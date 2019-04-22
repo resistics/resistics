@@ -145,7 +145,7 @@ The next step is to calculate out the spectra and then produce a spectra stack p
 .. literalinclude:: ../../../cookbook/usingAscii/runDefault.py
     :linenos:
     :language: python
-    :lines: 27-44
+    :lines: 27-45
     :lineno-start: 27
 
 The spectra stack is shown below:
@@ -162,20 +162,44 @@ The easiest way to process the ascii data is using the default parameterisation,
 .. literalinclude:: ../../../cookbook/usingAscii/runDefault.py
     :linenos:
     :language: python
-    :lines: 46-65
-    :lineno-start: 46    
+    :lines: 47-66
+    :lineno-start: 47    
+
+This gives the below impedance tensor estimate.
+
+.. figure:: ../../../cookbook/usingAscii/asciiProject/images/transFunction_site1_spectra.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+    :width: 400
+
+    The impedance tensor estimate.
+
+Looking at the phase estimates, the phase for the ExHy component is in the wrong quadrant. This is generally due to a different polarity convention, which can be fixed by performing a polarity reversal, which is shown below.
+
+.. note::
+
+    A polarity reversal sounds impressive but is simply a multiplication by -1. This does not change impedance tensor magnitude (therefore the apparent resistivity) but will have an impact on the phase.
 
 .. literalinclude:: ../../../cookbook/usingAscii/runDefault.py
     :linenos:
     :language: python
-    :lines: 67-78
-    :lineno-start: 78    
+    :lines: 68-79
+    :lineno-start: 68    
 
+The tipper estimate is shown below.
+
+.. figure:: ../../../cookbook/usingAscii/asciiProject/images/tipper_site1_spectra_withHz.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    The tipper estimate.
 
 Changing the default parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As described in the :doc:`Using configuration files <../tutorial/configuration-files>` section in the :doc:`Tutorial <../tutorial>`, configuration files can be used to change the default parameterisation. The default parameters are not necessarily ideal for long period MT stations. Therefore, it could be sensible to change the parameters here. 
+As described in the :doc:`Using configuration files <../tutorial/configuration-files>` section in the :doc:`Tutorial <../tutorial>`, configuration files can be used to change the default parameterisation. The default parameters are not necessarily ideal for long period MT stations sampled at low sampling frequencies (here, 0.5 Hz). Therefore, it could be sensible to change the parameters here. 
 
 A new configuration file has been made and is included below:
 
@@ -183,6 +207,140 @@ A new configuration file has been made and is included below:
     :linenos:
     :language: text
 
+To use the configuration file, the project needs to be loaded along with the configuration file.
+
+.. literalinclude:: ../../../cookbook/usingAscii/runWithConfig.py
+    :linenos:
+    :language: python
+    :lines: 1-7
+    :lineno-start: 1   
+
+.. note::
+
+    As the new configuration file includes new windowing parameters, a new set of spectra will be calculated out. The **specdir** option in the configuration deals with this. 
+
+The first task it to view the time series data with a polarity reversal. This can be done by specifying the :python:`polreverse` keyword for :meth:`~resistics.project.projectTime.viewTime` as demonstrated below.
+
+.. literalinclude:: ../../../cookbook/usingAscii/runWithConfig.py
+    :linenos:
+    :language: python
+    :lines: 9-20
+    :lineno-start: 9
+
+.. figure:: ../../../cookbook/usingAscii/asciiProject/images/timeData_2018-01-03_00-00-00__2018-01-05_00-00-00.1.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Visualising time series with |Hy| multiplied by -1.   
+
+Following a similar scheme as the default example, the spectra can be calculated and a spectra stack plotted. However, the polarity reversal needs to be specified when calculating the spectra, as is done in the below example. 
+
+.. literalinclude:: ../../../cookbook/usingAscii/runWithConfig.py
+    :linenos:
+    :language: python
+    :lines: 22-41
+    :lineno-start: 22   
+
+.. figure:: ../../../cookbook/usingAscii/asciiProject/images/spectraStack_site1_meas_dec0_dec8_5.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    The spectra stack for the new configuration using 8 decimation levels and 5 evalution frequencies per level.
+
+As this configuration has fewer samples in a window, the resolution in frequency domain will be worse in comparison to the default parameters, which is clear from the plot. 
+
+Finally, the spectra can be processed to estimate the impedance tensor and tipper. First, the impedance tensor.
+
+.. literalinclude:: ../../../cookbook/usingAscii/runWithConfig.py
+    :linenos:
+    :language: python
+    :lines: 43-62
+    :lineno-start: 43
+
+The impedance tensor estimate is shown below and now the phases are all in the correct quadrants.
+
+.. figure:: ../../../cookbook/usingAscii/asciiProject/images/transFunction_site1_dec8_5.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+    :width: 400
+
+    The impedance tensor estimate using 8 decimation levels and 5 evaluation frequencies per level.
+
+And for the tipper:
+
+.. literalinclude:: ../../../cookbook/usingAscii/runWithConfig.py
+    :linenos:
+    :language: python
+    :lines: 64-76
+    :lineno-start: 64
+
+.. figure:: ../../../cookbook/usingAscii/asciiProject/images/tipper_site1_dec8_5_withHz.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    The tipper estimate using 8 decimation levels and 5 evaluation frequencies per level.
+
+The next question to ask is whether statistics could improve the result.
+
+Using statistics and masks
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Begin once more by loading the project and configuration to continue working with the set of spectra where |Hy| has had a polarity reversal.
+
+.. literalinclude:: ../../../cookbook/usingAscii/runWithStatistics.py
+    :linenos:
+    :language: python
+    :lines: 1-7
+    :lineno-start: 1
+
+For more information about statistics, see the :doc:`Statistics <../tutorial/statistics>` section of the tutorial. Two statistics are calculated out here: coherence and transfer function. 
+
+.. literalinclude:: ../../../cookbook/usingAscii/runWithStatistics.py
+    :linenos:
+    :language: python
+    :lines: 9-12
+    :lineno-start: 9
+
+Next create a mask to perform simple coherence based rejection of time windows and view the mask.
+
+.. literalinclude:: ../../../cookbook/usingAscii/runWithStatistics.py
+    :linenos:
+    :language: python
+    :lines: 14-22
+    :lineno-start: 14
+
+.. figure:: ../../../cookbook/usingAscii/asciiProject/images/maskcoh.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    The number of masked windows for each evaluation frequency in decimation level 0.
+
+More interesting plots can be made of statistics with masks as demonstrated in the :doc:`Masks <../tutorial/masks>` section of the tutorial, but this is left as an exercise.
+
+Finally, calculate the impedance tensor estimate with the mask applied to exclude some windows.
+
+.. literalinclude:: ../../../cookbook/usingAscii/runWithStatistics.py
+    :linenos:
+    :language: python
+    :lines: 25-48
+    :lineno-start: 25
+
+.. figure:: ../../../cookbook/usingAscii/asciiProject/images/transFunction_site1_dec8_5_coh30_100.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+    :width: 400
+
+    The impedance tensor estimate with masks applied.
+
+If aspects of this example using ASCII data were not clear, please see the :doc:`Tutorial <../tutorial>` for more information about resistics, :doc:`Data formats <../formats>` for data supported by resistics and :doc:`Advanced <../advanced>` for an overview of the more advanced functionality of resistics.
+
+Note, that this was not an effort to optimise the result, but rather an example and walkthrough of processing ASCII data in resistics. 
 
 Complete example scripts
 ~~~~~~~~~~~~~~~~~~~~~~~~

@@ -42,7 +42,7 @@ Calculating spectra is now straightforward. When passing the :class:`~resistics.
 .. literalinclude:: ../../../examples/tutorial/usingConfigFiles.py
     :linenos:
     :language: python
-    :lines: 9-12
+    :lines: 9-13
     :lineno-start: 9
 
 The spectra will be stored in the following location:
@@ -82,8 +82,8 @@ To process these spectra, it's a similar situation. Passing the :class:`~resisti
 .. literalinclude:: ../../../examples/tutorial/usingConfigFiles.py
     :linenos:
     :language: python
-    :lines: 14-18
-    :lineno-start: 14
+    :lines: 15-19
+    :lineno-start: 15
 
 Now the plot using the new configuration parameters (8 decimation levels with 5 evaluation frequencies per decimation level) can be compared to the default parameterisation.
 

@@ -71,7 +71,7 @@ The fourier spectra can be viewed using the :meth:`~resistics.project.projectSpe
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 8-17
+    :lines: 8-11
     :lineno-start: 8
 
 This gives the following output: 
@@ -88,8 +88,8 @@ Plotting options can be defined using the :python:`plotoptions` keyword for :met
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 19-23
-    :lineno-start: 19
+    :lines: 13-17
+    :lineno-start: 13
 
 The plot options dictionary looks like this:
 
@@ -102,8 +102,8 @@ Now plotting the spectra again with the new plot options gives the same plot but
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 25-33
-    :lineno-start: 25
+    :lines: 19-27
+    :lineno-start: 19
 
 .. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.1.png
     :align: center
@@ -123,8 +123,8 @@ In the below example, :python:`plotwindow = "all"` which means that 20 windows a
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 35-45
-    :lineno-start: 35
+    :lines: 29-39
+    :lineno-start: 29
 
 .. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
     :align: center
@@ -138,8 +138,8 @@ Another useful way to inspect the variation of spectra across the time series me
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 47-58
-    :lineno-start: 47
+    :lines: 41-51
+    :lineno-start: 41
 
 .. figure:: ../../../examples/tutorial/tutorialProject/images/spectraSection_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
     :align: center
@@ -155,8 +155,8 @@ To understand the dominant frequencies in a time series measurement, it can be u
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 60-71
-    :lineno-start: 60
+    :lines: 53-64
+    :lineno-start: 53
 
 .. figure:: ../../../examples/tutorial/tutorialProject/images/spectraStack_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
     :align: center
@@ -172,8 +172,8 @@ The above were demonstrated on data sampled at 128Hz sampling rate but can be ea
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 73-101
-    :lineno-start: 73
+    :lines: 66-94
+    :lineno-start: 66
 
 The resultant plots are:
 

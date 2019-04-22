@@ -22,8 +22,12 @@ Begin by loading the project and calculating spectra. Spectra can be batch calcu
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 1-11
+    :lines: 1-12
     :lineno-start: 1
+
+.. note:: 
+
+    After calculating spectra, it is best practice to refresh the project to make sure everything is picked up. 
 
 Spectra data files are stored in project specData directory. The folder structure is similar to the timeData folder
 
@@ -63,8 +67,8 @@ The next step is to process the spectra to estimate the impedance tensor. This i
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 13-16
-    :lineno-start: 13
+    :lines: 14-17
+    :lineno-start: 14
 
 Transfer function data is stored under the transFuncData folder as shown below. As transfer functions are calculated out for each unique sampling frequency in a site, the data is stored with respect to sampling frequencies. 
 
@@ -113,8 +117,8 @@ Once the components of the impedance tensor have been calculated, it is possible
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 18-21
-    :lineno-start: 18
+    :lines: 19-22
+    :lineno-start: 22
 
 .. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.png
     :align: center
@@ -129,8 +133,8 @@ However, this plot is quite busy. One way to simplify the plot is to explicitly 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 23-26
-    :lineno-start: 23
+    :lines: 24-27
+    :lineno-start: 24
 
 .. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.1.png
     :align: center
@@ -145,8 +149,8 @@ On occasion, it can be more useful to plot each component separately. This can b
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 28-29
-    :lineno-start: 28
+    :lines: 29-30
+    :lineno-start: 29
 
 This results in the following plot.
 
@@ -162,8 +166,8 @@ To read in a transfer function directly, the :meth:`~resistics.project.projectTr
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 31-34
-    :lineno-start: 31
+    :lines: 32-35
+    :lineno-start: 32
 
 .. warning:: 
 
@@ -174,8 +178,8 @@ The transfer function data can be plotted using the :meth:`~resistics.dataObject
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 35-36
-    :lineno-start: 35
+    :lines: 36-37
+    :lineno-start: 36
 
 .. figure:: ../../../examples/tutorial/tutorialProject/images/transferFunctionViewExample.png
     :align: center

@@ -52,7 +52,8 @@ By default, the **specdir** is called **spectra** and spectra data is saved in t
     ├── images
     └── mtProj.prj
 
-However, by specifying the **specdir** option in :meth:`~resistics.project.projectSpectra.calculateSpectra`, a new set of spectra can be calculated. An example is shown below where a second set of spectra are calculated with notch filters and **specdir** is specified as :python:`specdir = "notch"`.
+However, by specifying the **specdir** option in :meth:`~resistics.project.projectSpectra.calculateSpectra`, a new set of spectra can be calculated.
+In the :doc:`Viewing spectra <viewing-spectra>` section, it was clear that the time series spectra had a peak at 50 Hz, which is a common powerline frequency. Therefore, an example is shown below where a second set of spectra are calculated with a notch filter applied at 50 Hz and **specdir** is specified as :python:`specdir = "notch"`.
 
 .. literalinclude:: ../../../examples/tutorial/multipleSpectra.py
     :linenos:
