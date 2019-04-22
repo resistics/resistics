@@ -268,7 +268,7 @@ def applyPolarisationReversalOptions(options: Dict, timeData: TimeData) -> TimeD
     if isinstance(options["polreverse"], bool):
         # no polarity reversal to be performed
         return timeData
-    
+
     if not isinstance(options["polreverse"], dict):
         # not specified in the right way
         return timeData
