@@ -29,7 +29,7 @@ def polarityReversal(
     if not inplace:
         timeData = timeData.copy()
     timeData.data = polarityReversalData(timeData.data, reversal)
-    timeData.addComment("Data normalised")
+    timeData.addComment("Polarity reversal with parameters: {}".format(reversal))
     return timeData
 
 
