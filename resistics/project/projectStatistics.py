@@ -409,7 +409,7 @@ def calculateRemoteStatistics(projData: ProjectData, remoteSite: str, **kwargs):
 
 def viewStatistic(
     projData: ProjectData, site: str, sampleFreq: Union[int, float], stat: str, **kwargs
-) -> plt.figure:
+) -> Union[plt.figure, None]:
     """View statistic data for a single sampling frequency of a site
     
     Parameters
@@ -443,7 +443,12 @@ def viewStatistic(
     save : bool, optional
         Save the plot to the images directory
     plotoptions : Dict, optional
-        Dictionary of plot options        
+        Dictionary of plot options    
+
+    Returns
+    -------
+    matplotlib.pyplot.figure or None
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
     """
 
     options = {}
@@ -542,12 +547,15 @@ def viewStatistic(
         projectText("Image saved to file {}".format(savename))
     if options["show"]:
         plt.show(block=options["plotoptions"]["block"])
+    if not options["show"] and options["save"]:
+        plt.close(fig)
+        return None        
     return fig
 
 
 def viewStatisticHistogram(
     projData: ProjectData, site: str, sampleFreq: float, stat: str, **kwargs
-) -> None:
+) -> Union[plt.figure, None]:
     """View statistic histograms for a single sampling frequency of a site
     
     Parameters
@@ -579,7 +587,12 @@ def viewStatisticHistogram(
     save : bool, optional
         Save the plot to the images directory
     plotoptions : Dict, optional
-        Dictionary of plot options        
+        Dictionary of plot options    
+
+    Returns
+    -------
+    matplotlib.pyplot.figure or None
+        A matplotlib figure unless the plot is not shown and is saved, in which case None.
     """
 
     options = {}
@@ -686,4 +699,7 @@ def viewStatisticHistogram(
         projectText("Image saved to file {}".format(savename))
     if options["show"]:
         plt.show(block=options["plotoptions"]["block"])
+    if not options["show"] and options["save"]:
+        plt.close(fig)
+        return None        
     return fig

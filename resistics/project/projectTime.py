@@ -17,6 +17,7 @@ from resistics.utilities.utilsProject import (
     projectBlock,
     checkDateOptions,
     getCalibrator,
+    applyPolarisationReversalOptions,
     applyCalibrationOptions,
     applyFilterOptions,
     applyInterpolationOptions,
@@ -72,6 +73,8 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
         Stop date of data to process in format "%Y-%m-%d %H:%M:%S"
     outputsite : str, optional
         A site to output the preprocessed time data to. If this site does not exist, it will be created
+    polreverse :  Dict[str, bool]
+        Keys are channels and values are boolean flags for reversing        
     calibrate : bool, optional
         Boolean flag for calibrating the data. Default is false and setting to True will calibrate where files can be found.
     normalise : bool, optional
@@ -92,10 +95,11 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
 
     options: Dict = {}
     options["sites"]: List = projData.getSites()
-    options["sampleFreqs"]: List = projData.getSampleFreqs()
+    options["sampleFreqs"]: List[float] = projData.getSampleFreqs()
     options["start"]: Union(bool, str) = False
     options["stop"]: Union(bool, str) = False
     options["outputsite"]: str = ""
+    options["polreverse"]: Union[bool, Dict[str, bool]] = False    
     options["calibrate"]: bool = False
     options["normalise"]: bool = False
     options["filter"]: Dict = {}
@@ -180,6 +184,7 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
                 chanHeaders, chanMap = reader.getChanHeaders()
 
                 # apply options
+                applyPolarisationReversalOptions(options, timeData)
                 applyCalibrationOptions(options, cal, timeData, reader)
                 applyFilterOptions(options, timeData)
                 applyNotchOptions(options, timeData)
@@ -213,7 +218,7 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
 
 def viewTime(
     projData: ProjectData, startDate: str, endDate: str, **kwargs
-) -> plt.figure:
+) -> Union[plt.figure, None]:
     """View timeseries in the project
 
     Parameters
@@ -228,6 +233,8 @@ def viewTime(
         List of sample frequencies to plot
     chans : List[str], optional
         List of channels to plot
+    polreverse :  Dict[str, bool]
+        Keys are channels and values are boolean flags for reversing        
     calibrate : bool, optional
         Boolean flag to calibrate data
     normalise : bool, optional
@@ -245,8 +252,8 @@ def viewTime(
 
     Returns
     -------
-    matplotlib.pyplot.figure
-        Figure handle
+    matplotlib.pyplot.figure or None
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
     """
 
     # default options
@@ -254,6 +261,7 @@ def viewTime(
     options["sites"]: List[str] = projData.sites
     options["sampleFreqs"]: Union[List[float], List[str]] = projData.getSampleFreqs()
     options["chans"]: List[str] = ["Ex", "Ey", "Hx", "Hy", "Hz"]
+    options["polreverse"]: Union[bool, Dict[str, bool]] = False    
     options["calibrate"]: bool = False
     options["normalise"]: bool = False
     options["filter"]: Dict = {}
@@ -308,6 +316,7 @@ def viewTime(
             )
 
             # apply various options
+            applyPolarisationReversalOptions(options, timeData)
             applyCalibrationOptions(options, cal, timeData, reader)
             applyFilterOptions(options, timeData)
             applyNotchOptions(options, timeData)
@@ -370,5 +379,7 @@ def viewTime(
         projectText("Image saved to file {}".format(savename))
     if options["show"]:
         plt.show(block=options["plotoptions"]["block"])
-    plt.close("all")
+    if not options["show"] and options["save"]:
+        plt.close(fig)
+        return None
     return fig
