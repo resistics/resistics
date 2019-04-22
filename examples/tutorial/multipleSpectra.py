@@ -7,7 +7,7 @@ projData = loadProject(projectPath)
 # calculate another set of spectra for the 128 Hz data with notching at 50Hz and 16.667Hz
 from resistics.project.projectSpectra import calculateSpectra
 
-calculateSpectra(projData, sampleFreqs=[128], notch=[16.667, 50], specdir="notch")
+calculateSpectra(projData, sampleFreqs=[128], notch=[50], specdir="notch")
 projData.refresh()
 
 # view the spectra

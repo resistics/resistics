@@ -10,6 +10,7 @@ projData.printInfo()
 from resistics.project.projectSpectra import calculateSpectra
 
 calculateSpectra(projData)
+projData.refresh()
 
 # process the spectra
 from resistics.project.projectTransferFunction import processProject, viewImpedance
