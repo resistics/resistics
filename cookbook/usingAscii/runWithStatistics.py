@@ -19,9 +19,10 @@ maskData.setStats(["coherence"])
 maskData.addConstraint("coherence", {"cohExHy": [0.3, 1.0], "cohEyHx": [0.3, 1.0]})
 maskData.maskName = "coh30_100"
 calculateMask(projData, maskData, sites=["site1"])
-maskData.view(0)
+fig = maskData.view(0)
+fig.savefig(os.path.join(projectPath, "images", "maskcoh"))
 
-# calculate transfer function
+# calculate impedance tensor
 from resistics.project.projectTransferFunction import processProject
 
 processProject(
@@ -35,7 +36,7 @@ from resistics.utilities.utilsPlotter import plotOptionsTransferFunction
 
 plotoptions = plotOptionsTransferFunction()
 plotoptions["xlim"] = [0.01, 1000000]
-plotoptions["phase_ylim"] = [-360, 360]
+plotoptions["phase_ylim"] = [-10, 100]
 viewImpedance(
     projData,
     sites=["site1"],
@@ -45,10 +46,3 @@ viewImpedance(
     plotoptions=plotoptions,
     save=True,
 )
-
-# from resistics.project.projectTransferFunction import viewTipper
-# from resistics.utilities.utilsPlotter import plotOptionsTipper
-
-# plotoptions = plotOptionsTipper()
-# plotoptions["xlim"] = [0.01, 1000000]
-# viewTipper(projData, sites=["site1"], plotoptions=plotoptions, save=True)

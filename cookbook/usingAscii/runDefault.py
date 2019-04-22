@@ -28,6 +28,7 @@ viewTime(
 from resistics.project.projectSpectra import calculateSpectra
 
 calculateSpectra(projData, calibrate=False)
+projData.refresh()
 
 from resistics.project.projectSpectra import viewSpectraStack
 from resistics.utilities.utilsPlotter import plotOptionsSpec
