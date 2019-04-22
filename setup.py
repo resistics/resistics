@@ -1,7 +1,8 @@
 import setuptools
+import resistics
 
 # options
-ver = "0.0.5.dev2"
+ver = resistics.__version__
 
 # See note below for more information about classifiers
 classifiers = [
