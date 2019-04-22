@@ -371,6 +371,17 @@ def colorbar2dOther():
 
     return plt.cm.plasma
 
+def colorbarMultiline():
+    """Alternative colormap for plotting multiple line plots 
+
+    Returns
+    -------
+    out : plt.cm
+        Colormap
+    """
+
+    return plt.cm.cividis    
+
 
 def addLegends(fig: plt.figure, pos: int = 1) -> None:
     """Add legends to all subplots in figure
