@@ -18,15 +18,6 @@ from resistics.utilities.utilsPrint import (
     errorPrint,
     blockPrint,
 )
-from resistics.utilities.utilsFilter import (
-    lowPass,
-    highPass,
-    bandPass,
-    notchFilter,
-    normalise,
-    resample,
-)
-from resistics.utilities.utilsInterp import interpolateToSecond
 
 
 def projectText(infoStr: str) -> None:
@@ -226,7 +217,7 @@ def getRemoteReferenceProcessor(
     processor = ProcessorRemoteReference(winSelector, outPath)
     if config is None:
         return processor
-    
+
     return processor
 
 
@@ -256,6 +247,36 @@ def checkDateOptions(options: Dict, timeStart: datetime, timeStop: datetime) -> 
         # this data has nothing to contribute in the optional date range
         return False
     return True
+
+
+def applyPolarisationReversalOptions(options: Dict, timeData: TimeData) -> TimeData:
+    """Polarity reverse time data
+
+    Parameters
+    ----------
+    options : Dict
+        User specified options for polarity reversal
+    timeData : TimeData
+        Time data to polarity reverse
+
+    Returns
+    -------
+    TimeData
+        Polarity reversed time data
+    """
+
+    if isinstance(options["polreverse"], bool):
+        # no polarity reversal to be performed
+        return timeData
+    
+    if not isinstance(options["polreverse"], dict):
+        # not specified in the right way
+        return timeData
+
+    from resistics.utilities.utilsMath import polarityReversal
+
+    timeData = polarityReversal(timeData, options["polreverse"])
+    return timeData
 
 
 def applyCalibrationOptions(
@@ -315,10 +336,16 @@ def applyFilterOptions(options: Dict, timeData: TimeData) -> TimeData:
     """
 
     if "lpfilt" in options["filter"]:
+        from resistics.utilities.utilsFilter import lowPass
+
         timeData = lowPass(timeData, options["filter"]["lpfilt"])
     if "hpfilt" in options["filter"]:
+        from resistics.utilities.utilsFilter import highPass
+
         timeData = highPass(timeData, options["filter"]["hpfilt"])
     if "bpfilt" in options["filter"]:
+        from resistics.utilities.utilsFilter import bandPass
+
         timeData = bandPass(
             timeData, options["filter"]["bpfilt"][0], options["filter"]["bpfilt"][1]
         )
@@ -346,6 +373,8 @@ def applyNotchOptions(options: Dict, timeData: TimeData) -> TimeData:
         Notch filtered time data
     """
 
+    from resistics.utilities.utilsFilter import notchFilter
+
     if len(options["notch"]) > 0:
         for n in options["notch"]:
             timeData = notchFilter(timeData, n)
@@ -369,6 +398,8 @@ def applyNormaliseOptions(options: Dict, timeData: TimeData) -> TimeData:
     TimeData
         Normalised time data
     """
+
+    from resistics.utilities.utilsFilter import normalise
 
     if options["normalise"]:
         projectText("Normalising data")
@@ -400,6 +431,8 @@ def applyInterpolationOptions(options: Dict, timeData: TimeData) -> TimeData:
     This will fail with longer sample periods (i.e. greater than a second)    
     """
 
+    from resistics.utilities.utilsInterp import interpolateToSecond
+
     if options["interp"]:
         if timeData.startTime.microsecond != 0:
             timeData = interpolateToSecond(timeData)
@@ -424,6 +457,8 @@ def applyResampleOptions(options: Dict, timeData: TimeData) -> TimeData:
     TimeData
         Resampled time data
     """
+
+    from resistics.utilities.utilsFilter import resample
 
     if timeData.sampleFreq in options["resamp"]:  # then need to resample this data
         timeData = resample(timeData, options["resamp"][timeData.sampleFreq])
