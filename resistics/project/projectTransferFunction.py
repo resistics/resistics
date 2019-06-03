@@ -3,7 +3,7 @@ import os
 import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
-from typing import Union
+from typing import Union, List, Dict
 
 # import from package
 from resistics.dataObjects.projectData import ProjectData
@@ -56,9 +56,9 @@ def getTransferFunctionData(
         The postpend on the transfer function files
     """
 
-    options = {}
-    options["specdir"] = projData.config.configParams["Spectra"]["specdir"]
-    options["postpend"] = ""
+    options: Dict = dict()
+    options["specdir"]: str = projData.config.configParams["Spectra"]["specdir"]
+    options["postpend"]: str = ""
     options = parseKeywords(options, kwargs)
 
     # deal with the postpend
@@ -116,23 +116,26 @@ def processProject(projData: ProjectData, **kwargs) -> None:
     crosschannels : List[str], optional
         List of channels to use for cross powers
     masks : Dict, optional
-        Masks dictionary for passing mask data        
+        Masks dictionary for passing mask data    
+    datetimes : List, optional
+        List of datetime constraints, each one as a dictionary            
     postpend : str, optional
         String to postpend to the transfer function output
     """
 
-    options = {}
-    options["sites"] = projData.getSites()
-    options["sampleFreqs"] = projData.getSampleFreqs()
-    options["specdir"] = projData.config.configParams["Spectra"]["specdir"]
-    options["inchans"] = ["Hx", "Hy"]
-    options["inputsite"] = ""
-    options["outchans"] = ["Ex", "Ey"]
-    options["remotesite"] = ""
-    options["remotechans"] = options["inchans"]
-    options["crosschannels"] = []
-    options["masks"] = {}
-    options["postpend"] = ""
+    options: Dict = dict()
+    options["sites"]: List[str] = projData.getSites()
+    options["sampleFreqs"]: List[float] = projData.getSampleFreqs()
+    options["specdir"]: str = projData.config.configParams["Spectra"]["specdir"]
+    options["inchans"]: List[str] = ["Hx", "Hy"]
+    options["inputsite"]: str = ""
+    options["outchans"]: List[str] = ["Ex", "Ey"]
+    options["remotesite"]: str = ""
+    options["remotechans"]: List[str] = options["inchans"]
+    options["crosschannels"]: List[str] = []
+    options["masks"]: Dict = {}
+    options["datetimes"]: List = []
+    options["postpend"]: str = ""
     options = parseKeywords(options, kwargs)
 
     for site in options["sites"]:
@@ -178,6 +181,8 @@ def processSite(
         List of channels to use for cross powers
     masks : Dict, optional
         Masks dictionary for passing mask data
+    datetimes : List, optional
+        List of datetime constraints, each one as a dictionary
     postpend : str, optional
         String to postpend to the transfer function output
     """
@@ -191,6 +196,7 @@ def processSite(
     options["remotechans"] = options["inchans"]
     options["crosschannels"] = []
     options["masks"] = {}
+    options["datetimes"] = []
     options["postpend"] = ""
     options = parseKeywords(options, kwargs)
     if options["inputsite"] == "":
@@ -233,6 +239,19 @@ def processSite(
                 # list of masks for the site
                 for mask in options["masks"][maskSite]:
                     winSelector.addWindowMask(maskSite, mask)
+
+    # add datetime constraints
+    for dC in options["datetimes"]:
+        levels = None
+        if "levels" in dC:
+            levels = dC["levels"]
+
+        if dC["type"] == "datetime":
+                winSelector.addDatetimeConstraint(dC["start"], dC["stop"], levels)
+        if dC["type"] == "time":
+                winSelector.addTimeConstraint(dC["start"], dC["stop"], levels)
+        if dC["type"] == "date":
+                winSelector.addDateConstraint(dC["date"], levels)
 
     # calculate the shared windows and print info
     winSelector.calcSharedWindows()
@@ -485,7 +504,7 @@ def viewTipper(projData: ProjectData, **kwargs) -> None:
                     xlim=options["plotoptions"]["xlim"],
                     length_ylim=options["plotoptions"]["length_ylim"],
                     angle_ylim=options["plotoptions"]["angle_ylim"],
-                    plotfonts=options["plotoptions"]["plotfonts"],                    
+                    plotfonts=options["plotoptions"]["plotfonts"],
                 )
 
             # check if any files found

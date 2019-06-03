@@ -1,6 +1,6 @@
 import os
 from datetime import date, time, datetime, timedelta
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Union
 
 # import from package
 from resistics.calculators.calculator import Calculator
@@ -225,8 +225,6 @@ class WindowSelector(Calculator):
     def getWindowsForFreq(self, iDec: int, eIdx: int) -> Set:
         """Get the number of shared windows for a decimation level and evaluation frequency
 
-
-
         Parameters
         ----------
         iDec : int
@@ -385,8 +383,8 @@ class WindowSelector(Calculator):
         # at the end, calculate global indices
         self.calcGlobalIndices()
 
-    def addDatetimeConstraint(self, start: str, stop: str):
-        """Add a datetime constraint
+    def addDatetimeConstraint(self, start: str, stop: str, declevel: Union[List[int], int, None] = None):
+        """Add datetime constraints
 
         Parameters
         ----------
@@ -394,57 +392,49 @@ class WindowSelector(Calculator):
             Datetime constraint start in format %Y-%m-%d %H:%M:%S
         stop : str
             Datetime constraint end in format %Y-%m-%d %H:%M:%S
-        """
-
-        numLevels = self.decParams.numLevels
-        for iDec in range(0, numLevels):
-            self.addLevelDatetimeConstraint(start, stop, iDec)
-
-    def addLevelDatetimeConstraint(self, start: str, stop: str, iDec: int):
-        """Add a datetime constraint
-
-        Parameters
-        ----------
-        start : str
-            Datetime constraint start in format %Y-%m-%d %H:%M:%S
-        stop : str
-            Datetime constraint end in format %Y-%m-%d %H:%M:%S
-        iDec : int
-            The decimation level
+        declevel : List[int], int, optional
+            The decimation level. If left as default, will be applied to all decimation levels.             
         """
 
         datetimeStart = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
         datetimeStop = datetime.strptime(stop, "%Y-%m-%d %H:%M:%S")
-        self.datetimes[iDec].append([datetimeStart, datetimeStop])
 
-    def addDateConstraint(self, dateC: str):
+        # levels the constraint applies to
+        if declevel is None:
+            levels = range(0, self.decParams.numLevels)
+        elif isinstance(declevel, list):
+            levels = declevel
+        else:
+            levels = [declevel] 
+        # then add constraints as appropriate
+        for iDec in levels:
+            self.datetimes[iDec].append([datetimeStart, datetimeStop])
+
+    def addDateConstraint(self, dateC: str, declevel: Union[List[int], int, None] = None):
         """Add a date constraint
 
         Parameters
         ----------
         dateC : str
             Datetime constraint in format %Y-%m-%d
-        """
-
-        numLevels = self.decParams.numLevels
-        for iDec in range(0, numLevels):
-            self.addLevelDateConstraint(dateC, iDec)
-
-    def addLevelDateConstraint(self, dateC: str, iDec: int):
-        """Add a date constraint for a decimation level
-
-        Parameters
-        ----------
-        dateC : str
-            Datetime constraint in format %Y-%m-%d
-        iDec : int
-            The decimation level
+        declevel : List[int], int, optional
+            The decimation level. If left as default, will be applied to all decimation levels.             
         """
 
         datetimeC = datetime.strptime(dateC, "%Y-%m-%d").date()
-        self.dates[iDec].append(datetimeC)
 
-    def addTimeConstraint(self, start: str, stop: str):
+        # levels the constraint applies to
+        if declevel is None:
+            levels = range(0, self.decParams.numLevels)
+        elif isinstance(declevel, list):
+            levels = declevel
+        else:
+            levels = [declevel] 
+        # then add constraints as appropriate
+        for iDec in levels:
+            self.dates[iDec].append(datetimeC)
+
+    def addTimeConstraint(self, start: str, stop: str, declevel: Union[List[int], int, None] = None):
         """Add a time constraint. This will recur on every day of recording.
 
         Parameters
@@ -453,28 +443,23 @@ class WindowSelector(Calculator):
             Time constraint start in format %H:%M:%S
         stop : str
             Time constraint end in format %H:%M:%S
-        """
-
-        numLevels = self.decParams.numLevels
-        for iDec in range(0, numLevels):
-            self.addLevelTimeConstraint(start, stop, iDec)
-
-    def addLevelTimeConstraint(self, start: str, stop: str, iDec: int):
-        """Add a time constraint for a decimation level. This will recur on every day of recording.
-
-        Parameters
-        ----------
-        start : str
-            Time constraint start in format %H:%M:%S
-        stop : str
-            Time constraint end in format %H:%M:%S
-        iDec : int
-            The decimation level
+        declevel : List[int], int, optional
+            The decimation level. If left as default, will be applied to all decimation levels.             
         """
 
         timeStart = datetime.strptime(start, "%H:%M:%S").time()
         timeStop = datetime.strptime(stop, "%H:%M:%S").time()
-        self.times[iDec].append([timeStart, timeStop])
+
+        # levels the constraint applies to
+        if declevel is None:
+            levels = range(0, self.decParams.numLevels)
+        elif isinstance(declevel, list):
+            levels = declevel
+        else:
+            levels = [declevel] 
+        # then add constraints as appropriate
+        for iDec in levels:        
+            self.times[iDec].append([timeStart, timeStop])
 
     def addWindowMask(self, site: str, maskName: str) -> None:
         """Add a window mask
