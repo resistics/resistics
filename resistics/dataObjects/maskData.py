@@ -4,7 +4,7 @@ import matplotlib.cm as cm
 from datetime import datetime, timedelta
 from typing import List, Dict, Set
 
-# import from package#
+# import from package
 from resistics.dataObjects.dataObject import DataObject
 from resistics.utilities.utilsPrint import arrayToString, blockPrint
 from resistics.utilities.utilsFreq import getFrequencyArray
