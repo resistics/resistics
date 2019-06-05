@@ -49,6 +49,8 @@ class ProjectData(DataObject):
         Site data for each site        
     calFiles : List
         A list of calibration files
+    config : ConfigData
+        Configuration data
 
     Methods
     -------
