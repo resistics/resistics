@@ -12,6 +12,7 @@ from resistics.calculators.windowSelector import WindowSelector
 from resistics.calculators.processorSingleSite import ProcessorSingleSite
 from resistics.calculators.processorRemoteReference import ProcessorRemoteReference
 from resistics.dataObjects.timeData import TimeData
+from resistics.dataObjects.projectData import ProjectData
 from resistics.utilities.utilsPrint import (
     generalPrint,
     warningPrint,
@@ -165,6 +166,38 @@ def getWindowParameters(
         )
 
     return winParams
+
+
+def getWindowSelector(
+    projData: ProjectData,
+    decParams: DecimationParams,
+    winParams: WindowParams,
+) -> WindowSelector:
+    """Create a WindowSelector object from projectData, decimationParams, windowParams
+
+    Parameters
+    ----------
+    projData : ProjectData
+        A project data object
+    decParams : DecimationParams
+        DecimationParams object to hold the decimation parameters
+    winParams : Windowparams
+        WindowParams object to hold the windowing parameters
+    
+    Returns
+    -------
+    WindowSelector
+        A window selector object        
+    """
+
+    selector = WindowSelector(
+        projData,
+        decParams.sampleFreq,
+        decParams,
+        winParams,
+        specdir=projData.config.configParams["Spectra"]["specdir"],
+    )
+    return selector
 
 
 def getSingleSiteProcessor(

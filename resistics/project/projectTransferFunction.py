@@ -32,6 +32,7 @@ from resistics.utilities.utilsProject import (
     projectError,
     getDecimationParameters,
     getWindowParameters,
+    getWindowSelector,
     getSingleSiteProcessor,
     getRemoteReferenceProcessor,
 )
@@ -209,11 +210,8 @@ def processSite(
     decParams = getDecimationParameters(sampleFreq, projData.config)
     decParams.printInfo()
     winParams = getWindowParameters(decParams, projData.config)
-
     # window selector
-    winSelector = WindowSelector(
-        projData, sampleFreq, decParams, winParams, specdir=options["specdir"]
-    )
+    winSelector = getWindowSelector(projData, decParams, winParams)
 
     # if two sites are duplicated (e.g. input site and output site), winSelector only uses distinct sites. Hence using site and inputSite is no problem even if they are the same
     processSites = []
