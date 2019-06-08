@@ -69,40 +69,38 @@ class WindowSelector(Calculator):
     -------
     __init__(decParams)
         Initialise window selector with information about the decimation parameters
-    getSharedWindowsLevel(iDec)
+    getSharedWindowsLevel(declevel)
         Get the shared windows for a decimation level as a python set
-    getNumSharedWindows(iDec)
+    getNumSharedWindows(declevel)
         Get the number of shared windows for a decimation level
-    getWindowsForFreq(iDec, eIdx)
+    getWindowsForFreq(declevel, eIdx)
         Get the number of shared windows for a decimation level and evaluation frequency
-    getUnmaskedWindowsLevel(iDec)
+    getUnmaskedWindowsLevel(declevel)
         Get unmasked windows for a decimation level
     getDatetimeConstraints()
         Get the datetime constraints
-    getLevelDatetimeConstraints(iDec)
+    getLevelDatetimeConstraints(declevel)
         Get the datetime constraints for a decimation level
     getMasks()
         Get a dictionary with masks to use for each site in the window selector
-    getSpecReaderForWindow(site, iDec, iWin)
+    getSpecReaderForWindow(site, declevel, iWin)
         Get the spectrum reader for a window
-    getDataSize(iDec)
+    getDataSize(declevel)
         Get the spectrum reader for a window
     setSites(sites)
         Set the sites for which to find the shared windows
     addDatetimeConstraint(start, stop)
         Add a datetime constraint
-    addLevelDatetimeConstraint(start, stop, iDec):
-        Add a datetime constraint for a decimation level
     addDateConstraint(dateC)
         Add a date constraint
-    addLevelDateConstraint(dateC, iDec)
-        Add a date constraint for a decimation level
     addTimeConstraint(start, stop)
         Add a time constraint. This will recur on every day of recording
-    addLevelTimeConstraint(start, stop, iDec)
-        Add a time constraint for a decimation level. This will recur on every day of recording
     addWindowMask(site, maskName)
         Add a window mask
+    resetDatetimeConstraints()
+        Clear and reset all datetime constraints
+    resetMasks()
+        Clear and reset site masks        
     calcSharedWindows()
         Calculate shared windows between sites
     calcGlobalIndices()
@@ -178,24 +176,20 @@ class WindowSelector(Calculator):
         self.specdir = kwargs["specdir"] if "specdir" in kwargs else "spectra"
         self.prepend: str = "spectra"
         # time constraints: priority is datetimes > dates > times
-        self.datetimes: Dict = {}
-        self.dates: Dict = {}
-        self.times: Dict = {}
-        # final constraints saved in
-        self.datetimeConstraints: Dict = {}
-        # add a list for each decimation level
-        for iDec in range(0, self.decParams.numLevels):
-            self.datetimes[iDec] = []
-            self.dates[iDec] = []
-            self.times[iDec] = []
-            self.datetimeConstraints[iDec] = []
+        self.datetimes: Dict[int, List] = {}
+        self.dates: Dict[int, List] = {}
+        self.times: Dict[int, List] = {}
+        # dictionary for datetime constraints
+        self.datetimeConstraints: Dict[int, List] = {}
+        # set all datetime constraints to empty
+        self.resetDatetimeConstraints()
 
-    def getSharedWindowsLevel(self, iDec: int) -> Set:
+    def getSharedWindowsLevel(self, declevel: int) -> Set:
         """Get the shared windows for a decimation level
 
         Parameters
         ----------
-        iDec : int
+        declevel : int
             The decimation level (0 is the first level)
         
         Returns
@@ -204,14 +198,14 @@ class WindowSelector(Calculator):
             The shared windows for the decimation level
         """
 
-        return self.sharedWindows[iDec]
+        return self.sharedWindows[declevel]
 
-    def getNumSharedWindows(self, iDec: int) -> int:
+    def getNumSharedWindows(self, declevel: int) -> int:
         """Get the number of shared windows for a decimation level
 
         Parameters
         ----------
-        iDec : int
+        declevel : int
             The decimation level (0 is the first level)
         
         Returns
@@ -220,14 +214,14 @@ class WindowSelector(Calculator):
             The number of shared windows for the decimation level
         """
 
-        return len(self.sharedWindows[iDec])
+        return len(self.sharedWindows[declevel])
 
-    def getWindowsForFreq(self, iDec: int, eIdx: int) -> Set:
+    def getWindowsForFreq(self, declevel: int, eIdx: int) -> Set:
         """Get the number of shared windows for a decimation level and evaluation frequency
 
         Parameters
         ----------
-        iDec : int
+        declevel : int
             The decimation level (0 is the first level)
         eIdx : int
             The evaluation frequency index
@@ -235,25 +229,25 @@ class WindowSelector(Calculator):
         Returns
         -------
         set
-            The shared windows for evaluation frequency eIdx at decimation level iDec
+            The shared windows for evaluation frequency eIdx at decimation level declevel
         """
 
-        sharedWindows = self.getSharedWindowsLevel(iDec)
+        sharedWindows = self.getSharedWindowsLevel(declevel)
         # now mask for the particular frequency - mask for each given site
         for s in self.sites:
             for mask in self.siteMasks[s]:
                 # remove the masked windows from shared indices
-                sharedWindows = sharedWindows - mask.getMaskWindowsFreq(iDec, eIdx)
+                sharedWindows = sharedWindows - mask.getMaskWindowsFreq(declevel, eIdx)
         return sharedWindows
 
-    def getUnmaskedWindowsLevel(self, iDec: int) -> Set:
+    def getUnmaskedWindowsLevel(self, declevel: int) -> Set:
         """Get unmasked windows for a decimation level
 
         Calculate the number of non masked windows for the decimation level. This should speed up processing when constraints are applied.
 
         Parameters
         ----------
-        iDec : int
+        declevel : int
             The decimation level
 
         Returns
@@ -263,9 +257,9 @@ class WindowSelector(Calculator):
         """
 
         indices = set()
-        evalFreq = self.decParams.getEvalFrequenciesForLevel(iDec)
+        evalFreq = self.decParams.getEvalFrequenciesForLevel(declevel)
         for eIdx, eFreq in enumerate(evalFreq):
-            indices.update(self.getWindowsForFreq(iDec, eIdx))
+            indices.update(self.getWindowsForFreq(declevel, eIdx))
         return indices
 
     def getDatetimeConstraints(self) -> Dict:
@@ -280,18 +274,17 @@ class WindowSelector(Calculator):
         self.calcDatetimeConstraints()
         return self.datetimeConstraints
 
-    def getLevelDatetimeConstraints(self, iDec: int):
-        """Get the datetime constraints
-        
-        todo: check what this is
-
+    def getLevelDatetimeConstraints(self, declevel: int) -> List[List[datetime]]:
+        """Get the datetime constraints for a decimation level
+    
         Returns
         -------
-        
+        List[List[datetime]]
+            Returns a list of datetime constraints, where each is a 2 element list with a start and stop
         """
 
         self.calcDatetimeConstraints()
-        return self.datetimeConstraints[iDec]
+        return self.datetimeConstraints[declevel]
 
     def getMasks(self) -> Dict:
         """Get a dictionary with masks to use for each site in the window selector
@@ -304,14 +297,14 @@ class WindowSelector(Calculator):
 
         return self.siteMasks
 
-    def getSpecReaderForWindow(self, site: str, iDec: int, iWin: int):
+    def getSpecReaderForWindow(self, site: str, declevel: int, iWin: int):
         """Get the spectrum reader for a window
 
         Parameters
         ----------
         site : str
             The name of the site to get the spectrum reader for
-        iDec : int
+        declevel : int
             The decimation level
         iWin : int
             The window index
@@ -324,8 +317,8 @@ class WindowSelector(Calculator):
             The spectrum reader or False if the window is not found in any spectra file
         """
 
-        specRanges = self.siteSpecRanges[site][iDec]
-        specReaders = self.siteSpecReaders[site][iDec]
+        specRanges = self.siteSpecRanges[site][declevel]
+        specReaders = self.siteSpecReaders[site][declevel]
         for specFile in specRanges:
             if iWin >= specRanges[specFile][0] and iWin <= specRanges[specFile][1]:
                 return specFile, specReaders[specFile]
@@ -333,17 +326,17 @@ class WindowSelector(Calculator):
         # if here, no window found
         self.printWarning(
             "Shared window {}, decimation level {} does not appear in any files given the constraints applied".format(
-                iWin, iDec
+                iWin, declevel
             )
         )
         return False, False
 
-    def getDataSize(self, iDec: int) -> int:
+    def getDataSize(self, declevel: int) -> int:
         """Get the spectrum reader for a window
 
         Parameters
         ----------
-        iDec : str
+        declevel : str
             The decimation level
 
         Returns 
@@ -354,7 +347,7 @@ class WindowSelector(Calculator):
 
         # return data size of first file
         site = self.sites[0]
-        specReaders = self.siteSpecReaders[site][iDec]
+        specReaders = self.siteSpecReaders[site][declevel]
         for sF in specReaders:
             return specReaders[sF].getDataSize()
 
@@ -383,7 +376,9 @@ class WindowSelector(Calculator):
         # at the end, calculate global indices
         self.calcGlobalIndices()
 
-    def addDatetimeConstraint(self, start: str, stop: str, declevel: Union[List[int], int, None] = None):
+    def addDatetimeConstraint(
+        self, start: str, stop: str, declevel: Union[List[int], int, None] = None
+    ):
         """Add datetime constraints
 
         Parameters
@@ -405,12 +400,14 @@ class WindowSelector(Calculator):
         elif isinstance(declevel, list):
             levels = declevel
         else:
-            levels = [declevel] 
+            levels = [declevel]
         # then add constraints as appropriate
-        for iDec in levels:
-            self.datetimes[iDec].append([datetimeStart, datetimeStop])
+        for declevel in levels:
+            self.datetimes[declevel].append([datetimeStart, datetimeStop])
 
-    def addDateConstraint(self, dateC: str, declevel: Union[List[int], int, None] = None):
+    def addDateConstraint(
+        self, dateC: str, declevel: Union[List[int], int, None] = None
+    ):
         """Add a date constraint
 
         Parameters
@@ -429,12 +426,14 @@ class WindowSelector(Calculator):
         elif isinstance(declevel, list):
             levels = declevel
         else:
-            levels = [declevel] 
+            levels = [declevel]
         # then add constraints as appropriate
-        for iDec in levels:
-            self.dates[iDec].append(datetimeC)
+        for declevel in levels:
+            self.dates[declevel].append(datetimeC)
 
-    def addTimeConstraint(self, start: str, stop: str, declevel: Union[List[int], int, None] = None):
+    def addTimeConstraint(
+        self, start: str, stop: str, declevel: Union[List[int], int, None] = None
+    ):
         """Add a time constraint. This will recur on every day of recording.
 
         Parameters
@@ -456,10 +455,10 @@ class WindowSelector(Calculator):
         elif isinstance(declevel, list):
             levels = declevel
         else:
-            levels = [declevel] 
+            levels = [declevel]
         # then add constraints as appropriate
-        for iDec in levels:        
-            self.times[iDec].append([timeStart, timeStop])
+        for declevel in levels:
+            self.times[declevel].append([timeStart, timeStop])
 
     def addWindowMask(self, site: str, maskName: str) -> None:
         """Add a window mask
@@ -479,10 +478,27 @@ class WindowSelector(Calculator):
         maskData = maskIO.read(maskName, self.sampleFreq)
         self.siteMasks[site].append(maskData)
 
+    def resetDatetimeConstraints(self) -> None:
+        """Reset datetime constraints"""
+
+        # add a list for each decimation level
+        for declevel in range(0, self.decParams.numLevels):
+            self.datetimes[declevel] = []
+            self.dates[declevel] = []
+            self.times[declevel] = []
+            self.datetimeConstraints[declevel] = []
+
+    def resetMasks(self) -> None:
+        """Reset masks"""
+
+        # reset to no masks for any site
+        for site in self.siteMasks:
+            self.siteMasks[site] = []
+
     def calcSharedWindows(self):
         """Calculate shared windows between sites
 
-        Calculates the shared windows between sites. No masks are applied in this method. Datetime constraints are applied.
+        Calculates the shared windows between sites. Datetime constraints are applied. No masks are applied in this method. Masks are only applied when getting the windows for a particular evaluation frequency.
         """
 
         if len(self.sites) == 0:
@@ -498,37 +514,37 @@ class WindowSelector(Calculator):
         sites = self.sites
         siteInit = sites[0]
         numLevels = self.decParams.numLevels
-        for iDec in range(0, numLevels):
-            self.sharedWindows[iDec] = self.siteGlobalIndices[siteInit][iDec]
+        for declevel in range(0, numLevels):
+            self.sharedWindows[declevel] = self.siteGlobalIndices[siteInit][declevel]
 
         # now for each decimation level, calculate the shared windows
-        for iDec in range(0, numLevels):
+        for declevel in range(0, numLevels):
             for site in self.sites:
-                self.sharedWindows[iDec] = self.sharedWindows[iDec].intersection(
-                    self.siteGlobalIndices[site][iDec]
-                )
+                self.sharedWindows[declevel] = self.sharedWindows[
+                    declevel
+                ].intersection(self.siteGlobalIndices[site][declevel])
 
         # apply time constraints
         # time constraints should be formulated as a set
         # and then, find the intersection again
-        for iDec in range(0, numLevels):
-            constraints = self.getLevelDatetimeConstraints(iDec)
+        for declevel in range(0, numLevels):
+            constraints = self.getLevelDatetimeConstraints(declevel)
             if len(constraints) != 0:
                 datetimeIndices = set()
                 for dC in constraints:
                     gIndexStart, firstWindowStart = datetime2gIndex(
                         self.projData.refTime,
                         dC[0],
-                        self.decParams.getSampleFreqLevel(iDec),
-                        self.winParams.getWindowSize(iDec),
-                        self.winParams.getOverlap(iDec),
+                        self.decParams.getSampleFreqLevel(declevel),
+                        self.winParams.getWindowSize(declevel),
+                        self.winParams.getOverlap(declevel),
                     )
                     gIndexEnd, firstWindowEnd = datetime2gIndex(
                         self.projData.refTime,
                         dC[1],
-                        self.decParams.getSampleFreqLevel(iDec),
-                        self.winParams.getWindowSize(iDec),
-                        self.winParams.getOverlap(iDec),
+                        self.decParams.getSampleFreqLevel(declevel),
+                        self.winParams.getWindowSize(declevel),
+                        self.winParams.getOverlap(declevel),
                     )
                     gIndexEnd = (
                         gIndexEnd - 1
@@ -538,12 +554,12 @@ class WindowSelector(Calculator):
                     datetimeIndices.update(list(range(gIndexStart, gIndexEnd)))
                     self.printText(
                         "Decimation level = {}. Applying date constraint {} - {}, global index constraint {} - {}".format(
-                            iDec, dC[0], dC[1], gIndexStart, gIndexEnd
+                            declevel, dC[0], dC[1], gIndexStart, gIndexEnd
                         )
                     )
-                self.sharedWindows[iDec] = self.sharedWindows[iDec].intersection(
-                    datetimeIndices
-                )
+                self.sharedWindows[declevel] = self.sharedWindows[
+                    declevel
+                ].intersection(datetimeIndices)
 
     def calcGlobalIndices(self) -> None:
         """Find all the global indices for the sites"""
@@ -565,11 +581,11 @@ class WindowSelector(Calculator):
             # loop through each of the spectra folders
             # and find the global indices ranges for each decimation level
             numLevels = self.decParams.numLevels
-            for iDec in range(0, numLevels):
+            for declevel in range(0, numLevels):
                 # get the dictionaries ready
-                self.siteSpecReaders[site][iDec] = {}
-                self.siteSpecRanges[site][iDec] = {}
-                self.siteGlobalIndices[site][iDec] = set()
+                self.siteSpecReaders[site][declevel] = {}
+                self.siteSpecRanges[site][declevel] = {}
+                self.siteGlobalIndices[site][declevel] = set()
                 # loop through spectra folders and figure out global indices
                 for specFolder in self.siteSpecFolders[site]:
                     # here, have to use the specdir option
@@ -577,15 +593,15 @@ class WindowSelector(Calculator):
                         os.path.join(siteData.specPath, specFolder, self.specdir)
                     )
                     # here, use prepend to open the spectra file
-                    check = specReader.openBinaryForReading(self.prepend, iDec)
+                    check = specReader.openBinaryForReading(self.prepend, declevel)
                     # if file does not exist, continue
                     if not check:
                         continue
-                    self.siteSpecReaders[site][iDec][specFolder] = specReader
+                    self.siteSpecReaders[site][declevel][specFolder] = specReader
                     globalRange = specReader.getGlobalRange()
-                    self.siteSpecRanges[site][iDec][specFolder] = globalRange
+                    self.siteSpecRanges[site][declevel][specFolder] = globalRange
                     # and save set of global indices
-                    self.siteGlobalIndices[site][iDec].update(
+                    self.siteGlobalIndices[site][declevel].update(
                         list(range(globalRange[0], globalRange[1] + 1))
                     )
 
@@ -603,26 +619,26 @@ class WindowSelector(Calculator):
 
         # datetime constraints are for each decimation level
         numLevels = self.decParams.numLevels
-        for iDec in range(0, numLevels):
+        for declevel in range(0, numLevels):
             # calculate date and time constraints for each level
             # begin with the datetime constraints - these have highest priority
-            self.datetimeConstraints[iDec] = self.datetimes[iDec]
+            self.datetimeConstraints[declevel] = self.datetimes[declevel]
 
             # check to see whether any date and time constraints
-            if len(self.dates[iDec]) == 0 and len(self.times[iDec]) == 0:
+            if len(self.dates[declevel]) == 0 and len(self.times[declevel]) == 0:
                 continue
 
             dateConstraints = []
-            if len(self.dates[iDec]) != 0:
+            if len(self.dates[declevel]) != 0:
                 # apply time constraints only on specified days
-                dateConstraints = self.dates[iDec]
+                dateConstraints = self.dates[declevel]
             else:
                 dateConstraints = siteDates
 
             # finally, add the time constraints to the dates
             # otherwise add the whole day
             dateAndTimeConstraints = []
-            if len(self.times[iDec]) == 0:
+            if len(self.times[declevel]) == 0:
                 # add whole days
                 for dC in dateConstraints:
                     start = datetime.combine(dC, time(0, 0, 0))
@@ -630,7 +646,7 @@ class WindowSelector(Calculator):
                     dateAndTimeConstraints.append([start, stop])
             else:
                 # add each time for each day
-                for tC in self.times[iDec]:
+                for tC in self.times[declevel]:
                     for dC in dateConstraints:
                         start = datetime.combine(dC, tC[0])
                         stop = datetime.combine(dC, tC[1])
@@ -643,10 +659,12 @@ class WindowSelector(Calculator):
                         dateAndTimeConstraints.append([start, stop])
 
             # finally, combine datetimes and dateAndTimeConstraints
-            self.datetimeConstraints[iDec] = (
-                self.datetimeConstraints[iDec] + dateAndTimeConstraints
+            self.datetimeConstraints[declevel] = (
+                self.datetimeConstraints[declevel] + dateAndTimeConstraints
             )
-            self.datetimeConstraints[iDec] = sorted(self.datetimeConstraints[iDec])
+            self.datetimeConstraints[declevel] = sorted(
+                self.datetimeConstraints[declevel]
+            )
 
     def calcSiteDates(self) -> List[datetime]:
         """Calculate a list of days that all the sites were operating
@@ -724,31 +742,31 @@ class WindowSelector(Calculator):
         textLst.append("Site = {}".format(site))
         textLst.append("Site global index information")
         numLevels = self.decParams.numLevels
-        for iDec in range(0, numLevels):
-            textLst.append("Decimation Level = {:d}".format(iDec))
+        for declevel in range(0, numLevels):
+            textLst.append("Decimation Level = {:d}".format(declevel))
             ranges = self.siteSpecRanges
-            for sF in sorted(list(ranges[site][iDec].keys())):
+            for sF in sorted(list(ranges[site][declevel].keys())):
                 startTime1, endTime1 = gIndex2datetime(
-                    ranges[site][iDec][sF][0],
+                    ranges[site][declevel][sF][0],
                     self.projData.refTime,
-                    self.sampleFreq / self.decParams.getDecFactor(iDec),
-                    self.winParams.getWindowSize(iDec),
-                    self.winParams.getOverlap(iDec),
+                    self.sampleFreq / self.decParams.getDecFactor(declevel),
+                    self.winParams.getWindowSize(declevel),
+                    self.winParams.getOverlap(declevel),
                 )
                 startTime2, endTime2 = gIndex2datetime(
-                    ranges[site][iDec][sF][1],
+                    ranges[site][declevel][sF][1],
                     self.projData.refTime,
-                    self.sampleFreq / self.decParams.getDecFactor(iDec),
-                    self.winParams.getWindowSize(iDec),
-                    self.winParams.getOverlap(iDec),
+                    self.sampleFreq / self.decParams.getDecFactor(declevel),
+                    self.winParams.getWindowSize(declevel),
+                    self.winParams.getOverlap(declevel),
                 )
                 textLst.append(
                     "Measurement file = {}\ttime range = {} - {}\tGlobal Indices Range = {:d} - {:d}".format(
                         sF,
                         startTime1,
                         endTime2,
-                        ranges[site][iDec][sF][0],
-                        ranges[site][iDec][sF][1],
+                        ranges[site][declevel][sF][0],
+                        ranges[site][declevel][sF][1],
                     )
                 )
         return textLst
@@ -769,16 +787,21 @@ class WindowSelector(Calculator):
 
         textLst = []
         numLevels = self.decParams.numLevels
-        for iDec in range(0, numLevels):
-            textLst.append("Decimation Level = {:d}".format(iDec))
+        for declevel in range(0, numLevels):
+            textLst.append("Decimation Level = {:d}".format(declevel))
             textLst.append(
                 "\tNumber of shared windows = {:d}".format(
-                    self.getNumSharedWindows(iDec)
+                    self.getNumSharedWindows(declevel)
                 )
             )
             textLst.append(
-                "\tShared Window Indices: {}".format(
-                    list2ranges(self.getSharedWindowsLevel(iDec))
+                "\tShared window indices: {}".format(
+                    list2ranges(self.getSharedWindowsLevel(declevel))
+                )
+            )
+            textLst.append(
+                "\tNumber of unmasked windows: {}".format(
+                    len(self.getUnmaskedWindowsLevel(declevel))
                 )
             )
         textLst.append(
@@ -808,9 +831,9 @@ class WindowSelector(Calculator):
         # populate textLst
         textLst.append("Datetime constraints")
         numLevels = self.decParams.numLevels
-        for iDec in range(0, numLevels):
-            textLst.append("Decimation Level = {:d}".format(iDec))
-            for d in self.getLevelDatetimeConstraints(iDec):
+        for declevel in range(0, numLevels):
+            textLst.append("Decimation Level = {:d}".format(declevel))
+            for d in self.getLevelDatetimeConstraints(declevel):
                 textLst.append("\tConstraint {} - {}".format(d[0], d[1]))
         return textLst
 
@@ -867,11 +890,11 @@ class WindowSelector(Calculator):
         """
 
         textLst = []
-        for iDec in range(0, self.decParams.numLevels):
-            evalFreq = self.decParams.getEvalFrequenciesForLevel(iDec)
-            unmaskedWindows = self.getNumSharedWindows(iDec)
+        for declevel in range(0, self.decParams.numLevels):
+            evalFreq = self.decParams.getEvalFrequenciesForLevel(declevel)
+            unmaskedWindows = self.getNumSharedWindows(declevel)
             for eIdx, eFreq in enumerate(evalFreq):
-                maskedWindows = self.getWindowsForFreq(iDec, eIdx)
+                maskedWindows = self.getWindowsForFreq(declevel, eIdx)
                 textLst.append(
                     "Evaluation frequency = {:.6f}, shared windows = {:d}, windows after masking = {:d}".format(
                         eFreq, unmaskedWindows, len(maskedWindows)
