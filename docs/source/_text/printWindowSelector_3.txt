@@ -1,0 +1,39 @@
+10:04:19 WindowSelector::shared windows: ####################
+10:04:19 WindowSelector::shared windows: WINDOWSELECTOR::SHARED WINDOWS INFO BEGIN
+10:04:19 WindowSelector::shared windows: ####################
+10:04:19 WindowSelector::shared windows: Decimation Level = 0
+10:04:19 WindowSelector::shared windows:        Number of shared windows = 85349
+10:04:19 WindowSelector::shared windows:        Shared window indices: 27600-112948:1
+10:04:19 WindowSelector::shared windows:        Number of unmasked windows: 85349
+10:04:19 WindowSelector::shared windows: Decimation Level = 1
+10:04:19 WindowSelector::shared windows:        Number of shared windows = 21337
+10:04:19 WindowSelector::shared windows:        Shared window indices: 6900-28236:1
+10:04:19 WindowSelector::shared windows:        Number of unmasked windows: 21337
+10:04:19 WindowSelector::shared windows: Decimation Level = 2
+10:04:19 WindowSelector::shared windows:        Number of shared windows = 5334
+10:04:19 WindowSelector::shared windows:        Shared window indices: 1725-7058:1
+10:04:19 WindowSelector::shared windows:        Number of unmasked windows: 5334
+10:04:19 WindowSelector::shared windows: Decimation Level = 3
+10:04:19 WindowSelector::shared windows:        Number of shared windows = 666
+10:04:19 WindowSelector::shared windows:        Shared window indices: 216-881:1
+10:04:19 WindowSelector::shared windows:        Number of unmasked windows: 666
+10:04:19 WindowSelector::shared windows: Decimation Level = 4
+10:04:19 WindowSelector::shared windows:        Number of shared windows = 166
+10:04:19 WindowSelector::shared windows:        Shared window indices: 54-219:1
+10:04:19 WindowSelector::shared windows:        Number of unmasked windows: 166
+10:04:19 WindowSelector::shared windows: Decimation Level = 5
+10:04:19 WindowSelector::shared windows:        Number of shared windows = 20
+10:04:19 WindowSelector::shared windows:        Shared window indices: 7-26:1
+10:04:19 WindowSelector::shared windows:        Number of unmasked windows: 20
+10:04:19 WindowSelector::shared windows: Decimation Level = 6
+10:04:19 WindowSelector::shared windows:        Number of shared windows = 4
+10:04:19 WindowSelector::shared windows:        Shared window indices: 2-5:1
+10:04:19 WindowSelector::shared windows:        Number of unmasked windows: 4
+10:04:19 WindowSelector::shared windows: Decimation Level = 7
+10:04:19 WindowSelector::shared windows:        Number of shared windows = 0
+10:04:19 WindowSelector::shared windows:        Shared window indices:
+10:04:19 WindowSelector::shared windows:        Number of unmasked windows: 0
+10:04:19 WindowSelector::shared windows: NOTE: These are the shared windows at each decimation level. Windows for each evaluation frequency might vary depending on masks
+10:04:19 WindowSelector::shared windows: ####################
+10:04:19 WindowSelector::shared windows: WINDOWSELECTOR::SHARED WINDOWS INFO END
+10:04:19 WindowSelector::shared windows: ####################

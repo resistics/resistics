@@ -1,0 +1,70 @@
+10:11:24 WindowSelector::datetime constraints: ####################
+10:11:24 WindowSelector::datetime constraints: WINDOWSELECTOR::DATETIME CONSTRAINTS INFO BEGIN
+10:11:24 WindowSelector::datetime constraints: ####################
+10:11:24 WindowSelector::datetime constraints: Datetime constraints
+10:11:24 WindowSelector::datetime constraints: Decimation Level = 0
+10:11:24 WindowSelector::datetime constraints:  Constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59
+10:11:24 WindowSelector::datetime constraints: Decimation Level = 1
+10:11:24 WindowSelector::datetime constraints:  Constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59
+10:11:24 WindowSelector::datetime constraints: Decimation Level = 2
+10:11:24 WindowSelector::datetime constraints:  Constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59
+10:11:24 WindowSelector::datetime constraints: Decimation Level = 3
+10:11:24 WindowSelector::datetime constraints:  Constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59
+10:11:24 WindowSelector::datetime constraints: Decimation Level = 4
+10:11:24 WindowSelector::datetime constraints:  Constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59
+10:11:24 WindowSelector::datetime constraints: Decimation Level = 5
+10:11:24 WindowSelector::datetime constraints:  Constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59
+10:11:24 WindowSelector::datetime constraints: Decimation Level = 6
+10:11:24 WindowSelector::datetime constraints:  Constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59
+10:11:24 WindowSelector::datetime constraints: Decimation Level = 7
+10:11:24 WindowSelector::datetime constraints:  Constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59
+10:11:24 WindowSelector::datetime constraints: ####################
+10:11:24 WindowSelector::datetime constraints: WINDOWSELECTOR::DATETIME CONSTRAINTS INFO END
+10:11:24 WindowSelector::datetime constraints: ####################
+10:11:24 WindowSelector Info: Decimation level = 0. Applying date constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59, global index constraint 57600 - 115199
+10:11:24 WindowSelector Info: Decimation level = 1. Applying date constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59, global index constraint 14400 - 28799
+10:11:24 WindowSelector Info: Decimation level = 2. Applying date constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59, global index constraint 3600 - 7199
+10:11:24 WindowSelector Info: Decimation level = 3. Applying date constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59, global index constraint 450 - 899
+10:11:24 WindowSelector Info: Decimation level = 4. Applying date constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59, global index constraint 113 - 224
+10:11:24 WindowSelector Info: Decimation level = 5. Applying date constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59, global index constraint 15 - 28
+10:11:24 WindowSelector Info: Decimation level = 6. Applying date constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59, global index constraint 4 - 7
+10:11:24 WindowSelector Info: Decimation level = 7. Applying date constraint 2012-02-11 00:00:00 - 2012-02-11 23:59:59, global index constraint 1 - 1
+10:11:24 WindowSelector::shared windows: ####################
+10:11:24 WindowSelector::shared windows: WINDOWSELECTOR::SHARED WINDOWS INFO BEGIN
+10:11:24 WindowSelector::shared windows: ####################
+10:11:24 WindowSelector::shared windows: Decimation Level = 0
+10:11:24 WindowSelector::shared windows:        Number of shared windows = 55349
+10:11:24 WindowSelector::shared windows:        Shared window indices: 57600-112948:1
+10:11:24 WindowSelector::shared windows:        Number of unmasked windows: 55349
+10:11:24 WindowSelector::shared windows: Decimation Level = 1
+10:11:24 WindowSelector::shared windows:        Number of shared windows = 13837
+10:11:24 WindowSelector::shared windows:        Shared window indices: 14400-28236:1
+10:11:24 WindowSelector::shared windows:        Number of unmasked windows: 13837
+10:11:24 WindowSelector::shared windows: Decimation Level = 2
+10:11:24 WindowSelector::shared windows:        Number of shared windows = 3459
+10:11:24 WindowSelector::shared windows:        Shared window indices: 3600-7058:1
+10:11:24 WindowSelector::shared windows:        Number of unmasked windows: 3459
+10:11:24 WindowSelector::shared windows: Decimation Level = 3
+10:11:24 WindowSelector::shared windows:        Number of shared windows = 432
+10:11:24 WindowSelector::shared windows:        Shared window indices: 450-881:1
+10:11:24 WindowSelector::shared windows:        Number of unmasked windows: 432
+10:11:24 WindowSelector::shared windows: Decimation Level = 4
+10:11:24 WindowSelector::shared windows:        Number of shared windows = 107
+10:11:24 WindowSelector::shared windows:        Shared window indices: 113-219:1
+10:11:24 WindowSelector::shared windows:        Number of unmasked windows: 107
+10:11:24 WindowSelector::shared windows: Decimation Level = 5
+10:11:24 WindowSelector::shared windows:        Number of shared windows = 12
+10:11:24 WindowSelector::shared windows:        Shared window indices: 15-26:1
+10:11:24 WindowSelector::shared windows:        Number of unmasked windows: 12
+10:11:24 WindowSelector::shared windows: Decimation Level = 6
+10:11:24 WindowSelector::shared windows:        Number of shared windows = 2
+10:11:24 WindowSelector::shared windows:        Shared window indices: 4,5
+10:11:24 WindowSelector::shared windows:        Number of unmasked windows: 2
+10:11:24 WindowSelector::shared windows: Decimation Level = 7
+10:11:24 WindowSelector::shared windows:        Number of shared windows = 0
+10:11:24 WindowSelector::shared windows:        Shared window indices:
+10:11:24 WindowSelector::shared windows:        Number of unmasked windows: 0
+10:11:24 WindowSelector::shared windows: NOTE: These are the shared windows at each decimation level. Windows for each evaluation frequency might vary depending on masks
+10:11:24 WindowSelector::shared windows: ####################
+10:11:24 WindowSelector::shared windows: WINDOWSELECTOR::SHARED WINDOWS INFO END
+10:11:24 WindowSelector::shared windows: ####################

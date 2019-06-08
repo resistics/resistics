@@ -1,0 +1,25 @@
+09:50:02 DecimationParams: ####################
+09:50:02 DecimationParams: DECIMATIONPARAMS INFO BEGIN
+09:50:02 DecimationParams: ####################
+09:50:02 DecimationParams: Sampling frequency = 4096.000000
+09:50:02 DecimationParams: Number of decimation levels = 8
+09:50:02 DecimationParams: Level = 0    sample freq. [Hz] = 4096.000000 sample rate [s] = 0.000244  dec. factor = 0000001       inc. factor = 1
+09:50:02 DecimationParams: Level = 1    sample freq. [Hz] = 1024.000000 sample rate [s] = 0.000977  dec. factor = 0000004       inc. factor = 4
+09:50:02 DecimationParams: Level = 2    sample freq. [Hz] = 256.000000  sample rate [s] = 0.003906  dec. factor = 0000016       inc. factor = 4
+09:50:02 DecimationParams: Level = 3    sample freq. [Hz] = 32.000000   sample rate [s] = 0.031250  dec. factor = 0000128       inc. factor = 8
+09:50:02 DecimationParams: Level = 4    sample freq. [Hz] = 8.000000    sample rate [s] = 0.125000  dec. factor = 0000512       inc. factor = 4
+09:50:02 DecimationParams: Level = 5    sample freq. [Hz] = 1.000000    sample rate [s] = 1.000000  dec. factor = 0004096       inc. factor = 8
+09:50:02 DecimationParams: Level = 6    sample freq. [Hz] = 0.250000    sample rate [s] = 4.000000  dec. factor = 0016384       inc. factor = 4
+09:50:02 DecimationParams: Level = 7    sample freq. [Hz] = 0.031250    sample rate [s] = 32.000000 dec. factor = 0131072       inc. factor = 8
+09:50:02 DecimationParams: Evaluation frequencies [Hz]
+09:50:02 DecimationParams: Level = 0: 1024.00000000, 724.07734394, 512.00000000, 362.03867197, 256.00000000
+09:50:02 DecimationParams: Level = 1: 181.01933598, 128.00000000, 90.50966799, 64.00000000, 45.25483400
+09:50:02 DecimationParams: Level = 2: 32.00000000, 22.62741700, 16.00000000, 11.31370850, 8.00000000
+09:50:02 DecimationParams: Level = 3: 5.65685425, 4.00000000, 2.82842712, 2.00000000, 1.41421356
+09:50:02 DecimationParams: Level = 4: 1.00000000, 0.70710678, 0.50000000, 0.35355339, 0.25000000
+09:50:02 DecimationParams: Level = 5: 0.17677670, 0.12500000, 0.08838835, 0.06250000, 0.04419417
+09:50:02 DecimationParams: Level = 6: 0.03125000, 0.02209709, 0.01562500, 0.01104854, 0.00781250
+09:50:02 DecimationParams: Level = 7: 0.00552427, 0.00390625, 0.00276214, 0.00195312, 0.00138107
+09:50:02 DecimationParams: ####################
+09:50:02 DecimationParams: DECIMATIONPARAMS INFO END
+09:50:02 DecimationParams: ####################

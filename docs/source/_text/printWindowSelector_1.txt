@@ -1,0 +1,10 @@
+10:01:53 WindowSelector: ####################
+10:01:53 WindowSelector: WINDOWSELECTOR INFO BEGIN
+10:01:53 WindowSelector: ####################
+10:01:53 WindowSelector: Sampling frequency [Hz] = 128.000000
+10:01:53 WindowSelector: Spectra directory = dec8_5
+10:01:53 WindowSelector: Sites =
+10:01:53 WindowSelector: Site information:
+10:01:53 WindowSelector: ####################
+10:01:53 WindowSelector: WINDOWSELECTOR INFO END
+10:01:53 WindowSelector: ####################

@@ -1,0 +1,28 @@
+10:03:44 WindowSelector: ####################
+10:03:44 WindowSelector: WINDOWSELECTOR INFO BEGIN
+10:03:44 WindowSelector: ####################
+10:03:44 WindowSelector: Sampling frequency [Hz] = 128.000000
+10:03:44 WindowSelector: Spectra directory = dec8_5
+10:03:44 WindowSelector: Sites = site1
+10:03:44 WindowSelector: Site information:
+10:03:44 WindowSelector: Sampling frequency [Hz] = 128.000000
+10:03:44 WindowSelector: Site = site1
+10:03:44 WindowSelector: Site global index information
+10:03:44 WindowSelector: Decimation Level = 0
+10:03:44 WindowSelector: Measurement file = meas_2012-02-10_11-30-00    time range = 2012-02-10 11:30:00 - 2012-02-11 23:03:43.992188   Global Indices Range = 27600 - 112948
+10:03:44 WindowSelector: Decimation Level = 1
+10:03:44 WindowSelector: Measurement file = meas_2012-02-10_11-30-00    time range = 2012-02-10 11:30:00 - 2012-02-11 23:03:43.968750   Global Indices Range = 6900 - 28236
+10:03:44 WindowSelector: Decimation Level = 2
+10:03:44 WindowSelector: Measurement file = meas_2012-02-10_11-30-00    time range = 2012-02-10 11:30:00 - 2012-02-11 23:03:43.875000   Global Indices Range = 1725 - 7058
+10:03:44 WindowSelector: Decimation Level = 3
+10:03:44 WindowSelector: Measurement file = meas_2012-02-10_11-30-00    time range = 2012-02-10 11:31:12 - 2012-02-11 23:03:27  Global Indices Range = 216 - 881
+10:03:44 WindowSelector: Decimation Level = 4
+10:03:44 WindowSelector: Measurement file = meas_2012-02-10_11-30-00    time range = 2012-02-10 11:31:12 - 2012-02-11 23:00:12  Global Indices Range = 54 - 219
+10:03:44 WindowSelector: Decimation Level = 5
+10:03:44 WindowSelector: Measurement file = meas_2012-02-10_11-30-00    time range = 2012-02-10 11:56:48 - 2012-02-11 22:38:24  Global Indices Range = 7 - 26
+10:03:44 WindowSelector: Decimation Level = 6
+10:03:44 WindowSelector: Measurement file = meas_2012-02-10_11-30-00    time range = 2012-02-10 13:39:12 - 2012-02-11 19:12:00  Global Indices Range = 2 - 5
+10:03:44 WindowSelector: Decimation Level = 7
+10:03:44 WindowSelector: ####################
+10:03:44 WindowSelector: WINDOWSELECTOR INFO END
+10:03:44 WindowSelector: ####################

@@ -1,0 +1,31 @@
+09:50:02 WindowParams: ####################
+09:50:02 WindowParams: WINDOWPARAMS INFO BEGIN
+09:50:02 WindowParams: ####################
+09:50:02 WindowParams: Number of decimation levels = 8
+09:50:02 WindowParams: Level = 0, sample freq. [Hz] = 4096.000000, sample rate [s] = 0.000244
+09:50:02 WindowParams: Window size = 2048, window duration [s] = 0.499756
+09:50:02 WindowParams: Window overlap = 512, overlap duration [s] = 0.124756
+09:50:02 WindowParams: Level = 1, sample freq. [Hz] = 1024.000000, sample rate [s] = 0.000977
+09:50:02 WindowParams: Window size = 512, window duration [s] = 0.499023
+09:50:02 WindowParams: Window overlap = 128, overlap duration [s] = 0.124023
+09:50:02 WindowParams: Level = 2, sample freq. [Hz] = 256.000000, sample rate [s] = 0.003906
+09:50:02 WindowParams: Window size = 256, window duration [s] = 0.996094
+09:50:02 WindowParams: Window overlap = 64, overlap duration [s] = 0.246094
+09:50:02 WindowParams: Level = 3, sample freq. [Hz] = 32.000000, sample rate [s] = 0.031250
+09:50:02 WindowParams: Window size = 256, window duration [s] = 7.968750
+09:50:02 WindowParams: Window overlap = 64, overlap duration [s] = 1.968750
+09:50:02 WindowParams: Level = 4, sample freq. [Hz] = 8.000000, sample rate [s] = 0.125000
+09:50:02 WindowParams: Window size = 256, window duration [s] = 31.875000
+09:50:02 WindowParams: Window overlap = 64, overlap duration [s] = 7.875000
+09:50:02 WindowParams: Level = 5, sample freq. [Hz] = 1.000000, sample rate [s] = 1.000000
+09:50:02 WindowParams: Window size = 256, window duration [s] = 255.000000
+09:50:02 WindowParams: Window overlap = 64, overlap duration [s] = 63.000000
+09:50:02 WindowParams: Level = 6, sample freq. [Hz] = 0.250000, sample rate [s] = 4.000000
+09:50:02 WindowParams: Window size = 256, window duration [s] = 1020.000000
+09:50:02 WindowParams: Window overlap = 64, overlap duration [s] = 252.000000
+09:50:02 WindowParams: Level = 7, sample freq. [Hz] = 0.031250, sample rate [s] = 32.000000
+09:50:02 WindowParams: Window size = 256, window duration [s] = 8160.000000
+09:50:02 WindowParams: Window overlap = 64, overlap duration [s] = 2016.000000
+09:50:02 WindowParams: ####################
+09:50:02 WindowParams: WINDOWPARAMS INFO END
+09:50:02 WindowParams: ####################

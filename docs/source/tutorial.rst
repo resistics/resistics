@@ -71,4 +71,5 @@ In most cases, only the API for the project functionality will be of interest. H
     tutorial/statistics.rst
     tutorial/masks.rst
     tutorial/mask-processing.rst
+    tutorial/recap-and-deeper-dive.rst
     tutorial/date-time-constraints.rst
