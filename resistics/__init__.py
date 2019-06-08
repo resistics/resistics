@@ -5,5 +5,10 @@ resistics is a package for the robust processing of magnetotelluric data. It inc
 www.resistics.io
 """
 
-__version__ = "0.0.5.dev3"
 __name__ = "resistics"
+# short X.Y version
+xyversion = "0.0.5"
+# release
+release = "rc1"
+# combined version
+__version__ = "{}.{}".format(xyversion, release)

@@ -23,10 +23,12 @@ project = "resistics"
 copyright = "2019, Neeraj Shah"
 author = "Neeraj Shah"
 
+import resistics
+
 # The short X.Y version
-version = ""
+version = resistics.xyversion
 # The full version, including alpha/beta/rc tags
-release = "0.0.5.dev3"
+release = resistics.release
 
 
 # -- General configuration ---------------------------------------------------
