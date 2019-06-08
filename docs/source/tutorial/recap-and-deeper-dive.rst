@@ -1,9 +1,7 @@
 Recap and deeper dive
 ---------------------
 
-The :class:`~resistics.calculators.decimationParams.DecimationParams`, :class:`~resistics.calculators.windowParams.WindowParams` and :class:`~resistics.calculators.windowSelector.WindowSelector` classes are central to how resistics processes magnetotelluric data. They are lower level elements of the resistics package but will appear more prominently in the :doc:`advanced <../advanced>` and :doc:`cookbook <../cookbook>` sections.
-
-Now that many of the basic features of resistics have been introduced, it is a useful time to recap some theory and consider some lower level resistics API. This is not necessary to know, but useful before approaching the :doc:`Advanced <../advanced>` and :doc:`Cookbook <../cookbook>` sections. 
+Now that many of the basic features of resistics have been introduced, it is a useful time to recap some theory and consider some lower level resistics API. The :class:`~resistics.calculators.decimationParams.DecimationParams`, :class:`~resistics.calculators.windowParams.WindowParams` and :class:`~resistics.calculators.windowSelector.WindowSelector` classes are central to how resistics processes magnetotelluric data. They are lower level elements of the resistics package but are useful to know and understand, particularly before approaching the :doc:`Advanced <../advanced>` and :doc:`Cookbook <../cookbook>` sections. 
 
 Recap
 ~~~~~
