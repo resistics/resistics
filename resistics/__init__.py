@@ -11,4 +11,4 @@ xyversion = "0.0.5"
 # release
 release = "rc1"
 # combined version
-__version__ = "{}.{}".format(xyversion, release)
+__version__ = "{}{}".format(xyversion, release)
