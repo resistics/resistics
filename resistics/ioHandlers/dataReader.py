@@ -347,6 +347,7 @@ class DataReader(IOHandler):
         ----------
         chans: List[str], optional
             List of channels for which chan headers are wanted
+        
         Returns
         -------
         chanHeaders : List
