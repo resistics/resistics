@@ -1,22 +1,44 @@
+"""
+The source for these functions is Robust Statisitics, Huber, 2009
+in general, linear regression is# have observations y and predictors A
+y is multiple observations/response
+x are the independent variables and is unknown
+and y is a linear function of x => y = Ax
+y = nobs
+A = nobs * nregressors
+x = nregressors
+"""
+
 import numpy as np
 import numpy.linalg as linalg
 import scipy.stats as stats
 
-# get the print
-from resistics.utilities.utilsPrint import *
 
-# The source for these functions is Robust Statisitics, Huber, 2009
-# in general, linear regression is# have observations y and predictors A
-# y is multiple observations/response
-# x are the independent variables and is unknown
-# and y is a linear function of x => y = Ax
-# y = nobs
-# A = nobs * nregressors
-# x = nregressors
+def mmestimateModel(A: np.ndarray, y: np.ndarray, **kwargs):
+    """2 stage M estimate
 
+    Solves for x where
 
-# 2 STAGE ROBUST ESTIMATES
-def mmestimateModel(A, y, **kwargs):
+        y = Ax
+
+    Parameters
+    ----------
+    A : np.ndarray
+        Predictors, size nobs*nregressors
+    y : np.ndarray
+        Observations, size nobs
+    initial : 
+    scale : optional
+        A scale estimate
+    intercept : bool, optional
+        True or False for adding an intercept term
+    
+
+    Returns
+    -------
+
+    """
+
     # get options
     options = parseKeywords(kwargs)
     intercept = options["intercept"]

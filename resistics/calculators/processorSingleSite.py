@@ -6,6 +6,7 @@ from typing import List, Dict, Tuple
 
 # import from package
 from resistics.calculators.calculator import Calculator
+from resistics.calculators.windowSelector import WindowSelector
 from resistics.ioHandlers.transferFunctionWriter import TransferFunctionWriter
 from resistics.dataObjects.transferFunctionData import TransferFunctionData
 from resistics.utilities.utilsIO import checkAndMakeDir, fileFormatSampleFreq
@@ -27,7 +28,7 @@ class ProcessorSingleSite(Calculator):
 
     Attributes
     ----------
-    winSelector : WindowSelect
+    winSelector : WindowSelector
         A window selector object which defines which windows to use in the linear model
     decParams : DecimationParameters
         DecimationParameters object with information about the decimation scheme
@@ -69,16 +70,37 @@ class ProcessorSingleSite(Calculator):
 
     Methods
     -------
-    __init__(proj, maskData)
+    __init__(proj, winSelector, outpath)
         Initialise with a Project instance and MaskData instance
-
-
+    setInput(inSite, inChannels)
+        Set the input site and channels
+    setOutput(outSite, outChannels)
+        Set the output site and channels
+    process()
+        Process the spectra to calculate the transfer function
+    getWindowSmooth()
+        Get the window smooth length
+    calcEvalFrequencyData(freq, evalFreq, winDataMatrix)
+        Calculate power spectra at the evaluation frequencies (using interpolation)
+    smoothSpectralEstimates(data)
+        Smooth the data across the spectral estimates    
+    checkForBadValues(numWindows, data)
+        Check the spectral data for bad values that might cause an error            
     printList()
         Class status returned as list of strings
     """
 
-    def __init__(self, winSelector, outpath: str):
-        # required
+    def __init__(self, winSelector: WindowSelector, outpath: str):
+        """Intialise the processor
+
+        Parameters
+        ----------
+        winSelector : WindowSelector
+            A window selector instance
+        outpath : str
+            The path to write the transfer function data to
+        """
+
         self.winSelector = winSelector
         self.decParams = winSelector.decParams
         self.winParams = winSelector.winParams
@@ -157,9 +179,6 @@ class ProcessorSingleSite(Calculator):
             
             - Do the robust processing to calculate the transfer function at that evaluation frequency
 
-
-        NOTES
-        -----
         The spectral power data is smoothed as this tends to improve results. The smoothing can be changed by setting the smoothing parameters. This method is still subject to change in the future as it is an area of active work
         """
 
@@ -318,11 +337,11 @@ class ProcessorSingleSite(Calculator):
     def getWindowSmooth(self, **kwargs):
         """Window smoothing length
 
-        Power spectra data is smoothed. This returns the size of the window smoother. The window itself is given by win.
+        Power spectra data is smoothed. This returns the size of the smoothing window.
     
         Parameters
         ----------
-        kwargs['datasize] : int
+        datasize : int
             The size of the data
 
         Returns
@@ -376,9 +395,20 @@ class ProcessorSingleSite(Calculator):
                     data[eIdx, i, j] = interpVals[eIdx]
         return data
 
-    def smoothSpectralEstimates(self, data):
-        # takes the evaluation frequency data, which is indexed
-        # windows, matrix of spectral components
+    def smoothSpectralEstimates(self, data: np.ndarray):
+        """Smooth spectral estimates across windows
+        
+        Parameters
+        ----------
+        data : np.ndarray 
+            Cross-spectra data
+
+        Returns
+        -------
+        data : np.ndarray 
+            Smoothed cross-spectra data
+        """
+
         winSmooth = 9
         totalChans = self.inSize + self.outSize
         for i in range(0, totalChans):
@@ -386,7 +416,24 @@ class ProcessorSingleSite(Calculator):
                 data[:, i, j] = smooth1d(data[:, i, j], winSmooth, self.win)
         return data
 
-    def checkForBadValues(self, numWindows, data):
+    def checkForBadValues(self, numWindows: int, data: np.ndarray):
+        """Check data for bad values and remove
+        
+        Parameters
+        ----------
+        numWindows : int
+            The number of windows
+        data : np.ndarray 
+            Cross-spectra data
+
+        Returns
+        -------
+        numGoodWindows : int
+            The number of good windows
+        goodData : np.ndarray
+            The cross-spectra data with bad windows removed
+        """
+
         finiteArray = np.ones(shape=(numWindows))
         for iW in range(0, numWindows):
             if not np.isfinite(data[iW]).all():
@@ -402,12 +449,55 @@ class ProcessorSingleSite(Calculator):
         goodWindowIndices = np.where(finiteArray == 1)
         return numGoodWindows, data[goodWindowIndices]
 
-    def prepareLinearEqn(self, data):
-        # prepare observations and regressors for linear processing
+    def prepareLinearEqn(self, data: np.ndarray):
+        r"""Prepare data as a linear equation for the robust regression
+
+        This prepares the data for the following type of solution,
+
+        .. math::
+            y = Ax,
+
+        where :math:`y` is the observations, :math:`A` is the regressors and :math:`x` is the unknown. 
+
+        The number of observations is number of windows * number of cross-power channels
+        The shapes of the arrays are as follows:
+        
+            - y is (number of output channels, number of observations)
+            - A is (number of output channels, number of observations, number of input channels)
+            - x is (number of output channels, number of input channels)
+
+        Consider the impedance tensor,
+
+        .. math::
+            :nowrap:
+
+            \begin{eqnarray}
+            E_x & = & Z_{xx} H_x + Z_{xy} H_y \\
+            E_y & = & Z_{yx} H_x + Z_{yy} H_y 
+            \end{eqnarray}  
+
+        Here, there are two input channels, :math:`H_x`, :math:`H_y` and two output channels :math:`E_x` and :math:`E_y`. In total, there are four components of the unknown impedance tensor, :math:`Z_{xx}`, :math:`Z_{xy}`, :math:`Z_{yx}`, :math:`Z_{yy}` (number of input channels * number of output channels). The number of observations is the number of windows multiplied by the number of channels used for cross-power spectra.     
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Cross-power spectral data at evaluation frequencies
+
+        Returns
+        -------
+        numWindows : int
+            The number of windows included in the regression (after bad value removal)
+        obs : np.ndarray
+            Observations array
+        reg : np.ndarray 
+            Regressors array
+        """
+
         numWindows = data.shape[0]
+        # check for bad values
         numWindows, data = self.checkForBadValues(numWindows, data)
         crossSize = len(self.crossChannels)
-        # for each output variable, have ninput regressor variables
+        # for each output variable, have number of input regressor variables
         # construct our arrays
         obs = np.empty(shape=(self.outSize, crossSize * numWindows), dtype="complex")
         reg = np.empty(
@@ -424,9 +514,14 @@ class ProcessorSingleSite(Calculator):
                         reg[i, iOffset + j, k] = data[iW, k, crossIndex]
         return numWindows, obs, reg
 
-    # SOLVER ROUTINES
-    def robustProcess(self, numWindows, obs, reg):
-        # do the robust processing for a single evaluation frequency
+    def robustProcess(
+        self, numWindows: int, obs: np.ndarray, reg: np.ndarray
+    ) -> Tuple[np.ndarray]:
+        """Robust regression processing
+
+        Perform robust regression processing using observations and regressors for a single evaluation frequency. 
+        """
+
         crossSize = len(self.crossChannels)
         # create array for output
         output = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
@@ -487,8 +582,14 @@ class ProcessorSingleSite(Calculator):
 
         return output, varOutput
 
-    def olsProcess(self, numWindows, obs, reg):
-        # ordinary least squares solution
+    def olsProcess(
+        self, numWindows: int, obs: np.ndarray, reg: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Ordinary least squares regression processing
+
+        Perform ordinary least regression processing using observations and regressors for a single evaluation frequency. 
+        """
+
         # create array for output
         output = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
         varOutput = np.empty(shape=(self.outSize, self.inSize), dtype="float")
@@ -530,6 +631,8 @@ class ProcessorSingleSite(Calculator):
         return output, varOutput
 
     def stackedProcess(self, data):
+        """Ordinary least squares processing after stacking"""
+
         # then do various sums
         numWindows = data.shape[0]
         crossSize = len(self.crossChannels)
@@ -564,7 +667,33 @@ class ProcessorSingleSite(Calculator):
                 output[i] = out
         return output
 
-    def writeTF(self, specdir: str, postpend: str, freq, data, variances, **kwargs):
+    def writeTF(
+        self,
+        specdir: str,
+        postpend: str,
+        freq,
+        data: np.ndarray,
+        variances: np.ndarray,
+        **kwargs
+    ):
+        """Write the transfer function file
+
+        Parameters
+        ----------
+        specdir : str
+            The spectra data being used for the transfer function estimate
+        postpend : str
+            The optional postpend to the transfer function file
+        data : np.ndarray
+            The transfer function estimates
+        variances : np.ndarray
+            The transfer function variances
+        remotesite : str, optional
+            Optionally, if there is a remote site
+        remotechans : List[str], optional
+            Optionally add the remote channels if there is a remote site
+        """
+
         # path for writing out to
         sampleFreqStr = fileFormatSampleFreq(self.decParams.sampleFreq)
         if postpend == "":
@@ -611,7 +740,7 @@ class ProcessorSingleSite(Calculator):
 
         Returns
         -------
-        out : list
+        list
             List of strings with information
         """
 
