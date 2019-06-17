@@ -85,7 +85,15 @@ class ProcessorSingleSite(Calculator):
     smoothSpectralEstimates(data)
         Smooth the data across the spectral estimates    
     checkForBadValues(numWindows, data)
-        Check the spectral data for bad values that might cause an error            
+        Check the spectral data for bad values that might cause an error   
+    prepareLinearEqn(data)
+        Prepare regressors and observations for regression from cross-power data
+    robustProcess(numWindows, obs, reg)      
+        Robust regression processing   
+    olsProcess(numWindows, obs, reg)      
+        Ordinary least squares processing
+    stackedProcess(data)
+        Stacked processing                  
     printList()
         Class status returned as list of strings
     """
@@ -172,12 +180,12 @@ class ProcessorSingleSite(Calculator):
         1. Get shared (unmasked) windows for all relevant sites (inSite and outSite)
         2. For shared unmasked windows
             
-            - Calculate out the spectral power data
-            - Interpolate calculated spectral power data to the evaluation frequencies for the decimation level 
+            - Calculate out the cross-power spectra.
+            - Interpolate calculated cross-power data to the evaluation frequencies for the decimation level.
         
         3. For each evaluation frequency
             
-            - Do the robust processing to calculate the transfer function at that evaluation frequency
+            - Do the robust processing to calculate the transfer function at that evaluation frequency.
 
         The spectral power data is smoothed as this tends to improve results. The smoothing can be changed by setting the smoothing parameters. This method is still subject to change in the future as it is an area of active work
         """
@@ -520,6 +528,22 @@ class ProcessorSingleSite(Calculator):
         """Robust regression processing
 
         Perform robust regression processing using observations and regressors for a single evaluation frequency. 
+
+        Parameters
+        ----------
+        numWindows : int
+            The number of windows
+        obs : np.ndarray
+            The observations
+        reg : np.ndarray
+            The regressors
+
+        Returns
+        -------
+        output : np.ndarray
+            The solution to the regression problem
+        varOutput : np.ndarray
+            The variance
         """
 
         crossSize = len(self.crossChannels)
@@ -588,6 +612,22 @@ class ProcessorSingleSite(Calculator):
         """Ordinary least squares regression processing
 
         Perform ordinary least regression processing using observations and regressors for a single evaluation frequency. 
+
+        Parameters
+        ----------
+        numWindows : int
+            The number of windows
+        obs : np.ndarray
+            The observations
+        reg : np.ndarray
+            The regressors
+
+        Returns
+        -------
+        output : np.ndarray
+            The solution to the regression problem
+        varOutput : np.ndarray
+            The variance        
         """
 
         # create array for output
@@ -630,8 +670,21 @@ class ProcessorSingleSite(Calculator):
 
         return output, varOutput
 
-    def stackedProcess(self, data):
-        """Ordinary least squares processing after stacking"""
+    def stackedProcess(self, data: np.ndarray) -> np.ndarray:
+        """Ordinary least squares processing after stacking
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Cross-spectra data
+
+        Returns
+        -------
+        output : np.ndarray
+            The solution to the regression problem
+        varOutput : np.ndarray
+            The variance        
+        """
 
         # then do various sums
         numWindows = data.shape[0]

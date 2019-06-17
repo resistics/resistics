@@ -1,8 +1,6 @@
 import os
 import numpy as np
-import scipy.signal as signal
-import scipy.interpolate as interp
-from typing import List
+from typing import List, Tuple
 
 # import from package
 from resistics.calculators.processorSingleSite import ProcessorSingleSite
@@ -23,7 +21,7 @@ class ProcessorRemoteReference(ProcessorSingleSite):
 
     Attributes
     ----------
-    winSelector : WindowSelect
+    winSelector : WindowSelector
         A window selector object which defines which windows to use in the linear model
     decParams : DecimationParameters
         DecimationParameters object with information about the decimation scheme
@@ -43,10 +41,12 @@ class ProcessorRemoteReference(ProcessorSingleSite):
         List of channels to use as output channels for the linear system
     outSize : int
         Number of output channels
-    allChannels : List[str] 
-        inChannels and outChannels combined into a single list
-    crossChannels : List[str] 
-        
+    remoteSite : str
+        The site to use as a remote reference
+    remoteChannels : List[str]
+        The channels to use as remote reference channels
+    remoteSize : int
+        Number of remote reference channels
     intercept : bool (default False)
         Flag for including an intercept (static) term in the linear system
     method : str (options, "ols", "cm") 
@@ -65,10 +65,22 @@ class ProcessorRemoteReference(ProcessorSingleSite):
 
     Methods
     -------
-    __init__(proj, maskData)
-        Initialise with a Project instance and MaskData instance
-
-
+    __init__(winSelector, outpath)
+        Initialise the remote reference processor
+    setRemote(remoteSite, remoteChannels)
+        Set the remote site and channels
+    process()
+        Perform the remote reference processing
+    checkRemote()
+        Ensure remote reference site and channels are properly defined
+    prepareLinearEqn(data)
+        Prepare regressors and observations for regression from cross-power data
+    robustProcess(numWindows, obs, reg)      
+        Robust regression processing   
+    olsProcess(numWindows, obs, reg)      
+        Ordinary least squares processing
+    stackedProcess(data)
+        Stacked processing                  
     printList()
         Class status returned as list of strings
     """
@@ -81,17 +93,22 @@ class ProcessorRemoteReference(ProcessorSingleSite):
         self.outpath: str = outpath
 
         # default parameters for user options
-        self.inSite: str = ""
-        self.inChannels: List[str] = []
-        self.outSite: str = ""
-        self.outChannels: List[str] = []
+        self.inSite: str = "dummy"
+        self.inChannels: List[str] = ["Hx", "Hy"]
+        self.inSize: int = len(self.inChannels)
+        self.outSite: str = "dummy"
+        self.outChannels: List[str] = ["Ex", "Ey"]
+        self.outSize: int = len(self.outChannels)
         self.remoteSite: str = ""
-        self.remoteChannels: List[str] = []
+        self.remoteChannels: List[str] = ["Hx", "Hy"]
+        self.remoteSize = len(self.remoteChannels)
+        # intercept options
+        self.intercept: bool = False
+        # regression method
+        self.method: str = "mm"
         # smoothing options
         self.win: str = "hanning"
         self.winSmooth: int = -1
-        # intercept options
-        self.intercept: bool = False
         # output filename
         self.postpend: str = ""
         # evaluation frequency data
@@ -119,22 +136,21 @@ class ProcessorRemoteReference(ProcessorSingleSite):
             )
         )
 
-    def process(self):
+    def process(self) -> None:
         """Process spectra data
 
-        The processing sequence is as below:
+        The processing sequence for each decimation level is as below:
 
-        For each decimation level
-            Get shared (unmasked) windows for all relevant sites (inSite and outSite)
-            For shared unmasked windows
-                Calculate out the spectral power data
-                Interpolate calculated spectral power data to the evaluation frequencies for the decimation level 
-            For each evaluation frequency
-                Do the robust processing to calculate the transfer function at that evaluation frequency
+        1. Get shared (unmasked) windows for all relevant sites (inSite, outSite and remoteSite)
+        2. For shared unmasked windows
+            
+            - Calculate out the cross-power spectra. For remote reference processing, this includes the remote site too.
+            - Interpolate calculated cross-power data to the evaluation frequencies for the decimation level. 
+        
+        3. For each evaluation frequency
+            
+            - Do the robust processing to calculate the transfer function at that evaluation frequency.
 
-
-        NOTES
-        -----
         The spectral power data is smoothed as this tends to improve results. The smoothing can be changed by setting the smoothing parameters. This method is still subject to change in the future as it is an area of active work
         """
 
@@ -300,14 +316,63 @@ class ProcessorRemoteReference(ProcessorSingleSite):
         )
 
     def checkRemote(self):
+        """Check that the remote channels are the same as the input channels
+
+        Returns
+        -------
+        bool   
+            Check outcome
+        """
+
         check = True
         check = check and self.remoteSize == self.inSize
         check = check and self.remoteChannels == self.inChannels
         return check
 
-    # PREPARE ROUTINES
     def prepareLinearEqn(self, data):
-        # prepare observations and regressors for linear processing
+        r"""Prepare data as a linear equation for the robust regression
+
+        This prepares the data for the following type of solution,
+
+        .. math::
+            y = Ax,
+
+        where :math:`y` is the observations, :math:`A` is the regressors and :math:`x` is the unknown. 
+
+        The number of observations is number of windows * number of cross-power channels
+        The shapes of the arrays are as follows:
+        
+            - y is (number of output channels, number of observations)
+            - A is (number of output channels, number of observations, number of input channels)
+            - x is (number of output channels, number of input channels)
+
+        Consider the impedance tensor,
+
+        .. math::
+            :nowrap:
+
+            \begin{eqnarray}
+            E_x & = & Z_{xx} H_x + Z_{xy} H_y \\
+            E_y & = & Z_{yx} H_x + Z_{yy} H_y 
+            \end{eqnarray}  
+
+        Here, there are two input channels, :math:`H_x`, :math:`H_y` and two output channels :math:`E_x` and :math:`E_y`. In total, there are four components of the unknown impedance tensor, :math:`Z_{xx}`, :math:`Z_{xy}`, :math:`Z_{yx}`, :math:`Z_{yy}` (number of input channels * number of output channels). The number of observations is the number of windows multiplied by the number of channels used for cross-power spectra.     
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Cross-power spectral data at evaluation frequencies
+
+        Returns
+        -------
+        numWindows : int
+            The number of windows included in the regression (after bad value removal)
+        obs : np.ndarray
+            Observations array
+        reg : np.ndarray 
+            Regressors array
+        """
+
         numWindows = data.shape[0]
         numWindows, data = self.checkForBadValues(numWindows, data)
         # for each output variable, have ninput regressor variables
@@ -329,9 +394,30 @@ class ProcessorRemoteReference(ProcessorSingleSite):
                         reg[i, iOffset + j, k] = data[iW, k, j]
         return numWindows, obs, reg
 
-    # SOLVER ROUTINES
-    def robustProcess(self, numWindows, obs, reg):
-        # do the chatterjeeMachlerMod robust processing for a single evaluation frequency
+    def robustProcess(
+        self, numWindows: int, obs: np.ndarray, reg: np.ndarray
+    ) -> Tuple[np.ndarray]:
+        """Robust regression processing
+
+        Perform robust regression processing using observations and regressors for a single evaluation frequency. 
+
+        Parameters
+        ----------
+        numWindows : int
+            The number of windows
+        obs : np.ndarray
+            The observations
+        reg : np.ndarray
+            The regressors
+
+        Returns
+        -------
+        output : np.ndarray
+            The solution to the regression problem
+        varOutput : np.ndarray
+            The variance
+        """
+
         # create array for output
         output = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
         varOutput = np.empty(shape=(self.outSize, self.inSize), dtype="float")
@@ -394,8 +480,30 @@ class ProcessorRemoteReference(ProcessorSingleSite):
 
         return output, varOutput
 
-    def olsProcess(self, numWindows, obs, reg):
-        # ordinary least squares solution
+    def olsProcess(
+        self, numWindows: int, obs: np.ndarray, reg: np.ndarray
+    ) -> np.ndarray:
+        """Ordinary least squares regression processing
+
+        Perform ordinary least regression processing using observations and regressors for a single evaluation frequency. 
+
+        Parameters
+        ----------
+        numWindows : int
+            The number of windows
+        obs : np.ndarray
+            The observations
+        reg : np.ndarray
+            The regressors
+
+        Returns
+        -------
+        output : np.ndarray
+            The solution to the regression problem
+        varOutput : np.ndarray
+            The variance        
+        """
+
         # create array for output
         output = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
         # solve
@@ -412,8 +520,23 @@ class ProcessorRemoteReference(ProcessorSingleSite):
                 output[i] = out
         return output
 
-    def stackedProcess(self, data):
-        # then do various sums
+    def stackedProcess(self, data: np.ndarray) -> np.ndarray:
+        """Ordinary least squares processing after stacking
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Cross-spectra data
+
+        Returns
+        -------
+        output : np.ndarray
+            The solution to the regression problem
+        varOutput : np.ndarray
+            The variance        
+        """
+
+        # do various sums
         numWindows = data.shape[0]
         numWindows, data = self.checkForBadValues(numWindows, data)
         # unweighted sum (i.e. normal solution)
@@ -454,7 +577,7 @@ class ProcessorRemoteReference(ProcessorSingleSite):
             List of strings with information
         """
 
-        textLst = []
+        textLst: List[str] = []
         textLst.append("In Site = {}".format(self.inSite))
         textLst.append("In Channels = {}".format(self.inChannels))
         textLst.append("Out Site = {}".format(self.outSite))

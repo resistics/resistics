@@ -12,14 +12,19 @@ x = nregressors
 import numpy as np
 import numpy.linalg as linalg
 import scipy.stats as stats
+from typing import List, Dict, Tuple
+
+# import from package
+from resistics.utilities.utilsChecks import parseKeywords
 
 
 def mmestimateModel(A: np.ndarray, y: np.ndarray, **kwargs):
-    """2 stage M estimate
+    r"""2 stage M estimate
 
-    Solves for x where
+    Solves for :math:`x` where,
 
-        y = Ax
+    .. math::        
+        y = Ax .
 
     Parameters
     ----------
@@ -27,20 +32,26 @@ def mmestimateModel(A: np.ndarray, y: np.ndarray, **kwargs):
         Predictors, size nobs*nregressors
     y : np.ndarray
         Observations, size nobs
-    initial : 
+    initial : Dict
+        Initial solution with parameters, scale and residuals
     scale : optional
         A scale estimate
     intercept : bool, optional
         True or False for adding an intercept term
     
-
     Returns
     -------
-
+    params : np.ndarray
+        Values in x
+    resids : np.ndarray
+        Residuals = y - Ax
+    scale : float
+        Robust measure of variance
+    weights : np.ndarray
+        Weights used in robust regression   
     """
 
-    # get options
-    options = parseKeywords(kwargs)
+    options = parseKeywords(defaultDictionary(), kwargs, printkw=False)
     intercept = options["intercept"]
     # this uses an initial mestimate with huber to give a measure of scale
     # and then a second with bisquare or hampel weights
@@ -69,43 +80,41 @@ def mmestimateModel(A: np.ndarray, y: np.ndarray, **kwargs):
     return params2, resids2, scale2, weights2
 
 
-def smestimateModel(A, y, **kwargs):
-    # this uses an initial mestimate with huber to give a measure of scale
-    # and then a second with bisquare or hampel weights
-    params, residuals, scale, weights = mestimateModel(
-        A, y, weights="huber", intercept=True
-    )
-    # now do another, but with a different weighting function
-    params2, residuals2, scale2, weights2 = mestimateModel(A, y, parameters)
+def mestimateModel(A: np.ndarray, y: np.ndarray, **kwargs) -> Tuple:
+    r"""Mestimate robust least squares
 
+    Solves for :math:`x` where,
 
-# def reWLS(A, y, **kwargs):
-# 	# begin with a bounded S-estimate
-# 	# then compute the REWLS
-# 	components = setimateModel(A, y, kwargs)
+    .. math::        
+        y = Ax .
 
-# 	# now do the REWLS iterations
+    Good method for dependent outliers (in :math:`y`). Not robust against independent outliers (leverage points)
 
+    Parameters
+    ----------
+    A : np.ndarray
+        Predictors, size nobs*nregressors
+    y : np.ndarray
+        Observations, size nobs
+    initial : 
+    scale : optional
+        A scale estimate
+    intercept : bool, optional
+        True or False for adding an intercept term
 
-# ORDINARY LEAST SQUARES
-def olsModel(A, y, **kwargs):
-    options = parseKeywords(kwargs)
-    if options["intercept"]:
-        # add a constant term for the intercept
-        A = np.hstack((np.ones(shape=(A.shape[0], 1), dtype="complex"), A))
-    params, squareResid, rank, s = linalg.lstsq(A, y)
-    resids = y - np.dot(A, params)
-    return params, resids, squareResid, rank, s
+    Returns
+    -------
+    params : np.ndarray
+        Values in x
+    resids : np.ndarray
+        Residuals = y - Ax
+    scale : float
+        Robust measure of variance
+    weights : np.ndarray
+        Weights used in robust regression    
+    """
 
-
-# ROBUST LEAST SQUARES
-# mestimate model
-# good for dependent outliers
-# not robust against independent outliers (called leverage points)
-def mestimateModel(A, y, **kwargs):
-    # get options
-    options = parseKeywords(kwargs)
-
+    options = parseKeywords(defaultDictionary(), kwargs, printkw=False)
     # calculate the leverage
     n = A.shape[0]
     p = A.shape[1]
@@ -177,63 +186,76 @@ def mestimateModel(A, y, **kwargs):
     return params, resids, scale, weights
 
 
-# this is the s-estimate
-# which has a different scaling version
-# def sestimateModel(A, y, **kwargs):
-# 	# get options
-# 	options = parseKeywords(kwargs)
-# 	#generalPrint("S-Estimate", "Using weight function = {}".format(weightFnc))
-# 	if options["intercept"] == True:
-# 		# add column of ones for constant term
-# 		A = np.hstack((np.ones(shape=(A.shape[0],1), dtype="complex"), A))
+def olsModel(A, y, **kwargs) -> Tuple:
+    r"""Ordinary least squares
 
-# 	# see whether to do an initial OLS model or whether one is provided
-# 	if options["initial"]:
-# 		params, resids, scale = initialFromDict(options["initial"])
-# 	else:
-# 		params, resids, squareResid, rank, s = olsModel(A, y)
-# 		scale = sampleMAD0(resids)
+    Solves for :math:`x` where,
 
-# 	# standardised residuals and weights
-# 	resids = resids/scale
-# 	weights = getRobustLocationWeights(resids, options["weights"])
+    .. math::       
+        y = Ax .
 
-# 	# iteratively weighted least squares
-# 	iteration = 0
-# 	while iteration < options["maxiter"]:
-# 		# do the weighted least-squares
-# 		Anew, ynew = weightLS(A, y, weights)
-# 		componentsNew, squareResidNew, rankNew, sNew = linalg.lstsq(Anew, ynew)
-# 		residualsNew = y - np.dot(A, componentsNew)
-# 		# now for s estimate, the new scale is calculated differently
-# 		scale = sestimateScale(residualsNew)
-# 		# standardised residuals
-# 		residualsNew = residualsNew/scale
-# 		weightsNew = getRobustLocationWeights(residualsNew, weightFnc)
+    Parameters
+    ----------
+    A : np.ndarray
+        Predictors, size nobs*nregressors
+    y : np.ndarray
+        Observations, size nobs
+    intercept : bool, optional
+        True or False for adding an intercept term
 
-# 		# increment iteration
-# 		iteration = iteration + 1
-# 		weights = weightsNew
+    Returns
+    -------
+    params : np.ndarray
+        Least squares solution
+    resids : np.ndarray
+        Residuals
+    squareResid : np.ndarray
+        Square residuals
+    rank : int
+        Rank of matrix A
+    s : np.ndarray
+        Singular values of A
+    """
 
-# 		# check to see whether the change is smaller than the tolerance
-# 		change = linalg.norm(componentsNew-components)/linalg.norm(componentsNew)
-# 		changeResids = linalg.norm(residualsNew-residuals)/linalg.norm(residualsNew)
-# 		if changeResids < eps():
-# 			# update components
-# 			components = componentsNew
-# 			break
-# 		# update components
-# 		components = componentsNew
-
-# 	#generalPrint("S-Estimate", "Robust regression quit after {} iterations".format(iteration))
-# 	# at the end, return the components
-# 	return components, weights
+    options = parseKeywords(defaultDictionary(), kwargs, printkw=False)
+    if options["intercept"]:
+        # add a constant term for the intercept
+        A = np.hstack((np.ones(shape=(A.shape[0], 1), dtype="complex"), A))
+    params, squareResid, rank, s = linalg.lstsq(A, y)
+    resids = y - np.dot(A, params)
+    return params, resids, squareResid, rank, s
 
 
-# a bounded influence estimator
-def chatterjeeMachler(A, y, **kwargs):
-    # get options
-    options = parseKeywords(kwargs)
+def chatterjeeMachler(A: np.ndarray, y: np.ndarray, **kwargs) -> Tuple:
+    r"""Robust bounded influence solver
+    
+    Solves for :math:`x` where,
+
+    .. math::  
+        y = Ax .
+
+    Being a bounded influence operator, should be robust against both outliers in dependent and independent variables.
+
+    Parameters
+    ----------
+    A : np.ndarray
+        Predictors, size nobs*nregressors
+    y : np.ndarray
+        Observations, size nobs
+    intercept : bool, optional
+        True or False for adding an intercept term
+
+    Returns
+    -------
+    params : np.ndarray
+        Values in x
+    resids : np.ndarray
+        Residuals = y - Ax
+    weights : np.ndarray
+        Weights used in robust regression     
+    """
+
+    options = parseKeywords(defaultDictionary(), kwargs, printkw=False)
     # generalPrint("S-Estimate", "Using weight function = {}".format(weightFnc))
     if options["intercept"] == True:
         # add column of ones for constant term
@@ -268,7 +290,7 @@ def chatterjeeMachler(A, y, **kwargs):
         residsNew = y - np.dot(A, paramsNew)
         # check residsNew to make sure not all zeros (i.e. will happen in undetermined or equally determined system)
         if np.sum(np.absolute(residsNew)) < eps():
-            # then return everything here
+            # return everything here
             return paramsNew, residsNew, weights
         residsAbs = np.absolute(residsNew)
         residsMedian = np.median(residsAbs)
@@ -328,7 +350,7 @@ def chatterjeeMachlerMod(A, y, **kwargs):
     weights = np.reciprocal(tmp)
 
     # get options
-    options = parseKeywords(kwargs)
+    options = parseKeywords(defaultDictionary(), kwargs, printkw=False)
     # generalPrint("S-Estimate", "Using weight function = {}".format(weightFnc))
     if options["intercept"] == True:
         # add column of ones for constant term
@@ -408,12 +430,17 @@ def chatterjeeMachlerMod(A, y, **kwargs):
     return params, resids, weights
 
 
-# Another regression method based on Hadi distances
-# implemented from the paper A Re-Weighted Least Squares Method for Robust Regression Estimation
-# Billor, Hadi
 def chatterjeeMachlerHadi(X, y, **kwargs):
+    r"""Regression based on Hadi distances
+
+
+
+    # Another regression method based on Hadi distances
+    # implemented from the paper A Re-Weighted Least Squares Method for Robust Regression Estimation
+    # Billor, Hadi    
+    """
     # basic info
-    options = parseKeywords(kwargs)
+    options = parseKeywords(defaultDictionary(), kwargs, printkw=False)
 
     # for the distances, will use absX - do this before adding intercept term
     # a column of all ones will cause problems with non full rank covariance matrices
@@ -573,18 +600,36 @@ def calculateDistCMH(n, x, mean, covariance):
     return dist
 
 
-# a bounded influence estimator
-# this is good against leverage points
-# def schweppeModel(A, y, **kwargs):
+def weightLS(A: np.ndarray, y: np.ndarray, weights: np.ndarray) -> Tuple[np.ndarray]:
+    r"""Transform A and y using the weights to perform a weighted least squares
 
+    .. math::
+        \sqrt{weights} y = \sqrt{weights} A x ,
+    
+    is equivalent to,
+    
+    .. math::     
+        A^H weights y = A^H weights A x ,
+    
+    where :math:`A^H` is the hermitian transpose.
 
-# helper functions
-# Weighted least squares:
-# sqrt(weights) * y = sqrt(weights) * A * x
-# is equivalent to
-# A' *weights* y = A' * weights * A x (note A' transpose is the hermitian transpose)
-# i.e. both y and A are multiplied the square root of the weights
-def weightLS(A, y, weights):
+    In this method, both y and A are multipled by the square root of the weights and then returned.
+
+    Parameters
+    ----------
+    y : np.ndarray
+        Observations
+    A : np.ndarray
+        Regressors
+
+    Returns
+    ----------
+    y : np.ndarray
+        Observations multipled by the square root of the weights
+    A : np.ndarray
+        Regressors multipled by the square root of the weights
+    """
+
     ynew = np.sqrt(weights) * y
     Anew = np.empty(shape=A.shape, dtype="complex")
     for col in range(0, A.shape[1]):
@@ -592,46 +637,55 @@ def weightLS(A, y, weights):
     return Anew, ynew
 
 
-# calculate various values for returning
-# from the robust regression solution
-# this includes residuals and variances for
-# error calculations
-# def varsForReturn(residuals):
+def hermitianTranspose(mat: np.ndarray) -> np.ndarray:
+    """Hermitian transpose (transpose and complex conjugation)
+    
+    Parameters
+    ----------
+    np.ndarray
+        Vector, matrix to Hermitian transpose
+    
+    Returns
+    -------
+    np.ndarray
+        Hermitian transpose
+    """
 
-
-def hermitianTranspose(mat):
     return np.conjugate(np.transpose(mat))
 
 
-# simple function that returns the intial model
-# from a provided initial model dictionary
-# this helps for two stage robust regression methods
-def initialFromDict(initDict):
+def initialFromDict(initDict: Dict) -> Tuple:
+    """Returns initial model from provided initial model dictionary
+    
+    Helps for two stage robust regression.
+
+    Parameters
+    ----------
+    Dict
+        Initial model to use for robust regression with the parameters, residuals and scale estimate
+    
+    Returns
+    -------
+    parameters : np.ndarray
+        
+    resids : np.ndarray
+        The residuals
+    scale : float
+        Initial estimate of scale
+    """
+
     return initDict["params"], initDict["resids"], initDict["scale"]
 
 
-def parseKeywords(keywords):
-    # general function to parse keywords
-    # can be used in a number of different algorithms
-    # and there will simply be redundant keywords
-    outDict = defaultDictionary()
-    if not keywords:
-        return outDict
+def defaultDictionary() -> Dict:
+    """Robust regression defaults
+    
+    Returns
+    -------
+    Dict
+        Default regression options
+    """
 
-    if "weights" in keywords:
-        outDict["weights"] = keywords["weights"]
-    if "maxiter" in keywords:
-        outDict["maxiter"] = keywords["maxiter"]
-    if "initial" in keywords:
-        outDict["initial"] = keywords["initial"]
-    if "scale" in keywords:
-        outDict["scale"] = keywords["scale"]
-    if "intercept" in keywords:
-        outDict["intercept"] = keywords["intercept"]
-    return outDict
-
-
-def defaultDictionary():
     outDict = {}
     outDict["weights"] = "bisquare"
     outDict["maxiter"] = maxIter()
@@ -641,11 +695,22 @@ def defaultDictionary():
     return outDict
 
 
-######################
-### LOCATION WEIGHTING FUNCTIONS
-### Functions for re-weighting least squares rows
-######################
-def getRobustLocationWeights(r, weight):
+def getRobustLocationWeights(r: np.ndarray, weight: str) -> np.ndarray:
+    """Robust weighting schemes
+    
+    Parameters
+    ----------
+    r : np.ndarray
+        Residuals
+    weight : str
+        The type of weighting to use
+
+    Returns
+    -------
+    weights : np.ndarray
+        The robust weights
+    """
+
     # the second argument, k, is a tuning constant
     if weight == "huber":
         k = 1.345
@@ -669,25 +734,68 @@ def getRobustLocationWeights(r, weight):
         return bisquareLocationWeights(r, k)
 
 
-# relying on numpy doing the right thing
-# when dividing by zero
-def huberLocationWeights(r, k):
+def huberLocationWeights(r: np.ndarray, k: float) -> np.ndarray:
+    """Huber location weights
+    
+    Parameters
+    ----------
+    r : np.ndarray
+        Residuals
+    k : float
+        Tuning parameter
+
+    Returns
+    -------
+    weights : np.ndarray
+        The robust weights
+    """
+
     weights = np.ones(shape=r.size, dtype="complex")
     for idx, val in enumerate(np.absolute(r)):
         if val > k:
+            # relying on numpy doing the right thing when dividing by zero
             weights[idx] = k / val
     return weights.real
 
 
-def bisquareLocationWeights(r, k):  # biweight
+def bisquareLocationWeights(r: np.ndarray, k: float) -> np.ndarray:
+    """Bisquare location weights
+    
+    Parameters
+    ----------
+    r : np.ndarray
+        Residuals
+    k : float
+        Tuning parameter
+
+    Returns
+    -------
+    weights : np.ndarray
+        The robust weights
+    """
+
     ones = np.ones(shape=(r.size), dtype="complex")
     threshR = np.minimum(ones, np.absolute(r / k))
     # threshR = np.maximum(-1*ones, threshR)
     return np.power((1 - np.power(threshR, 2)), 2).real
-    # for scale weights
 
 
-def hampelLocationWeights(r, k):
+def hampelLocationWeights(r: np.ndarray, k: float) -> np.ndarray:
+    """Hampel location weights
+    
+    Parameters
+    ----------
+    r : np.ndarray
+        Residuals
+    k : float
+        Tuning parameter
+
+    Returns
+    -------
+    weights : np.ndarray
+        The robust weights
+    """
+
     a = k / 4
     b = k / 2
     weights = np.ones(shape=r.size, dtype="complex")
@@ -701,14 +809,44 @@ def hampelLocationWeights(r, k):
     return weights.real
 
 
-def trimmedMeanLocationWeights(r, k):
+def trimmedMeanLocationWeights(r: np.ndarray, k: float) -> np.ndarray:
+    """Trimmed mean location weights
+    
+    Parameters
+    ----------
+    r : np.ndarray
+        Residuals
+    k : float
+        Tuning parameter
+
+    Returns
+    -------
+    weights : np.ndarray
+        The robust weights
+    """
+
     weights = np.zeros(shape=r.size, dtype="complex")
     indices = np.where(np.absolute(r) <= k)
     weights[indices] = 1
     return weights.real
 
 
-def andrewsWaveLocationWeights(r, k):
+def andrewsWaveLocationWeights(r: np.ndarray, k: float) -> np.ndarray:
+    """Andrews Wave location weights
+    
+    Parameters
+    ----------
+    r : np.ndarray
+        Residuals
+    k : float
+        Tuning parameter
+
+    Returns
+    -------
+    weights : np.ndarray
+        The robust weights
+    """
+
     weights = np.zeros(shape=r.size, dtype="complex")
     testVal = k * np.pi
     for idx, val in enumerate(np.absolute(r)):
@@ -717,54 +855,79 @@ def andrewsWaveLocationWeights(r, k):
     return weights.real
 
 
-# least squares has no weighting
-def leastSquaresLocationWeights(r):
+def leastSquaresLocationWeights(r: np.ndarray):
+    """Least squares weights, which are all equal to 1
+
+    Parameters
+    ----------
+    r : np.ndarray
+        Residuals
+
+    Returns
+    -------
+    weights : np.ndarray
+        The robust weights
+    """
+
     return np.ones(shape=(r.size), dtype="complex")
 
 
-######################
-### SCALE WEIGHTING FUNCTIONS
-### Functions for re-weighting least squares rows
-######################
-def getRobustScaleWeights(r, weight):
-    # k is a tuning parameter
-    # k = 1.56
-    k = 4.685
-    return bisquareScaleWeights(r, k)
-
-
-def bisquareScaleWeights(r, k):
-    # r = r/k
-    tmp1 = 3 - 3 * np.power(r, 2) + np.power(r, 4)
-    tmp2 = np.reciprocal(np.power(r, 2))
-    return np.minimum(tmp1, tmp2)
-
-
-# def sestimateScale(r, k):
-
-# def alphaTrimmedScale(r, k):
-
-
-# LOCATION ESTIMATORS
-# The mean is not a robust estimator of location
-# These are other methods of location estimation
-# SCALE ESTIMATORS
-# equivalent, the sd is not a robust measurement of
-# dispersion
 def sampleMedian(data):
+    """Calculate the median of an array
+
+    Mean is not a robust estimator of locations as it can be broken by a single outlying value. The median is a more robust choice.
+    
+    Parameters
+    ----------
+    np.ndarray
+        Data for which to calculate median
+    
+    Returns
+    -------
+    float
+        The median
+    """
+
     return np.median(data)
 
 
 def sampleMAD(data):
-    # the MAD is the median
+    """Median absolute deviation
+
+    The standard deviation is not robust against outliers, hence use the MAD.
+    
+    Parameters
+    ----------
+    np.ndarray
+        Data for which to calculate MAD
+    
+    Returns
+    -------
+    float
+        The MAD    
+    """
+
     absData = np.absolute(data)
     mad = sampleMedian(np.absolute(absData - sampleMedian(absData)))
     return mad / 0.67448975019608171
 
 
-# this uses an estimate of the location as 0
 def sampleMAD0(data):
-    # the MAD is the median - this should be over non zero data
+    """Median absolute deviation using an estimate of the location as 0
+
+    When the location estimate is zero (rather than the median), the MAD essentially reduces to a median. This should be over non zero data. Useful for calculating variance of residuals.
+
+    Parameters
+    ----------
+    np.ndarray
+        Data for which to calculate MAD. This is often residuals when using 0 as an estimate of location. 
+    
+    Returns
+    -------
+    float
+        The MAD using zero as an esimate of location   
+    """
+
     absData = np.absolute(data)
     inputIndices = np.where(absData != 0.0)
     mad = sampleMedian(absData[inputIndices])
@@ -772,63 +935,25 @@ def sampleMAD0(data):
     return mad / 0.67448975019608171
 
 
-# compute the m-estimate of location and scale
-# through iteration, beginning with sample median for mean
-# and madn for dispersion
-def mestimate(data, **kwargs):
-    location = "bisquare"
-    scale = "bisquare"
-    if "location" in kwargs:
-        location = kwargs["location"]
-    if "scale" in kwargs:
-        scale = kwards["scale"]
-    mean = sampleMedian(data)
-    sigma = sampleMAD(data)
+def eps() -> float:
+    """Small number
+    
+    Returns
+    -------
+    float
+        A small number for quitting robust regression
+    """
 
-    iteration = 0
-    n = data.size
-    while iteration < maxIter():
-        # calculate outlyingness
-        r = (data - mean) / sigma
-        # calculate new set of weights using window function
-        weights1 = getRobustLocationWeights(r, location)
-        weights2 = getRobustScaleWeights(r, scale)
-        # now weight the data (observations)
-        # in calculation of new mean and sigma
-        new_mean = np.sum(weights1 * data) / np.sum(weights1)
-        new_sigma2 = sigma * sigma * np.sum(weights2 * np.power(r, 2)) / (n * delta())
-        new_sigma = np.sqrt(new_sigma2)
-
-        if new_mean - mean < eps() * sigma:
-            break
-
-        # if not breaking, update mean and sigma
-        mean = new_mean
-        sigma = new_sigma
-    # return mean and sigma
-    return mean, sigma
-
-
-# SIGMA FUNCTIONS
-# Robust measures of outlyingness
-def threeSigmaMAD(data):
-    # calculate deviation from MAD
-    return (data - sampleMedian(data)) / sampleMAD(data)
-
-
-# ROBUST CORRELATION
-# For measuring similarity between datasets
-
-
-# A FEW USEFUL NUMBERS
-def eps():
-    # A small number of stopping iterations
     return 0.0001
 
 
-def delta():
-    return 0.5
+def maxIter() -> int:
+    """Maximum number of iterations
+    
+    Returns
+    -------
+    int
+        The maximum number of iterations
+    """
 
-
-def maxIter():
     return 100
