@@ -7,8 +7,8 @@ www.resistics.io
 
 __name__ = "resistics"
 # short X.Y version
-xyversion = "0.0.5"
+xyversion = "0.0.6"
 # release
-release = ""
+release = ".dev1"
 # combined version
 __version__ = "{}{}".format(xyversion, release)

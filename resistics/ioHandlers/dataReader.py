@@ -717,7 +717,7 @@ class DataReader(IOHandler):
         )
 
     def getPhysicalSamples(self, **kwargs):
-        """Get data scaled to physical values
+        r"""Get data scaled to physical values
         
         Depending on the data format, the scalings required to convert to field physical units is different. The method in the base DataReader class covers ATS and internal file format.
 
@@ -733,17 +733,17 @@ class DataReader(IOHandler):
         -----
         The raw data units for ATS data are in counts. To get data in field units, ATS data is first multipled by the least significat bit (lsb) defined in the header files,
 
-        .. code-block:: text  
+        .. math::  
         
-            data = data * leastSignificantBit,
+            data = data * lsb,
         
         giving data in mV. The lsb includes the gain removal, so no separate gain removal needs to be performed.
         
         For electrical channels, there is additional step of dividing by the electrode spacing, which is provided in metres. The extra factor of a 1000 is to convert this to km to give mV/km for electric channels
         
-        .. code-block:: text  
+        .. math::   
             
-            data = (1000 * data)/electrodeSpacing
+            data = \frac{1000 * data}{electrodeSpacing}
         
         Finally, to get magnetic channels in nT, the magnetic channels need to be calibrated.
 

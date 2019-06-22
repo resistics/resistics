@@ -411,20 +411,20 @@ class DataReaderSPAM(DataReader):
 
         For electric channels, the scaling begins with the scaling provided in the header file in the DATA section. This incorporates any gain occuring in the device. This scaling is further amended by a conversion to mV and polarity reversal,
 
-        .. code-block:: text
+        .. math::
         
-            scaling = read scaling from DATA section of header file
-            scaling = 1000 * scaling , 
-            scaling = -1000 * scaling ,
-            ts_lsb = scaling ,
+            scaling = read scaling from DATA section of header file \\
+            scaling = 1000 * scaling , \\
+            scaling = -1000 * scaling , \\
+            ts_lsb = scaling , 
         
         where the reason for the 1000 factor in line 2 is not clear, nor is the polarity reversal. However, this information was provided by people more familiar with the data format.
         
         For magnetic channels, the scaling in the header file DATA section is ignored. This is because it includes a static gain correction, which would be duplicated at the calibration stage. Therefore, this is not included at this point.
 
-        .. code-block:: text 
+        .. math:: 
         
-            scaling = -1000 ,
+            scaling = -1000 , \\
             ts_lsb = scaling ,
         
         This scaling converts the magnetic data from V to mV.
