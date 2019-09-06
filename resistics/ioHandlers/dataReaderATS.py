@@ -136,7 +136,7 @@ class DataReaderATS(DataReader):
         except:
             self.printError("ATSWriter section not found or channel information not found in ATSWriter")  
         if len(outputSec) == 0:
-            self.printError("No channels found in the ATSWriter. Unable to fully construct channel headers. Exiting.")     
+            self.printError("No channels found in the ATSWriter. Unable to fully construct channel headers. Exiting.", quitRun=True)     
         for chan, chanH in zip(outputSec, self.chanHeaders):
             for cH in cHeadersOutput:
                 chanH[cH] = chan.find(cH).text
