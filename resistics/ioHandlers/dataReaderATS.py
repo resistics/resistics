@@ -127,15 +127,16 @@ class DataReaderATS(DataReader):
             for cH in cHeadersInput:
                 chanH[cH] = chan.find(cH).text
             self.chanHeaders.append(chanH)
-        # get the channel headers in the output section
-        outputSec = root.findall(
-            "./recording/output/ProcessingTree1/output/ATSWriter/configuration/channel"
-        )
-        # check for old style xml file
+        
+        # get the channel headers in the ATSWriter section of the output
+        try:
+            recordingOutput = recording.find("output")
+            atsWriter = recordingOutput.find(".//ATSWriter")  
+            outputSec = atsWriter.findall("configuration/channel") 
+        except:
+            self.printError("ATSWriter section not found or channel information not found in ATSWriter")  
         if len(outputSec) == 0:
-            outputSec = root.findall(
-                "./recording/output/ATSWriter/configuration/channel"
-            )
+            self.printError("No channels found in the ATSWriter. Unable to fully construct channel headers. Exiting.")     
         for chan, chanH in zip(outputSec, self.chanHeaders):
             for cH in cHeadersOutput:
                 chanH[cH] = chan.find(cH).text
