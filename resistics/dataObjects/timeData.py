@@ -250,6 +250,7 @@ class TimeData(DataObject):
             plt.plot(
                 x[sampleStart : sampleStop + 1],
                 self.data[chan][sampleStart : sampleStop + 1],
+                lw=0.5,
                 label=lab,
             )
             # add time label
@@ -275,7 +276,7 @@ class TimeData(DataObject):
         if "fig" not in kwargs:
             plt.tight_layout(rect=[0, 0.02, 1, 0.96])
             plt.show()
-        
+
         return fig
 
     def printList(self) -> List[str]:
