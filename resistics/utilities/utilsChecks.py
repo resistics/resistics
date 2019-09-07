@@ -39,7 +39,7 @@ def elecChannelsList() -> List:
         List of acceptable electric channels 
     """
 
-    return ["Ex", "Ey"]
+    return ["Ex", "Ey", "E1", "E2", "E3", "E4"]
 
 
 def isElectric(chan: str) -> bool:
