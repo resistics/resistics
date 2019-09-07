@@ -77,13 +77,18 @@ class DataReaderInternal(DataReader):
     def readHeader(self) -> None:
         """Read time data header file for internal format"""
 
-        # first read the global headers
+        ext = "hdr"
+        # check to see if there is a different header extension in a child class
+        if hasattr(self, "headerExt"):
+            ext = self.headerExt
+        globalFile = "global.{}".format(ext)
         # look in headerF for global.hdr
-        if os.path.join(self.dataPath, "global.hdr") not in self.headerF:
+        if os.path.join(self.dataPath, globalFile) not in self.headerF:
             self.printError(
-                "Global header not found. The global.hdr file is required", quitRun=True
+                "Global header not found. The {} file is required".format(globalFile),
+                quitRun=True,
             )
-        globalF = open(os.path.join(self.dataPath, "global.hdr"))
+        globalF = open(os.path.join(self.dataPath, globalFile))
         lines = globalF.readlines()
         globalF.close()
         # ignore the first line
@@ -100,7 +105,7 @@ class DataReaderInternal(DataReader):
         numChans = int(self.headers["meas_channels"])
         self.chanHeaders = []
         for iChan in range(0, numChans):
-            chanF = open(os.path.join(self.dataPath, "chan_{:02d}.hdr".format(iChan)))
+            chanF = open(os.path.join(self.dataPath, "chan_{:02d}.{}".format(iChan, ext)))
             lines = chanF.readlines()
             chanF.close()
             # remove first line and read the headers for the channel

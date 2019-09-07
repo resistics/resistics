@@ -138,9 +138,8 @@ class DataReaderSPAM(DataReader):
         for dFile, sToRead, scalar in zip(dataFilesToRead, samplesToRead, scalings):
             # get samples - this is inclusive
             dSamples = sToRead[1] - sToRead[0] + 1
-            dSamplesRead = (
-                dSamples * self.recChannels[dFile]
-            )  # because spam files always record 5 channels
+            # spam files always record 5 channels
+            dSamplesRead = dSamples * self.recChannels[dFile] 
             # read the data
             byteOff = (
                 self.dataByteOffset[dFile]
@@ -282,8 +281,8 @@ class DataReaderSPAM(DataReader):
             startSample=options["startSample"],
             endSample=options["endSample"],
         )
-        # Ais applied in getUnscaledSamples to convert to mV - this is for ease of calculation and because each data file in the run might have a separate scaling
-        # so all that is left is to divide by the dipole length in km and remove the average
+        # Scalars are applied in getUnscaledSamples to convert to mV - this is for ease of calculation and because each data file in the run might have a separate scaling
+        # all that is left is to divide by the dipole length in km and remove the average
         for chan in options["chans"]:
             if chan == "Ex":
                 # multiply by 1000/self.getChanDx same as dividing by dist in km
@@ -393,9 +392,7 @@ class DataReaderSPAM(DataReader):
             self.headersList.append(headers)
             self.chanHeadersList.append(chanHeaders)
 
-        # check to make sure no gaps
-        # calculate out the sample ranges
-        # and list the data files for each sample
+        # check to make sure no gaps, calculate out the sample ranges and list the data files for each sample
         self.mergeHeaders(self.headersList, self.chanHeadersList)
 
     def readHeaderXTR(self, headerFile: str) -> None:
@@ -682,21 +679,19 @@ class DataReaderSPAM(DataReader):
         numSamples = []
         for idx, header in enumerate(headersList):
             if header["sample_freq"] != self.headers["sample_freq"]:
-                self.printWarning(
-                    "Not all datasets in {} have the same sample frequency".format(
+                self.printError(
+                    "Not all datasets in {} have the same sample frequency.\nExiting...".format(
                         self.dataPath
-                    )
+                    ),
+                    quitRun=True,
                 )
-                self.printWarning("Exiting")
-                exit()
             if header["meas_channels"] != self.headers["meas_channels"]:
-                self.printWarning(
-                    "Not all datasets in {} have the same number of channels".format(
+                self.printError(
+                    "Not all datasets in {} have the same number of channels.\nExiting...".format(
                         self.dataPath
-                    )
+                    ),
+                    quitRun=True,
                 )
-                self.printWarning("Exiting")
-                exit()
             # now store startTimes, stopTimes and numSamples
             # do this as datetimes, will be easier
             startString = "{} {}".format(header["start_date"], header["start_time"])
@@ -735,7 +730,10 @@ class DataReaderSPAM(DataReader):
                 check = False
         # if did not pass check, then exit
         if not check:
-            exit()
+            self.printError(
+                "Gaps in data. All data for a single recording must be continuous. Exiting...",
+                quitRun=True,
+            )
 
         # make sure there are no gaps
         totalSamples = sum(numSamples)
@@ -826,4 +824,3 @@ class DataReaderSPAM(DataReader):
             "{} Data File List".format(self.__class__.__name__),
             self.printDataFileList(),
         )
-

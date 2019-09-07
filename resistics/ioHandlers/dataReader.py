@@ -37,8 +37,6 @@ class DataReader(IOHandler):
         Dictionary mapping header words to values
     chans : List[str]
         List of channels
-    numChannels : int
-        Number of channels
     chanHeaders : List	
         Headers specific to channels
     chanMap : Dict
@@ -176,7 +174,6 @@ class DataReader(IOHandler):
         self.dataPath: str = dataPath
         self.headers: Dict = {}
         self.chans = []
-        self.numChannels: int = 0
         self.chanHeaders: List = []
         self.chanMap: Dict = {}
         self.comments: List[str] = []
@@ -321,8 +318,9 @@ class DataReader(IOHandler):
             Array of gains for channels
         """
 
-        gain1 = np.zeros(shape=(self.numChannels), dtype=bool)
-        for iChan in range(0, self.numChannels):
+        numChannels = self.getNumChannels()
+        gain1 = np.zeros(shape=(numChannels), dtype=bool)
+        for iChan in range(0, numChannels):
             gain1[iChan] = self.getChanGain1(iChan)
         return gain1
 
@@ -335,8 +333,9 @@ class DataReader(IOHandler):
             Array of gains for channels
         """
 
-        gain2 = np.zeros(shape=(self.numChannels), dtype=bool)
-        for iChan in range(0, self.numChannels):
+        numChannels = self.getNumChannels()
+        gain2 = np.zeros(shape=(numChannels), dtype=bool)
+        for iChan in range(0, numChannels):
             gain2[iChan] = self.getChanGain2(iChan)
         return gain2
 
@@ -712,8 +711,11 @@ class DataReader(IOHandler):
 
         options = self.parseGetDataKeywords(kwargs)
         startSample, endSample = self.time2sample(startTime, endTime)
+        # pop out start and end time to avoid repeated options
+        options.pop("startSample")
+        options.pop("endSample")
         return self.getUnscaledSamples(
-            chans=options["chans"], startSample=startSample, endSample=endSample
+            startSample=startSample, endSample=endSample, **options
         )
 
     def getPhysicalSamples(self, **kwargs):
@@ -856,8 +858,11 @@ class DataReader(IOHandler):
 
         options = self.parseGetDataKeywords(kwargs)
         startSample, endSample = self.time2sample(startTime, endTime)
+        # pop out start and end time to avoid repeated options        
+        options.pop("startSample")
+        options.pop("endSample")
         return self.getPhysicalSamples(
-            chans=options["chans"], startSample=startSample, endSample=endSample
+            startSample=startSample, endSample=endSample, **options
         )
 
     def parseGetDataKeywords(self, keywords) -> Dict:
@@ -881,6 +886,7 @@ class DataReader(IOHandler):
         options["endSample"] = self.getNumSamples() - 1
         options["startTime"] = self.getStartDatetime()
         options["endTime"] = self.getStopDatetime()
+        options["scale"] = False
         options["remaverage"] = True
         options["remzeros"] = False
         options["remnans"] = False

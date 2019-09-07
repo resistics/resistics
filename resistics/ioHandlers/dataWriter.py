@@ -107,7 +107,7 @@ class DataWriter(IOHandler):
 
     def setExtension(self) -> None:
         """For subclasses to set their own extension type"""
-        
+
         self.extension = ".dat"
 
     def setGlobalHeadersFromKeywords(self, headers: Dict, keywords: Dict) -> Dict:
@@ -297,19 +297,19 @@ class DataWriter(IOHandler):
             chanKeywords["gain_stage1"] = 1
             chanKeywords["gain_stage2"] = 1
             chanKeywords["hchopper"] = 0
-            chanKeywords["echopper"] = 0 
+            chanKeywords["echopper"] = 0
             chanKeywords["pos_x1"] = 0
             chanKeywords["pos_x2"] = 1
             chanKeywords["pos_y1"] = 0
             chanKeywords["pos_y2"] = 1
             chanKeywords["pos_z1"] = 0
-            chanKeywords["pos_z2"] = 1  
-            chanKeywords["sensor_sernum"] = 1                     
+            chanKeywords["pos_z2"] = 1
+            chanKeywords["sensor_sernum"] = 1
             chanHeaders.append(chanKeywords)
         # set the chan header words
         self.setChanHeadersFromKeywords(chanHeaders, emptyDict)
-        for idx, chan in enumerate(chans):   
-            # amend the data file in the chan headers     
+        for idx, chan in enumerate(chans):
+            # amend the data file in the chan headers
             chanHeaders[idx]["ats_data_file"] = chanFileMap[chan]
             chanHeaders[idx]["channel_type"] = chan
             for cH in chanHeaders[idx].keys():
@@ -357,7 +357,9 @@ class DataWriter(IOHandler):
                 headers, chanHeaders, chanMap, reader.getUnscaledSamples(), **kwargs
             )
 
-    def writeData(self, headers, chanHeaders, timeData, physical: bool = True, **kwargs):
+    def writeData(
+        self, headers, chanHeaders, timeData, physical: bool = True, **kwargs
+    ):
         """Write out time data 
 
         This method requires the user to pass global headers and chan headers explicitly.
@@ -533,6 +535,7 @@ class DataWriter(IOHandler):
         chanMap: Dict[str, int],
         chanHeaders: List[Dict],
         rename: bool = True,
+        ext: str = "hdr",
     ) -> bool:
         """Write out the header file
 
@@ -548,10 +551,12 @@ class DataWriter(IOHandler):
             List of channel headers
         rename : bool, optional
             Rename the output ats_data_files. Default is True and this is the case when writing out data which has been read in from a different source with pre-existing headers. However, if creating template header files, then set this to False.
+        ext : str, optional
+            The extension for the headers. Default is hdr
         """
 
         # write out the global headers
-        f = open(os.path.join(self.getOutPath(), "global.hdr"), "w")
+        f = open(os.path.join(self.getOutPath(), "global.{}".format(ext)), "w")
         f.write("HEADER = GLOBAL\n")
         globalHeaderwords = self.globalHeaderwords()
         for gH in globalHeaderwords:
@@ -562,7 +567,7 @@ class DataWriter(IOHandler):
         chanHeaderwords = self.chanHeaderwords()
         for idx, c in enumerate(chans):
             cf = open(
-                os.path.join(self.getOutPath(), "chan_{:02d}.hdr".format(idx)), "w"
+                os.path.join(self.getOutPath(), "chan_{:02d}.{}".format(idx, ext)), "w"
             )
             cf.write("HEADER = CHANNEL\n")
             # use the chanMap to get the index of the chanHeaders list
