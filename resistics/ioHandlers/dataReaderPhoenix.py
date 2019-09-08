@@ -734,7 +734,7 @@ class DataReaderPhoenix(DataReader):
         
         Parameters
         ----------
-        tableData : OrederedDict
+        tableData : OrderedDictDict
             Ordered dictionary with table data
         
         Returns
@@ -835,7 +835,7 @@ class DataReaderPhoenix(DataReader):
         
         Parameters
         ----------
-        tableData : OrederedDict
+        tableData : OrderedDictDict
             Ordered dictionary with table data
         
         Returns
