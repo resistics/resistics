@@ -65,7 +65,7 @@ def measB423EHeaders(
     dx: float = 1,
     dy: float = 1,
 ) -> None:
-    """Read B423E files and construct some headers
+    """Read a single B423 measurement directory and construct headers
     
     Parameters
     ----------
@@ -193,12 +193,6 @@ def measB423EHeaders(
             cHeader["channel_type"] = chan
         cHeader["scaling_applied"] = False
         cHeader["ts_lsb"] = 1
-        # cHeader["gain_stage1"] = ", ".join(
-        #     ["{:.6e}".format(gains1[dFile][chan]) for dFile in dataFilenames]
-        # )
-        # cHeader["gain_stage2"] = ", ".join(
-        #     ["{:.6e}".format(gains2[dFile][chan]) for dFile in dataFilenames]
-        # )
         cHeader["gain_stage1"] = 1
         cHeader["gain_stage2"] = 1
         cHeader["hchopper"] = 0
@@ -245,32 +239,12 @@ class DataReaderLemiB423E(DataReaderLemiB423):
 
     Methods
     -------
-    __init__(dataPath)
-        Initialise with path to the data directory
     setParameters()
         Set parameters specific to a data format
-    getUnscaledSamples(**kwargs)
-        Get raw, unscaled data
     getPhysicalSamples(**kwargs)
         Get data in physical units
-    spamHeaders()
-        Get sections and section headers to be read in for SPAM data
-    chanDefaults()
-        Get defaults values for channel headers
-    readHeader()
-        Read SPAM header files
-    readHeaderXTR(headerFile)
-        Read a XTR header file
-    readHeaderXTRX(headerFile)
-        Read a XTRX header files
-    headersFromRawFile(rawFile, headers)
-        Read headers from the data files
-    mergeHeaders(headersList, chanHeadersList)
-        Merge the headers from all the data files
-    printDataFileList()
-        Get data file information as a list of strings
-    printDataFiles()
-        Print data file information to terminal
+    getScalars(paramsDict)
+        Get the scalars for each channel as given in the data files 
     """
 
     def setParameters(self) -> None:
@@ -406,28 +380,4 @@ class DataReaderLemiB423E(DataReaderLemiB423):
             chans[2]: [paramsDict["Ke3"], paramsDict["Ae3"]],
             chans[3]: [paramsDict["Ke4"], paramsDict["Ae4"]],
         }
-
-    def printDataFileList(self) -> List[str]:
-        """Information about the data files as a list of strings
-        
-        Returns
-        -------
-        List[str]
-            List of information about the data files
-        """
-
-        textLst: List[str] = []
-        textLst.append("Data File\t\tSample Ranges")
-        for dFile, sRanges in zip(self.dataFileList, self.dataRanges):
-            textLst.append("{}\t\t{} - {}".format(dFile, sRanges[0], sRanges[1]))
-        textLst.append("Total samples = {}".format(self.getNumSamples()))
-        return textLst
-
-    def printDataFileInfo(self) -> None:
-        """Print a list of the data files"""
-
-        blockPrint(
-            "{} Data File List".format(self.__class__.__name__),
-            self.printDataFileList(),
-        )
 

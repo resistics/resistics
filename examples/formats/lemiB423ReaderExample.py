@@ -19,6 +19,7 @@ measB423Headers(lemiPath, 2000, hxSensor = 712, hySensor = 710, hzSensor = 714)
 
 lemiReader = DataReaderLemiB423(lemiPath)
 lemiReader.printInfo()
+lemiReader.printDataFileInfo()
 
 # get physical data from Lemi
 import matplotlib.pyplot as plt

@@ -66,7 +66,7 @@ def measB423Headers(
     dx: float = 1,
     dy: float = 1,
 ) -> None:
-    """Read B423 files and construct some headers
+    """Read a single B423 measurement directory and construct headers
     
     Parameters
     ----------
@@ -189,12 +189,6 @@ def measB423Headers(
         cHeader["channel_type"] = chan
         cHeader["scaling_applied"] = False
         cHeader["ts_lsb"] = 1
-        # cHeader["gain_stage1"] = ", ".join(
-        #     ["{:.6e}".format(gains1[dFile][chan]) for dFile in dataFilenames]
-        # )
-        # cHeader["gain_stage2"] = ", ".join(
-        #     ["{:.6e}".format(gains2[dFile][chan]) for dFile in dataFilenames]
-        # )
         cHeader["gain_stage1"] = 1
         cHeader["gain_stage2"] = 1
         cHeader["hchopper"] = 0
@@ -284,7 +278,6 @@ def readB423Params(
         errorPrint(
             "readB423Params", "Please remove this file from the recording", quitRun=True
         )
-
     return dataHeaders, firstDatetime, lastDatetime, numSamples
 
 
@@ -326,15 +319,19 @@ class DataReaderLemiB423(DataReaderInternal):
 
     - Lemi B423 raw data is signed long integer format   
     - Getting unscaled samples returns data with unit count for both the electric and magnetic fields. 
-    - There is no header file for Lemi B423 data. There are some headers in the data file, but nothing for number of samples, sampling rate etc
     - 1024 bytes of headers in the data file
+    - There is no header file for Lemi B423 data. There are some headers in the data file, but nothing for number of samples, sampling rate etc
+    - Header files need to be constructed before Lemi B423 data can be read in by resistics. There are helper methods to do this
+    - Scalings specified in B423 files convert electric channels to uV and magnetic channels to unknown
 
     In situations where a Lemi B423 dataset is recorded in multiple files, it is required that the recording is continuous. 
 
     Attributes
     ----------
-    dtype : np.float32
-        The data type
+    dtype : np.int_
+        The data type, a long integer
+    recordByteSize : int
+        The size of a record in bytes
     numHeaderFiles : int
         The number of header files
     numDataFiles : int
@@ -342,24 +339,22 @@ class DataReaderLemiB423(DataReaderInternal):
 
     Methods
     -------
-    __init__(dataPath)
-        Initialise with path to the data directory
     setParameters()
         Set parameters specific to a data format
     getUnscaledSamples(**kwargs)
         Get raw, unscaled data
+    getDataFilesForSamples(startSample, endSample)
+        Get the data files that contribute to the request data
+    readRecords(bts, numRecords)
+        Read the data records from a provided bytes object
     getPhysicalSamples(**kwargs)
         Get data in physical units
-    spamHeaders()
-        Get sections and section headers to be read in for SPAM data
-    chanDefaults()
-        Get defaults values for channel headers
-    readHeader()
-        Read SPAM header files
-    headersFromRawFile(rawFile, headers)
-        Read headers from the data files
-    mergeHeaders(headersList, chanHeadersList)
-        Merge the headers from all the data files
+    def readHeader()
+        Read the B423 measurement file headers
+    readMeasParams(sampleFreq)
+        Calculate out the a B423 parameters including start and end date and number of samples
+    getScalars(paramsDict)
+        Get the scalars for each channel as given in the data files 
     printDataFileList()
         Get data file information as a list of strings
     printDataFiles()
@@ -488,7 +483,7 @@ class DataReaderLemiB423(DataReaderInternal):
         )
 
     def getDataFilesForSamples(
-        self, startSample, endSample
+        self, startSample: int, endSample: int
     ) -> Tuple[List[str], List[List[int]], List[float]]:
         """Get the data files that have to be read to cover the sample range 
         

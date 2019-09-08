@@ -13,6 +13,7 @@ measB423EHeaders(lemiPath, 500, dx=60, dy=60.7, ex="E1", ey="E2")
 
 lemiReader = DataReaderLemiB423E(lemiPath)
 lemiReader.printInfo()
+lemiReader.printDataFileInfo()
 
 # get physical data from Lemi
 import matplotlib.pyplot as plt

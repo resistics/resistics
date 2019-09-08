@@ -42,12 +42,12 @@ class DataReaderSPAM(DataReader):
 
     Methods
     -------
-    __init__(dataPath)
-        Initialise with path to the data directory
     setParameters()
         Set parameters specific to a data format
     getUnscaledSamples(**kwargs)
         Get raw, unscaled data
+    getDataFilesForSamples(startSample, endSample)
+        Get the data files that contribute to the requested samples so they can be read
     getPhysicalSamples(**kwargs)
         Get data in physical units
     spamHeaders()
@@ -197,7 +197,7 @@ class DataReaderSPAM(DataReader):
         )
 
     def getDataFilesForSamples(
-        self, startSample, endSample
+        self, startSample: int, endSample: int
     ) -> Tuple[List[str], List[List[int]], List[float]]:
         """Get the data files that have to be read to cover the sample range 
         
