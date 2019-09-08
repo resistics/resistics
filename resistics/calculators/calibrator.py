@@ -232,7 +232,7 @@ class Calibrator(Calculator):
             # search to find a calibration file with that name and take the first encountered
             for calName in calNames:    
                 for calFile in self.calFiles:
-                    if calName in calFile:
+                    if calName.lower() in calFile.lower():
                         return calFile, fileformat
         # else return empty strings
         return "", ""

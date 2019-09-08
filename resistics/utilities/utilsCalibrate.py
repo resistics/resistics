@@ -97,6 +97,9 @@ def metronixName(ext: str, sensor: str, serial: int, chopper: bool) -> str:
         Name of calibration file
     """
 
+    if sensor == "" and not serial > 0:
+        return None
+
     return "{}{}.{}".format(sensor, serial, ext)
 
 
