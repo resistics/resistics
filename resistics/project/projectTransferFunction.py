@@ -333,7 +333,6 @@ def viewImpedance(projData: ProjectData, **kwargs) -> None:
         # find the intersection with the options["freqs"]
         sampleFreqs = sampleFreqs.intersection(options["sampleFreqs"])
         sampleFreqs = sorted(list(sampleFreqs))
-        print(sampleFreqs)
 
         # if prepend is a string, then make it a list
         if isinstance(options["postpend"], str):
