@@ -326,6 +326,7 @@ def resample(timeData: TimeData, resampFreq: float, inplace: bool = True) -> Tim
         Filtered time data
     """
 
+    origFreq = timeData.sampleFreq
     if not inplace:
         timeData = timeData.copy()
     timeData.data = resampleData(timeData.data, timeData.sampleFreq, resampFreq)
@@ -335,6 +336,7 @@ def resample(timeData: TimeData, resampFreq: float, inplace: bool = True) -> Tim
     timeData.stopTime = timeData.startTime + timedelta(
         seconds=(1.0 / timeData.sampleFreq) * (timeData.numSamples - 1)
     )
+    timeData.addComment("Time data resampled from {:.6f} Hz to {:.6f} Hz".format(origFreq, resampFreq))
     return timeData
 
 
