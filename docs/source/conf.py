@@ -88,6 +88,7 @@ html_theme = "sphinx_rtd_theme"
 html_logo = os.path.join("_images", "logo.png")
 html_favicon = os.path.join("_images", "favicon.png")
 
+
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
@@ -191,7 +192,12 @@ epub_exclude_files = ["search.html"]
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
-
-# function to add custom css/stylesheets
+# Temporary work-around for spacing problem between parameter and parameter
+# type in the doc, see https://github.com/numpy/numpydoc/issues/215. The bug
+# has been fixed in sphinx (https://github.com/sphinx-doc/sphinx/pull/5976) but
+# through a change in sphinx basic.css except rtd_theme does not use basic.css.
+# In an ideal world, this would get fixed in this PR:
+# https://github.com/readthedocs/sphinx_rtd_theme/pull/747/files
+html4_writer=True
 def setup(app):
-    app.add_stylesheet(os.path.join("css", "custom.css"))
+    app.add_stylesheet("basic.css")

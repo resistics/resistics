@@ -15,4 +15,4 @@
 Remote reference processing
 ---------------------------
 
-Coming soon...
+Remote reference processing can help achieve notably better transfer functions. The remote reference option helps by introducing a means to remove coherent noise from the site.  

@@ -21,6 +21,6 @@ Module contents
 ---------------
 
 .. automodule:: resistics.dataObjects
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

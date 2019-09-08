@@ -23,6 +23,6 @@ Module contents
 ---------------
 
 .. automodule:: resistics.calculators
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -37,7 +37,7 @@ The highest TS number is the file with the continuously sampled data, which is n
 
 .. warning::
 
-    The scaling currently applied for phoenix data has not been verified and requires further testing. Therefore, it is not currently known what 
+    The scaling currently applied for phoenix data has not been verified and requires further testing. Therefore, it is not currently known how to calibrate the data. 
     
     Phoenix binary formatted calibration files are also not supported but ASCII files can be used instead as required.
 

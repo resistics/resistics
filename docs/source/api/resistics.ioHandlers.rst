@@ -11,6 +11,8 @@ Submodules
    resistics.ioHandlers.dataReaderATS
    resistics.ioHandlers.dataReaderAscii
    resistics.ioHandlers.dataReaderInternal
+   resistics.ioHandlers.dataReaderLemiB423
+   resistics.ioHandlers.dataReaderLemiB423E
    resistics.ioHandlers.dataReaderPhoenix
    resistics.ioHandlers.dataReaderSpam
    resistics.ioHandlers.dataWriter
@@ -28,6 +30,6 @@ Module contents
 ---------------
 
 .. automodule:: resistics.ioHandlers
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
