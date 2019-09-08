@@ -116,6 +116,9 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
         text.append("\t{} = {}".format(op, val))
     projectBlock(text)
 
+    if isinstance(options["sites"], str):
+        options["sites"] = [options["sites"]]
+
     # outputting to another site
     if options["outputsite"] != "":
         projectText(
