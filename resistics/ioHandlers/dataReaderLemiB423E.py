@@ -24,6 +24,8 @@ from resistics.utilities.utilsClean import (
 def folderB423EHeaders(
     folderpath: str,
     sampleFreq: float,
+    ex: str = "E1",
+    ey: str = "E2",
     dx: float = 1,
     dy: float = 1,
     folders: List = [],
@@ -36,6 +38,10 @@ def folderB423EHeaders(
         The path to the folder
     sampleFreq : float
         The sampling frequency of the data
+    ex : str, optional
+        The channel E1, E2, E3 or E4 in the data that represents Ex. Default E1.
+    ey : str, optional
+        The channel E1, E2, E3 or E4 in the data that represents Ey. Default E2.
     dx : float, optional
         Distance between x electrodes
     dy : float, optional
@@ -48,12 +54,14 @@ def folderB423EHeaders(
         folders = [f.path for f in os.scandir(folderpath) if f.is_dir()]
     # now construct headers for each folder
     for folder in folders:
-        measB423EHeaders(folder, sampleFreq, dx, dy)
+        measB423EHeaders(folder, sampleFreq, ex=ex, ey=ey, dx=dx, dy=dy)
 
 
 def measB423EHeaders(
     datapath: str,
     sampleFreq: float,
+    ex: str = "E1",
+    ey: str = "E2",    
     dx: float = 1,
     dy: float = 1,
 ) -> None:
@@ -65,6 +73,10 @@ def measB423EHeaders(
         The path to the site
     sampleFreq : float
         The sampling frequency of the data
+    ex : str, optional
+        The channel E1, E2, E3 or E4 in the data that represents Ex. Default E1.
+    ey : str, optional
+        The channel E1, E2, E3 or E4 in the data that represents Ey. Default E2.        
     dx : float, optional
         Distance between x electrodes
     dy : float, optional
@@ -163,15 +175,22 @@ def measB423EHeaders(
     channels = ["E1", "E2", "E3", "E4"]
     chanMap = {"E1": 0, "E2": 1, "E3": 2, "E4": 3}
     sensors = {"E1": "0", "E2": "0", "E3": "0", "E4": "0"}
-    posX2 = {"E1": dx, "E2": dx, "E3": dx, "E4": dx}
-    posY2 = {"E1": dy, "E2": dy, "E3": dy, "E4": dy}
+    posX2 = {"E1": 1, "E2": 1, "E3": 1, "E4": 1}
+    posY2 = {"E1": 1, "E2": 1, "E3": 1, "E4": 1}
+    posX2[ex] = dx
+    posY2[ey] = dy
 
     chanHeaders = []
     for chan in channels:
         # sensor serial number
         cHeader = dict(globalHeaders)
         cHeader["ats_data_file"] = " ,".join(dataFilenames)
-        cHeader["channel_type"] = chan
+        if ex == chan:
+            cHeader["channel_type"] = "Ex"
+        elif ey == chan:
+            cHeader["channel_type"] = "Ey"
+        else:
+            cHeader["channel_type"] = chan
         cHeader["scaling_applied"] = False
         cHeader["ts_lsb"] = 1
         # cHeader["gain_stage1"] = ", ".join(
@@ -267,14 +286,13 @@ class DataReaderLemiB423E(DataReaderLemiB423):
         self.dataByteSize = 4
         self.recordByteSize = 26
         self.dataByteOffset = 1024
-        self.recChannels = ["E1", "E2", "E3", "E4"]
         # data type
         self.dtype = np.int_
         # get the number of data files and header files - this should be equal
         self.numHeaderFiles: int = len(self.headerF)
         self.numDataFiles: int = len(self.dataF)
 
-    def getPhysicalSamples(self, ex="E1", ey="E2", **kwargs):
+    def getPhysicalSamples(self, **kwargs):
         """Get data scaled to physical values
         
         resistics uses field units, meaning physical samples will return the following:
@@ -291,10 +309,6 @@ class DataReaderLemiB423E(DataReaderLemiB423):
 
         Parameters
         ----------
-        ex : str
-            The channel to use for Ex
-        ey : str
-            The channel to use for Ey
         chans : List[str]
             List of channels to return if not all are required
         startSample : int
@@ -317,56 +331,36 @@ class DataReaderLemiB423E(DataReaderLemiB423):
         # initialise chans, startSample and endSample with the whole dataset
         options = self.parseGetDataKeywords(kwargs)
         # get unscaled data but with gain scalings applied
-        # ignore the channel options because unscaled channels are different
-        timeDataUnscaled = self.getUnscaledSamples(
+        timeData = self.getUnscaledSamples(
+            chans = options["chans"],
             startSample=options["startSample"],
             endSample=options["endSample"],
             scale=True,
         )
-
-        newchans = ["Ex", "Ey"]
-        combined = newchans + self.chans
-        # do a check of the requested channels
+        # convert to field units and divide by dipole lengths
         for chan in options["chans"]:
-            if chan not in combined:
-                self.printError("Error - Channel {} does not exist".format(chan), quitRun=True)
-        # prepare storage
-        data = {}
-        for chan in newchans:
-            data[chan] = np.zeros(shape=(timeDataUnscaled.numSamples), dtype=np.float32)
-        # Ex
-        data["Ex"] = (
-            timeDataUnscaled.data[ex] / 1000.0
-        )  # because data is in micro volts
-        data["Ex"] = data["Ex"] * 1000.0 / self.getChanDx(ex)
-        timeDataUnscaled.addComment("Setting Ex as channel {}".format(ex))
-        timeDataUnscaled.addComment(
-            "Dividing channel Ex by electrode distance {:.6f} km to give mV/km".format(
-                self.getChanDx(ex) / 1000.0
-            )
-        )
-        # Ey
-        data["Ey"] = (
-            timeDataUnscaled.data[ey] / 1000.0
-        )  # because data is in micro volts
-        data["Ey"] = data["Ey"] * 1000.0 / self.getChanDy(ey)
-        timeDataUnscaled.addComment("Setting Ey as channel {}".format(ey))
-        timeDataUnscaled.addComment(
-            "Dividing channel Ey by electrode distance {:.6f} km to give mV/km".format(
-                self.getChanDy(ey) / 1000.0
-            )
-        )
+            # divide by the 1000 to convert electric channels from microvolt to millivolt
+            timeData.data[chan] = timeData.data[chan] / 1000.0
+            timeData.addComment("Dividing channel {} by 1000 to convert microvolt to millivolt".format(chan))
+            if chan == "Ex":
+                # multiply by 1000/self.getChanDx same as dividing by dist in km
+                timeData.data[chan] = (
+                    1000.0 * timeData.data[chan] / self.getChanDx(chan)
+                )
+                timeData.addComment(
+                    "Dividing channel {} by electrode distance {} km to give mV/km".format(
+                        chan, self.getChanDx(chan) / 1000.0
+                    )
+                )
+            if chan == "Ey":
+                # multiply by 1000/self.getChanDy same as dividing by dist in km
+                timeData.data[chan] = 1000 * timeData.data[chan] / self.getChanDy(chan)
+                timeData.addComment(
+                    "Dividing channel {} by electrode distance {} km to give mV/km".format(
+                        chan, self.getChanDy(chan) / 1000.0
+                    )
+                )
 
-        # make the new timeData
-        timeData = TimeData(
-            sampleFreq=self.getSampleFreq(),
-            startTime=timeDataUnscaled.startTime,
-            stopTime=timeDataUnscaled.stopTime,
-            data=data,
-            comments=timeDataUnscaled.comments,
-        )
-
-        for chan in newchans:
             # if remove zeros - False by default
             if options["remzeros"]:
                 timeData.data[chan] = removeZerosSingle(timeData.data[chan])
@@ -375,7 +369,9 @@ class DataReaderLemiB423E(DataReaderLemiB423):
                 timeData.data[chan] = removeNansSingle(timeData.data[chan])
             # remove the average from the data - True by default
             if options["remaverage"]:
-                timeData.data[chan] = timeData.data[chan] - np.average(timeData.data[chan])
+                timeData.data[chan] = timeData.data[chan] - np.average(
+                    timeData.data[chan]
+                )
 
         # add comments
         timeData.addComment(
@@ -399,11 +395,16 @@ class DataReaderLemiB423E(DataReaderLemiB423):
             Dictionary with channels as keys and scalings as values
         """
 
+        # need to get the channel orders here
+        chans = []
+        for cH in self.chanHeaders:
+            chans.append(cH["channel_type"])
+        print(chans)
         return {
-            "E1": [paramsDict["Ke1"], paramsDict["Ae1"]],
-            "E2": [paramsDict["Ke2"], paramsDict["Ae2"]],
-            "E3": [paramsDict["Ke3"], paramsDict["Ae3"]],
-            "E4": [paramsDict["Ke4"], paramsDict["Ae4"]],
+            chans[0]: [paramsDict["Ke1"], paramsDict["Ae1"]],
+            chans[1]: [paramsDict["Ke2"], paramsDict["Ae2"]],
+            chans[2]: [paramsDict["Ke3"], paramsDict["Ae3"]],
+            chans[3]: [paramsDict["Ke4"], paramsDict["Ae4"]],
         }
 
     def printDataFileList(self) -> List[str]:
