@@ -333,8 +333,6 @@ class DataReaderLemiB423(DataReaderInternal):
 
     Attributes
     ----------
-    recChannels : Dict
-        Channels in each data file
     dtype : np.float32
         The data type
     numHeaderFiles : int
@@ -381,7 +379,6 @@ class DataReaderLemiB423(DataReaderInternal):
         self.dataByteSize = 4
         self.recordByteSize = 30
         self.dataByteOffset = 1024
-        self.recChannels = ["Hx", "Hy", "Hz", "Ex", "Ey"]
         # data type
         self.dtype = np.int_
         # get the number of data files and header files - this should be equal
@@ -609,6 +606,7 @@ class DataReaderLemiB423(DataReaderInternal):
         for chan in options["chans"]:
             # divide by the 1000 to get both electric and magnetic channels in the correct unit
             timeData.data[chan] = timeData.data[chan] / 1000.0
+            timeData.addComment("Dividing channel {} by 1000 to convert microvolt to millivolt".format(chan))
             if chan == "Ex":
                 # multiply by 1000/self.getChanDx same as dividing by dist in km
                 timeData.data[chan] = (
