@@ -185,7 +185,7 @@ def measB423Headers(
     for chan in channels:
         # sensor serial number
         cHeader = dict(globalHeaders)
-        cHeader["ats_data_file"] = " ,".join(dataFilenames)
+        cHeader["ats_data_file"] = ", ".join(dataFilenames)
         cHeader["channel_type"] = chan
         cHeader["scaling_applied"] = False
         cHeader["ts_lsb"] = 1
@@ -599,9 +599,9 @@ class DataReaderLemiB423(DataReaderInternal):
         )
         # convert to field units and divide by dipole lengths
         for chan in options["chans"]:
-            # divide by the 1000 to get both electric and magnetic channels in the correct unit
-            timeData.data[chan] = timeData.data[chan] / 1000.0
-            timeData.addComment("Dividing channel {} by 1000 to convert microvolt to millivolt".format(chan))
+            if isElectric(chan):
+                timeData.data[chan] = timeData.data[chan] / 1000.0
+                timeData.addComment("Dividing channel {} by 1000 to convert microvolt to millivolt".format(chan))
             if chan == "Ex":
                 # multiply by 1000/self.getChanDx same as dividing by dist in km
                 timeData.data[chan] = (
@@ -616,7 +616,7 @@ class DataReaderLemiB423(DataReaderInternal):
                 # multiply by 1000/self.getChanDy same as dividing by dist in km
                 timeData.data[chan] = 1000 * timeData.data[chan] / self.getChanDy(chan)
                 timeData.addComment(
-                    "Dividing channel {} by electrode distance {} km to give mV/km".format(
+                    "Dividing channel {} by electrode distance {:.6f} km to give mV/km".format(
                         chan, self.getChanDy(chan) / 1000.0
                     )
                 )

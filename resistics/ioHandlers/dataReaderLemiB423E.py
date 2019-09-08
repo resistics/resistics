@@ -184,7 +184,7 @@ def measB423EHeaders(
     for chan in channels:
         # sensor serial number
         cHeader = dict(globalHeaders)
-        cHeader["ats_data_file"] = " ,".join(dataFilenames)
+        cHeader["ats_data_file"] = ", ".join(dataFilenames)
         if ex == chan:
             cHeader["channel_type"] = "Ex"
         elif ey == chan:
@@ -373,7 +373,6 @@ class DataReaderLemiB423E(DataReaderLemiB423):
         chans = []
         for cH in self.chanHeaders:
             chans.append(cH["channel_type"])
-        print(chans)
         return {
             chans[0]: [paramsDict["Ke1"], paramsDict["Ae1"]],
             chans[1]: [paramsDict["Ke2"], paramsDict["Ae2"]],
