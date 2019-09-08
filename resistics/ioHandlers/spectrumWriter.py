@@ -55,7 +55,7 @@ class SpectrumWriter(IOHandler):
         Close spectra data file 
     printList()
         Class status returned as list of strings       
-	"""    
+	"""
 
     def __init__(self, datapath: str, refTime: datetime):
         """Initialise spectrum writer 
@@ -66,27 +66,12 @@ class SpectrumWriter(IOHandler):
             Root pathway for spectra data
         refTime : datetime
             Reference time
-        """        
+        """
 
         self.datapath: str = datapath
         self.filepath: str = ""
         self.refTime: datetime = refTime
         self.file = None
-
-    # def getDataRoot(self):
-    #     return self.datapath
-
-    # def getFilePath(self):
-    #     return self.filepath
-
-    # def getFile(self):
-    #     return self.file
-
-    # def getRefTime(self):
-    #     return self.refTime
-
-    # def setDataRoot(self, datapath):
-    #     self.datapath = datapath
 
     def openBinaryForWriting(
         self,
@@ -135,7 +120,7 @@ class SpectrumWriter(IOHandler):
             winOverlap,
             globalOffset,
             numWindows,
-            channels,
+            self.channels,
         )
         # open file for data
         self.filepath: str = os.path.join(self.datapath, filebase + ".bin")
@@ -202,7 +187,7 @@ class SpectrumWriter(IOHandler):
             winOverlap,
             globalOffset,
             numWindows,
-            channels,
+            self.channels,
         )
         # open file for data
         self.filepath: str = os.path.join(self.datapath, filebase + ".dat")

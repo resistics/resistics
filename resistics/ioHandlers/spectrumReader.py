@@ -122,21 +122,6 @@ class SpectrumReader(IOHandler):
         self.filepath: str = ""
         self.file: bool = False
 
-    # def getDataRoot(self):
-    #     return self.datapath
-
-    # def getHeaders(self):
-    #     return self.headerKeys
-
-    # def getHeaderDict(self):
-    #     return self.headers
-
-    # def getComments(self):
-    #     return self.comments
-
-    # def setDataRoot(self, datapath):
-    #     self.datapath = datapath
-
     def getReferenceTime(self) -> datetime:
         """Get reference time for spectra calculation
 
