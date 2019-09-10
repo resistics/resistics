@@ -22,7 +22,9 @@ cookbook/usingAscii/asciiProject
 # exampleProject
 examples/tutorial/exampleProject
 examples/tutorial/tutorialProject
-examples/advanced/advancedProject
+examples/advanced/preprocessProject
+examples/advanced/remoteProject
+examples/advanced/intersiteProject
 examples/formats/timeData
 examples/seedData
 
