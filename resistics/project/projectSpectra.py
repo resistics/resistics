@@ -32,6 +32,7 @@ from resistics.utilities.utilsProject import (
     getDecimationParameters,
     getWindowParameters,
     applyPolarisationReversalOptions,
+    applyScaleOptions,
     applyCalibrationOptions,
     applyFilterOptions,
     applyNotchOptions,
@@ -106,6 +107,8 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
         The channels for which to calculate out the spectra
     polreverse :  Dict[str, bool]
         Keys are channels and values are boolean flags for reversing
+    scale : Dict[str, float]
+        Keys are channels and values are floats to multiply the channel data by
     calibrate : bool, optional
         Flag whether to calibrate the data or not
     notch : List[float], optional
@@ -121,7 +124,8 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
     options["sites"] = projData.getSites()
     options["sampleFreqs"]: List[float] = projData.getSampleFreqs()
     options["chans"]: List[str] = []
-    options["polreverse"]: Union[bool, Dict[str, bool]] = False    
+    options["polreverse"]: Union[bool, Dict[str, bool]] = False
+    options["scale"]: Union[bool, Dict[str, float]] = False       
     options["calibrate"]: bool = True
     options["notch"]: List[float] = []
     options["filter"]: Dict = {}
@@ -171,6 +175,7 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
 
                 # apply various options
                 applyPolarisationReversalOptions(options, timeData)
+                applyScaleOptions(options, timeData)
                 applyCalibrationOptions(options, cal, timeData, reader)
                 applyFilterOptions(options, timeData)
                 applyNotchOptions(options, timeData)

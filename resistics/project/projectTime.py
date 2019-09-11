@@ -18,6 +18,7 @@ from resistics.utilities.utilsProject import (
     checkDateOptions,
     getCalibrator,
     applyPolarisationReversalOptions,
+    applyScaleOptions,
     applyCalibrationOptions,
     applyFilterOptions,
     applyInterpolationOptions,
@@ -74,7 +75,9 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
     outputsite : str, optional
         A site to output the preprocessed time data to. If this site does not exist, it will be created
     polreverse :  Dict[str, bool]
-        Keys are channels and values are boolean flags for reversing        
+        Keys are channels and values are boolean flags for reversing 
+    scale : Dict[str, float]
+        Keys are channels and values are floats to multiply the channel data by       
     calibrate : bool, optional
         Boolean flag for calibrating the data. Default is false and setting to True will calibrate where files can be found.
     normalise : bool, optional
@@ -88,9 +91,9 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
     interp : bool, optional
         Boolean flag for interpolating the data on to the second, so that sampling is coincident with seconds. This is not always the case. For example, SPAM data is not necessarily sampled on the second, whereas ATS data is. This function is useful when combining data of multiple formats. Interpolation does not change the sampling rate. Default is False.
     prepend : str, optional
-        String to prepend to the output folder
+        String to prepend to the output folder. Default is "proc".
     postpend : str, optional
-        String to postpend to the output folder
+        String to postpend to the output folder. Default is empty.
     """
 
     options: Dict = {}
@@ -99,7 +102,8 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
     options["start"]: Union(bool, str) = False
     options["stop"]: Union(bool, str) = False
     options["outputsite"]: str = ""
-    options["polreverse"]: Union[bool, Dict[str, bool]] = False    
+    options["polreverse"]: Union[bool, Dict[str, bool]] = False   
+    options["scale"]: Union[bool, Dict[str, float]] = False 
     options["calibrate"]: bool = False
     options["normalise"]: bool = False
     options["filter"]: Dict = {}
@@ -188,6 +192,7 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
 
                 # apply options
                 applyPolarisationReversalOptions(options, timeData)
+                applyScaleOptions(options, timeData)
                 applyCalibrationOptions(options, cal, timeData, reader)
                 applyFilterOptions(options, timeData)
                 applyNotchOptions(options, timeData)

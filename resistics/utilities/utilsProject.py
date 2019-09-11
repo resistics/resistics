@@ -287,7 +287,7 @@ def applyPolarisationReversalOptions(options: Dict, timeData: TimeData) -> TimeD
 
     Parameters
     ----------
-    options : Dict
+    options : Dict[str, bool]
         User specified options for polarity reversal
     timeData : TimeData
         Time data to polarity reverse
@@ -309,6 +309,36 @@ def applyPolarisationReversalOptions(options: Dict, timeData: TimeData) -> TimeD
     from resistics.utilities.utilsMath import polarityReversal
 
     timeData = polarityReversal(timeData, options["polreverse"])
+    return timeData
+
+
+def applyScaleOptions(options: Dict, timeData: TimeData) -> TimeData:
+    """Scale the time data
+
+    Parameters
+    ----------
+    options : Dict
+        User specified options for scaling
+    timeData : TimeData
+        Time data to polarity reverse
+
+    Returns
+    -------
+    TimeData
+        Polarity reversed time data
+    """
+
+    if isinstance(options["scale"], bool):
+        # no polarity reversal to be performed
+        return timeData
+
+    if not isinstance(options["scale"], dict):
+        # not specified in the right way
+        return timeData
+
+    from resistics.utilities.utilsMath import scale
+
+    timeData = scale(timeData, options["scale"])
     return timeData
 
 
