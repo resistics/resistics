@@ -188,7 +188,13 @@ class CalibrationIO(IOHandler):
             lines[il] = lines[il].strip()
             if "Magnetometer" in lines[il]:
                 split1 = lines[il].split(":")[1].strip()
-                serial = int(split1.split()[0].strip())
+                split2 = split1.split()[0]
+                if "#" in split1:
+                    tmp = split2.split("#")
+                    sensor = tmp[0].strip()
+                    serial = int(tmp[1].strip())
+                else:
+                    serial = int(split2.strip())
             if "Chopper On" in lines[il]:
                 chopperOn = il
             if "Chopper Off" in lines[il]:

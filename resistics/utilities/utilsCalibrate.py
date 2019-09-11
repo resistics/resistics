@@ -123,14 +123,14 @@ def rspName(ext: str, sensor: str, serial: int, chopper: bool) -> List[str]:
         Name of calibration files
     """
 
-    if len(sensor) < 6:
+    if len(sensor) < 5:
         # not possible to get a sensor number
         return None
 
     board = "HF"
     if chopper:
         board = "LF"
-    sensorNum = int(sensor[3:5])
+    sensorNum = int(sensor[3:])
     names = []
     names.append("TYPE-{:03d}_{}-ID-{:06d}.{}".format(sensorNum, board, serial, ext))
     names.append("TYPE-{:03d}_BB-ID-{:06d}.{}".format(sensorNum, serial, ext))
