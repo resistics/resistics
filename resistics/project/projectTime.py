@@ -99,11 +99,11 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
     options: Dict = {}
     options["sites"]: List = projData.getSites()
     options["sampleFreqs"]: List[float] = projData.getSampleFreqs()
-    options["start"]: Union(bool, str) = False
-    options["stop"]: Union(bool, str) = False
+    options["start"]: Union[bool, str] = False
+    options["stop"]: Union[bool, str] = False
     options["outputsite"]: str = ""
-    options["polreverse"]: Union[bool, Dict[str, bool]] = False   
-    options["scale"]: Union[bool, Dict[str, float]] = False 
+    options["polreverse"]: Union[bool, Dict[str, bool]] = False
+    options["scale"]: Union[bool, Dict[str, float]] = False
     options["calibrate"]: bool = False
     options["normalise"]: bool = False
     options["filter"]: Dict = {}
@@ -176,9 +176,9 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
                     continue
                 # if the data contributes, copy in the data if relevant
                 if options["start"]:
-                    startTime = datetime.strptime(options["start"], "%Y-%m-%d %H:%M:%S")
+                    startTime = options["start"]
                 if options["stop"]:
-                    stopTime = datetime.strptime(options["stop"], "%Y-%m-%d %H:%M:%S")
+                    stopTime = options["stop"]
 
                 # calculate the samples
                 sampleStart, sampleEnd = reader.time2sample(startTime, stopTime)
@@ -269,7 +269,7 @@ def viewTime(
     options["sites"]: List[str] = projData.sites
     options["sampleFreqs"]: Union[List[float], List[str]] = projData.getSampleFreqs()
     options["chans"]: List[str] = ["Ex", "Ey", "Hx", "Hy", "Hz"]
-    options["polreverse"]: Union[bool, Dict[str, bool]] = False    
+    options["polreverse"]: Union[bool, Dict[str, bool]] = False
     options["calibrate"]: bool = False
     options["normalise"]: bool = False
     options["filter"]: Dict = {}
@@ -312,9 +312,9 @@ def viewTime(
             sampleStart, sampleStop = reader.time2sample(start, stop)
             # as the samples returned from time2sample are rounded use sample2time to get the appropriate start and end times for those samples
             readStart, readStop = reader.sample2time(sampleStart, sampleStop)
-            # get the data
+            # get the data for any available channels meaning even those sites with missing channels can be plotted
             timeData = reader.getPhysicalData(
-                readStart, readStop, chans=options["chans"]
+                readStart, readStop
             )
 
             projectText(

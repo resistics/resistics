@@ -239,8 +239,13 @@ class TimeData(DataObject):
         numDataChans = len(dataChans)
         for idx, chan in enumerate(dataChans):
             ax = plt.subplot(numDataChans, 1, idx + 1)
-            # title and label for the plot
             plt.title("Channel {}".format(chan), fontsize=plotfonts["title"])
+            
+            # check if channel exists in data and if not, leave empty plot so it's clear
+            if chan not in self.data:
+                continue
+            
+            # label for plot
             lab = (
                 kwargs["label"]
                 if "label" in kwargs
