@@ -313,9 +313,7 @@ def viewTime(
             # as the samples returned from time2sample are rounded use sample2time to get the appropriate start and end times for those samples
             readStart, readStop = reader.sample2time(sampleStart, sampleStop)
             # get the data for any available channels meaning even those sites with missing channels can be plotted
-            timeData = reader.getPhysicalData(
-                readStart, readStop
-            )
+            timeData = reader.getPhysicalData(readStart, readStop)
 
             projectText(
                 "Plotting measurement {} of site {} between {} and {}".format(
