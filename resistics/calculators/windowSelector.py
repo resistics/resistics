@@ -855,10 +855,10 @@ class WindowSelector(Calculator):
         for s in self.sites:
             textLst.append("Site = {}".format(s))
             if len(self.siteMasks[s]) == 0:
-                textLst.append("\tNo masks for this site")
+                textLst.append("\t\tNo masks for this site")
             else:
                 for mask in self.siteMasks[s]:
-                    textLst.append("\tMask = {}".format(mask.maskName))
+                    textLst.append("\t\tMask = {}".format(mask.maskName))
         return textLst
 
     def printWindowsForFrequency(self, listwindows=False):
