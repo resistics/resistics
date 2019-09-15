@@ -130,7 +130,12 @@ def rspName(ext: str, sensor: str, serial: int, chopper: bool) -> List[str]:
     board = "HF"
     if chopper:
         board = "LF"
-    sensorNum = int(sensor[3:])
+    # try to turn the sensor into an integer serial number
+    try:
+        sensorNum = int(sensor[3:])
+    except:
+        sensorNum = 0
+        
     names = []
     names.append("TYPE-{:03d}_{}-ID-{:06d}.{}".format(sensorNum, board, serial, ext))
     names.append("TYPE-{:03d}_BB-ID-{:06d}.{}".format(sensorNum, serial, ext))
