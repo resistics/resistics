@@ -187,14 +187,17 @@ class CalibrationIO(IOHandler):
             # remove whitespace and new line characters
             lines[il] = lines[il].strip()
             if "Magnetometer" in lines[il]:
-                split1 = lines[il].split(":")[1].strip()
-                split2 = split1.split()[0]
-                if "#" in split1:
-                    tmp = split2.split("#")
-                    sensor = tmp[0].strip()
-                    serial = int(tmp[1].strip())
-                else:
-                    serial = int(split2.strip())
+                try:
+                    split1 = lines[il].split(":")[1].strip()
+                    split2 = split1.split()[0]
+                    if "#" in split1:
+                        tmp = split2.split("#")
+                        sensor = tmp[0].strip()
+                        serial = int(tmp[1].strip())
+                    else:
+                        serial = int(split2.strip())
+                except:
+                    self.printWarning("Unable to read serial number from calibration file")
             if "Chopper On" in lines[il]:
                 chopperOn = il
             if "Chopper Off" in lines[il]:

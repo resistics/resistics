@@ -216,7 +216,7 @@ class Calibrator(Calculator):
         calFormat : str
             The calibration format
         """
-        
+
         if self.numCalFiles == 0:
             # no calibration files to calibrate with
             return "", ""
@@ -230,9 +230,13 @@ class Calibrator(Calculator):
             if isinstance(calNames, str):
                 calNames = [calNames]
             # search to find a calibration file with that name and take the first encountered
-            for calName in calNames:    
+            for calName in calNames:
                 for calFile in self.calFiles:
-                    if calName.lower() in calFile.lower():
+                    calFileExt = os.path.splitext(calFile)[1].lower()
+                    if (
+                        calFileExt == "." + extension.lower()
+                        and calName.lower() in calFile.lower()
+                    ):
                         return calFile, fileformat
         # else return empty strings
         return "", ""
