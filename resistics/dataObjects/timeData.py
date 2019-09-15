@@ -269,7 +269,7 @@ class TimeData(DataObject):
                 plt.ylabel("mV/km", fontsize=plotfonts["axisLabel"])
             else:
                 plt.ylabel("nT or mV", fontsize=plotfonts["axisLabel"])
-            plt.grid()
+            plt.grid(True)
             # set tick sizes
             for label in ax.get_xticklabels() + ax.get_yticklabels():
                 label.set_fontsize(plotfonts["axisTicks"])
