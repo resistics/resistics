@@ -117,9 +117,9 @@ def processProject(projData: ProjectData, **kwargs) -> None:
     crosschannels : List[str], optional
         List of channels to use for cross powers
     masks : Dict, optional
-        Masks dictionary for passing mask data    
+        Masks dictionary for passing mask data. The key should be a site name and the value should either be a string for a single mask or a list of multiple masks.
     datetimes : List, optional
-        List of datetime constraints, each one as a dictionary            
+        List of datetime constraints, each one as a dictionary. For example [{"type": "datetime", "start": 2018-08-08 00:00:00, "end": 2018-08-08 16:00:00, "levels": [0,1]}]. Note that levels is optional.            
     postpend : str, optional
         String to postpend to the transfer function output
     """
@@ -181,9 +181,9 @@ def processSite(
     crosschannels : List[str], optional
         List of channels to use for cross powers
     masks : Dict, optional
-        Masks dictionary for passing mask data
+        Masks dictionary for passing mask data. The key should be a site name and the value should either be a string for a single mask or a list of multiple masks.
     datetimes : List, optional
-        List of datetime constraints, each one as a dictionary
+        List of datetime constraints, each one as a dictionary. For example [{"type": "datetime", "start": 2018-08-08 00:00:00, "end": 2018-08-08 16:00:00, "levels": [0,1]}]. Note that levels is optional.
     postpend : str, optional
         String to postpend to the transfer function output
     """
