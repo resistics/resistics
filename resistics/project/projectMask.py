@@ -92,7 +92,7 @@ def calculateMask(projData: ProjectData, maskData: MaskData, **kwargs):
     maskData : MaskData
         A mask data instance
     sites : List[str], optional
-        A list of sites to calculate statistics for
+        A list of sites to calculate masks for
     specdir : str, optional
         The spectra directory for which to calculate statistics
     """
