@@ -584,5 +584,6 @@ class ProcessorRemoteReference(ProcessorSingleSite):
         textLst.append("Out Channels = {}".format(self.outChannels))
         textLst.append("Remote Site = {}".format(self.remoteSite))
         textLst.append("Remote Channels = {}".format(self.remoteChannels))
+        textLst.append("Sample frequency = {:.3f}".format(self.decParams.sampleFreq))
         return textLst
 

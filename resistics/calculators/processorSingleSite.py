@@ -802,4 +802,5 @@ class ProcessorSingleSite(Calculator):
         textLst.append("In Channels = {}".format(self.inChannels))
         textLst.append("Out Site = {}".format(self.outSite))
         textLst.append("Out Channels = {}".format(self.outChannels))
+        textLst.append("Sample frequency = {:.3f}".format(self.decParams.sampleFreq))
         return textLst
