@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from typing import Dict, Union
+from typing import Dict, Union, List
 
 
 # import from package
@@ -30,6 +30,7 @@ from resistics.utilities.utilsProject import (
     projectError,
     getDecimationParameters,
     getWindowParameters,
+    getWindowSelector,
 )
 
 
@@ -275,7 +276,7 @@ def calculateRemoteStatistics(projData: ProjectData, remoteSite: str, **kwargs):
     specdir : str, optional
         The spectra directory for which to calculate statistics
     remotestats : List[str], optional
-        The statistics to calculate out. Acceptable statistics are: "coherenceRR", "coherenceRREqn", "absvalRREqn", "transFuncRR", "resPhaseRR". Configuration file values are used by default.
+        The statistics to calculate out. Acceptable statistics are: "RR_coherence", "RR_coherenceEqn", "RR_absvalEqn", "RR_transferFunction", "RR_resPhase". Configuration file values are used by default.
     """
 
     options = {}
@@ -322,7 +323,7 @@ def calculateRemoteStatistics(projData: ProjectData, remoteSite: str, **kwargs):
             winParams = getWindowParameters(decParams, projData.config)
 
             # create the window selector and find the shared windows
-            winSelector = WindowSelector(projData, sampleFreq, decParams, winParams)
+            winSelector = getWindowSelector(projData, decParams, winParams)
             winSelector.setSites([site, remoteSite])
             # calc shared windows between site and remote
             winSelector.calcSharedWindows()
@@ -518,7 +519,7 @@ def viewStatistic(
             maskwindows=maskWindows,
         )
     # add a legened
-    plt.legend()
+    plt.legend(markerscale=4, fontsize=plotfonts["legend"])
 
     # do the title after all the plots
     st = fig.suptitle(
@@ -529,7 +530,7 @@ def viewStatistic(
     )
 
     # plot format, show and save
-    fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])      
+    fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])
     if options["save"]:
         impath = projData.imagePath
         sampleFreqStr = fileFormatSampleFreq(sampleFreq)
@@ -549,7 +550,7 @@ def viewStatistic(
         plt.show(block=options["plotoptions"]["block"])
     if not options["show"] and options["save"]:
         plt.close(fig)
-        return None        
+        return None
     return fig
 
 
@@ -667,7 +668,9 @@ def viewStatisticHistogram(
 
         # x axis options
         xlim = (
-            kwargs["xlim"] if "xlim" in kwargs else [np.min(plotData), np.max(plotData)]
+            options["xlim"]
+            if len(options["xlim"]) > 0
+            else [np.min(plotData), np.max(plotData)]
         )
         plt.xlim(xlim)
         plt.xlabel("Value", fontsize=plotfonts["axisLabel"])
@@ -681,7 +684,7 @@ def viewStatisticHistogram(
             label.set_fontsize(plotfonts["axisTicks"])
 
     # plot format, show and save
-    fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])     
+    fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])
     if options["save"]:
         impath = projData.imagePath
         sampleFreqStr = fileFormatSampleFreq(sampleFreq)
@@ -701,5 +704,160 @@ def viewStatisticHistogram(
         plt.show(block=options["plotoptions"]["block"])
     if not options["show"] and options["save"]:
         plt.close(fig)
-        return None        
+        return None
+    return fig
+
+
+def viewStatisticCrossplot(
+    projData: ProjectData,
+    site: str,
+    sampleFreq: Union[int, float],
+    stat: str,
+    crossplots: List[List[str]],
+    **kwargs
+) -> Union[plt.figure, None]:
+    """View statistic data for a single sampling frequency of a site
+    
+    Parameters
+    ----------
+    projData : ProjectData
+        A project instance
+    site : str
+        The site for which to plot statistics
+    stat : str
+        The statistic to plot
+    sampleFreq : float
+        The sampling frequency for which to plot statistics
+    crossplots : List[List[str]]
+        The statistic element pairs to crossplot
+    declevel : int
+        The decimation level to plot
+    eFreqI : int
+        The evaluation frequency index
+    specdir : str
+        The spectra directory
+    maskname : str
+        Mask name         
+    xlim : List, optional
+        Limits for the x axis
+    ylim : List, optional
+        Limits for the y axis
+    maxcols : int
+        The maximum number of columns in the plots        
+    show : bool, optional
+        Show the spectra plot
+    save : bool, optional
+        Save the plot to the images directory
+    plotoptions : Dict, optional
+        Dictionary of plot options    
+
+    Returns
+    -------
+    matplotlib.pyplot.figure or None
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
+    """
+
+    options = {}
+    options["declevel"] = 0
+    options["eFreqI"] = 0
+    options["specdir"] = projData.config.configParams["Spectra"]["specdir"]
+    options["maskname"] = ""
+    options["xlim"] = []
+    options["ylim"] = []
+    options["maxcols"] = 2
+    options["show"] = True
+    options["save"] = False
+    options["plotoptions"] = plotOptionsSpec()
+    options = parseKeywords(options, kwargs)
+
+    projectText(
+        "Plotting crossplot for statistic {}, site {} and sampling frequency {}".format(
+            stat, site, sampleFreq
+        )
+    )
+
+    statData = getStatisticDataForSampleFreq(
+        projData,
+        site,
+        sampleFreq,
+        stat,
+        declevel=options["declevel"],
+        specdir=options["specdir"],
+    )
+    statMeas = list(statData.keys())
+    # get the evaluation frequency
+    eFreq = statData[statMeas[0]].evalFreq[options["eFreqI"]]
+
+    # get the mask data
+    maskWindows = []
+    if options["maskname"] != "":
+        maskData = getMaskData(projData, site, options["maskname"], sampleFreq)
+        maskWindows = maskData.getMaskWindowsFreq(
+            options["declevel"], options["eFreqI"]
+        )
+
+    # plot information
+    nrows, ncols = getPlotRowsAndCols(options["maxcols"], len(crossplots))
+
+    plotfonts = options["plotoptions"]["plotfonts"]
+    fig = plt.figure(figsize=options["plotoptions"]["figsize"])
+    # suptitle
+    st = fig.suptitle(
+        "{} crossplots for {}, sampling frequency {} Hz, decimation level {} and evaluation frequency {} Hz".format(
+            stat, site, sampleFreq, options["declevel"], eFreq
+        ),
+        fontsize=plotfonts["suptitle"],
+    )
+    st.set_y(0.98)
+
+    # now plot the data
+    for idx, cplot in enumerate(crossplots):
+        ax = plt.subplot(nrows, ncols, idx + 1)
+        plt.title("Crossplot {}".format(cplot), fontsize=plotfonts["title"])
+
+        for meas in statMeas:
+            stats = statData[meas].getStats(maskwindows=maskWindows)
+            plotI1 = statData[meas].winStats.index(cplot[0])
+            plotData1 = np.squeeze(stats[:, options["eFreqI"], plotI1])
+            plotI2 = statData[meas].winStats.index(cplot[1])
+            plotData2 = np.squeeze(stats[:, options["eFreqI"], plotI2])
+            scat = plt.scatter(
+                plotData1, plotData2, edgecolors="none", marker="o", s=12, label=meas
+            )
+
+        # x axis options
+        if len(options["xlim"]) > 0:
+            plt.xlim(options["xlim"])
+        if len(options["ylim"]) > 0:
+            plt.ylim(options["ylim"])        
+        plt.xlabel(cplot[0], fontsize=plotfonts["axisLabel"])
+        plt.ylabel(cplot[1], fontsize=plotfonts["axisLabel"])
+        plt.grid(True)
+        # set tick sizes
+        for label in ax.get_xticklabels() + ax.get_yticklabels():
+            label.set_fontsize(plotfonts["axisTicks"])
+        plt.legend(loc=2, markerscale=4, fontsize=plotfonts["legend"])
+
+    # plot format, show and save
+    fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])
+    if options["save"]:
+        impath = projData.imagePath
+        sampleFreqStr = fileFormatSampleFreq(sampleFreq)
+        filename = "statCrossplot_{:s}_{:s}_{:s}_dec{:d}_efreq{:d}_{:s}".format(
+            stat,
+            site,
+            sampleFreqStr,
+            options["declevel"],
+            options["eFreqI"],
+            options["specdir"],
+        )
+        if options["maskname"] != "":
+            filename = "{}_{}".format(filename, options["maskname"])
+        savename = savePlot(impath, filename, fig)
+        projectText("Image saved to file {}".format(savename))
+    if options["show"]:
+        plt.show(block=options["plotoptions"]["block"])
+    if not options["show"] and options["save"]:
+        plt.close(fig)
+        return None
     return fig
