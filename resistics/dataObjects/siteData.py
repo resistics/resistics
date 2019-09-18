@@ -124,6 +124,11 @@ class SiteData(DataObject):
             self.ends[meas] = reader.getStopDatetime()
             self.fs[meas] = reader.getSampleFreq()
 
+        # check to see if no data directories were found
+        if len(self.fs) == 0:
+            self.printWarning("No recognised measurement formats in site {}".format(self.siteName))
+            return
+
         # start and end time of project
         if len(self.measurements) != 0:
             self.siteStart = min(self.starts.values())
