@@ -90,8 +90,6 @@ def measB423EHeaders(
     dataFilenames = [os.path.basename(dFile) for dFile in dataFiles]
     starts = []
     stops = []
-    gains1 = {}
-    gains2 = {}
     cumSamples = 0
     for idx, dFile in enumerate(dataFiles):
         generalPrint("constructB423EHeaders", "Reading data file {}".format(dFile))
@@ -109,18 +107,6 @@ def measB423EHeaders(
         cumSamples += numSamples
         starts.append(firstDatetime)
         stops.append(lastDatetime)
-        # gains1
-        gains1[dataFilenames[idx]] = dict()
-        gains1[dataFilenames[idx]]["E1"] = dataHeaders["Ke1"]
-        gains1[dataFilenames[idx]]["E2"] = dataHeaders["Ke2"]
-        gains1[dataFilenames[idx]]["E3"] = dataHeaders["Ke3"]
-        gains1[dataFilenames[idx]]["E4"] = dataHeaders["Ke4"]
-        # gains2
-        gains2[dataFilenames[idx]] = dict()
-        gains2[dataFilenames[idx]]["E1"] = dataHeaders["Ae1"]
-        gains2[dataFilenames[idx]]["E2"] = dataHeaders["Ae2"]
-        gains2[dataFilenames[idx]]["E3"] = dataHeaders["Ae3"]
-        gains2[dataFilenames[idx]]["E4"] = dataHeaders["Ae4"]
     # now need to search for any missing data
     sampleTime = timedelta(seconds=1.0 / sampleFreq)
     # sort by start times
@@ -217,12 +203,12 @@ class DataReaderLemiB423E(DataReaderLemiB423):
 
     Lemi B423E data has the following characteristics:
 
-    - Lemi B423E records only telluric data, channels E1, E2, E3 and E4
-    - To calculate Ex and Ey 
-    - Lemi B423E raw data is signed long integer format   
-    - Getting unscaled samples returns data with unit count for both the electric and magnetic fields. 
-    - There is no header file for Lemi B423E data. There are some headers in the data file, but nothing for number of samples, sampling rate etc
-    - 1024 bytes of headers in the data file
+    - 1024 bytes of ASCII headers in the data file with basic scaling information
+    - There is no separate header file for Lemi B423E data. No information for number of samples, sampling rate etc
+    - Header files need to be constructed before Lemi B423E data can be read in by resistics. There are helper methods to do this.
+    - Lemi B423 raw measurement data is signed long integer format    
+    - Getting unscaled samples returns data with unit count for electric fields. 
+    - Optionally, a scaling can be applied for unscaled samples which returns electric fields in microvolt.
 
     In situations where a Lemi B423E dataset is recorded in multiple files, it is required that the recording is continuous. 
 
@@ -277,9 +263,9 @@ class DataReaderLemiB423E(DataReaderLemiB423):
 
         Notes
         -----
-        Once Lemi B423E data is scaled (which optionally happens in getUnscaledSamples), the magnetic channels is in pT and the electric channels is uV (micro volts). Therefore, both magnetic and electric channels need to divided by 1000 along with dipole length division (east-west spacing and north-south spacing).
+        Once Lemi B423E data is scaled (which optionally happens in getUnscaledSamples), the electric channels are in uV (micro volts). Therefore:
         
-        To get magnetic fields in nT, they have to be calibrated.
+        - Electric channels need to divided by 1000 along with dipole length division in km (east-west spacing and north-south spacing) to return mV/km.
 
         Parameters
         ----------

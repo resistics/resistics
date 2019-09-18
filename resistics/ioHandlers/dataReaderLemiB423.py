@@ -23,6 +23,7 @@ def folderB423Headers(
     hxSensor: int = 0,
     hySensor: int = 0,
     hzSensor: int = 0,
+    hGain: int = 1,
     dx: float = 1,
     dy: float = 1,
     folders: List = [],
@@ -41,6 +42,8 @@ def folderB423Headers(
         The y direction magnetic sensor, used for calibration
     hzSensor : str, optional
         The z direction magnetic sensor, used for calibration
+    hGain : int
+        Any gain on the magnetic channels which will need to be removed
     dx : float, optional
         Distance between x electrodes
     dy : float, optional
@@ -54,7 +57,7 @@ def folderB423Headers(
     print(folders)        
     # now construct headers for each folder
     for folder in folders:
-        measB423Headers(folder, sampleFreq, hxSensor, hySensor, hzSensor, dx, dy)
+        measB423Headers(folder, sampleFreq, hxSensor, hySensor, hzSensor, hGain, dx, dy)
 
 
 def measB423Headers(
@@ -63,6 +66,7 @@ def measB423Headers(
     hxSensor: int = 0,
     hySensor: int = 0,
     hzSensor: int = 0,
+    hGain: int = 1,
     dx: float = 1,
     dy: float = 1,
 ) -> None:
@@ -80,6 +84,8 @@ def measB423Headers(
         The y direction magnetic sensor, used for calibration
     hzSensor : str, optional
         The z direction magnetic sensor, used for calibration
+    hGain : int
+        Any gain on the magnetic channels which will need to be removed
     dx : float, optional
         Distance between x electrodes
     dy : float, optional
@@ -93,8 +99,6 @@ def measB423Headers(
     dataFilenames = [os.path.basename(dFile) for dFile in dataFiles]
     starts = []
     stops = []
-    gains1 = {}
-    gains2 = {}
     cumSamples = 0
     for idx, dFile in enumerate(dataFiles):
         generalPrint("constructB423Headers", "Reading data file {}".format(dFile))
@@ -112,20 +116,6 @@ def measB423Headers(
         cumSamples += numSamples
         starts.append(firstDatetime)
         stops.append(lastDatetime)
-        # gains1
-        gains1[dataFilenames[idx]] = dict()
-        gains1[dataFilenames[idx]]["Hx"] = dataHeaders["Kmx"]
-        gains1[dataFilenames[idx]]["Hy"] = dataHeaders["Kmy"]
-        gains1[dataFilenames[idx]]["Hz"] = dataHeaders["Kmz"]
-        gains1[dataFilenames[idx]]["Ex"] = dataHeaders["Ke1"]
-        gains1[dataFilenames[idx]]["Ey"] = dataHeaders["Ke2"]
-        # gains2
-        gains2[dataFilenames[idx]] = dict()
-        gains2[dataFilenames[idx]]["Hx"] = dataHeaders["Ax"]
-        gains2[dataFilenames[idx]]["Hy"] = dataHeaders["Ay"]
-        gains2[dataFilenames[idx]]["Hz"] = dataHeaders["Az"]
-        gains2[dataFilenames[idx]]["Ex"] = dataHeaders["Ae1"]
-        gains2[dataFilenames[idx]]["Ey"] = dataHeaders["Ae2"]
     # now need to search for any missing data
     sampleTime = timedelta(seconds=1.0 / sampleFreq)
     # sort by start times
@@ -189,7 +179,7 @@ def measB423Headers(
         cHeader["channel_type"] = chan
         cHeader["scaling_applied"] = False
         cHeader["ts_lsb"] = 1
-        cHeader["gain_stage1"] = 1
+        cHeader["gain_stage1"] = hGain if isMagnetic(chan) else 1
         cHeader["gain_stage2"] = 1
         cHeader["hchopper"] = 0
         cHeader["echopper"] = 0
@@ -317,12 +307,14 @@ class DataReaderLemiB423(DataReaderInternal):
 
     Lemi B423 data has the following characteristics:
 
-    - Lemi B423 raw data is signed long integer format   
-    - Getting unscaled samples returns data with unit count for both the electric and magnetic fields. 
-    - 1024 bytes of headers in the data file
-    - There is no header file for Lemi B423 data. There are some headers in the data file, but nothing for number of samples, sampling rate etc
+    - 1024 bytes of ASCII headers in the data file with basic scaling information
+    - There is no separate header file for Lemi B423 data. No information for number of samples, sampling rate etc
     - Header files need to be constructed before Lemi B423 data can be read in by resistics. There are helper methods to do this
-    - Scalings specified in B423 files convert electric channels to uV and magnetic channels to unknown
+    - Lemi B423 raw measurement data is signed long integer format   
+    - Getting unscaled samples returns data with unit count for both the electric and magnetic fields. 
+    - Scalings specified in B423 files convert electric channels to uV (microvolt) and magnetic channels to millivolts with internal gain still applied
+    - Getting physical samples converts the electric channels to mV/km by dividing the uV by 1000 and then dividing by the dipole length in km
+    - For the magnetic channels, the gain is removed to give the magnetic measurements in mV. Calibrating these will give measurements in nT 
 
     In situations where a Lemi B423 dataset is recorded in multiple files, it is required that the recording is continuous. 
 
@@ -383,7 +375,18 @@ class DataReaderLemiB423(DataReaderInternal):
     def getUnscaledSamples(self, **kwargs) -> TimeData:
         """Get raw data from data file, returned in mV
 
-        Lemi B423 data always has five channels, in order Hx, Hy, Hz, Ex, Ey. The raw data is integer counts. Therefore, getting unscaled samples returns raw counts for the measurement. However, Lemi B423 is recorded in multiple files. It has not been verified whether it is possible for each individual file to have different scaling. 
+        Lemi B423 data always has five channels, in order Hx, Hy, Hz, Ex, Ey. The raw data is integer counts. Therefore, getting unscaled samples returns raw counts for the measurement. There are additional scalings which can be applied using the scale optional argument. Lemi B423 is recorded in multiple files. It has not been verified whether it is possible for each individual file to have different scaling. 
+
+        Without the scale option, the data is returned in:
+        
+        - Counts for both magnetic and electric channels (reading long integers)
+
+        With the scaling option, the data is returned in:
+
+        - microvolts for the electric channels
+        - millivolts for the magnetic with the gain applied
+
+        Applying the scaling does not appear to remove the internal gain of the Lemi. This will be removed when getting physical samples and the appropriate value must be set in the headers.
 
         Parameters
         ----------
@@ -563,7 +566,10 @@ class DataReaderLemiB423(DataReaderInternal):
 
         Notes
         -----
-        Once Lemi B423 data is scaled (which optionally happens in getUnscaledSamples), the magnetic channels is in pT and the electric channels is uV (micro volts). Therefore, both magnetic and electric channels need to divided by 1000 along with dipole length division (east-west spacing and north-south spacing).
+        Once Lemi B423 data is scaled (which optionally happens in getUnscaledSamples), the magnetic channels is in mV with gain applied and the electric channels is uV (microvolts). Therefore:
+        
+        - Electric channels need to divided by 1000 along with dipole length division in km (east-west spacing and north-south spacing) to return mV/km.
+        - Magnetic channels need to be divided by the internal gain value which should be set in the headers
         
         To get magnetic fields in nT, they have to be calibrated.
 
@@ -602,6 +608,9 @@ class DataReaderLemiB423(DataReaderInternal):
             if isElectric(chan):
                 timeData.data[chan] = timeData.data[chan] / 1000.0
                 timeData.addComment("Dividing channel {} by 1000 to convert microvolt to millivolt".format(chan))
+            if isMagnetic(chan):
+                timeData.data[chan] = timeData.data[chan] / self.getChanGain1(chan)
+                timeData.addComment("Removing gain of {} from channel {}".format(self.getChanGain1(chan), chan))                
             if chan == "Ex":
                 # multiply by 1000/self.getChanDx same as dividing by dist in km
                 timeData.data[chan] = (
