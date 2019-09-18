@@ -88,11 +88,17 @@ This will scale the something channel by something.
 Interpolation to second
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Resistics assumes that data is sampled on the second. For more information on this, please see :doc:`Time series formats <../formats/timeseries>` and :doc:`Interpolation to second <../formats/timeseries/interpolation-to-second>`
+Resistics assumes that data is sampled on the second. For more information on this, please see :doc:`Time series formats <../formats/timeseries>` and :doc:`Interpolation to second <../formats/timeseries/interpolation-to-second>`.
+
+Interpolating to the second can be done in the project environment. An example follows:
+
+
+
 
 
 Gap filling
 ~~~~~~~~~~~
+In some situations, it is beneficial to stitch together two separate datasets to perform 
 
 Calibration
 ~~~~~~~~~~~

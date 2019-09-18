@@ -28,7 +28,7 @@ import resistics
 # The short X.Y version
 version = resistics.xyversion
 # The full version, including alpha/beta/rc tags
-release = resistics.release
+release = resistics.__version__
 
 
 # -- General configuration ---------------------------------------------------
