@@ -5,33 +5,72 @@ projectPath = Path("preprocessProject")
 proj = loadProject(projectPath)
 proj.printInfo()
 
-# resample to 1024 Hz and save in new site
+from resistics.utilities.utilsPlotter import plotOptionsTime, getPresentationFonts
+plotOptions = plotOptionsTime(plotfonts=getPresentationFonts())
+
+# polarity reverse the Ey channel
 from resistics.project.projectTime import preProcess, viewTime
 
-preProcess(proj, sites="site1", polreverse={"Ey": True}, outputsite="site1_polreverse", prepend="")
+preProcess(
+    proj,
+    sites="site1",
+    polreverse={"Ey": True},
+    outputsite="site1_polreverse",
+    prepend="",
+)
 proj.refresh()
 proj.printInfo()
 
-viewTime(
+fig = viewTime(
     proj,
     "2012-02-10 11:05:00",
     "2012-02-10 11:05:01",
     sites=["site1", "site1_polreverse"],
     chans=["Ex", "Ey"],
-    show=True,
-    save=True,
+    show=False,
+    plotoptions=plotOptions,
 )
+fig.savefig(Path(proj.imagePath, "viewTimePolarityReversal.png"))
 
-preProcess(proj, sites="site1", scale={"Ex": -2, "Ey": 0.5}, outputsite="site1_scale", prepend="")
+preProcess(
+    proj,
+    sites="site1",
+    scale={"Ex": -2, "Ey": 0.5},
+    outputsite="site1_scale",
+    prepend="",
+)
 proj.refresh()
 proj.printInfo()
 
-viewTime(
+fig = viewTime(
     proj,
     "2012-02-10 11:05:00",
     "2012-02-10 11:05:01",
     sites=["site1", "site1_scale"],
     chans=["Ex", "Ey"],
-    show=True,
-    save=True,
+    show=False,
+    plotoptions=plotOptions,
 )
+fig.savefig(Path(proj.imagePath, "viewTimeScale.png"))
+
+# normalisation
+preProcess(
+    proj,
+    sites="site1",
+    normalise=True,
+    outputsite="site1_norm",
+    prepend="",
+)
+proj.refresh()
+proj.printInfo()
+
+fig = viewTime(
+    proj,
+    "2012-02-10 11:05:00",
+    "2012-02-10 11:05:01",
+    sites=["site1", "site1_norm"],
+    chans=["Ex", "Ey"],
+    show=False,
+    plotoptions=plotOptions,
+)
+fig.savefig(Path(proj.imagePath, "viewTimeNorm.png"))

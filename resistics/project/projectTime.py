@@ -81,7 +81,7 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
     calibrate : bool, optional
         Boolean flag for calibrating the data. Default is false and setting to True will calibrate where files can be found.
     normalise : bool, optional
-        Boolean flag for normalising the data. Default is false and setting to True will normalise each channel individually.
+        Boolean flag for normalising the data. Default is False and setting to True will normalise each channel independently.
     filter : Dict, optional
         Filtering options in a dictionary
     notch : List[float], optional
@@ -246,7 +246,7 @@ def viewTime(
     calibrate : bool, optional
         Boolean flag to calibrate data
     normalise : bool, optional
-        Boolean flag to normalise the data
+        Boolean flag to normalise the data. Default is False and setting to True will normalise each channel independently.
     notch : List[float], optional
         List of frequencies to notch out
     filter : Dict, optional

@@ -28,6 +28,10 @@ The package tries to support the major formats, though this becomes harder when 
     This will cover the calibration of magnetic channels. However, there is presently no easy way of doing a recording instrument calibration. Depending on the need for this feature, it can be implemented. Please get in touch if this is something that is required by visiting the :doc:`Contact <../contact>` page.
 
 
+.. important 
+
+    Within the resistics project environment, calibration files must be stored in the calData folder to be automatically picked up. Naming conventions for the calibration files are dependent on the format and are described in more detail in the individual sections for the different formats.
+
 Extending calibration data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

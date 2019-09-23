@@ -18,6 +18,16 @@ Resistics is a native Python 3 package for the processing of magnetotelluric (MT
 
     Magnetotellurics in the rain  
 
+Latest news
+~~~~~~~~~~~
+**2019-09-23:** Resistics is currently in beta mode. Updates are being made regularly. Currently the focus of updates is:
+
+- More complete documentation with more examples. The tutorial is complete, but more examples are coming to cover advanced methods such as pre-processing, remote reference processing, inter-operability, remote reference statistics, intersite transfer functions. 
+- Speeding up of processing
+- Support for Phoenix data
+
+There is a chance that method and module names may change in the near future as they are an artefact of how the code grew up. For more information, please :doc:`contact us <contact>`. 
+
 About
 ~~~~~
 Resistics began as a set of Python classes to help analyse noisy MT timeseries data acquired in northern Switzerland through increased use of statistics and time window based features. Since then, it has grown into a MT data processing package. The name is an amalgamation of resistivty and statistics...resistics!

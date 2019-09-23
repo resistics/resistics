@@ -29,8 +29,7 @@ There are several use cases requiring pre-processing of time series data. Common
 
 Remote reference processing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Remote reference processing is no longer really an advanced method. However, the example 
- included in this section demonstrates inter-operability of different data formats, remote reference processing, remote reference statistics and more, which are all discussed in more detail in the given links.
+Remote reference processing is no longer an advanced method. However, the example included in this section demonstrates inter-operability of different data formats, remote reference processing, remote reference statistics and more, which are all discussed in further detail in the given links.
 
 .. toctree::
     :maxdepth: 2
@@ -49,7 +48,7 @@ Intersite processing can be useful in certain cases. For more details on intersi
 | `The Telluric-Magnetotelluric Method <https://www.researchgate.net/publication/260919094_The_Telluric-Magnetotelluric_Method>`_
 | John F. Hermance, Richard E. Thayer
 | *Geophysics*
-| *Volume 40 Issue 4 
+| *Volume 40 Issue 4* 
 | *Pages 664-668* 
 | https://doi.org/10.1190/1.1440557
 
@@ -58,7 +57,7 @@ and more recently,
 | `Introducing inter-site phase tensors tosuppress galvanic distortion in the telluric method <https://https://earth-planets-space.springeropen.com/articles/10.1186/s40623-015-0327-7>`_
 | Jenneke Bakker, Alexey Kuvshinov, Friedemann Samrock, Alexey Geraskin, Oleg Pankratov
 | *Earth Planets and Space*
-| *Volume 67 Article 160
+| *Volume 67 Article 160*
 | https://doi.org/10.1186/s40623-015-0327-7
 
 Examples are given in the below link.
