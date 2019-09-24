@@ -19,10 +19,8 @@ Email
 
 Slack
 ~~~~~
-There is a `slack channel <resistics.slack.com>`_ for those interested in helping with development. Please email for further details. 
+There is a `slack channel <https://resistics.slack.com>`_ for those interested in helping with development. Please email for further details. 
 
-.. important:: 
-
-    **Support and consultancy**
-
-    If anyone has some challenging magnetotelluric data to process, please get in contact. A challenge is always welcome. Depending on the scale and use of the data, some fees/funding for the project may be required. 
+Support and consultancy
+~~~~~~~~~~~~~~~~~~~~~~~
+If anyone has some challenging magnetotelluric data to process, please get in contact. A challenge is always welcome. Depending on the scale and use of the data, some fees/funding for the project may be required. 

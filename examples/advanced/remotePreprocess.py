@@ -21,8 +21,43 @@ for meas in meas128:
     stop = siteLocal.getMeasurementEnd(meas).strftime("%Y-%m-%d %H:%M:%S")
     postpend = siteLocal.getMeasurementStart(meas).strftime("%Y-%m-%d_%H-%M-%S")
     print("Processing data from {} to {}".format(start, stop))
-    preProcess(proj, sites="RemoteSPAM", start=start, stop=stop, interp=True, resamp={250: 128}, outputsite="Remote", prepend="", postpend=postpend)
+    preProcess(
+        proj,
+        sites="RemoteSPAM",
+        start=start,
+        stop=stop,
+        interp=True,
+        resamp={250: 128},
+        outputsite="Remote",
+        prepend="",
+        postpend=postpend,
+    )
+proj.refresh()
 
-viewTime(proj, sites=["M6", "Remote"], startDate="2016-02-17 03:20:00", endDate="2016-02-17 03:35:00", chans=["Hx", "Hy"], save=True)
+from resistics.utilities.utilsPlotter import plotOptionsTime, getPresentationFonts
+plotOptions = plotOptionsTime(plotfonts=getPresentationFonts())
 
-viewTime(proj, sites=["M6", "Remote"], startDate="2016-02-17 03:20:00", endDate="2016-02-17 03:35:00", filter={"lpfilt": 4}, chans=["Hx", "Hy"], save=True)
+fig = viewTime(
+    proj,
+    sites=["M6", "Remote"],
+    startDate="2016-02-17 04:05:00",
+    endDate="2016-02-17 04:15:00",
+    chans=["Ex", "Hy"],
+    plotoptions=plotOptions,
+    save=False,
+    show=False,
+)
+fig.savefig(Path(proj.imagePath, "viewTimePreprocess.png"))
+
+fig = viewTime(
+    proj,
+    sites=["M6", "Remote"],
+    startDate="2016-02-17 04:05:00",
+    endDate="2016-02-17 04:15:00",
+    filter={"lpfilt": 4},
+    chans=["Ex", "Hy"],
+    plotoptions=plotOptions,
+    save=False,
+    show=False,
+)
+fig.savefig(Path(proj.imagePath, "viewTimePreprocessLowPass.png"))

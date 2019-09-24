@@ -1,0 +1,72 @@
+21:50:32 ProjectData: ####################
+21:50:32 ProjectData: PROJECTDATA INFO BEGIN
+21:50:32 ProjectData: ####################
+21:50:32 ProjectData: Time data path = remoteProject\timeData
+21:50:32 ProjectData: Spectra data path = remoteProject\specData
+21:50:32 ProjectData: Statistics data path = remoteProject\statData
+21:50:32 ProjectData: Mask data path = remoteProject\maskData
+21:50:32 ProjectData: TransFunc data path = remoteProject\transFuncData
+21:50:32 ProjectData: Calibration data path = remoteProject\calData
+21:50:32 ProjectData: Images data path = remoteProject\images
+21:50:32 ProjectData: Reference time = 2016-01-18 00:00:00
+21:50:32 ProjectData: Project start time = 2016-02-11 00:00:00.003200
+21:50:32 ProjectData: Project stop time = 2016-03-17 23:59:59.999200
+21:50:32 ProjectData: Project found 2 sites:
+21:50:32 ProjectData: M6            start: 2016-02-15 15:00:03      end: 2016-02-21 06:27:12.375000
+21:50:32 ProjectData: RemoteSPAM    start: 2016-02-11 00:00:00.003200       end: 2016-03-17 23:59:59.999200
+21:50:32 ProjectData: Sampling frequencies found in project (Hz): 128.0, 250.0, 512.0, 4096.0, 16384.0, 65536.0
+21:50:32 ProjectData: ####################
+21:50:32 ProjectData: PROJECTDATA INFO END
+21:50:32 ProjectData: ####################
+
+22:00:30 SiteData: ####################
+22:00:30 SiteData: SITEDATA INFO BEGIN
+22:00:30 SiteData: ####################
+22:00:30 SiteData: Site = M6
+22:00:30 SiteData: Time data path = remoteProject\timeData\M6
+22:00:30 SiteData: Spectra data path = remoteProject\specData\M6
+22:00:30 SiteData: Statistics data path = remoteProject\statData\M6
+22:00:30 SiteData: TransFunc data path = remoteProject\transFuncData\M6
+22:00:30 SiteData: Site start time = 2016-02-15 15:00:03
+22:00:30 SiteData: Site stop time = 2016-02-21 06:27:12.375000
+22:00:30 SiteData: Sampling frequencies recorded = 128.00000000, 512.00000000, 4096.00000000, 16384.00000000, 65536.00000000
+22:00:30 SiteData: Number of measurement files = 17
+22:00:30 SiteData: Measurement          Sample Frequency (Hz)           Start Time              End Time
+22:00:30 SiteData: meas_2016-02-15_15-00-03             65536.0         2016-02-15 15:00:03             2016-02-15 15:01:02.999985
+22:00:30 SiteData: meas_2016-02-15_15-02-03             16384.0         2016-02-15 15:02:03             2016-02-15 15:03:02.999939
+22:00:30 SiteData: meas_2016-02-15_15-04-03             4096.0          2016-02-15 15:04:03             2016-02-15 15:07:02.999756
+22:00:30 SiteData: meas_2016-02-15_15-08-03             512.0           2016-02-15 15:08:03             2016-02-15 15:13:02.998047
+22:00:30 SiteData: meas_2016-02-15_15-28-06             128.0           2016-02-15 15:28:06             2016-02-16 01:54:59.992188
+22:00:30 SiteData: meas_2016-02-16_02-00-00             4096.0          2016-02-16 02:00:00             2016-02-16 02:29:59.999756
+22:00:30 SiteData: meas_2016-02-16_02-35-00             128.0           2016-02-16 02:35:00             2016-02-17 01:54:59.992188
+22:00:30 SiteData: meas_2016-02-17_02-00-00             4096.0          2016-02-17 02:00:00             2016-02-17 02:29:59.999756
+22:00:30 SiteData: meas_2016-02-17_02-35-00             128.0           2016-02-17 02:35:00             2016-02-18 01:54:59.992188
+22:00:30 SiteData: meas_2016-02-18_02-00-00             4096.0          2016-02-18 02:00:00             2016-02-18 02:29:59.999756
+22:00:30 SiteData: meas_2016-02-18_02-35-00             128.0           2016-02-18 02:35:00             2016-02-19 01:54:59.992188
+22:00:30 SiteData: meas_2016-02-19_02-00-00             4096.0          2016-02-19 02:00:00             2016-02-19 02:29:59.999756
+22:00:30 SiteData: meas_2016-02-19_02-35-00             128.0           2016-02-19 02:35:00             2016-02-20 01:54:59.992188
+22:00:30 SiteData: meas_2016-02-20_02-00-00             4096.0          2016-02-20 02:00:00             2016-02-20 02:29:59.999756
+22:00:30 SiteData: meas_2016-02-20_02-35-00             128.0           2016-02-20 02:35:00             2016-02-21 01:54:59.992188
+22:00:30 SiteData: meas_2016-02-21_02-00-00             4096.0          2016-02-21 02:00:00             2016-02-21 02:29:59.999756
+22:00:30 SiteData: meas_2016-02-21_02-35-00             128.0           2016-02-21 02:35:00             2016-02-21 06:27:12.375000
+22:00:30 SiteData: ####################
+22:00:30 SiteData: SITEDATA INFO END
+22:00:30 SiteData: ####################
+
+22:01:15 SiteData: ####################
+22:01:15 SiteData: SITEDATA INFO BEGIN
+22:01:15 SiteData: ####################
+22:01:15 SiteData: Site = RemoteSPAM
+22:01:15 SiteData: Time data path = remoteProject\timeData\RemoteSPAM
+22:01:15 SiteData: Spectra data path = remoteProject\specData\RemoteSPAM
+22:01:15 SiteData: Statistics data path = remoteProject\statData\RemoteSPAM
+22:01:15 SiteData: TransFunc data path = remoteProject\transFuncData\RemoteSPAM
+22:01:15 SiteData: Site start time = 2016-02-11 00:00:00.003200
+22:01:15 SiteData: Site stop time = 2016-03-17 23:59:59.999200
+22:01:15 SiteData: Sampling frequencies recorded = 250.00000000
+22:01:15 SiteData: Number of measurement files = 1
+22:01:15 SiteData: Measurement          Sample Frequency (Hz)           Start Time              End Time
+22:01:15 SiteData: run2         250.0           2016-02-11 00:00:00.003200              2016-03-17 23:59:59.999200
+22:01:15 SiteData: ####################
+22:01:15 SiteData: SITEDATA INFO END
+22:01:15 SiteData: ####################

@@ -14,6 +14,7 @@
 #
 import os
 import sys
+
 basepath = os.path.abspath(os.path.join("..", ".."))
 sys.path.insert(0, basepath)
 
@@ -49,7 +50,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
-    'sphinx.ext.autosectionlabel'
+    "sphinx.ext.autosectionlabel",
 ]
 # autosection labels
 autosectionlabel_prefix_document = True
@@ -201,6 +202,8 @@ todo_include_todos = True
 # through a change in sphinx basic.css except rtd_theme does not use basic.css.
 # In an ideal world, this would get fixed in this PR:
 # https://github.com/readthedocs/sphinx_rtd_theme/pull/747/files
-html4_writer=True
+html4_writer = True
+
+
 def setup(app):
     app.add_stylesheet("basic.css")

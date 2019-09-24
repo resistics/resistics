@@ -9,5 +9,4 @@ projData = newProject(projectPath, "2016-01-18 00:00:00")
 # let's create 2 sites
 # M6 is the location of interest. Remote is a remote reference station.
 projData.createSite("M6")
-projData.createSite("Remote")
-
+projData.createSite("RemoteSPAM")

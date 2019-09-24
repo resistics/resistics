@@ -17,18 +17,18 @@ Pre-processing timeseries data
 
 There are scenarios in which time series data must be pre-processed and saved before transfer function calculation. Pre-processing is predominantly performed in the project environment using the :meth:`~resistics.project.projectTime.preProcess` method. There are several pre-processing options available in :meth:`~resistics.project.projectTime.preProcess` method, including:
 
-    - Data resampling :ref:`pre-process:Pre-processing timeseries data:Data resampling`
-    - Polarity reversal
-    - Scaling
-    - Calibration 
-    - Low, band and high pass filters
-    - Notch filter
-    - Data normalisation
-    - Interpolation to second
+    - :ref:`advanced/pre-process:Data resampling`
+    - :ref:`advanced/pre-process:Polarity reversal`
+    - :ref:`advanced/pre-process:Scaling`
+    - :ref:`advanced/pre-process:Calibration` 
+    - :ref:`advanced/pre-process:Low, band and high pass filtering`
+    - :ref:`advanced/pre-process:Notch filter`
+    - :ref:`advanced/pre-process:Data normalisation`
+    - :ref:`advanced/pre-process:Interpolation to second`
 
 Another preprocessing method of use, but not available within the :meth:`~resistics.project.projectTime.preProcess` method is gap filling. This can help increase the number of windows at long periods. 
 
-    - Gap filling 
+    - :ref:`advanced/pre-process:Gap filling` 
 
 In addition, there are lower levels APIs for performing these actions for advanced users. Please see the :doc:`API doc <../api>` for more information or check the :doc:`Cookbook <../cookbook>`.
 
@@ -229,7 +229,7 @@ Data normalisation normalises the data by diving by the norm of the data as calc
 Interpolation to second
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Resistics assumes that data is sampled on the second. For more information on this, please see :doc:`Time series formats <../formats/timeseries>` and :doc:`Interpolation to second <../formats/timeseries/interpolation-to-second>`. 
+Resistics assumes that data is sampled on the second. For more information on this, please see :doc:`time series formats <../formats/timeseries>` and :doc:`interpolation to second <../formats/timeseries/interpolation-to-second>`. 
 
 Gap filling
 ~~~~~~~~~~~
