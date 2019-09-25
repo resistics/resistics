@@ -38,7 +38,7 @@ Remote reference processing is no longer an advanced method. However, the exampl
 
     advanced/remote-reference.rst
     advanced/remote-reference-statistics.rst
-    advanced/remote-reference-masking.rst
+    advanced/remote-reference-with-config.rst
 
 Intersite processing
 ~~~~~~~~~~~~~~~~~~~~

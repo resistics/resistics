@@ -20,15 +20,15 @@ Resistics is a native Python 3 package for the processing of magnetotelluric (MT
 
 Latest news
 ~~~~~~~~~~~
-**2019-09-24:** Resistics is currently in beta mode. Updates are being made regularly. Currently the focus of updates for release 0.0.6 is:
+**2019-09-24:** Resistics is currently in beta mode and updates are being made regularly. The focus of updates for release 0.0.6 is:
 
-- More complete documentation with more examples. The tutorial is complete, but more examples are coming to cover advanced methods such as pre-processing, remote reference processing, inter-operability, remote reference statistics, intersite transfer functions. 
+- More complete documentation with more examples. The tutorial is complete, but additional examples are coming to cover advanced methods such as pre-processing, remote reference processing, inter-operability, remote reference statistics, intersite transfer functions. 
 - Speeding up of processing
 - Support for Phoenix data
 
 There is a chance that method and module names may change in the near future as they are an artefact of how the code grew up. For more information, please :doc:`contact us <contact>`.
 
-The latest version of resistics can be downloaded by specifying 0.0.6.dev1 when downloading using pip. 
+The latest development version of resistics can be downloaded by specifying 0.0.6.dev1 when downloading using pip. 
 
 .. code-block:: bash
     
@@ -52,7 +52,7 @@ Read more about the magnetotelluric method and resistics in the :doc:`Introducti
 
 Resistics uses a number of conventions which are described :doc:`here <conventions>`. Find out about the useful features of resistics in the :doc:`features <features>` section. Information about supported data and calibration formats is provided in the :doc:`formats <formats>` section.
 
-The :doc:`tutorial <tutorial>` section covers the resistics project environment and basic processing of magnetotelluric data. More advanced processing, including pre-processing of timeseries data, remote reference processing and remote reference statistics are detailed in the :doc:`advanced <advanced>` section. More specialised functionality or examples will be added in the :doc:`cookbook <cookbook>` as and when it is developed. A complete API reference can be found :doc:`here <modules>`. 
+The :doc:`tutorial <tutorial>` section covers the resistics project environment and basic processing of magnetotelluric data. More advanced processing, including pre-processing of timeseries data, remote reference processing and remote reference statistics are detailed in the :doc:`advanced <advanced>` section. Specialised functionality or examples of using lower level APIs will be added in the :doc:`cookbook <cookbook>` as and when it is developed. The :doc:`case studies <case-studies>` will cover the use of resistics to process complete field surveys. A complete API reference can be found :doc:`here <modules>`. 
 
 A roadmap for future development can be accessed :doc:`here <roadmap>`. Useful magnetotelluric references are provided in the :doc:`Bibliography <bibliography>`.
 
@@ -79,6 +79,7 @@ Resistics is available for free under the MIT licence. The resistics source code
     tutorial.rst
     advanced.rst
     cookbook.rst
+    case-studies.rst
     modules.rst
     roadmap.rst   
     bibliography.rst   

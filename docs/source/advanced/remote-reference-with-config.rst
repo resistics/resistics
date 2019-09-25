@@ -12,7 +12,7 @@
 .. |Zyy| replace:: Z\ :sub:`yy`
 .. |fs| replace:: f\ :sub:`s`
 
-Remote reference masking
-------------------------
+Remote reference with configuration
+-----------------------------------
 
 Coming soon...
