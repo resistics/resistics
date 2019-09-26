@@ -716,7 +716,7 @@ def viewStatisticCrossplot(
     crossplots: List[List[str]],
     **kwargs
 ) -> Union[plt.figure, None]:
-    """View statistic data for a single sampling frequency of a site
+    """View statistic crossplot data for a single sampling frequency of a site
     
     Parameters
     ----------
@@ -829,7 +829,7 @@ def viewStatisticCrossplot(
         if len(options["xlim"]) > 0:
             plt.xlim(options["xlim"])
         if len(options["ylim"]) > 0:
-            plt.ylim(options["ylim"])        
+            plt.ylim(options["ylim"])
         plt.xlabel(cplot[0], fontsize=plotfonts["axisLabel"])
         plt.ylabel(cplot[1], fontsize=plotfonts["axisLabel"])
         plt.grid(True)
@@ -844,6 +844,199 @@ def viewStatisticCrossplot(
         impath = projData.imagePath
         sampleFreqStr = fileFormatSampleFreq(sampleFreq)
         filename = "statCrossplot_{:s}_{:s}_{:s}_dec{:d}_efreq{:d}_{:s}".format(
+            stat,
+            site,
+            sampleFreqStr,
+            options["declevel"],
+            options["eFreqI"],
+            options["specdir"],
+        )
+        if options["maskname"] != "":
+            filename = "{}_{}".format(filename, options["maskname"])
+        savename = savePlot(impath, filename, fig)
+        projectText("Image saved to file {}".format(savename))
+    if options["show"]:
+        plt.show(block=options["plotoptions"]["block"])
+    if not options["show"] and options["save"]:
+        plt.close(fig)
+        return None
+    return fig
+
+
+def viewStatisticDensityplot(
+    projData: ProjectData,
+    site: str,
+    sampleFreq: Union[int, float],
+    stat: str,
+    crossplots: List[List[str]],
+    **kwargs
+) -> Union[plt.figure, None]:
+    """View statistic data as a density plot for a single sampling frequency of a site
+    
+    Parameters
+    ----------
+    projData : ProjectData
+        A project instance
+    site : str
+        The site for which to plot statistics
+    stat : str
+        The statistic to plot
+    sampleFreq : float
+        The sampling frequency for which to plot statistics
+    crossplots : List[List[str]]
+        The statistic element pairs to crossplot
+    declevel : int
+        The decimation level to plot
+    eFreqI : int
+        The evaluation frequency index
+    specdir : str
+        The spectra directory
+    maskname : str
+        Mask name         
+    xlim : List, optional
+        Limits for the x axis
+    ylim : List, optional
+        Limits for the y axis
+    maxcols : int
+        The maximum number of columns in the plots        
+    show : bool, optional
+        Show the spectra plot
+    save : bool, optional
+        Save the plot to the images directory
+    plotoptions : Dict, optional
+        Dictionary of plot options    
+
+    Returns
+    -------
+    matplotlib.pyplot.figure or None
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
+    """
+
+    from scipy.stats import kde
+    from scipy.interpolate import interpn
+    import matplotlib.colors as mcolors
+    from resistics.utilities.utilsPlotter import colorbar2dSpectra
+
+    options = {}
+    options["declevel"] = 0
+    options["eFreqI"] = 0
+    options["specdir"] = projData.config.configParams["Spectra"]["specdir"]
+    options["maskname"] = ""
+    options["xlim"] = []
+    options["ylim"] = []
+    options["maxcols"] = 2
+    options["show"] = True
+    options["save"] = False
+    options["plotoptions"] = plotOptionsSpec()
+    options = parseKeywords(options, kwargs)
+
+    projectText(
+        "Plotting density plot for statistic {}, site {} and sampling frequency {}".format(
+            stat, site, sampleFreq
+        )
+    )
+
+    statData = getStatisticDataForSampleFreq(
+        projData,
+        site,
+        sampleFreq,
+        stat,
+        declevel=options["declevel"],
+        specdir=options["specdir"],
+    )
+    statMeas = list(statData.keys())
+    # get the evaluation frequency
+    eFreq = statData[statMeas[0]].evalFreq[options["eFreqI"]]
+
+    # get the mask data
+    maskWindows = []
+    if options["maskname"] != "":
+        maskData = getMaskData(projData, site, options["maskname"], sampleFreq)
+        maskWindows = maskData.getMaskWindowsFreq(
+            options["declevel"], options["eFreqI"]
+        )
+
+    # plot information
+    nrows, ncols = getPlotRowsAndCols(options["maxcols"], len(crossplots))
+
+    plotfonts = options["plotoptions"]["plotfonts"]
+    fig = plt.figure(figsize=options["plotoptions"]["figsize"])
+    # suptitle
+    st = fig.suptitle(
+        "{} density plots for {}, sampling frequency {} Hz, decimation level {} and evaluation frequency {} Hz".format(
+            stat, site, sampleFreq, options["declevel"], eFreq
+        ),
+        fontsize=plotfonts["suptitle"],
+    )
+    st.set_y(0.98)
+
+    # now plot the data
+    for idx, cplot in enumerate(crossplots):
+        ax = plt.subplot(nrows, ncols, idx + 1)
+        plt.title("Crossplot {}".format(cplot), fontsize=plotfonts["title"])
+
+        plotAll1 = []
+        plotAll2 = []
+        for meas in statMeas:
+            stats = statData[meas].getStats(maskwindows=maskWindows)
+            plotI1 = statData[meas].winStats.index(cplot[0])
+            plotData1 = np.squeeze(stats[:, options["eFreqI"], plotI1])
+            plotI2 = statData[meas].winStats.index(cplot[1])
+            plotData2 = np.squeeze(stats[:, options["eFreqI"], plotI2])
+            # add to all data
+            if plotData1.size == 0:
+                continue
+            if plotData1.size == 1:
+                plotAll1 = plotAll1 + [float(plotData1)]
+                plotAll2 = plotAll2 + [float(plotData2)]                
+            else:
+                plotAll1 = plotAll1 + plotData1.tolist()
+                plotAll2 = plotAll2 + plotData2.tolist()                
+
+        plotAll1 = np.array(plotAll1)
+        plotAll2 = np.array(plotAll2)
+
+        nbins = 200
+        if len(options["xlim"]) > 0:
+            plt.xlim(options["xlim"])
+            rangex = options["xlim"]
+        else:
+            minx = np.percentile(plotAll1, 2)
+            maxx = np.percentile(plotAll1, 98)            
+            ax.set_xlim(minx, maxx)
+            rangex = [minx, maxx]
+        
+        if len(options["ylim"]) > 0:
+            plt.ylim(options["ylim"])
+            rangey = options["ylim"]
+        else:
+            miny = np.percentile(plotAll2, 2)
+            maxy = np.percentile(plotAll2, 98)            
+            ax.set_ylim(miny, maxy)
+            rangey = [miny, maxy]
+
+        plt.hist2d(
+            plotAll1,
+            plotAll2,
+            bins=(nbins, nbins),
+            range=[rangex, rangey],
+            cmap=plt.cm.inferno,
+        )
+
+        # axis format
+        plt.xlabel(cplot[0], fontsize=plotfonts["axisLabel"])
+        plt.ylabel(cplot[1], fontsize=plotfonts["axisLabel"])
+        plt.grid(True)
+        # set tick sizes
+        for label in ax.get_xticklabels() + ax.get_yticklabels():
+            label.set_fontsize(plotfonts["axisTicks"])
+
+    # plot format, show and save
+    # fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])
+    if options["save"]:
+        impath = projData.imagePath
+        sampleFreqStr = fileFormatSampleFreq(sampleFreq)
+        filename = "statDensityplot_{:s}_{:s}_{:s}_dec{:d}_efreq{:d}_{:s}".format(
             stat,
             site,
             sampleFreqStr,

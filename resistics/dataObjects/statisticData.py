@@ -523,7 +523,7 @@ class StatisticData(DataObject):
                 )
                 self.addColourbar(scat, cax, colourtitle, plotfonts)
             else:
-                fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92]) 
+                fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])
             plt.show()
 
         return fig
@@ -614,7 +614,7 @@ class StatisticData(DataObject):
 
         # show if the figure is not in keywords
         if "fig" not in kwargs:
-            fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])            
+            fig.tight_layout(rect=[0.02, 0.02, 0.98, 0.92])
             plt.show()
 
         return fig
@@ -685,7 +685,9 @@ class StatisticData(DataObject):
             else plt.figure(figsize=(4 * ncols, 5 * nrows))
         )
         st = fig.suptitle(
-            "{} crossplots for evaluation frequency: {}".format(self.statName, eFreq),
+            "{} crossplots for evaluation frequency: {:.3f} Hz".format(
+                self.statName, eFreq
+            ),
             fontsize=plotfonts["suptitle"],
         )
         st.set_y(0.98)
@@ -757,6 +759,139 @@ class StatisticData(DataObject):
                     kwargs["colortitle"] if "colortitle" in kwargs else "Value"
                 )
                 self.addColourbar(scat, cax, colourtitle, plotfonts)
+            plt.show()
+
+        return fig
+
+    def densityplot(self, eFreqI: int, **kwargs) -> plt.figure:
+        """Plots density plots of statistic components for evaluation frequency index
+
+        Notes
+        -----
+        By default, the density plots plotted are
+        statistic component 1 vs statistic component 2
+        statistic component 3 vs statistic component 4
+        etc
+
+        But density plots can be explicity set by using the crossplots keyword. They should be specified as a list of a list of strings
+        e.g.
+        crossplots = [[component2, component3], [component1, component4]]
+
+        Parameters
+        ----------
+        eFreqI : int
+            Evaluation frequency index
+        maskwindows : List, np.ndarray
+            Global windows to exclude              
+        crossplots : List[List[str]], optional
+            The parameters to crossplot
+        fig : matplotlib.pyplot.figure, optional
+            A figure object
+        plotfonts : Dict, optional
+            A dictionary of plot fonts
+        label : str, optional
+            Label for the plots
+        xlim : List, optional
+            Limits for the x axis
+        ylim : List, optional
+            Limits for the y axis
+        colortitle : str, optional
+            Title for the colourbar
+        legened : bool
+            Boolean flag for adding a legend
+        
+        Returns
+        -------
+        plt.figure
+            Matplotlib figure object            
+        """
+
+        # deal with maskwindows, which are global indices
+        maskWindows = kwargs["maskwindows"] if "maskwindows" in kwargs else []
+        plotIndices = self.getMaskedIndices(maskWindows)
+
+        # figure out the crossplots
+        if "crossplots" in kwargs:
+            crossplots = kwargs["crossplots"]
+        else:
+            crossplots = list(zip(self.winStats[::2], self.winStats[1::2]))
+
+        # plot parameters
+        nrows, ncols = self.getRowsCols(self.maxcols, numStats=len(crossplots))
+        eFreq = self.evalFreq[eFreqI]
+
+        plotfonts = kwargs["plotfonts"] if "plotfonts" in kwargs else getViewFonts()
+        fig = (
+            plt.figure(kwargs["fig"].number)
+            if "fig" in kwargs
+            else plt.figure(figsize=(4 * ncols, 5 * nrows))
+        )
+        st = fig.suptitle(
+            "{} density plots for evaluation frequency: {:.3f} Hz".format(
+                self.statName, eFreq
+            ),
+            fontsize=plotfonts["suptitle"],
+        )
+        st.set_y(0.98)
+
+        # now plot the data
+        for idx, cplot in enumerate(crossplots):
+            ax = plt.subplot(nrows, ncols, idx + 1)
+            plt.title(
+                "{} vs. {}".format(cplot[0], cplot[1]), fontsize=plotfonts["title"]
+            )
+            label = kwargs["label"] if "label" in kwargs else eFreq
+
+            # get plot data
+            plotI1 = self.winStats.index(cplot[0])
+            plotData1 = np.squeeze(self.stats[:, eFreqI, plotI1])
+            plotI2 = self.winStats.index(cplot[1])
+            plotData2 = np.squeeze(self.stats[:, eFreqI, plotI2])
+            if plotIndices:
+                plotData1 = plotData1[plotIndices]
+                plotData2 = plotData2[plotIndices]
+
+            nbins = 200
+            if "xlim" in kwargs:
+                plt.xlim(kwargs["xlim"])
+                rangex = kwargs["xlim"]
+            else:
+                minx = np.percentile(plotData1, 2)
+                maxx = np.percentile(plotData1, 98)
+                plt.xlim(minx, maxx)
+                rangex = [minx, maxx]
+
+            if "ylim" in kwargs:
+                plt.ylim(kwargs["ylim"])
+                rangey = kwargs["ylim"]
+            else:
+                miny = np.percentile(plotData2, 2)
+                maxy = np.percentile(plotData2, 98)
+                plt.ylim(miny, maxy)
+                rangey = [miny, maxy]
+
+            plt.hist2d(
+                plotData1,
+                plotData2,
+                bins=(nbins, nbins),
+                range=[rangex, rangey],
+                cmap=plt.cm.inferno,
+            )
+
+            # axis options
+            plt.xlabel("Value {}".format(cplot[0]), fontsize=plotfonts["axisLabel"])
+            plt.ylabel("Value {}".format(cplot[1]), fontsize=plotfonts["axisLabel"])
+            # set tick sizes
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_fontsize(plotfonts["axisTicks"])
+            plt.grid(True, ls="--")
+            # legend
+            if "legend" in kwargs and kwargs["legend"]:
+                plt.legend(loc=4)
+
+        # show if the figure is not in keywords
+        if "fig" not in kwargs:
+            fig.tight_layout(rect=[0.02, 0.02, 0.85, 0.92])
             plt.show()
 
         return fig
