@@ -287,7 +287,7 @@ def processSite(
     processor.process()
 
 
-def viewImpedance(projData: ProjectData, **kwargs) -> None:
+def viewImpedance(projData: ProjectData, **kwargs) -> List[plt.figure]:
     """View impedance tensor data
 
     Parameters
@@ -327,6 +327,7 @@ def viewImpedance(projData: ProjectData, **kwargs) -> None:
     options = parseKeywords(options, kwargs)
 
     # loop over sites
+    figs = []
     for site in options["sites"]:
         siteData = projData.getSiteData(site)
         sampleFreqs = set(siteData.getSampleFreqs())
@@ -400,6 +401,7 @@ def viewImpedance(projData: ProjectData, **kwargs) -> None:
             st.set_y(0.99)
             fig.tight_layout()
             fig.subplots_adjust(top=0.92)
+            figs.append(fig)
 
             if options["save"]:
                 impath = projData.imagePath
@@ -413,6 +415,8 @@ def viewImpedance(projData: ProjectData, **kwargs) -> None:
             plt.close("all")
         else:
             plt.show(block=options["plotoptions"]["block"])
+    
+    return figs
 
 
 def viewTipper(projData: ProjectData, **kwargs) -> None:
