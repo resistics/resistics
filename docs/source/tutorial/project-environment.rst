@@ -191,7 +191,6 @@ Site timelines can also be viewed using the :meth:`~resistics.dataObjects.siteDa
 
 Complete example scripts
 ~~~~~~~~~~~~~~~~~~~~~~~~
-
 For clarity, the complete example scripts are provided here.
 
 The create project script:

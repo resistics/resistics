@@ -191,7 +191,6 @@ The transfer function data can be plotted using the :meth:`~resistics.dataObject
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For clarity, the complete example script is provided below.
 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py

@@ -42,7 +42,6 @@ Remote reference processing is no longer an advanced method. However, the exampl
 
 Intersite processing
 ~~~~~~~~~~~~~~~~~~~~
-
 Intersite processing can be useful in certain cases. For more details on intersite processing and why this is useful, see the paper,
 
 | `The Telluric-Magnetotelluric Method <https://www.researchgate.net/publication/260919094_The_Telluric-Magnetotelluric_Method>`_

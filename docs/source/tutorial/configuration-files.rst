@@ -103,7 +103,6 @@ Now the plot using the new configuration parameters (8 decimation levels with 5 
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is provided below.
 
 .. literalinclude:: ../../../examples/tutorial/usingConfigFiles.py

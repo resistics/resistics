@@ -273,7 +273,6 @@ Using the second option requires specification of decimation level and evaluatio
 
 The impact of masks on statistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 A more useful visualisation of masks is to see how removing selected time windows effects the statistics. In the :doc:`Statistics <statistics>` section, the plotting of statistics was demonstrated. Plotting statistics with masks applied is similar.
 
 Load the project and use the :meth:`~resistics.project.projectMask.getMaskData` method of the :mod:`~resistics.project.projectMask` module to open up a previous calculated mask dataset at a sampling frequency of 4096 Hz.
@@ -437,7 +436,6 @@ Now that masks have been calculated, the next stage is to use the masks in the t
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example scripts are provided below.
 
 For calculating masks from statistics:

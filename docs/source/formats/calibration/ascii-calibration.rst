@@ -17,7 +17,6 @@ Resistics will automatically convert these units to:
 
 Naming in the project environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 When using the project environment, resistics automatically searches for calibration files in the calData folder. 
 Internal format ASCII files should be named according to the following specification:
 
@@ -43,7 +42,6 @@ As can be seen, there is no ability to distinguish different sensors with the sa
 
 Example
 ~~~~~~~
-
 The internal ASCII format calibration file will not usually be provided and will have to be created from scratch. The :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` class provides the handy :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.writeInternalTemplate` method for producing a template internal ASCII format calibration file. A template can be made as follows:
 
 .. literalinclude:: ../../../../examples/formats/calibrationInductionExample.py
@@ -102,7 +100,6 @@ This produces the following plot:
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the example script in full.
 
 .. literalinclude:: ../../../../examples/formats/calibrationInductionExample.py

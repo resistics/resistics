@@ -91,7 +91,6 @@ In comparison, the transfer function with just the mask.
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is provided below.
 
 .. literalinclude:: ../../../examples/tutorial/datetimeConstraints.py

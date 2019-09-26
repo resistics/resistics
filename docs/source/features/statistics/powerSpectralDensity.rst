@@ -1,6 +1,5 @@
 Power Spectral Density
-======================
-
+----------------------
 
 .. figure:: ../../_images/timePowerSpectralDensity.png
     :align: center

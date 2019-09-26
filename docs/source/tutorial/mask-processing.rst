@@ -60,7 +60,6 @@ Repeating the process for the mask with additional transfer function constraints
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is provided below.
 
 .. literalinclude:: ../../../examples/tutorial/runWithMasks.py

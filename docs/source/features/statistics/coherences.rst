@@ -1,5 +1,5 @@
 Coherence
-=========
+---------
 
 Coherence is a measure of the causality between input and output in a linear system. In the magnetotelluric linear system stated below,
 

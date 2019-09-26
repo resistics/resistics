@@ -110,7 +110,6 @@ Resistics can automatically save plots as images in the project images directory
 
 Complete example scripts
 ~~~~~~~~~~~~~~~~~~~~~~~~
-
 For clarity, the complete example scripts are provided here.
 
 .. literalinclude:: ../../../examples/tutorial/viewTime.py

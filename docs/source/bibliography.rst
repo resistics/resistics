@@ -1,6 +1,5 @@
 Bibliography
 ------------
-
 The following are useful papers on the subject of magnetotelluric data processing.
 
 .. [GAM79] Gamble, T. D., Goubau, W. M., & Clarke, J. (1979). Magnetotellurics with a remote magnetic reference. Geophysics, 44(1), 53-68.

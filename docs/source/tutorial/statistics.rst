@@ -267,11 +267,8 @@ In all of these cases, a 0 is being passed to the plotting methods. This 0 is th
 
     Transfer function data plotted for evaluation frequency 22.627417 Hz using the :meth:`~resistics.dataObjects.statisticData.StatisticData.view` method.
 
-
-
 Statistics across time series measurements
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 The above examples were reading in statistic data for a single measurement. However, in many cases, the statistics over all the time series measurements of a certain sampling frequency in a site are of more interest. In order to plot and view these, the methods available in the :mod:`~resistics.project.projectStatistics` module will be more useful. The module :mod:`~resistics.project.projectStatistics` has two plotting methods:
 
 - :meth:`~resistics.project.projectStatistics.viewStatistic`
@@ -349,7 +346,6 @@ Up until now, statistics have been used to investigate the variance of the time 
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is provided below.
 
 .. literalinclude:: ../../../examples/tutorial/usingStatistics.py

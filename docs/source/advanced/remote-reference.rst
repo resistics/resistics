@@ -27,6 +27,8 @@ The example here will deal with following:
 
 Magnetotelluric data from northern Switzerland is noisy, particularly in the dead band due to the poor signal to noise ratio when accouting for the environmental noise, but at other evaluation frequencies too. Further, there is biasing and coherent sources of eletromagnetic noise. The hope is to use remote reference processing to help improve the impedance tensor estimates.
 
+Setting up the project
+~~~~~~~~~~~~~~~~~~~~~~
 Begin as usual by creating our project and two sites to put our data in.
 
 .. literalinclude:: ../../../examples/advanced/remoteCreate.py
@@ -78,6 +80,8 @@ And printing out the project information and site information for the  using sho
     :linenos:
     :language: text
 
+Pre-processing
+~~~~~~~~~~~~~~
 As stated earlier, the project consists of:
 
 - local site M6 with several sampling frequencies
@@ -183,6 +187,8 @@ First the data is plotted without any filtering and then with a 4 Hz low pass fi
 
     Site M6 vs. Remote filtered to 4 Hz. The longer period data is easier to see here, though M6 still has much more noise in the recordings. 
 
+Single site impedance tensor
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The next step is to process the data, in the first instance using simple single site processing. Single site processing should be familiar from the :doc:`Tutorial <../tutorial>` and begins with calculating the spectra and continues with calculating the magnetotellruic transfer function and plotting the impedance tensor.
 
 .. literalinclude:: ../../../examples/advanced/remoteRun.py
@@ -216,7 +222,11 @@ Howver, of more interest for this example is the impedance tensor estimates usin
 
     Single site impedance tensor estimates for the Remote site at 128 Hz
 
-Neither of the estimates are great. Site Remote looks poor and noisy. Site M6 appears to be biased in the dead band with the phase going to near 0. However, for the time being, continue to perform standard remote reference processing using the :meth:`~resistics.project.projectTransferFunction.processProject` method of module :mod:`~resistics.project.projectTransferFunction`.
+Neither of the estimates are great. Site Remote looks poor and noisy. Site M6 appears to be biased in the dead band with the phase going to near 0. However, for the time being, continue to perform standard remote reference processing.
+
+Remote reference impedance tensor
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Standard remote reference processing is performed using the :meth:`~resistics.project.projectTransferFunction.processProject` method of module :mod:`~resistics.project.projectTransferFunction`.
 
 .. literalinclude:: ../../../examples/advanced/remoteRun.py
     :linenos:
@@ -235,6 +245,8 @@ Again, the impedance tensor has been plotted and the plot is provided below.
 
     Standard remote reference impedance tensor estimate for Site M6.
 
+Single site statistics
+~~~~~~~~~~~~~~~~~~~~~~
 As a next step, calculate single site statistics separately for M6 and Remote, produce a simple coherence mask with a threshold of 0.8 and redo the single site processing. For more information about statistics, please see the :doc:`tutorial <../tutorial>` and :doc:`statistics <../tutorial/statistics>`.  
 
 .. literalinclude:: ../../../examples/advanced/remoteRun.py
@@ -274,8 +286,10 @@ Coherence masking has done little to improve the impedance tensor estimates for 
 
     Remote reference impedance tensor estimates for Site M6 at 128 Hz using a coherency mask on the Remote data excluding windows with coherence |Ex|-|Hy| or |Ey|-|Hx| below 0.8.
 
-The resultant remote reference impedance tensor estimate for Site M6 has improved in some places, mainly in the |Ey||Hx| polarisation. However, after a period of 10\ :sup:`2` seconds, the results are poor. This matches the single site impedance tensor for Remote after 10\ :sup:`2` seconds, where the results are equally incorrect, possibly because of too few windows.
+The resultant remote reference impedance tensor estimate for Site M6 has improved in some places, mainly in the |Ey|-|Hx| polarisation. However, after a period of 10\ :sup:`2` seconds, the results are poor. This matches the single site impedance tensor for Remote after 10\ :sup:`2` seconds, where the results are equally incorrect, possibly because of too few windows.
 
+Date and time constraints
+~~~~~~~~~~~~~~~~~~~~~~~~~
 Finally, another way to restrict the data being used for remote reference processing is to use datetime restrictions. Datetime restrictions were introduced in the :doc:`tutorial <../tutorial>` and :doc:`datetime constraints <../tutorial/date-time-constraints>`.
 
 .. literalinclude:: ../../../examples/advanced/remoteRun.py
@@ -292,3 +306,19 @@ Finally, another way to restrict the data being used for remote reference proces
     Remote reference impedance tensor estimates of Site M6 with datetime constraints using only night time data.
 
 In the next section, remote reference statistics will be introduced. These are different to single site statistics in that they combine data from the local site and remote reference site.
+
+Complete example scripts
+~~~~~~~~~~~~~~~~~~~~~~~~
+For the purposes of clarity, the complete example scripts are provided below.
+
+For pre-processing:
+
+.. literalinclude:: ../../../examples/advanced/remotePreprocess.py
+    :linenos:
+    :language: python
+
+For estimating imepdance tensors:
+
+.. literalinclude:: ../../../examples/advanced/remoteRun.py
+    :linenos:
+    :language: python

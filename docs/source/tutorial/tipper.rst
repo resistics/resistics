@@ -125,7 +125,6 @@ The tipper result is given in the below figure. The result here is different to 
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is provided below.
 
 .. literalinclude:: ../../../examples/tutorial/simpleRunWithTipper.py

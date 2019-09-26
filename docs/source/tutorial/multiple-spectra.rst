@@ -96,7 +96,6 @@ The new set of spectra data with :python:`specdir = "notch"` are saved in the fo
     ├── images
     └── mtProj.prj
 
-
 To view the new spectra data, **specdir** needs to be specified in the calls to :meth:`~resistics.project.projectSpectra.viewSpectra`, :meth:`~resistics.project.projectSpectra.viewSpectraSection` and :meth:`~resistics.project.projectSpectra.viewSpectraStack`. An example is provided below using :meth:`~resistics.project.projectSpectra.viewSpectraSection`.
 
 .. literalinclude:: ../../../examples/tutorial/multipleSpectra.py
@@ -178,7 +177,6 @@ More information about configuration files is provided in the :doc:`Configuratio
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is provided below.
 
 .. literalinclude:: ../../../examples/tutorial/multipleSpectra.py

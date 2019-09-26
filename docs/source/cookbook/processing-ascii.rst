@@ -198,7 +198,6 @@ The tipper estimate is shown below.
 
 Changing the default parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 As described in the :doc:`Using configuration files <../tutorial/configuration-files>` section in the :doc:`Tutorial <../tutorial>`, configuration files can be used to change the default parameterisation. The default parameters are not necessarily ideal for long period MT stations sampled at low sampling frequencies (here, 0.5 Hz). Therefore, it could be sensible to change the parameters here. 
 
 A new configuration file has been made and is included below:
@@ -288,7 +287,6 @@ The next question to ask is whether statistics could improve the result.
 
 Using statistics and masks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 Begin once more by loading the project and configuration to continue working with the set of spectra where |Hy| has had a polarity reversal.
 
 .. literalinclude:: ../../../cookbook/usingAscii/runWithStatistics.py
@@ -344,7 +342,6 @@ Note, that this was not an effort to optimise the result, but rather an example 
 
 Complete example scripts
 ~~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example scripts are provided below.
 
 Create the project and a site:

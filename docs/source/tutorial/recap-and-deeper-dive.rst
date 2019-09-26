@@ -253,7 +253,6 @@ The output from this loop is shown below.
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is provided below.
 
 .. literalinclude:: ../../../examples/tutorial/usingWindowSelector.py

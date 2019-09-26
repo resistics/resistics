@@ -31,7 +31,6 @@ Resistics will automatically convert these units to:
 
 Naming in the project environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 When using the project environment, resistics automatically searches for calibration files in the calData folder. 
 Metronix files should be named according to the following specification:
 
@@ -57,7 +56,6 @@ Then the file could be named:
 
 Example
 ~~~~~~~
-
 The class :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` can be used to read in Metronix calibration files. 
 
 .. literalinclude:: ../../../../examples/formats/calibrationMetronixExample.py
@@ -162,7 +160,6 @@ Chopper is True as the calibration data written out was for chopper on. There is
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the example script in full.
 
 .. literalinclude:: ../../../../examples/formats/calibrationMetronixExample.py

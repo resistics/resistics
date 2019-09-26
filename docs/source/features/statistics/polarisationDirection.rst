@@ -1,5 +1,5 @@
 Polarisation Directions
-=======================
+-----------------------
 
 The polarisation of light is the direction in which the electric field osciallates. 
 

@@ -202,7 +202,6 @@ All the above are a means to understand the dominant frequencies in the time ser
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is provided below.
 
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py

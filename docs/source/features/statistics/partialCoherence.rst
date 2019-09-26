@@ -1,7 +1,5 @@
 Partial Coherences
-==================
-
-
+------------------
 
 .. figure:: ../../_images/histPartialCoherence.png
     :align: center

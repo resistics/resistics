@@ -35,7 +35,6 @@ Resistics will automatically convert these units to:
 
 Naming in the project environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 When using the project environment, resistics automatically searches for calibration files in the calData folder. 
 RSP files should be named according to the following specification:
 
@@ -76,7 +75,6 @@ Therefore, the file could be named:
 
 Example
 ~~~~~~~
-
 The class :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` can be used to read in RSP calibration files. 
 
 .. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
@@ -176,7 +174,6 @@ The resultant figure is:
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the example script in full.
 
 .. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
