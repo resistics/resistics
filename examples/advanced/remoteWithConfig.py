@@ -4,31 +4,46 @@ from resistics.project.projectSpectra import calculateSpectra
 from resistics.project.projectTransferFunction import processProject, viewImpedance
 from resistics.project.projectStatistics import calculateRemoteStatistics, viewStatistic
 from resistics.project.projectMask import newMaskData, calculateMask
+from resistics.utilities.utilsPlotter import plotOptionsTransferFunction, getPaperFonts
 
+plotOptions = plotOptionsTransferFunction(plotfonts=getPaperFonts())
 projectPath = Path("remoteProject")
-projData = loadProject(projectPath, "remoteConfig.ini")
-calculateSpectra(projData, sites=["M6", "Remote"])
-projData.refresh()
-processProject(projData, sites=["M6", "Remote"])
-viewImpedance(projData, sites=["M6", "Remote"], oneplot=False, save=True, show=False)
+proj = loadProject(projectPath, "remoteConfig.ini")
+
+calculateSpectra(proj, sites=["M6", "Remote"])
+proj.refresh()
+
+# single site processing
+processProject(proj, sites=["M6", "Remote"])
+figs = viewImpedance(
+    proj,
+    sites=["M6", "Remote"],
+    sampleFreqs=[128],    
+    oneplot=False,
+    plotoptions=plotOptions,
+    save=False,
+    show=False,
+)
+figs[0].savefig(Path(proj.imagePath, "singleSiteM6_128_dec8_5.png"))
+figs[1].savefig(Path(proj.imagePath, "singleSiteRemote_128_dec8_5.png"))
 
 # calculate the statistic we are interested in
-calculateRemoteStatistics(projData, "Remote", sites=["M6"], sampleFreqs=[128])
+calculateRemoteStatistics(proj, "Remote", sites=["M6"], sampleFreqs=[128])
 
 # generate mask
-maskData = newMaskData(projData, 128)
+maskData = newMaskData(proj, 128)
 maskData.setStats(["RR_coherenceEqn"])
 maskData.addConstraint(
     "RR_coherenceEqn", {"ExHyR-HyHyR": [0.8, 1.0], "EyHxR-HxHxR": [0.8, 1.0]}
 )
 # finally, lets give maskData a name, which will relate to the output file
 maskData.maskName = "rr_cohEqn_80_100"
-calculateMask(projData, maskData, sites=["M6"])
+calculateMask(proj, maskData, sites=["M6"])
 maskData.printInfo()
 
 # process with masks
 processProject(
-    projData,
+    proj,
     sites=["M6"],
     sampleFreqs=[128],
     remotesite="Remote",
@@ -39,12 +54,15 @@ processProject(
     postpend="rr_cohEqn_80_100_night",
 )
 
-viewImpedance(
-    projData,
+figs = viewImpedance(
+    proj,
     sites=["M6"],
     sampleFreqs=[128],
     postpend="rr_cohEqn_80_100_night",
     oneplot=False,
-    save=True,
+    plotoptions=plotOptions,
+    save=False,
     show=False,
 )
+figs[0].savefig(Path(proj.imagePath, "remoteReferenceM6_128_RR_dec8_5_coh_datetime_01.png"))
+
