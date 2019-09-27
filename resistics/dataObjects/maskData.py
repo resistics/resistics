@@ -106,24 +106,30 @@ class MaskData(DataObject):
         self.stats = stats
         self.prepareDicts()
 
-    def addConstraint(self, stat: str, constraint, insideOut=[]) -> None:
+    def addConstraint(
+        self, stat: str, constraint: Dict[str, List], insideOut: List[str] = []
+    ) -> None:
         """Add a constraint for all levels and evaluation frequencies
 
         Parameters
         ----------
         stat : str
             The statistic to be constrained
-        constraint : 
-            The constraint parameter
-        insideOut : (optional) 
-            Inside out parameters
+        constraint : Dict
+            The constraint parameter specified as {"statistic component": [valueMin, valueMax]}
+        insideOut : List[str], optional with default as range specified is range to include
+            The constraints for which the range specified in the constraint is the range to exclude rather than include
         """
 
         for ilevel in range(0, self.numLevels):
             self.addConstraintLevel(stat, constraint, ilevel, insideOut)
 
     def addConstraintLevel(
-        self, stat: str, constraint, declevel: int, insideOut=[]
+        self,
+        stat: str,
+        constraint: Dict[str, List],
+        declevel: int,
+        insideOut: List[str] = [],
     ) -> None:
         """Add a constraint for a whole decimation level
 
@@ -131,19 +137,24 @@ class MaskData(DataObject):
         ----------
         stat : str
             The statistic to be constrained
-        constraint : 
-            The constraint parameter
+        constraint : Dict
+            The constraint parameter specified as {"statistic component": [valueMin, valueMax]}
         declevel : int
             The decimation level
-        insideOut : (optional) 
-            Inside out parameters
+        insideOut : List[str], optional with default as range specified is range to include
+            The constraints for which the range specified in the constraint is the range to exclude rather than include
         """
 
         for eIdx, eFreq in enumerate(self.evalFreq[declevel]):
             self.addConstraintFreq(stat, constraint, declevel, eIdx, insideOut)
 
     def addConstraintFreq(
-        self, stat: str, constraint, declevel: int, eIdx: int, insideOut=[]
+        self,
+        stat: str,
+        constraint: Dict[str, List],
+        declevel: int,
+        eIdx: int,
+        insideOut: List[str] = [],
     ) -> None:
         """Add a constraint for an evaluation frequency
 
@@ -151,20 +162,17 @@ class MaskData(DataObject):
         ----------
         stat : str
             The statistic to be constrained
-        constraint : 
-            The constraint parameter
+        constraint : Dict
+            The constraint parameter specified as {"statistic component": [valueMin, valueMax]}
         declevel : int
             The decimation level
         eIdx : int
             Evaluation Frequency index
-        insideOut : (optional) 
-            Inside out parameters
+        insideOut : List[str], optional with default as range specified is range to include
+            The constraints for which the range specified in the constraint is the range to exclude rather than include
         """
 
         eFreq = self.evalFreq[declevel][eIdx]
-        # insideOut = []
-        # if "insideOut" in kwargs:
-        #     insideOut = kwargs["insideOut"]
         for key in constraint:
             self.constraints[eFreq][stat][key] = constraint[key]
             if key in insideOut:
@@ -267,7 +275,7 @@ class MaskData(DataObject):
             levelMasked.update(self.maskWindows[eFreq])
             numMasked.append(len(self.maskWindows[eFreq]))
             freqLabel.append("{:.5f}".format(eFreq))
-        
+
         numMaskedTotal = len(levelMasked)
         levelMasked = np.array(sorted(list(levelMasked)))
         global2localMap = {}
