@@ -18,7 +18,7 @@ def getDataDirectoryFormats() -> List[str]:
         A list of allowable data directory formats
     """
 
-    return ["meas", "run", "phnx"]
+    return ["meas", "run", "phnx", "lemi"]
 
 
 def getDirectoryContents(path: str) -> Tuple[List, List]:
