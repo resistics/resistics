@@ -183,7 +183,6 @@ Reading in the internal data is very similar to reading in the ASCII data. Anoth
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is shown below.
 
 .. literalinclude:: ../../../../examples/formats/asciiReaderExamples.py

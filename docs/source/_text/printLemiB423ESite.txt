@@ -1,0 +1,33 @@
+23:52:41 DataReaderLemiB423E: ####################
+23:52:41 DataReaderLemiB423E: DATAREADERLEMIB423E INFO BEGIN
+23:52:41 DataReaderLemiB423E: ####################
+23:52:41 DataReaderLemiB423E: Data Path = timeData\lemiB423E_site\lemi01
+23:52:41 DataReaderLemiB423E: Global Headers
+23:52:41 DataReaderLemiB423E: {'sample_freq': 500.0, 'num_samples': 5399501, 'start_time': '09:20:34.000000', 'start_date': '2019-05-27', 'stop_time': '12:20:33.000000', 'stop_date': '2019-05-27', 'meas_channels': 4}
+23:52:41 DataReaderLemiB423E: Channels found:
+23:52:41 DataReaderLemiB423E: ['Ex', 'Ey', 'E3', 'E4']
+23:52:41 DataReaderLemiB423E: Channel Map
+23:52:41 DataReaderLemiB423E: {'Ex': 0, 'Ey': 1, 'E3': 2, 'E4': 3}
+23:52:41 DataReaderLemiB423E: Channel Headers
+23:52:41 DataReaderLemiB423E: Ex
+23:52:41 DataReaderLemiB423E: {'sample_freq': 500.0, 'num_samples': 5399501, 'start_time': '09:20:34.000000', 'start_date': '2019-05-27', 'stop_time': '12:20:33.000000', 'stop_date': '2019-05-27', 'ats_data_file': '1558948829.B423', 'sensor_type': '', 'channel_type': 'Ex', 'ts_lsb': 1.0, 'scaling_applied': False, 'pos_x1': 0.0, 'pos_x2': 60.0, 'pos_y1': 0.0, 'pos_y2': 1.0, 'pos_z1': 0.0, 'pos_z2': 1.0, 'sensor_sernum': 0, 'gain_stage1': 1, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0}
+23:52:41 DataReaderLemiB423E: Ey
+23:52:41 DataReaderLemiB423E: {'sample_freq': 500.0, 'num_samples': 5399501, 'start_time': '09:20:34.000000', 'start_date': '2019-05-27', 'stop_time': '12:20:33.000000', 'stop_date': '2019-05-27', 'ats_data_file': '1558948829.B423', 'sensor_type': '', 'channel_type': 'Ey', 'ts_lsb': 1.0, 'scaling_applied': False, 'pos_x1': 0.0, 'pos_x2': 1.0, 'pos_y1': 0.0, 'pos_y2': 60.7, 'pos_z1': 0.0, 'pos_z2': 1.0, 'sensor_sernum': 0, 'gain_stage1': 1, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0}
+23:52:41 DataReaderLemiB423E: E3
+23:52:41 DataReaderLemiB423E: {'sample_freq': 500.0, 'num_samples': 5399501, 'start_time': '09:20:34.000000', 'start_date': '2019-05-27', 'stop_time': '12:20:33.000000', 'stop_date': '2019-05-27', 'ats_data_file': '1558948829.B423', 'sensor_type': '', 'channel_type': 'E3', 'ts_lsb': 1.0, 'scaling_applied': False, 'pos_x1': 0.0, 'pos_x2': 1.0, 'pos_y1': 0.0, 'pos_y2': 1.0, 'pos_z1': 0.0, 'pos_z2': 1.0, 'sensor_sernum': 0, 'gain_stage1': 1, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0}
+23:52:41 DataReaderLemiB423E: E4
+23:52:41 DataReaderLemiB423E: {'sample_freq': 500.0, 'num_samples': 5399501, 'start_time': '09:20:34.000000', 'start_date': '2019-05-27', 'stop_time': '12:20:33.000000', 'stop_date': '2019-05-27', 'ats_data_file': '1558948829.B423', 'sensor_type': '', 'channel_type': 'E4', 'ts_lsb': 1.0, 'scaling_applied': False, 'pos_x1': 0.0, 'pos_x2': 1.0, 'pos_y1': 0.0, 'pos_y2': 1.0, 'pos_z1': 0.0, 'pos_z2': 1.0, 'sensor_sernum': 0, 'gain_stage1': 1, 'gain_stage2': 1, 'hchopper': 0, 'echopper': 0}
+23:52:41 DataReaderLemiB423E: Note: Field units used. Physical data has units mV/km for electric fields and mV for magnetic fields
+23:52:41 DataReaderLemiB423E: Note: To get magnetic field in nT, please calibrate
+23:52:41 DataReaderLemiB423E: ####################
+23:52:41 DataReaderLemiB423E: DATAREADERLEMIB423E INFO END
+23:52:41 DataReaderLemiB423E: ####################
+23:52:41 DataReaderLemiB423E Data File List: ####################
+23:52:41 DataReaderLemiB423E Data File List: DATAREADERLEMIB423E DATA FILE LIST INFO BEGIN
+23:52:41 DataReaderLemiB423E Data File List: ####################
+23:52:41 DataReaderLemiB423E Data File List: Data File          Sample Ranges
+23:52:41 DataReaderLemiB423E Data File List: timeData\lemiB423E_site\lemi01\1558948829.B423             0 - 5399500
+23:52:41 DataReaderLemiB423E Data File List: Total samples = 5399501
+23:52:41 DataReaderLemiB423E Data File List: ####################
+23:52:41 DataReaderLemiB423E Data File List: DATAREADERLEMIB423E DATA FILE LIST INFO END
+23:52:41 DataReaderLemiB423E Data File List: ####################

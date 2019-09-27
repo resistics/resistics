@@ -16,6 +16,7 @@ Resistics currently supports five data formats for reading:
 
 - :doc:`ATS <timeseries/ATS-timeseries>`
 - :doc:`SPAM <timeseries/SPAM-timeseries>`
+- :doc:`Lemi B423 <timeseries/LemiB423-timeseries>`
 - :doc:`Phoenix <timeseries/Phoenix-timeseries>`
 - :doc:`ASCII <timeseries/ascii-timeseries>`
 - :doc:`resistics internal binary format <timeseries/internal-binary-format>` based on numpy save
@@ -78,6 +79,7 @@ Whenever operating with multiple different file formats in one project, it is be
 
     timeseries/ATS-timeseries.rst
     timeseries/SPAM-timeseries.rst
+    timeseries/LemiB423-timeseries.rst
     timeseries/Phoenix-timeseries.rst
     timeseries/ascii-timeseries.rst
     timeseries/internal-binary-format.rst

@@ -44,7 +44,7 @@ Resistics currently supports the reading in of ATS, SPAM, Phoenix and ASCII data
 Whilst other codes exist, resistics was written for the following purpose:
 
 - Be an easy-to-use, native Python code for processing magnetotelluric data
-- Allow seamless integration of different data types including: ATS, SPAM, Phoenix and ASCII
+- Allow seamless integration of different data types including: ATS, SPAM, Lemi, Phoenix and ASCII
 - Replicate existing functionality available in other codes but allow them to be easily extended in the future
 - Allow statistics based data investigation and selection
 - Incorporate signal processing methods to improve data quality

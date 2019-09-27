@@ -198,7 +198,6 @@ Plotting the two time data objects on the same plot results in the image below.
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is shown below.
 
 .. literalinclude:: ../../../../examples/formats/spamReaderExamples.py

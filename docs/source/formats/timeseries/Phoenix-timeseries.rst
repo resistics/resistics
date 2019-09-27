@@ -179,7 +179,6 @@ And then plot both the original data and the internally formatted data on the sa
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is shown below.
 
 .. literalinclude:: ../../../../examples/formats/phoenixReaderExamples.py

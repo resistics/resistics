@@ -102,7 +102,6 @@ The figure shows that the interpolated and original data are close, but the samp
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is shown below.
 
 .. literalinclude:: ../../../../examples/formats/interpolationToSecond.py

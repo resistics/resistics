@@ -169,7 +169,6 @@ Replotting the data now shows that the two are comparable.
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is shown below.
 
 .. literalinclude:: ../../../../examples/formats/internalReaderExamples.py

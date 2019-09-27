@@ -138,7 +138,7 @@ The resultant remote reference impedance tensor estimate for Site M6 is shown be
 
 In general, the results are comparable with the other decimation/windowing schemes and are better in some places such as the long periods, and similar in others.
 
-Finally, as an additional test, another mask is applied, which is the single site mask for Remote excluding Remote windows with coherence |Ex|-|Hy| or |Ey|-|Hx| below 0.8.
+As an additional test, another mask is applied, which is the single site mask for Remote excluding Remote windows with coherence |Ex|-|Hy| or |Ey|-|Hx| below 0.8.
 
 .. literalinclude:: ../../../examples/advanced/remoteManualWindows.py
     :linenos:
@@ -155,9 +155,26 @@ Finally, as an additional test, another mask is applied, which is the single sit
 
 The result here is not so good, but it has reduced the biasing in the dead band where previously phases were reaching 0. With extra work and configuration testing, this may be promising.
 
+For a last try, variable single site coherence thresholds could be used to limit the Remote data using the :meth:`~resistics.dataObjects.maskData.MaskData.addConstraintLevel` method of :class:`~resistics.dataObjects.maskData.MaskData`. An example and the result are provided below.
+
+.. literalinclude:: ../../../examples/advanced/remoteManualWindows.py
+    :linenos:
+    :language: python
+    :lines: 126-160
+    :lineno-start: 126
+
+.. figure:: ../../../examples/advanced/remoteProject/images/remoteReferenceM6_128_RR_man8_5_cohvar_datetime_01.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Remote reference impedance tensor estimates for Site M6 at 128 Hz using 8 decimation levels and 5 evaluation frequencies per level with a custom window size per decimation level. Masks and time constraints are applied. An additional mask is applied for Remote excluding Remote windows with coherence |Ex|-|Hy| or |Ey|-|Hx| below thresholds which are specified individually for each decimation level.
+
 .. note::
 
     The data for this example has come from a field survey of northern Switzerland in 2016. This data is explored in more detail in a :doc:`case study <../case-studies/switzerland-2016>`.
+
+
 
 Complete example scripts
 ~~~~~~~~~~~~~~~~~~~~~~~~

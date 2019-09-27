@@ -178,7 +178,6 @@ The same exercise of reading back the ascii data and comparing it to the origina
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
-
 For the purposes of clarity, the complete example script is shown below.
 
 .. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
