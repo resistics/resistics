@@ -1,6 +1,5 @@
-from pathlib import Path
+from configuration import intersitePath
 from resistics.project.projectIO import newProject
 
-projectPath = Path("intersiteProject")
 refTime = "2019-05-27 00:00:00"
-newProject(projectPath, refTime)
+newProject(intersitePath, refTime)
