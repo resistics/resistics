@@ -281,7 +281,7 @@ The Lemi B423E telluric format is similar to the Lemi B423 format. However, ther
 To generate headers for a measurement, the following information needs to be provided:
 
 - The path to the folder with the Lemi B423E data files.
-- The sampling frequency in Hz of the data. In the above example, 500Hz. 
+- The sampling frequency in Hz of the data. In the above example, 500 Hz. 
 - dx: the |Ex| dipole length
 - dy: the |Ey| dipole length
 - ex: The channel which is |Ex|. This is one of |E1|, |E2|, |E3| or |E4|
