@@ -37,7 +37,7 @@ The preprocessing options are explained in more detail below. The data is the sa
 .. literalinclude:: ../../../examples/advanced/preprocessResample.py
     :linenos:
     :language: python
-    :lines: 1-6
+    :lines: 1-5
     :lineno-start: 1
 
 For plotting the time data, different plot options are used to give larger fonts. Plot fonts have been defined as follows:
@@ -45,8 +45,8 @@ For plotting the time data, different plot options are used to give larger fonts
 .. literalinclude:: ../../../examples/advanced/preprocessResample.py
     :linenos:
     :language: python
-    :lines: 8-9
-    :lineno-start: 8
+    :lines: 7-8
+    :lineno-start: 7
 
 Data resampling
 ~~~~~~~~~~~~~~~
@@ -64,12 +64,12 @@ As the measurement is being written out to a new site, prepend is being set "" (
 .. literalinclude:: ../../../examples/advanced/preprocessResample.py
     :linenos:
     :language: python
-    :lines: 11-32
-    :lineno-start: 11
+    :lines: 10-31
+    :lineno-start: 10
 
 These produce the following plots:
 
-.. figure:: ../../../examples/advanced/preprocessProject/images/viewTimeResample.png
+.. figure:: ../../../examples/advanced/preprocessImages/viewTimeResample.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -83,12 +83,12 @@ This simply multiples the requested channels by -1. This is particularly useful 
 .. literalinclude:: ../../../examples/advanced/preprocessMath.py
     :linenos:
     :language: python
-    :lines: 11-33
-    :lineno-start: 11
+    :lines: 10-32
+    :lineno-start: 10
 
 The results of this can be seen in the following figure.
 
-.. figure:: ../../../examples/advanced/preprocessProject/images/viewTimePolarityReversal.png
+.. figure:: ../../../examples/advanced/preprocessImages/viewTimePolarityReversal.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -102,12 +102,12 @@ If more arbitrary scaling control is required than simply multiplying by -1, the
 .. literalinclude:: ../../../examples/advanced/preprocessMath.py
     :linenos:
     :language: python
-    :lines: 35-54
-    :lineno-start: 35
+    :lines: 34-53
+    :lineno-start: 34
 
 This will scale the |Ex| channel by -2 and the |Ey| channel by 0.5.
 
-.. figure:: ../../../examples/advanced/preprocessProject/images/viewTimeScale.png
+.. figure:: ../../../examples/advanced/preprocessImages/viewTimeScale.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -123,12 +123,12 @@ Below is an example of calibrating time series:
 .. literalinclude:: ../../../examples/advanced/preprocessFilter.py
     :linenos:
     :language: python
-    :lines: 84-99
-    :lineno-start: 84
+    :lines: 83-98
+    :lineno-start: 83
 
 This will calibrate the magnetic channels in the data, converting them from mV to nT.
 
-.. figure:: ../../../examples/advanced/preprocessProject/images/viewTimeCalibrate.png
+.. figure:: ../../../examples/advanced/preprocessImages/viewTimeCalibrate.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -150,10 +150,10 @@ Low pass filtering using the lpfilt option to filter 4096 Hz to 32 Hz (without i
 .. literalinclude:: ../../../examples/advanced/preprocessFilter.py
     :linenos:
     :language: python
-    :lines: 11-29
-    :lineno-start: 11
+    :lines: 10-28
+    :lineno-start: 10
 
-.. figure:: ../../../examples/advanced/preprocessProject/images/viewTimeLowpass.png
+.. figure:: ../../../examples/advanced/preprocessImages/viewTimeLowpass.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -165,10 +165,10 @@ Highpass filtering can be specified in a similar way.
 .. literalinclude:: ../../../examples/advanced/preprocessFilter.py
     :linenos:
     :language: python
-    :lines: 31-46
-    :lineno-start: 31
+    :lines: 30-45
+    :lineno-start: 30
 
-.. figure:: ../../../examples/advanced/preprocessProject/images/viewTimeHighpass.png
+.. figure:: ../../../examples/advanced/preprocessImages/viewTimeHighpass.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -180,10 +180,10 @@ Band pass filtering can performed as follows:
 .. literalinclude:: ../../../examples/advanced/preprocessFilter.py
     :linenos:
     :language: python
-    :lines: 48-67
-    :lineno-start: 48
+    :lines: 47-66
+    :lineno-start: 47
 
-.. figure:: ../../../examples/advanced/preprocessProject/images/viewTimeBandpass.png
+.. figure:: ../../../examples/advanced/preprocessImages/viewTimeBandpass.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -199,10 +199,10 @@ An example is given below of removing 50 Hz from time series data.
 .. literalinclude:: ../../../examples/advanced/preprocessFilter.py
     :linenos:
     :language: python
-    :lines: 69-82
-    :lineno-start: 69
+    :lines: 68-81
+    :lineno-start: 68
 
-.. figure:: ../../../examples/advanced/preprocessProject/images/viewTimeNotch.png
+.. figure:: ../../../examples/advanced/preprocessImages/viewTimeNotch.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -216,10 +216,10 @@ Data normalisation normalises the data by diving by the norm of the data as calc
 .. literalinclude:: ../../../examples/advanced/preprocessMath.py
     :linenos:
     :language: python
-    :lines: 56-76
-    :lineno-start: 56
+    :lines: 55-75
+    :lineno-start: 55
 
-.. figure:: ../../../examples/advanced/preprocessProject/images/viewTimeNorm.png
+.. figure:: ../../../examples/advanced/preprocessImages/viewTimeNorm.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -243,7 +243,7 @@ To see an example, begin by saving smaller pieces of data from site1. Here, two 
     :lines: 12-55
     :lineno-start: 12
 
-.. figure:: ../../../examples/advanced/preprocessProject/images/viewTimeGaps.png
+.. figure:: ../../../examples/advanced/preprocessImages/viewTimeGaps.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -260,7 +260,7 @@ The next stage is to read the separate data in as :class:`~resistics.dataObjects
     :lines: 57-70
     :lineno-start: 57
 
-The two separate datasets can be sticthed together using the :meth:`resistics.utilities.utilsInterp.fillGaps` method of module :mod:`resistics.utilities.utilsInterp`.
+The two separate datasets can be sticthed together using the :meth:`resistics.utilities.utilsInterp.fillGap` method of module :mod:`resistics.utilities.utilsInterp`.
 
 .. literalinclude:: ../../../examples/advanced/preprocessGapFill.py
     :linenos:
@@ -270,14 +270,14 @@ The two separate datasets can be sticthed together using the :meth:`resistics.ut
 
 The filled time data can be viewed using the :meth:`~resistics.dataObjects.timeData.TimeData.view` method of the :class:`~resistics.dataObjects.timeData.TimeData` class. 
 
-.. figure:: ../../../examples/advanced/preprocessProject/images/timeDataFilled.png
+.. figure:: ../../../examples/advanced/preprocessImages/timeDataFilled.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     The filled time data. The missing points have now been filled in linearly between the two datasets. Note, this data is not low pass filtered like in the previous plot.
 
-Now the data can be written out using the :class:`~resistics.ioHandlers.dataWriterInternal.dataWriterInternal` class.
+Now the data can be written out using the :class:`~resistics.ioHandlers.dataWriterInternal.DataWriterInternal` class.
 
 .. literalinclude:: ../../../examples/advanced/preprocessGapFill.py
     :linenos:
@@ -293,7 +293,7 @@ Finally, view the new site with filled time data compared to the original.
     :lines: 93-104
     :lineno-start: 93
 
-.. figure:: ../../../examples/advanced/preprocessProject/images/viewTimeGapsFilled.png
+.. figure:: ../../../examples/advanced/preprocessImages/viewTimeGapsFilled.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -302,6 +302,6 @@ Finally, view the new site with filled time data compared to the original.
 
 For a better understanding of the processing sequence, it is possible to look at the comments file (dataset history) of the sticthed data.
 
-.. literalinclude:: ../../../examples/advanced/preprocessProject/timeData/site1_filled/meas_2012-02-10_11-05-00_filled/comments.txt
+.. literalinclude:: ../_text/commentsAdvancedGapfill.txt
     :linenos:
     :language: text

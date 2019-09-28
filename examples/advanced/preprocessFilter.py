@@ -1,8 +1,7 @@
-from pathlib import Path
+from configuration import preprocessPath, preprocessImages
 from resistics.project.projectIO import loadProject
 
-projectPath = Path("preprocessProject")
-proj = loadProject(projectPath)
+proj = loadProject(preprocessPath)
 proj.printInfo()
 
 from resistics.utilities.utilsPlotter import plotOptionsTime, getPresentationFonts
@@ -26,7 +25,7 @@ fig = viewTime(
     show=False,
     plotoptions=plotOptions,
 )
-fig.savefig(Path(proj.imagePath, "viewTimeLowpass.png"))
+fig.savefig(preprocessImages / "viewTimeLowpass.png")
 
 preProcess(
     proj, sites="site1", filter={"hpfilt": 512}, outputsite="site1_highpass", prepend=""
@@ -43,7 +42,7 @@ fig = viewTime(
     show=False,
     plotoptions=plotOptions,
 )
-fig.savefig(Path(proj.imagePath, "viewTimeHighpass.png"))
+fig.savefig(preprocessImages / "viewTimeHighpass.png")
 
 preProcess(
     proj,
@@ -64,7 +63,7 @@ fig = viewTime(
     show=False,
     plotoptions=plotOptions,
 )
-fig.savefig(Path(proj.imagePath, "viewTimeBandpass.png"))
+fig.savefig(preprocessImages / "viewTimeBandpass.png")
 
 preProcess(proj, sites="site1", notch=[50], outputsite="site1_notch", prepend="")
 proj.refresh()
@@ -79,7 +78,7 @@ fig = viewTime(
     show=False,
     plotoptions=plotOptions,
 )
-fig.savefig(Path(proj.imagePath, "viewTimeNotch.png"))
+fig.savefig(preprocessImages / "viewTimeNotch.png")
 
 preProcess(
     proj, sites="site1", calibrate=True, outputsite="site1_calibrate", prepend=""
@@ -96,4 +95,4 @@ fig = viewTime(
     show=False,
     plotoptions=plotOptions,
 )
-fig.savefig(Path(proj.imagePath, "viewTimeCalibrate.png"))
+fig.savefig(preprocessImages / "viewTimeCalibrate.png")

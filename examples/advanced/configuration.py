@@ -3,7 +3,7 @@ from pathlib import Path
 datapath = Path("E:/", "magnetotellurics", "code", "resisticsdata", "advanced")
 
 preprocessPath = datapath / "preprocessProject"
-prerpocessImages = Path("preprocessImages")
+preprocessImages = Path("preprocessImages")
 
 remotePath = datapath / "remoteProject"
 remoteImages = Path("remoteImages")

@@ -1,8 +1,7 @@
-from pathlib import Path
+from configuration import preprocessPath, preprocessImages
 from resistics.project.projectIO import loadProject
 
-projectPath = Path("preprocessProject")
-proj = loadProject(projectPath)
+proj = loadProject(preprocessPath)
 proj.printInfo()
 
 from resistics.utilities.utilsPlotter import plotOptionsTime, getPresentationFonts
@@ -30,7 +29,7 @@ fig = viewTime(
     show=False,
     plotoptions=plotOptions,
 )
-fig.savefig(Path(proj.imagePath, "viewTimePolarityReversal.png"))
+fig.savefig(preprocessImages / "viewTimePolarityReversal.png")
 
 preProcess(
     proj,
@@ -51,7 +50,7 @@ fig = viewTime(
     show=False,
     plotoptions=plotOptions,
 )
-fig.savefig(Path(proj.imagePath, "viewTimeScale.png"))
+fig.savefig(preprocessImages / "viewTimeScale.png")
 
 # normalisation
 preProcess(
@@ -73,4 +72,4 @@ fig = viewTime(
     show=False,
     plotoptions=plotOptions,
 )
-fig.savefig(Path(proj.imagePath, "viewTimeNorm.png"))
+fig.savefig(preprocessImages / "viewTimeNorm.png")

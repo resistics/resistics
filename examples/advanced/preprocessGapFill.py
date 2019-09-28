@@ -1,8 +1,8 @@
+from configuration import preprocessPath, preprocessImages
 from pathlib import Path
 from resistics.project.projectIO import loadProject
 
-projectPath = Path("preprocessProject")
-proj = loadProject(projectPath)
+proj = loadProject(preprocessPath)
 proj.printInfo()
 
 from resistics.utilities.utilsPlotter import plotOptionsTime, getPresentationFonts
@@ -52,7 +52,7 @@ fig = viewTime(
     show=False,
     plotoptions=plotOptions,
 )
-fig.savefig(Path(proj.imagePath, "viewTimeGaps.png"))
+fig.savefig(preprocessImages / "viewTimeGaps.png")
 
 from resistics.ioHandlers.dataReaderInternal import DataReaderInternal
 
@@ -75,7 +75,7 @@ timeDataFilled = fillGap(timeData1, timeData2)
 timeDataFilled.printInfo()
 samplesToView = 14 * 60 * 4096
 fig = timeDataFilled.view(sampleStop=samplesToView, chans=["Ex", "Hy"])
-fig.savefig(Path(proj.imagePath, "timeDataFilled.png"))
+fig.savefig(preprocessImages / "timeDataFilled.png")
 
 # create a new site to write out to
 proj.createSite("site1_filled")
@@ -101,4 +101,4 @@ fig = viewTime(
     show=False,
     plotoptions=plotOptions,
 )
-fig.savefig(Path(proj.imagePath, "viewTimeGapsFilled.png"))
+fig.savefig(preprocessImages / "viewTimeGapsFilled.png")

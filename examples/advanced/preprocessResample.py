@@ -1,8 +1,7 @@
-from pathlib import Path
+from configuration import preprocessPath, preprocessImages
 from resistics.project.projectIO import loadProject
 
-projectPath = Path("preprocessProject")
-proj = loadProject(projectPath)
+proj = loadProject(preprocessPath)
 proj.printInfo()
 
 from resistics.utilities.utilsPlotter import plotOptionsTime, getPresentationFonts
@@ -29,4 +28,4 @@ fig = viewTime(
     show=False,
     plotoptions=plotOptions,
 )
-fig.savefig(Path(proj.imagePath, "viewTimeResample.png"))
+fig.savefig(preprocessImages / "viewTimeResample.png")
