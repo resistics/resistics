@@ -291,6 +291,9 @@ def viewTime(
     timeDataAll = {}
     for site in options["sites"]:
         siteData = projData.getSiteData(site)
+        if isinstance(siteData, bool): 
+            # site does not exist
+            continue
         siteData.printInfo()
         measurements = siteData.getMeasurements()
         timeDataAll[site] = {}
