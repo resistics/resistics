@@ -419,7 +419,7 @@ def viewImpedance(projData: ProjectData, **kwargs) -> List[plt.figure]:
     return figs
 
 
-def viewTipper(projData: ProjectData, **kwargs) -> None:
+def viewTipper(projData: ProjectData, **kwargs) -> List[plt.figure]:
     """View transfer function data
 
     Parameters
@@ -456,6 +456,7 @@ def viewTipper(projData: ProjectData, **kwargs) -> None:
     options = parseKeywords(options, kwargs)
 
     # loop over sites
+    figs = []
     for site in options["sites"]:
         siteData = projData.getSiteData(site)
         sampleFreqs = set(siteData.getSampleFreqs())
@@ -519,6 +520,7 @@ def viewTipper(projData: ProjectData, **kwargs) -> None:
             st.set_y(0.99)
             fig.tight_layout()
             fig.subplots_adjust(top=0.85)
+            figs.append(fig)
 
             if options["save"]:
                 impath = projData.imagePath
@@ -531,3 +533,4 @@ def viewTipper(projData: ProjectData, **kwargs) -> None:
         else:
             plt.show(block=options["plotoptions"]["block"])
 
+    return figs
