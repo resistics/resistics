@@ -119,21 +119,21 @@ The time series is now ready to be read in. In the below code block, the project
     :lines: 1-25
     :lineno-start: 1
 
-.. figure:: ../../../cookbook/usingAscii/asciiProject/images/projectTimeline.png
+.. figure:: ../../../cookbook/usingAscii/images/projectTimeline.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Project timeline, though the reference time is purely a dummy one.
 
-.. figure:: ../../../cookbook/usingAscii/asciiProject/images/siteTimeline.png
+.. figure:: ../../../cookbook/usingAscii/images/siteTimeline.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Site timeline.
 
-.. figure:: ../../../cookbook/usingAscii/asciiProject/images/timeData_2018-01-03_00-00-00__2018-01-05_00-00-00.png
+.. figure:: ../../../cookbook/usingAscii/images/viewTime.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -145,12 +145,12 @@ The next step is to calculate out the spectra and then produce a spectra stack p
 .. literalinclude:: ../../../cookbook/usingAscii/runDefault.py
     :linenos:
     :language: python
-    :lines: 27-45
+    :lines: 27-46
     :lineno-start: 27
 
 The spectra stack is shown below:
 
-.. figure:: ../../../cookbook/usingAscii/asciiProject/images/spectraStack_site1_meas_dec0_spectra.png
+.. figure:: ../../../cookbook/usingAscii/images/viewSpectraStack.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -162,12 +162,12 @@ The easiest way to process the ascii data is using the default parameterisation,
 .. literalinclude:: ../../../cookbook/usingAscii/runDefault.py
     :linenos:
     :language: python
-    :lines: 47-66
-    :lineno-start: 47    
+    :lines: 48-68
+    :lineno-start: 48    
 
 This gives the below impedance tensor estimate.
 
-.. figure:: ../../../cookbook/usingAscii/asciiProject/images/transFunction_site1_spectra.png
+.. figure:: ../../../cookbook/usingAscii/images/impedance_default.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -184,12 +184,12 @@ Looking at the phase estimates, the phase for the ExHy component is in the wrong
 .. literalinclude:: ../../../cookbook/usingAscii/runDefault.py
     :linenos:
     :language: python
-    :lines: 68-79
-    :lineno-start: 68    
+    :lines: 70-82
+    :lineno-start: 70    
 
 The tipper estimate is shown below.
 
-.. figure:: ../../../cookbook/usingAscii/asciiProject/images/tipper_site1_spectra_withHz.png
+.. figure:: ../../../cookbook/usingAscii/images/impedance_default_withHz.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -211,7 +211,7 @@ To use the configuration file, the project needs to be loaded along with the con
 .. literalinclude:: ../../../cookbook/usingAscii/runWithConfig.py
     :linenos:
     :language: python
-    :lines: 1-7
+    :lines: 1-6
     :lineno-start: 1   
 
 .. note::
@@ -223,10 +223,10 @@ The first task it to view the time series data with a polarity reversal. This ca
 .. literalinclude:: ../../../cookbook/usingAscii/runWithConfig.py
     :linenos:
     :language: python
-    :lines: 9-20
-    :lineno-start: 9
+    :lines: 8-20
+    :lineno-start: 8
 
-.. figure:: ../../../cookbook/usingAscii/asciiProject/images/timeData_2018-01-03_00-00-00__2018-01-05_00-00-00.1.png
+.. figure:: ../../../cookbook/usingAscii/images/viewTime_polreverse.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -238,10 +238,10 @@ Following a similar scheme as the default example, the spectra can be calculated
 .. literalinclude:: ../../../cookbook/usingAscii/runWithConfig.py
     :linenos:
     :language: python
-    :lines: 22-41
+    :lines: 22-42
     :lineno-start: 22   
 
-.. figure:: ../../../cookbook/usingAscii/asciiProject/images/spectraStack_site1_meas_dec0_dec8_5.png
+.. figure:: ../../../cookbook/usingAscii/images/viewSpectraStack_config_polreverse.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -255,12 +255,12 @@ Finally, the spectra can be processed to estimate the impedance tensor and tippe
 .. literalinclude:: ../../../cookbook/usingAscii/runWithConfig.py
     :linenos:
     :language: python
-    :lines: 43-62
-    :lineno-start: 43
+    :lines: 44-64
+    :lineno-start: 44
 
 The impedance tensor estimate is shown below and now the phases are all in the correct quadrants.
 
-.. figure:: ../../../cookbook/usingAscii/asciiProject/images/transFunction_site1_dec8_5.png
+.. figure:: ../../../cookbook/usingAscii/images/impedance_config.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -273,10 +273,10 @@ And for the tipper:
 .. literalinclude:: ../../../cookbook/usingAscii/runWithConfig.py
     :linenos:
     :language: python
-    :lines: 64-76
-    :lineno-start: 64
+    :lines: 66-77
+    :lineno-start: 66
 
-.. figure:: ../../../cookbook/usingAscii/asciiProject/images/tipper_site1_dec8_5_withHz.png
+.. figure:: ../../../cookbook/usingAscii/images/impedance_config_withHz.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -292,7 +292,7 @@ Begin once more by loading the project and configuration to continue working wit
 .. literalinclude:: ../../../cookbook/usingAscii/runWithStatistics.py
     :linenos:
     :language: python
-    :lines: 1-7
+    :lines: 1-6
     :lineno-start: 1
 
 For more information about statistics, see the :doc:`Statistics <../tutorial/statistics>` section of the tutorial. Two statistics are calculated out here: coherence and transfer function. 
@@ -300,18 +300,18 @@ For more information about statistics, see the :doc:`Statistics <../tutorial/sta
 .. literalinclude:: ../../../cookbook/usingAscii/runWithStatistics.py
     :linenos:
     :language: python
-    :lines: 9-12
-    :lineno-start: 9
+    :lines: 8-11
+    :lineno-start: 8
 
 Next create a mask to perform simple coherence based rejection of time windows and view the mask.
 
 .. literalinclude:: ../../../cookbook/usingAscii/runWithStatistics.py
     :linenos:
     :language: python
-    :lines: 14-22
-    :lineno-start: 14
+    :lines: 13-22
+    :lineno-start: 13
 
-.. figure:: ../../../cookbook/usingAscii/asciiProject/images/maskcoh.png
+.. figure:: ../../../cookbook/usingAscii/images/maskcoh.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -325,10 +325,10 @@ Finally, calculate the impedance tensor estimate with the mask applied to exclud
 .. literalinclude:: ../../../cookbook/usingAscii/runWithStatistics.py
     :linenos:
     :language: python
-    :lines: 25-48
-    :lineno-start: 25
+    :lines: 24-47
+    :lineno-start: 24
 
-.. figure:: ../../../cookbook/usingAscii/asciiProject/images/transFunction_site1_dec8_5_coh30_100.png
+.. figure:: ../../../cookbook/usingAscii/images/impedance_config_masked.png
     :align: center
     :alt: alternate text
     :figclass: align-center

@@ -1,8 +1,7 @@
-import os
+from configuration import projectPath, imagePath
 from resistics.project.projectIO import loadProject
 
 #  load the project and also provide a config file
-projectPath = os.path.join("asciiProject")
 projData = loadProject(projectPath, configFile="asciiconfig.ini")
 projData.printInfo()
 
@@ -20,7 +19,7 @@ maskData.addConstraint("coherence", {"cohExHy": [0.3, 1.0], "cohEyHx": [0.3, 1.0
 maskData.maskName = "coh30_100"
 calculateMask(projData, maskData, sites=["site1"])
 fig = maskData.view(0)
-fig.savefig(os.path.join(projectPath, "images", "maskcoh"))
+fig.savefig(imagePath / "maskcoh")
 
 # calculate impedance tensor
 from resistics.project.projectTransferFunction import processProject
@@ -28,21 +27,21 @@ from resistics.project.projectTransferFunction import processProject
 processProject(
     projData, outchans=["Ex", "Ey"], masks={"site1": maskData.maskName}, postpend=maskData.maskName
 )
-projData.refresh()
 
 # plot transfer function and save the plot
 from resistics.project.projectTransferFunction import viewImpedance
-from resistics.utilities.utilsPlotter import plotOptionsTransferFunction
+from resistics.utilities.utilsPlotter import plotOptionsTransferFunction, getPaperFonts
 
-plotoptions = plotOptionsTransferFunction()
+plotoptions = plotOptionsTransferFunction(plotfonts=getPaperFonts())
 plotoptions["xlim"] = [0.01, 1000000]
 plotoptions["phase_ylim"] = [-10, 100]
-viewImpedance(
+figs = viewImpedance(
     projData,
     sites=["site1"],
     postpend=maskData.maskName,
     oneplot=True,
     polarisations=["ExHy", "EyHx"],
     plotoptions=plotoptions,
-    save=True,
+    save=False,
 )
+figs[0].savefig(imagePath / "impedance_config_masked")

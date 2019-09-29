@@ -1,8 +1,6 @@
-import os
+from configuration import projectPath # import the project path
 from resistics.project.projectIO import newProject
 
-# define project path
-projectPath = os.path.join("asciiProject")
 # define reference time for project
 referenceTime = "2018-01-01 00:00:00"
 # create a new project and print infomation

@@ -1,7 +1,7 @@
-import os
+from configuration import projectPath
 from resistics.ioHandlers.dataWriter import DataWriter
 
-asciiPath = os.path.join("asciiProject", "timeData", "site1", "meas")
+asciiPath = projectPath / "timeData" / "site1" / "meas"
 writer = DataWriter()
 writer.setOutPath(asciiPath)
 chan2FileMap = {

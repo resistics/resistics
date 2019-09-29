@@ -10,7 +10,7 @@ The resistics cookbook is intended to demonstrate what is possible when using re
     :glob:
 
     cookbook/processing-ascii.rst
-    cookbook/processing-phoenix.rst
     cookbook/processing-lemi-b423.rst
+    cookbook/processing-phoenix.rst
     cookbook/statistic-plotting.rst
     
