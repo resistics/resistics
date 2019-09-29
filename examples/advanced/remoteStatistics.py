@@ -1,4 +1,4 @@
-from pathlib import Path
+from configuration import remotePath, remoteImages
 from resistics.project.projectIO import loadProject
 from resistics.project.projectStatistics import (
     calculateRemoteStatistics,
@@ -11,8 +11,7 @@ from resistics.project.projectTransferFunction import processProject, viewImpeda
 from resistics.utilities.utilsPlotter import plotOptionsStandard, getPaperFonts
 
 plotOptions = plotOptionsStandard(plotfonts=getPaperFonts())
-projectPath = Path("remoteProject")
-proj = loadProject(projectPath)
+proj = loadProject(remotePath)
 
 calculateRemoteStatistics(
     proj,
@@ -42,7 +41,7 @@ for declevel in range(0, 4):
         plotoptions=plotOptions,
         show=False,
     )
-    fig.savefig(Path(proj.imagePath, "densityPlot_remoteRef_{}.png".format(declevel)))
+    fig.savefig(remoteImages / "densityPlot_remoteRef_{}.png".format(declevel))
     fig = viewStatisticDensityplot(
         proj,
         "M6",
@@ -55,7 +54,7 @@ for declevel in range(0, 4):
         plotoptions=plotOptions,
         show=False,
     )
-    fig.savefig(Path(proj.imagePath, "densityPlot_singleSite_{}.png".format(declevel)))
+    fig.savefig(remoteImages / "densityPlot_singleSite_{}.png".format(declevel))
 
 # create a mask that uses some of the remote reference statistics that were calculated
 # get a mask data object and specify the sampling frequency to mask (128Hz)
@@ -92,7 +91,7 @@ figs = viewImpedance(
     save=False,
     show=False,
 )
-figs[0].savefig(Path(proj.imagePath, "remoteReferenceM6_128_RR_coh.png"))
+figs[0].savefig(remoteImages / "remoteReferenceM6_128_RR_coh.png")
 
 # see how the masks changed the density plot
 lims = {0: 200, 1: 120, 2: 50, 3: 30}
@@ -110,7 +109,7 @@ for declevel in range(0, 4):
         plotoptions=plotOptions,
         show=False,
     )
-    fig.savefig(Path(proj.imagePath, "densityPlot_remoteRef_{}_mask.png".format(declevel)))
+    fig.savefig(remoteImages / "densityPlot_remoteRef_{}_mask.png".format(declevel))
 
 # process with masks and datetime constraints
 processProject(
@@ -133,7 +132,7 @@ figs = viewImpedance(
     save=False,
     show=False,
 )
-figs[0].savefig(Path(proj.imagePath, "remoteReferenceM6_128_RR_coh_datetime.png"))
+figs[0].savefig(remoteImages / "remoteReferenceM6_128_RR_coh_datetime.png")
 
 # process with masks and datetime constraints, but only for decimation levels 0 and 1
 processProject(
@@ -158,4 +157,4 @@ figs = viewImpedance(
     save=False,
     show=False,
 )
-figs[0].savefig(Path(proj.imagePath, "remoteReferenceM6_128_RR_coh_datetime_01.png"))
+figs[0].savefig(remoteImages / "remoteReferenceM6_128_RR_coh_datetime_01.png")

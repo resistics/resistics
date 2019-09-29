@@ -216,6 +216,7 @@ The new windowing scheme, which reduces the window size at the long periods has 
 
     Impedance tensor estimate for Lemi B423 data at a sampling frequency of 500 Hz with a different windowing scheme and variable coherence masking for each decimation level. The result is now better than default settings in both the long periods and dead band. 
 
+The coherence mask has indeed improved the dead band reponse. With further work and investigation of statistics, it may be possible to achieve an ever better result. 
 
 Complete example scripts
 ~~~~~~~~~~~~~~~~~~~~~~~~

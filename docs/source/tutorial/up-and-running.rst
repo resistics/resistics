@@ -15,7 +15,7 @@
 Up and running
 --------------
 
-Resistics can quickly run projects with default settings by using the :mod:`~resistics.project` API. Default configuration options are detailed in :doc:`Configuration Parameters <../features/configuration/parameters>` section.
+Resistics can quickly run projects with default settings by using the :mod:`~resistics.project` API. Default configuration options are detailed in :ref:`features/configuration:Configuration parameters` section.
 
 Begin by loading the project and calculating spectra. Spectra can be batch calculated using the :meth:`~resistics.project.projectSpectra.calculateSpectra` method in :mod:`~resistics.project.projecSpectra`. The are several options for calculating spectra, which are detailed in the API documentation.
 

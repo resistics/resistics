@@ -1,4 +1,4 @@
-from pathlib import Path
+from configuration import remotePath
 from resistics.project.projectIO import loadProject
 from resistics.project.projectSpectra import calculateSpectra
 from resistics.project.projectTransferFunction import processProject, viewImpedance
@@ -9,8 +9,7 @@ from resistics.project.projectStatistics import (
 )
 from resistics.project.projectMask import newMaskData, calculateMask
 
-projectPath = Path("remoteProject")
-projData = loadProject(projectPath, "remoteConfig.ini")
+projData = loadProject(remotePath, "remoteConfig.ini")
 
 calculateStatistics(projData, sites=["M6"], sampleFreqs=[512, 4096, 16384, 65536])
 # generate mask

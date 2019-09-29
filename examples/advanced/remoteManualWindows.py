@@ -1,4 +1,4 @@
-from pathlib import Path
+from configuration import remotePath, remoteImages
 from resistics.project.projectIO import loadProject
 from resistics.project.projectSpectra import calculateSpectra
 from resistics.project.projectTransferFunction import processProject, viewImpedance
@@ -11,8 +11,7 @@ from resistics.project.projectMask import newMaskData, calculateMask
 from resistics.utilities.utilsPlotter import plotOptionsTransferFunction, getPaperFonts
 
 plotOptions = plotOptionsTransferFunction(plotfonts=getPaperFonts())
-projectPath = Path("remoteProject")
-proj = loadProject(projectPath, "manualWindowsConfig.ini")
+proj = loadProject(remotePath, "manualWindowsConfig.ini")
 
 # calculate spectra
 calculateSpectra(proj, sites=["M6", "Remote"])
@@ -27,8 +26,8 @@ figs = viewImpedance(
     save=False,
     show=False,
 )
-figs[0].savefig(Path(proj.imagePath, "singleSiteM6_128_man8_5.png"))
-figs[1].savefig(Path(proj.imagePath, "singleSiteRemote_128_man8_5.png"))
+figs[0].savefig(remoteImages / "singleSiteM6_128_man8_5.png")
+figs[1].savefig(remoteImages / "singleSiteRemote_128_man8_5.png")
 
 # calculate the statistic we are interested in
 calculateStatistics(proj, sites=["M6", "Remote"], sampleFreqs=[128])
@@ -61,7 +60,7 @@ figs = viewImpedance(
     save=False,
     show=False,
 )
-figs[0].savefig(Path(proj.imagePath, "singleSiteRemote_128_man8_5_coh80.png"))
+figs[0].savefig(remoteImages / "singleSiteRemote_128_man8_5_coh80.png")
 
 # generate mask
 maskData = newMaskData(proj, 128)
@@ -96,7 +95,7 @@ figs = viewImpedance(
     save=False,
     show=False,
 )
-figs[0].savefig(Path(proj.imagePath, "remoteReferenceM6_128_RR_man8_5_coh_datetime_01.png"))
+figs[0].savefig(remoteImages / "remoteReferenceM6_128_RR_man8_5_coh_datetime_01.png")
 
 # one more example with multiple masks
 # let's use standard coherence as well for Remote only
@@ -121,7 +120,7 @@ figs = viewImpedance(
     save=False,
     show=False,
 )
-figs[0].savefig(Path(proj.imagePath, "remoteReferenceM6_128_RR_man8_5_2coh_datetime_01.png"))
+figs[0].savefig(remoteImages / "remoteReferenceM6_128_RR_man8_5_2coh_datetime_01.png")
 
 # try one more where the Remote coherence mask is variable to avoid losing two many windows and long periods
 maskData = newMaskData(proj, 128)
@@ -157,4 +156,4 @@ figs = viewImpedance(
     save=False,
     show=False,
 )
-figs[0].savefig(Path(proj.imagePath, "remoteReferenceM6_128_RR_man8_5_cohvar_datetime_01.png"))
+figs[0].savefig(remoteImages / "remoteReferenceM6_128_RR_man8_5_cohvar_datetime_01.png")

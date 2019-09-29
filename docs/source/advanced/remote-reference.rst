@@ -34,7 +34,7 @@ Begin as usual by creating our project and two sites to put our data in.
 .. literalinclude:: ../../../examples/advanced/remoteCreate.py
     :linenos:
     :language: python
-    :lines: 1-12
+    :lines: 1-11
     :lineno-start: 1
 
 After placing the data in the relevant folders, the project looks like this:
@@ -97,7 +97,7 @@ As usual, the project is loaded in. Information is printed out about each site a
 .. literalinclude:: ../../../examples/advanced/remotePreprocess.py
     :linenos:
     :language: python
-    :lines: 1-35
+    :lines: 1-34
     :lineno-start: 1
 
 Of particular interest is this part of the of the process:
@@ -105,8 +105,8 @@ Of particular interest is this part of the of the process:
 .. literalinclude:: ../../../examples/advanced/remotePreprocess.py
     :linenos:
     :language: python
-    :lines: 15-35
-    :lineno-start: 15
+    :lines: 14-34
+    :lineno-start: 14
 
 Here, the 128 Hz measurements of site M6 are being looped over. The start and end time of each of these measurements is being taken and remote data for only that period is being pre-processed. The purpose of this is to save space and only pre-process data concurrent with 128 Hz data at the local site. 
 
@@ -168,19 +168,19 @@ To plot the data, the :meth:`~resistics.project.projectTime.viewTime` method can
 .. literalinclude:: ../../../examples/advanced/remotePreprocess.py
     :linenos:
     :language: python
-    :lines: 37-62
-    :lineno-start: 37
+    :lines: 36-62
+    :lineno-start: 36
 
 First the data is plotted without any filtering and then with a 4 Hz low pass filter. The two plots are shown below.
 
-.. figure:: ../../../examples/advanced/remoteProject/images/viewTimePreprocess.png
+.. figure:: ../../../examples/advanced/remoteImages/viewTimePreprocess.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Site M6 vs. Remote unfiltered. Site M6 is much noisier and has significant high amplitude powerline noise consistent with a developed area.
 
-.. figure:: ../../../examples/advanced/remoteProject/images/viewTimePreprocessLowPass.png
+.. figure:: ../../../examples/advanced/remoteImages/viewTimePreprocessLowPass.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -194,12 +194,12 @@ The next step is to process the data, in the first instance using simple single 
 .. literalinclude:: ../../../examples/advanced/remoteRun.py
     :linenos:
     :language: python
-    :lines: 1-37
+    :lines: 1-36
     :lineno-start: 1
 
 As the higher frequencies of Site M6 have also been processed, these can be plotted with the 128 Hz to give more periods.
 
-.. figure:: ../../../examples/advanced/remoteProject/images/singleSiteM6_all.png
+.. figure:: ../../../examples/advanced/remoteImages/singleSiteM6_all.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -208,14 +208,14 @@ As the higher frequencies of Site M6 have also been processed, these can be plot
 
 Howver, of more interest for this example is the impedance tensor estimates using data sampled at 128 Hz, the sampling frequency at which remote reference processing will be used. The single site impedance tensor estimates for 128 Hz are given below.
 
-.. figure:: ../../../examples/advanced/remoteProject/images/singleSiteM6_128.png
+.. figure:: ../../../examples/advanced/remoteImages/singleSiteM6_128.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Single site impedance tensor estimates for Site M6 at 128 Hz
 
-.. figure:: ../../../examples/advanced/remoteProject/images/singleSiteRemote_128.png
+.. figure:: ../../../examples/advanced/remoteImages/singleSiteRemote_128.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -231,14 +231,14 @@ Standard remote reference processing is performed using the :meth:`~resistics.pr
 .. literalinclude:: ../../../examples/advanced/remoteRun.py
     :linenos:
     :language: python
-    :lines: 39-52
-    :lineno-start: 1
+    :lines: 38-51
+    :lineno-start: 38
 
 To perform remote reference processing, the sites to process have been defined using the :python:`sites = ["M6"]` keyword argument. Further, a remote site has been defined using the :python:`remotesite = "Remote"` keyword argument. Specifying a remote site will ensure remote reference processing of data which overlaps in time between the sites and the remote site. 
 
 Again, the impedance tensor has been plotted and the plot is provided below.
 
-.. figure:: ../../../examples/advanced/remoteProject/images/remoteReferenceM6.png
+.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -252,19 +252,19 @@ As a next step, calculate single site statistics separately for M6 and Remote, p
 .. literalinclude:: ../../../examples/advanced/remoteRun.py
     :linenos:
     :language: python
-    :lines: 54-86
-    :lineno-start: 54
+    :lines: 53-85
+    :lineno-start: 53
 
 The single site impedance tensors processed with the masks are shown below. 
 
-.. figure:: ../../../examples/advanced/remoteProject/images/singleSiteM6_128_coh80.png
+.. figure:: ../../../examples/advanced/remoteImages/singleSiteM6_128_coh80.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Single site impedance tensor estimates for Site M6 at 128 Hz using a coherency mask excluding windows with coherence |Ex|-|Hy| or |Ey|-|Hx| below 0.8.
 
-.. figure:: ../../../examples/advanced/remoteProject/images/singleSiteRemote_128_coh80.png
+.. figure:: ../../../examples/advanced/remoteImages/singleSiteRemote_128_coh80.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -276,10 +276,10 @@ Coherence masking has done little to improve the impedance tensor estimates for 
 .. literalinclude:: ../../../examples/advanced/remoteRun.py
     :linenos:
     :language: python
-    :lines: 88-108
-    :lineno-start: 88
+    :lines: 87-107
+    :lineno-start: 87
 
-.. figure:: ../../../examples/advanced/remoteProject/images/remoteReferenceM6_128_coh80.png
+.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6_128_coh80.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -295,10 +295,10 @@ Finally, another way to restrict the data being used for remote reference proces
 .. literalinclude:: ../../../examples/advanced/remoteRun.py
     :linenos:
     :language: python
-    :lines: 110-130
-    :lineno-start: 110
+    :lines: 109-129
+    :lineno-start: 109
 
-.. figure:: ../../../examples/advanced/remoteProject/images/remoteReferenceM6_128_coh80_datetimes.png
+.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6_128_coh80_datetimes.png
     :align: center
     :alt: alternate text
     :figclass: align-center

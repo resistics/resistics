@@ -46,14 +46,14 @@ The following recalculates the spectra, the single site impedance tensors, the r
 
 The single site impedance tensor estimates are shown below.
 
-.. figure:: ../../../examples/advanced/remoteProject/images/singleSiteM6_128_dec8_5.png
+.. figure:: ../../../examples/advanced/remoteImages/singleSiteM6_128_dec8_5.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Single site impedance tensor estimates for Site M6 at 128 Hz using 8 decimation levels and 5 evaluation frequencies per level with a minimum window size of 256 points.
 
-.. figure:: ../../../examples/advanced/remoteProject/images/singleSiteRemote_128_dec8_5.png
+.. figure:: ../../../examples/advanced/remoteImages/singleSiteRemote_128_dec8_5.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -64,14 +64,14 @@ The long periods have now improved, particularly for the Remote site. However, t
 
 The remote reference processing result for Site M6 is shown below. The long periods are noticeably better in both phase and apparent resistivity than the results with the standard processing scheme. As stated earlier, the dead band shows now discernible improvement. 
 
-.. figure:: ../../../examples/advanced/remoteProject/images/remoteReferenceM6_128_RR_dec8_5_coh_datetime_01.png
+.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6_128_RR_dec8_5_coh_datetime_01.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Remote reference impedance tensor estimates for Site M6 at 128 Hz using 8 decimation levels and 5 evaluation frequencies per level with a minimum window size of 256 points. Masks and time constraints are applied.
 
-.. figure:: ../../../examples/advanced/remoteProject/images/remoteReferenceM6_128_RR_coh_datetime_01.png
+.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6_128_RR_coh_datetime_01.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -86,22 +86,22 @@ Resistics gives fine grained control over windowing and overlaps. In the below c
     :linenos:
     :language: text
 
-Like with dec8_5 configuration file, begin with single site processing.
+Like with the dec8_5 configuration file, begin with single site processing.
 
 .. literalinclude:: ../../../examples/advanced/remoteManualWindows.py
     :linenos:
     :language: python
-    :lines: 1-64
+    :lines: 1-63
     :lineno-start: 1
 
-.. figure:: ../../../examples/advanced/remoteProject/images/singleSiteM6_128_man8_5.png
+.. figure:: ../../../examples/advanced/remoteImages/singleSiteM6_128_man8_5.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Single site impedance tensor estimates for Site M6 at 128 Hz using 8 decimation levels and 5 evaluation frequencies per level with a custom window size per decimation level.
 
-.. figure:: ../../../examples/advanced/remoteProject/images/singleSiteRemote_128_man8_5.png
+.. figure:: ../../../examples/advanced/remoteImages/singleSiteRemote_128_man8_5.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -110,7 +110,7 @@ Like with dec8_5 configuration file, begin with single site processing.
 
 In addition to single site processing, Remote is processed with a coherence mask giving the below impedance tensor estimate. 
 
-.. figure:: ../../../examples/advanced/remoteProject/images/singleSiteRemote_128_man8_5_coh80.png
+.. figure:: ../../../examples/advanced/remoteImages/singleSiteRemote_128_man8_5_coh80.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -124,12 +124,12 @@ Next, the same remote reference processing is repeated with matching parameters 
 .. literalinclude:: ../../../examples/advanced/remoteManualWindows.py
     :linenos:
     :language: python
-    :lines: 66-99
-    :lineno-start: 66
+    :lines: 65-98
+    :lineno-start: 65
 
 The resultant remote reference impedance tensor estimate for Site M6 is shown below. 
 
-.. figure:: ../../../examples/advanced/remoteProject/images/remoteReferenceM6_128_RR_man8_5_coh_datetime_01.png
+.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6_128_RR_man8_5_coh_datetime_01.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -143,10 +143,10 @@ As an additional test, another mask is applied, which is the single site mask fo
 .. literalinclude:: ../../../examples/advanced/remoteManualWindows.py
     :linenos:
     :language: python
-    :lines: 101-124
-    :lineno-start: 101
+    :lines: 100-123
+    :lineno-start: 100
 
-.. figure:: ../../../examples/advanced/remoteProject/images/remoteReferenceM6_128_RR_man8_5_2coh_datetime_01.png
+.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6_128_RR_man8_5_2coh_datetime_01.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -160,10 +160,10 @@ For a last try, variable single site coherence thresholds could be used to limit
 .. literalinclude:: ../../../examples/advanced/remoteManualWindows.py
     :linenos:
     :language: python
-    :lines: 126-160
-    :lineno-start: 126
+    :lines: 125-159
+    :lineno-start: 125
 
-.. figure:: ../../../examples/advanced/remoteProject/images/remoteReferenceM6_128_RR_man8_5_cohvar_datetime_01.png
+.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6_128_RR_man8_5_cohvar_datetime_01.png
     :align: center
     :alt: alternate text
     :figclass: align-center

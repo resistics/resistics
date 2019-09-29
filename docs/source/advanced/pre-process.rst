@@ -260,7 +260,7 @@ The next stage is to read the separate data in as :class:`~resistics.dataObjects
     :lines: 57-70
     :lineno-start: 57
 
-The two separate datasets can be sticthed together using the :meth:`resistics.utilities.utilsInterp.fillGap` method of module :mod:`resistics.utilities.utilsInterp`.
+The two separate datasets can be stitched together using the :meth:`resistics.utilities.utilsInterp.fillGap` method of module :mod:`resistics.utilities.utilsInterp`.
 
 .. literalinclude:: ../../../examples/advanced/preprocessGapFill.py
     :linenos:

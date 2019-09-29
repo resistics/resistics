@@ -1,4 +1,4 @@
-from pathlib import Path
+from configuration import remotePath, remoteImages
 from resistics.project.projectIO import loadProject
 from resistics.project.projectSpectra import calculateSpectra
 from resistics.project.projectTransferFunction import processProject, viewImpedance
@@ -7,8 +7,7 @@ from resistics.project.projectMask import newMaskData, calculateMask
 from resistics.utilities.utilsPlotter import plotOptionsTransferFunction, getPaperFonts
 
 plotOptions = plotOptionsTransferFunction(plotfonts=getPaperFonts())
-projectPath = Path("remoteProject")
-proj = loadProject(projectPath, "remoteConfig.ini")
+proj = loadProject(remotePath, "remoteConfig.ini")
 
 calculateSpectra(proj, sites=["M6", "Remote"])
 proj.refresh()
@@ -24,8 +23,8 @@ figs = viewImpedance(
     save=False,
     show=False,
 )
-figs[0].savefig(Path(proj.imagePath, "singleSiteM6_128_dec8_5.png"))
-figs[1].savefig(Path(proj.imagePath, "singleSiteRemote_128_dec8_5.png"))
+figs[0].savefig(remoteImages / "singleSiteM6_128_dec8_5.png")
+figs[1].savefig(remoteImages / "singleSiteRemote_128_dec8_5.png")
 
 # calculate the statistic we are interested in
 calculateRemoteStatistics(proj, "Remote", sites=["M6"], sampleFreqs=[128])
@@ -64,5 +63,5 @@ figs = viewImpedance(
     save=False,
     show=False,
 )
-figs[0].savefig(Path(proj.imagePath, "remoteReferenceM6_128_RR_dec8_5_coh_datetime_01.png"))
+figs[0].savefig(remoteImages / "remoteReferenceM6_128_RR_dec8_5_coh_datetime_01.png")
 

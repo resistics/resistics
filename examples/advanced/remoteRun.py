@@ -1,4 +1,4 @@
-from pathlib import Path
+from configuration import remotePath, remoteImages
 from resistics.project.projectIO import loadProject
 from resistics.project.projectSpectra import calculateSpectra
 from resistics.project.projectTransferFunction import processProject, viewImpedance
@@ -7,8 +7,7 @@ from resistics.project.projectMask import newMaskData, calculateMask
 from resistics.utilities.utilsPlotter import plotOptionsTransferFunction, getPaperFonts
 
 plotOptions = plotOptionsTransferFunction(plotfonts=getPaperFonts())
-projectPath = Path("remoteProject")
-proj = loadProject(projectPath)
+proj = loadProject(remotePath)
 
 # calculate spectrum using standard options
 calculateSpectra(proj, sites=["M6", "Remote"])
@@ -27,14 +26,14 @@ figs = viewImpedance(
     show=False,
     save=False,
 )
-figs[0].savefig(Path(proj.imagePath, "singleSiteM6_128.png"))
-figs[1].savefig(Path(proj.imagePath, "singleSiteRemote_128.png"))
+figs[0].savefig(remoteImages / "singleSiteM6_128.png")
+figs[1].savefig(remoteImages / "singleSiteRemote_128.png")
 
 # all sampling frequencies for M6
 figs = viewImpedance(
     proj, sites=["M6"], oneplot=False, plotoptions=plotOptions, show=False, save=False
 )
-figs[0].savefig(Path(proj.imagePath, "singleSiteM6_all.png"))
+figs[0].savefig(remoteImages / "singleSiteM6_all.png")
 
 # perform standard remote reference runs - remember to call the output something else
 processProject(
@@ -49,7 +48,7 @@ figs = viewImpedance(
     show=False,
     save=True,
 )
-figs[0].savefig(Path(proj.imagePath, "remoteReferenceM6.png"))
+figs[0].savefig(remoteImages / "remoteReferenceM6.png")
 
 # let's calculate some single site statistics
 calculateStatistics(proj, sites=["M6", "Remote"], stats=["coherence", "transferFunction"])
@@ -82,8 +81,8 @@ figs = viewImpedance(
     show=False,
     save=False,
 )
-figs[0].savefig(Path(proj.imagePath, "singleSiteM6_128_coh80.png"))
-figs[1].savefig(Path(proj.imagePath, "singleSiteRemote_128_coh80.png"))
+figs[0].savefig(remoteImages / "singleSiteM6_128_coh80.png")
+figs[1].savefig(remoteImages / "singleSiteRemote_128_coh80.png")
 
 # remote reference processing with masks
 processProject(
@@ -105,7 +104,7 @@ figs = viewImpedance(
     show=False,
     save=False,
 )
-figs[0].savefig(Path(proj.imagePath, "remoteReferenceM6_128_coh80.png"))
+figs[0].savefig(remoteImages / "remoteReferenceM6_128_coh80.png")
 
 # remote reference processing with datetime constraints
 processProject(
@@ -127,4 +126,4 @@ figs = viewImpedance(
     show=False,
     save=False,
 )
-figs[0].savefig(Path(proj.imagePath, "remoteReferenceM6_128_coh80_datetimes.png"))
+figs[0].savefig(remoteImages / "remoteReferenceM6_128_coh80_datetimes.png")

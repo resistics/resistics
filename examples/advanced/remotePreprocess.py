@@ -1,9 +1,8 @@
-from pathlib import Path
+from configuration import remotePath, remoteImages
 from resistics.project.projectIO import loadProject
 from resistics.project.projectTime import preProcess, viewTime
 
-projectPath = Path("remoteProject")
-proj = loadProject(projectPath)
+proj = loadProject(remotePath)
 proj.printInfo()
 # get information about the local site
 siteLocal = proj.getSiteData("M6")
@@ -47,7 +46,7 @@ fig = viewTime(
     save=False,
     show=False,
 )
-fig.savefig(Path(proj.imagePath, "viewTimePreprocess.png"))
+fig.savefig(remoteImages / "viewTimePreprocess.png")
 
 fig = viewTime(
     proj,
@@ -60,4 +59,4 @@ fig = viewTime(
     save=False,
     show=False,
 )
-fig.savefig(Path(proj.imagePath, "viewTimePreprocessLowPass.png"))
+fig.savefig(remoteImages / "viewTimePreprocessLowPass.png")
