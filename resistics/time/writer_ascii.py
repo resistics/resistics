@@ -6,7 +6,7 @@ from resistics.time.writer import TimeWriter
 from resistics.time.data import TimeData
 
 
-class DataWriterAscii(TimeWriter):
+class TimeWriterAscii(TimeWriter):
     """Write out ascii data files
 
     This is simply header files and ascii data files. The header file saved is relevant only to this software and needs to be read in using DataReaderInternal.
