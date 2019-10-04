@@ -194,12 +194,12 @@ class StatisticIO(ResisticsBase):
             comments = statData.comments + [
                 "Statistic data for statistic {} written to {} on {}".format(
                     statData.statName, self.datapath, datetime.now()
-                )
+                ),
+                "Using resistics version {}".format(resistics.__version__)
             ]
-            f = open(commentFile, "w")
-            for c in comments:
-                f.write("{}\n".format(c))
-            f.close()
+            with open(commentFile, "w") as f:
+                for c in comments:
+                    f.write("{}\n".format(c))
 
         # save binary stat file
         np.save(statFile, statData.stats)

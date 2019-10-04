@@ -794,17 +794,17 @@ class SpectrumWriter(ResisticsBase):
             List of comments
         """
         filepathComments: str = os.path.join(self.datapath, "comments.txt")
-        commentFile = open(filepathComments, "w")
-        for comment in comments:
-            commentFile.write("{}\n".format(comment))
-        # add a comment about writing out
-        commentFile.write(
-            "Spectra data written out to {} on {}\n".format(
-                self.datapath, datetime.now()
+        with open(filepathComments, "w") as f:
+            for c in comments:
+                f.write("{}\n".format(c))
+            # add a comment about writing out
+            f.write(
+                "Spectra data written out to {} on {}\n".format(
+                    self.datapath, datetime.now()
+                )
             )
-        )
-        commentFile.write(breakComment())
-        commentFile.close()
+            f.write("Using resistics version {}".format(resistics.__version__))
+            f.write(breakComment())
 
     def getFileBase(self, filename: str, fileInc: int) -> str:
         """Read comments file from filepath

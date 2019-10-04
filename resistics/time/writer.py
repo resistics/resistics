@@ -578,12 +578,12 @@ class TimeWriter(ResisticsBase):
         comments : List[str]
             List of strings with data comments
         """
-        f = open(os.path.join(self.getOutPath(), "comments.txt"), "w")
-        for c in comments:
-            f.write("{}\n".format(c))
-        # add another comment about writing
-        f.write("Dataset written to {} on {}".format(self.getOutPath(), datetime.now()))
-        f.close()
+        with open(os.path.join(self.getOutPath(), "comments.txt"), "w") as f:
+            for c in comments:
+                f.write("{}\n".format(c))
+            # add another comment about writing
+            f.write("Dataset written to {} on {}".format(self.getOutPath(), datetime.now()))
+            f.write("Using resistics version {}".format(resistics.__version__))
 
     def writeDataFiles(self, chans, timeData) -> None:
         """Write out data files"""
