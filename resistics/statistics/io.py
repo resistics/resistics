@@ -6,7 +6,7 @@ from typing import List, Tuple
 
 from resistics.common.base import ResisticsBase
 from resistics.common.io import checkAndMakeDir
-from resistics.common.print import arrayToString, breakPrint
+from resistics.common.print import arrayToString, breakComment
 from resistics.statistics.data import StatisticData
 
 

@@ -107,7 +107,7 @@ def getWindowSelector(
     projData: ProjectData,
     decParams: DecimationParameters,
     winParams: WindowParameters,
-    specdir: str,
+    specdir: Union[str, None] = None,
 ) -> WindowSelector:
     """Create a WindowSelector object from projectData, decimationParams, windowParams
 
@@ -127,6 +127,9 @@ def getWindowSelector(
     WindowSelector
         A window selector object        
     """
+    if specdir is None:
+        specdir = projData.config.configParams["Spectra"]["specdir"]
+        
     selector = WindowSelector(
         projData,
         decParams.sampleFreq,
