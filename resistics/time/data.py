@@ -247,7 +247,6 @@ class TimeData(ResisticsBase):
             plt.plot(
                 x[sampleStart : sampleStop + 1],
                 self.data[chan][sampleStart : sampleStop + 1],
-                lw=0.5,
                 label=lab,
             )
             # add time label
