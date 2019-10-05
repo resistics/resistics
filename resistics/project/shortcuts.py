@@ -104,7 +104,10 @@ def getWindowParameters(
 
 
 def getWindowSelector(
-    projData: ProjectData, decParams: DecimationParameters, winParams: WindowParameters
+    projData: ProjectData,
+    decParams: DecimationParameters,
+    winParams: WindowParameters,
+    specdir: str,
 ) -> WindowSelector:
     """Create a WindowSelector object from projectData, decimationParams, windowParams
 
@@ -116,6 +119,8 @@ def getWindowSelector(
         DecimationParams object to hold the decimation parameters
     winParams : Windowparams
         WindowParams object to hold the windowing parameters
+    specdir : str
+        The spectra directory
     
     Returns
     -------
@@ -127,7 +132,7 @@ def getWindowSelector(
         decParams.sampleFreq,
         decParams,
         winParams,
-        specdir=projData.config.configParams["Spectra"]["specdir"],
+        specdir=specdir,
     )
     return selector
 

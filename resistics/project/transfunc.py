@@ -198,7 +198,7 @@ def processSite(
     decParams.printInfo()
     winParams = getWindowParameters(decParams, projData.config)
     # window selector
-    winSelector = getWindowSelector(projData, decParams, winParams)
+    winSelector = getWindowSelector(projData, decParams, winParams, options["specdir"])
 
     # if two sites are duplicated (e.g. input site and output site), winSelector only uses distinct sites. Hence using site and inputSite is no problem even if they are the same
     processSites = []
