@@ -1,14 +1,14 @@
-from configuration import preprocessPath, preprocessImages
-from resistics.project.projectIO import loadProject
+from datapaths import preprocessPath, preprocessImages
+from resistics.project.io import loadProject
 
 proj = loadProject(preprocessPath)
 proj.printInfo()
 
-from resistics.utilities.utilsPlotter import plotOptionsTime, getPresentationFonts
+from resistics.common.plot import plotOptionsTime, getPresentationFonts
 plotOptions = plotOptionsTime(plotfonts=getPresentationFonts())
 
 # resample to 1024 Hz and save in new site
-from resistics.project.projectTime import preProcess, viewTime
+from resistics.project.time import preProcess, viewTime
 
 preProcess(
     proj, sites="site1", filter={"lpfilt": 32}, outputsite="site1_lowpass", prepend=""

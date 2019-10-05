@@ -1,19 +1,19 @@
-import os
-from resistics.project.projectIO import loadProject
+from datapaths import projectPath, imagePath
+from resistics.project.io import loadProject
 
 #  load the project and also provide a config file
-projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath, configFile="tutorialConfig.ini")
 projData.printInfo()
 
 # calculate spectrum using the new configuration
-from resistics.project.projectSpectra import calculateSpectra
+from resistics.project.spectra import calculateSpectra
 
 calculateSpectra(projData)
 projData.refresh()
 
 # process the spectra
-from resistics.project.projectTransferFunction import processProject, viewImpedance
+from resistics.project.transfunc import processProject, viewImpedance
 
 processProject(projData)
-viewImpedance(projData, sites=["site1"], oneplot=False, save=True)
+figs = viewImpedance(projData, sites=["site1"], oneplot=False, save=False)
+figs[0].savefig(imagePath / "usingConfigFiles_viewimp")

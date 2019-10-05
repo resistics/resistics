@@ -1,6 +1,6 @@
-from configuration import remotePath, remoteImages
-from resistics.project.projectIO import loadProject
-from resistics.project.projectTime import preProcess, viewTime
+from datapaths import remotePath, remoteImages
+from resistics.project.io import loadProject
+from resistics.project.time import preProcess, viewTime
 
 proj = loadProject(remotePath)
 proj.printInfo()
@@ -33,7 +33,7 @@ for meas in meas128:
     )
 proj.refresh()
 
-from resistics.utilities.utilsPlotter import plotOptionsTime, getPresentationFonts
+from resistics.common.plot import plotOptionsTime, getPresentationFonts
 plotOptions = plotOptionsTime(plotfonts=getPresentationFonts())
 
 fig = viewTime(

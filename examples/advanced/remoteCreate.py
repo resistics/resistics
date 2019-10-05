@@ -1,5 +1,5 @@
-from configuration import remotePath
-from resistics.project.projectIO import newProject
+from datapaths import remotePath
+from resistics.project.io import newProject
 
 # define the project path. The project will be created under this project path.
 # If the path does not exist, it will be created

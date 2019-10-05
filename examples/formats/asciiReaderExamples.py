@@ -1,8 +1,8 @@
-import os
-from resistics.ioHandlers.dataWriter import DataWriter
+from datapaths import timePath, timeImages
+from resistics.time.writer import TimeWriter
 
-asciiPath = os.path.join("timeData", "ascii")
-writer = DataWriter()
+asciiPath = timePath / "ascii"
+writer = TimeWriter()
 writer.setOutPath(asciiPath)
 chan2FileMap = {
     "Ex": "exmuVm.ascii",
@@ -17,9 +17,9 @@ writer.writeTemplateHeaderFiles(
 )
 
 # read in ascii format
-from resistics.ioHandlers.dataReaderAscii import DataReaderAscii
+from resistics.time.reader_ascii import TimeReaderAscii
 
-asciiReader = DataReaderAscii(asciiPath)
+asciiReader = TimeReaderAscii(asciiPath)
 asciiReader.printInfo()
 
 # get data and view
@@ -31,20 +31,20 @@ fig = plt.figure(figsize=(16, 3 * asciiData.numChans))
 asciiData.view(fig=fig, label="ASCII format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "ascii.png"))
+fig.savefig(timeImages / "ascii.png")
 
 # now write out as internal format
-from resistics.ioHandlers.dataWriterInternal import DataWriterInternal
+from resistics.time.writer_internal import TimeWriterInternal
 
-ascii_2intenrnal = os.path.join("timeData", "asciiInternal")
-writer = DataWriterInternal()
+ascii_2intenrnal = timePath / "asciiInternal"
+writer = TimeWriterInternal()
 writer.setOutPath(ascii_2intenrnal)
 writer.writeDataset(asciiReader, physical=True)
 
 # read in internal format
-from resistics.ioHandlers.dataReaderInternal import DataReaderInternal
+from resistics.time.reader_internal import TimeReaderInternal
 
-internalReader = DataReaderInternal(ascii_2intenrnal)
+internalReader = TimeReaderInternal(ascii_2intenrnal)
 internalReader.printInfo()
 internalReader.printComments()
 internalData = internalReader.getPhysicalSamples()
@@ -56,4 +56,4 @@ asciiData.view(fig=fig, sampleStop=500, label="ASCII format", legend=True)
 internalData.view(fig=fig, sampleStop=500, label="Internal format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "ascii_vs_internal.png"))
+fig.savefig(timeImages / "ascii_vs_internal.png")

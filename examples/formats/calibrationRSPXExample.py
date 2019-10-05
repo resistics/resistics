@@ -1,9 +1,8 @@
-import os
-from resistics.ioHandlers.calibrationIO import CalibrationIO
-from resistics.ioHandlers.calibrationIO import CalibrationData
+from datapaths import calPath, calImages
+from resistics.calibrate.io import CalibrationIO
 
 # read RSPX calibration data
-filepath = os.path.join("calData", "Metronix_Coil-----TYPE-006_HF-ID-000133.RSPX")
+filepath = calPath / "Metronix_Coil-----TYPE-006_HF-ID-000133.RSPX"
 calIO = CalibrationIO(filepath, "rspx", extend=False)
 calData = calIO.read()
 calData.printInfo()
@@ -15,7 +14,7 @@ fig = plt.figure(figsize=(8, 8))
 calData.view(fig=fig, label="RSPX calibration", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "calibrationRSPX.png"))
+fig.savefig(calImages / "calibrationRSPX.png")
 
 # plot
 fig = plt.figure(figsize=(8, 8))
@@ -25,7 +24,7 @@ calData.view(
 )
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "calibrationRSPX_staticGainAndDegrees.png"))
+fig.savefig(calImages / "calibrationRSPX_staticGainAndDegrees.png")
 
 # this time read in with extend
 calIO.refresh(filepath, "rspx", extend=True)
@@ -38,10 +37,10 @@ calDataExtended.view(fig=fig, degrees=True, label="RSPX calibration", legend=Tru
 calData.view(fig=fig, label="RSPX calibration", degrees=True, legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "calibrationRSPX_extended.png"))
+fig.savefig(calImages / "calibrationRSPX_extended.png")
 
 # write as the ASCII format
-rspx2ascii = os.path.join("calData", "rspx2ascii.TXT")
+rspx2ascii = calPath / "rspx2ascii.TXT"
 calIO.writeInternalFormat(calData, rspx2ascii)
 
 # can read this again
@@ -55,4 +54,4 @@ calData.view(fig=fig, label="RSPX calibration", legend=True)
 calDataAscii.view(fig=fig, label="ASCII calibration", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "calibrationRSPXvsASCII.png"))
+fig.savefig(calImages / "calibrationRSPXvsASCII.png")

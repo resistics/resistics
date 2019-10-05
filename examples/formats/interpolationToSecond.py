@@ -1,26 +1,26 @@
-import os
-from resistics.ioHandlers.dataReaderSpam import DataReaderSPAM
+from datapaths import timePath, timeImages
+from resistics.time.reader_spam import TimeReaderSPAM
 
 # read in spam data
-spamPath = os.path.join("timeData", "spam")
-spamReader = DataReaderSPAM(spamPath)
+spamPath = timePath / "spam"
+spamReader = TimeReaderSPAM(spamPath)
 spamReader.printInfo()
 spamData = spamReader.getPhysicalSamples()
 spamData.printInfo()
 
 # interpolate to second
-from resistics.utilities.utilsInterp import interpolateToSecond
+from resistics.time.interp import interpolateToSecond
 
 interpData = interpolateToSecond(spamData, inplace=False)
 interpData.printInfo()
 
 # can now write out the interpolated dataset
-from resistics.ioHandlers.dataWriterInternal import DataWriterInternal
+from resistics.time.writer_internal import TimeWriterInternal
 
-interpPath = os.path.join("timeData", "spamInterp")
+interpPath = timePath / "spamInterp"
 headers = spamReader.getHeaders()
 chanHeaders, chanMap = spamReader.getChanHeaders()
-writer = DataWriterInternal()
+writer = TimeWriterInternal()
 writer.setOutPath(interpPath)
 writer.writeData(
     headers,
@@ -31,9 +31,9 @@ writer.writeData(
 writer.printInfo()
 
 # read in the internal data
-from resistics.ioHandlers.dataReaderInternal import DataReaderInternal
+from resistics.time.reader_internal import TimeReaderInternal
 
-interpReader = DataReaderInternal(interpPath)
+interpReader = TimeReaderInternal(interpPath)
 interpReader.printInfo()
 interpReader.printComments()
 
@@ -52,4 +52,4 @@ plt.plot(interpData.getDateArray()[0:100], interpData.data["Ex"][0:100], "x:")
 plt.legend(["Original", "Interpolated"], loc=2)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "interpolation.png"))
+fig.savefig(timeImages / "interpolation.png")

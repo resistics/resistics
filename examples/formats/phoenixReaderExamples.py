@@ -1,9 +1,9 @@
-import os
-from resistics.ioHandlers.dataReaderPhoenix import DataReaderPhoenix
+from datapaths import timePath, timeImages
+from resistics.time.reader_phoenix import TimeReaderPhoenix
 
 # read in spam data
-phoenixPath = os.path.join("timeData", "phoenix")
-phoenixReader = DataReaderPhoenix(phoenixPath)
+phoenixPath = timePath / "phoenix"
+phoenixReader = TimeReaderPhoenix(phoenixPath)
 phoenixReader.printDataFileInfo()
 phoenixReader.printInfo()
 
@@ -20,7 +20,7 @@ fig = plt.figure(figsize=(16, 3 * unscaledData.numChans))
 unscaledData.view(fig=fig, sampleEnd=20000)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "phoenixUnscaled.png"))
+fig.savefig(timeImages / "phoenixUnscaled.png")
 
 # let's try physical data and view it
 physicalData = phoenixReader.getPhysicalData(startTime, stopTime)
@@ -29,27 +29,27 @@ fig = plt.figure(figsize=(16, 3 * physicalData.numChans))
 physicalData.view(fig=fig, sampleEnd=20000)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "phoenixPhysical.png"))
+fig.savefig(timeImages / "phoenixPhysical.png")
 
 # can filter the data
-from resistics.utilities.utilsFilter import highPass
+from resistics.time.filter import highPass
 
 filteredData = highPass(physicalData, 4, inplace=False)
 fig = plt.figure(figsize=(16, 3 * physicalData.numChans))
 filteredData.view(fig=fig, sampleEnd=20000)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "phoenixFiltered.png"))
+fig.savefig(timeImages / "phoenixFiltered.png")
 
 # reformat the continuous sampling frequency
-phoenix_2internal = os.path.join("timeData", "phoenixInternal")
+phoenix_2internal = timePath / "phoenixInternal"
 phoenixReader.reformatContinuous(phoenix_2internal)
 
 # reading output
-from resistics.ioHandlers.dataReaderInternal import DataReaderInternal
+from resistics.time.reader_internal import TimeReaderInternal
 
-internalReader = DataReaderInternal(
-    os.path.join(phoenix_2internal, "meas_ts5_2011-11-13-17-04-02_2011-11-14-14-29-46")
+internalReader = TimeReaderInternal(
+    phoenix_2internal / "meas_ts5_2011-11-13-17-04-02_2011-11-14-14-29-46"
 )
 internalReader.printInfo()
 internalReader.printComments()
@@ -63,4 +63,4 @@ physicalData.view(fig=fig, label="Phoenix format data")
 internalData.view(fig=fig, label="Internal format data", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "phoenix_vs_internal_continuous.png"))
+fig.savefig(timeImages / "phoenix_vs_internal_continuous.png")

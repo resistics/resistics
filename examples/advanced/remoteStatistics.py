@@ -1,14 +1,14 @@
-from configuration import remotePath, remoteImages
-from resistics.project.projectIO import loadProject
-from resistics.project.projectStatistics import (
+from datapaths import remotePath, remoteImages
+from resistics.project.io import loadProject
+from resistics.project.statistics import (
     calculateRemoteStatistics,
     viewStatistic,
     viewStatisticHistogram,
     viewStatisticDensityplot,
 )
-from resistics.project.projectMask import newMaskData, calculateMask
-from resistics.project.projectTransferFunction import processProject, viewImpedance
-from resistics.utilities.utilsPlotter import plotOptionsStandard, getPaperFonts
+from resistics.project.mask import newMaskData, calculateMask
+from resistics.project.transfunc import processProject, viewImpedance
+from resistics.common.plot import plotOptionsStandard, getPaperFonts
 
 plotOptions = plotOptionsStandard(plotfonts=getPaperFonts())
 proj = loadProject(remotePath)
@@ -78,7 +78,7 @@ processProject(
     postpend="rr_cohEqn_80_100",
 )
 
-from resistics.utilities.utilsPlotter import plotOptionsTransferFunction
+from resistics.common.plot import plotOptionsTransferFunction
 
 plotOptionsTF = plotOptionsTransferFunction(plotfonts=getPaperFonts())
 figs = viewImpedance(

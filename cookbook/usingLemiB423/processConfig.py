@@ -1,13 +1,13 @@
-from configuration import projectPath, imagePath
-from resistics.project.projectIO import loadProject
+from datapaths import projectPath, imagePath
+from resistics.project.io import loadProject
 
 proj = loadProject(projectPath, "customconfig.ini")
 proj.printInfo()
 
-from resistics.project.projectSpectra import calculateSpectra
-from resistics.project.projectStatistics import calculateStatistics
-from resistics.project.projectTransferFunction import processProject, viewImpedance
-from resistics.utilities.utilsPlotter import plotOptionsTransferFunction, getPaperFonts
+from resistics.project.spectra import calculateSpectra
+from resistics.project.statistics import calculateStatistics
+from resistics.project.transfunc import processProject, viewImpedance
+from resistics.common.plot import plotOptionsTransferFunction, getPaperFonts
 
 calculateSpectra(proj)
 proj.refresh()
@@ -21,7 +21,7 @@ figs = viewImpedance(
 figs[0].savefig(imagePath / "impedance_config.png")
 
 # now try again with some statistics for the dead band
-from resistics.project.projectMask import newMaskData, calculateMask
+from resistics.project.mask import newMaskData, calculateMask
 
 maskData = newMaskData(proj, 500)
 maskData.setStats(["coherence"])

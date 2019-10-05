@@ -1,39 +1,45 @@
-import os
-from resistics.project.projectIO import loadProject
+from datapaths import projectPath, imagePath
+from resistics.project.io import loadProject
 
 # load the project
-projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath)
 
 # load the viewing method
-from resistics.project.projectTime import viewTime
+from resistics.project.time import viewTime
 
 # view data between certain date range
-viewTime(projData, "2012-02-11 01:00:00", "2012-02-11 01:10:00", save=True)
+fig = viewTime(
+    projData, "2012-02-11 01:00:00", "2012-02-11 01:10:00", show=False, save=False
+)
+fig.savefig(imagePath / "viewTime_projtime_view")
 
 # explicitly define sites and channels to plot
-viewTime(
+fig = viewTime(
     projData,
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
     sites=["site1"],
     chans=["Ex", "Hy"],
-    save=True,
+    show=False,
+    save=False,
 )
+fig.savefig(imagePath / "viewTime_projtime_view_chans")
 
 # calibrate magnetic channels
-viewTime(
+fig = viewTime(
     projData,
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
     sites=["site1"],
     chans=["Ex", "Hy"],
     calibrate=True,
-    save=True,
+    show=False,
+    save=False,
 )
+fig.savefig(imagePath / "viewTime_projtime_view_calibrate")
 
 # low pass filter
-viewTime(
+fig = viewTime(
     projData,
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
@@ -41,11 +47,13 @@ viewTime(
     chans=["Ex", "Hy"],
     calibrate=True,
     filter={"lpfilt": 0.5},
-    save=True,
+    show=False,
+    save=False,
 )
+fig.savefig(imagePath / "viewTime_projtime_view_calibrate_lpfilt")
 
 # high pass filter
-viewTime(
+fig = viewTime(
     projData,
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
@@ -53,11 +61,13 @@ viewTime(
     chans=["Ex", "Hy"],
     calibrate=True,
     filter={"hpfilt": 10},
-    save=True,
+    show=False,
+    save=False,
 )
+fig.savefig(imagePath / "viewTime_projtime_view_calibrate_hpfilt")
 
 # band pass filter
-viewTime(
+fig = viewTime(
     projData,
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
@@ -65,11 +75,13 @@ viewTime(
     chans=["Ex", "Hy"],
     calibrate=True,
     filter={"bpfilt": [1, 10]},
+    show=False,
     save=True,
 )
+fig.savefig(imagePath / "viewTime_projtime_view_calibrate_bpfilt")
 
 # notch
-viewTime(
+fig = viewTime(
     projData,
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
@@ -77,11 +89,13 @@ viewTime(
     chans=["Ex", "Hy"],
     calibrate=True,
     notch=[16.6667, 50],
-    save=True,
+    show=False,
+    save=False,
 )
+fig.savefig(imagePath / "viewTime_projtime_view_calibrate_notch")
 
 # normalise
-viewTime(
+fig = viewTime(
     projData,
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
@@ -89,11 +103,13 @@ viewTime(
     chans=["Ex", "Hy"],
     calibrate=True,
     normalise=True,
-    save=True,
+    show=False,
+    save=False,
 )
+fig.savefig(imagePath / "viewTime_projtime_view_calibrate_normalise")
 
 # save with band pass filter
-viewTime(
+fig = viewTime(
     projData,
     "2012-02-11 01:00:00",
     "2012-02-11 01:02:00",
@@ -104,3 +120,4 @@ viewTime(
     save=True,
     show=False,
 )
+fig.savefig(imagePath / "viewTime_projtime_view_calibrate_bpfilt_save")

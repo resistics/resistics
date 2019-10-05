@@ -1,5 +1,5 @@
-from configuration import projectPath, imagePath
-from resistics.ioHandlers.dataReaderLemiB423 import folderB423Headers
+from datapaths import projectPath, imagePath
+from resistics.time.reader_lemib423 import folderB423Headers
 
 # first need to create headers
 sitePath = projectPath / "timeData" / "site1_mt"
@@ -8,7 +8,7 @@ folderB423Headers(
 )
 
 # load project
-from resistics.project.projectIO import loadProject
+from resistics.project.io import loadProject
 
 proj = loadProject(projectPath)
 proj.printInfo()
@@ -16,7 +16,7 @@ fig = proj.view()
 fig.savefig(imagePath / "timeline.png")
 
 # view time
-from resistics.project.projectTime import viewTime
+from resistics.project.time import viewTime
 
 fig = viewTime(
     proj,
@@ -28,10 +28,10 @@ fig = viewTime(
 )
 fig.savefig(imagePath / "viewTime.png")
 
-from resistics.project.projectSpectra import calculateSpectra
-from resistics.project.projectStatistics import calculateStatistics
-from resistics.project.projectTransferFunction import processProject, viewImpedance
-from resistics.utilities.utilsPlotter import plotOptionsTransferFunction, getPaperFonts
+from resistics.project.spectra import calculateSpectra
+from resistics.project.statistics import calculateStatistics
+from resistics.project.transfunc import processProject, viewImpedance
+from resistics.common.plot import plotOptionsTransferFunction, getPaperFonts
 
 calculateSpectra(proj)
 proj.refresh()

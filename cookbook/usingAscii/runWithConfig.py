@@ -1,12 +1,12 @@
-from configuration import projectPath, imagePath
-from resistics.project.projectIO import loadProject
+from datapaths import projectPath, imagePath
+from resistics.project.io import loadProject
 
 #  load the project and also provide a config file
 projData = loadProject(projectPath, configFile="asciiconfig.ini")
 projData.printInfo()
 
-from resistics.project.projectTime import viewTime
-from resistics.utilities.utilsPlotter import plotOptionsTime, getPaperFonts
+from resistics.project.time import viewTime
+from resistics.common.plot import plotOptionsTime, getPaperFonts
 
 plotOptions = plotOptionsTime(plotfonts=getPaperFonts())
 fig = viewTime(
@@ -20,14 +20,14 @@ fig = viewTime(
 fig.savefig(imagePath / "viewTime_polreverse")
 
 # calculate spectrum using the new configuration
-from resistics.project.projectSpectra import calculateSpectra
+from resistics.project.spectra import calculateSpectra
 
 calculateSpectra(projData, calibrate=False, polreverse={"Hy": True})
 projData.refresh()
 
 # plot spectra stack
-from resistics.project.projectSpectra import viewSpectraStack
-from resistics.utilities.utilsPlotter import plotOptionsSpec, getPaperFonts
+from resistics.project.spectra import viewSpectraStack
+from resistics.common.plot import plotOptionsSpec, getPaperFonts
 
 plotOptions = plotOptionsSpec(plotfonts=getPaperFonts())
 fig = viewSpectraStack(
@@ -42,13 +42,13 @@ fig = viewSpectraStack(
 fig.savefig(imagePath / "viewSpectraStack_config_polreverse")
 
 # calculate impedance tensor
-from resistics.project.projectTransferFunction import processProject
+from resistics.project.transfunc import processProject
 
 processProject(projData, outchans=["Ex", "Ey"])
 
 # plot impedance tensor and save the plot
-from resistics.project.projectTransferFunction import viewImpedance
-from resistics.utilities.utilsPlotter import plotOptionsTransferFunction
+from resistics.project.transfunc import viewImpedance
+from resistics.common.plot import plotOptionsTransferFunction
 
 plotoptions = plotOptionsTransferFunction(plotfonts=getPaperFonts())
 plotoptions["xlim"] = [0.01, 1000000]
@@ -66,8 +66,8 @@ figs[0].savefig(imagePath / "impedance_config")
 # process for the tipper
 processProject(projData, outchans=["Ex", "Ey", "Hz"], postpend="withHz")
 
-from resistics.project.projectTransferFunction import viewTipper
-from resistics.utilities.utilsPlotter import plotOptionsTipper
+from resistics.project.transfunc import viewTipper
+from resistics.common.plot import plotOptionsTipper
 
 plotoptions = plotOptionsTipper(plotfonts=getPaperFonts())
 plotoptions["xlim"] = [0.01, 1000000]

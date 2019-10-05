@@ -1,14 +1,14 @@
-from configuration import preprocessPath, preprocessImages
-from resistics.project.projectIO import loadProject
+from datapaths import preprocessPath, preprocessImages
+from resistics.project.io import loadProject
 
 proj = loadProject(preprocessPath)
 proj.printInfo()
 
-from resistics.utilities.utilsPlotter import plotOptionsTime, getPresentationFonts
+from resistics.common.plot import plotOptionsTime, getPresentationFonts
 plotOptions = plotOptionsTime(plotfonts=getPresentationFonts())
 
 # polarity reverse the Ey channel
-from resistics.project.projectTime import preProcess, viewTime
+from resistics.project.time import preProcess, viewTime
 
 preProcess(
     proj,

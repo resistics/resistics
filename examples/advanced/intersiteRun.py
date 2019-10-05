@@ -1,8 +1,8 @@
-from configuration import intersitePath, intersiteImages
-from resistics.project.projectIO import loadProject
+from datapaths import intersitePath, intersiteImages
+from resistics.project.io import loadProject
 
 # headers for MT stations
-from resistics.ioHandlers.dataReaderLemiB423 import folderB423Headers
+from resistics.time.reader_lemib423 import folderB423Headers
 
 folderB423Headers(
     intersitePath / "timeData" / "site1_mt",
@@ -16,7 +16,7 @@ folderB423Headers(
 )
 
 # headers for telluric only stations
-from resistics.ioHandlers.dataReaderLemiB423E import folderB423EHeaders
+from resistics.time.reader_lemib423e import folderB423EHeaders
 
 folderB423EHeaders(
     intersitePath / "timeData" / "site2_te", 500, ex="E1", ey="E2", dx=60, dy=60.7
@@ -29,7 +29,7 @@ fig = proj.view()
 fig.savefig(intersiteImages / "timeline.png")
 
 # view time
-from resistics.project.projectTime import viewTime
+from resistics.project.time import viewTime
 
 fig = viewTime(
     proj,
@@ -42,7 +42,7 @@ fig = viewTime(
 fig.savefig(intersiteImages / "viewTime.png")
 
 # calculate spectra
-from resistics.project.projectSpectra import calculateSpectra
+from resistics.project.spectra import calculateSpectra
 
 calculateSpectra(proj, sites=["site1_mt"])
 calculateSpectra(
@@ -51,17 +51,17 @@ calculateSpectra(
 proj.refresh()
 
 # calculate statistics for MT site
-from resistics.project.projectStatistics import calculateStatistics
+from resistics.project.statistics import calculateStatistics
 
 calculateStatistics(proj, sites=["site1_mt"])
 
 # intersite
-from resistics.project.projectTransferFunction import (
+from resistics.project.transfunc import (
     processProject,
     processSite,
     viewImpedance,
 )
-from resistics.utilities.utilsPlotter import plotOptionsTransferFunction, getPaperFonts
+from resistics.common.plot import plotOptionsTransferFunction, getPaperFonts
 
 plotOptions = plotOptionsTransferFunction(figsize=(24, 12), plotfonts=getPaperFonts())
 plotOptions["res_ylim"] = [1, 1000000]
@@ -84,7 +84,7 @@ figs = viewImpedance(
 figs[0].savefig(intersiteImages / "intersiteTransferFunction.png")
 
 # now try again with some statistics for the dead band
-from resistics.project.projectMask import newMaskData, calculateMask
+from resistics.project.mask import newMaskData, calculateMask
 
 maskData = newMaskData(proj, 500)
 maskData.setStats(["coherence"])

@@ -1,5 +1,5 @@
-from configuration import projectPath # import the project path
-from resistics.project.projectIO import newProject
+from datapaths import projectPath # import the project path
+from resistics.project.io import newProject
 
 # define reference time for project
 referenceTime = "2018-01-01 00:00:00"

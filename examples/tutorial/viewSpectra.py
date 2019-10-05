@@ -1,89 +1,95 @@
-import os
-from resistics.project.projectIO import loadProject
+from datapaths import projectPath, imagePath
+from resistics.project.io import loadProject
 
 # load the project
-projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath)
 
 # view the spectra at 128 Hz
-from resistics.project.projectSpectra import viewSpectra
+from resistics.project.spectra import viewSpectra
 
-viewSpectra(projData, "site1", "meas_2012-02-10_11-30-00", show=True, save=True)
+fig = viewSpectra(projData, "site1", "meas_2012-02-10_11-30-00", show=False, save=False)
+fig.savefig(imagePath / "viewSpec_projspec_128_view")
 
 # setting the plot options
-from resistics.utilities.utilsPlotter import plotOptionsSpec, getPaperFonts
+from resistics.common.plot import plotOptionsSpec, getPaperFonts
 
 plotOptions = plotOptionsSpec(plotfonts=getPaperFonts())
 print(plotOptions)
 
 # view the spectra at 128 Hz
-viewSpectra(
+fig = viewSpectra(
     projData,
     "site1",
     "meas_2012-02-10_11-30-00",
     plotoptions=plotOptions,
-    show=True,
-    save=True,
+    show=False,
+    save=False,
 )
+fig.savefig(imagePath / "viewSpec_projspec_128_view_plotoptions")
 
 # view the spectra at 128 Hz for more than a single window
-viewSpectra(
+fig = viewSpectra(
     projData,
     "site1",
     "meas_2012-02-10_11-30-00",
     chans=["Ex", "Hy"],
     plotwindow="all",
     plotoptions=plotOptions,
-    show=True,
-    save=True,
+    show=False,
+    save=False,
 )
+fig.savefig(imagePath / "viewSpec_projspec_128_view_plotall_chans")
 
 # spectra sections
-from resistics.project.projectSpectra import viewSpectraSection
+from resistics.project.spectra import viewSpectraSection
 
-viewSpectraSection(
+fig = viewSpectraSection(
     projData,
     "site1",
     "meas_2012-02-10_11-30-00",
     plotoptions=plotOptions,
-    show=True,
-    save=True,
+    show=False,
+    save=False,
 )
+fig.savefig(imagePath / "viewSpec_projspec_128_section")
 
 # spectra stack
-from resistics.project.projectSpectra import viewSpectraStack
+from resistics.project.spectra import viewSpectraStack
 
-viewSpectraStack(
+fig = viewSpectraStack(
     projData,
     "site1",
     "meas_2012-02-10_11-30-00",
     coherences=[["Ex", "Hy"], ["Ey", "Hx"]],
     plotoptions=plotOptions,
-    show=True,
-    save=True,
+    show=False,
+    save=False,
 )
+fig.savefig(imagePath / "viewSpec_projspec_128_stack")
 
 # view the spectra at 4096 Hz
-viewSpectra(
+fig = viewSpectra(
     projData,
     "site1",
     "meas_2012-02-10_11-05-00",
     plotwindow="all",
     plotoptions=plotOptions,
-    show=True,
-    save=True,
+    show=False,
+    save=False,
 )
+fig.savefig(imagePath / "viewSpec_projspec_4096_view_plotall")
 
-viewSpectraSection(
+fig = viewSpectraSection(
     projData,
     "site1",
     "meas_2012-02-10_11-05-00",
     plotoptions=plotOptions,
-    show=True,
-    save=True,
+    show=False,
+    save=False,
 )
+fig.savefig(imagePath / "viewSpec_projspec_4096_view_section")
 
-viewSpectraStack(
+fig = viewSpectraStack(
     projData,
     "site1",
     "meas_2012-02-10_11-05-00",
@@ -92,3 +98,4 @@ viewSpectraStack(
     show=True,
     save=True,
 )
+fig.savefig(imagePath / "viewSpec_projspec_4096_view_stack_coherences")

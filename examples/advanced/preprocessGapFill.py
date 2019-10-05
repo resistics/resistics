@@ -1,18 +1,18 @@
-from configuration import preprocessPath, preprocessImages
+from datapaths import preprocessPath, preprocessImages
 from pathlib import Path
-from resistics.project.projectIO import loadProject
+from resistics.project.io import loadProject
 
 proj = loadProject(preprocessPath)
 proj.printInfo()
 
-from resistics.utilities.utilsPlotter import plotOptionsTime, getPresentationFonts
+from resistics.common.plot import plotOptionsTime, getPresentationFonts
 
 plotOptions = plotOptionsTime(plotfonts=getPresentationFonts())
 
-from resistics.ioHandlers.dataReaderATS import DataReaderATS
+from resistics.time.reader_ats import TimeReaderATS
 
 site1 = proj.getSiteData("site1")
-readerATS = DataReaderATS(site1.getMeasurementTimePath("meas_2012-02-10_11-05-00"))
+readerATS = TimeReaderATS(site1.getMeasurementTimePath("meas_2012-02-10_11-05-00"))
 # headers of recording
 headers = readerATS.getHeaders()
 chanHeaders, chanMap = readerATS.getChanHeaders()
@@ -24,12 +24,12 @@ timeOriginal2 = readerATS.getPhysicalData(
     "2012-02-10 11:10:00", "2012-02-10 11:14:00", remaverage=False
 )
 
-from resistics.ioHandlers.dataWriterInternal import DataWriterInternal
+from resistics.time.writer_internal import TimeWriterInternal
 
 # create a new site
 proj.createSite("site1_gaps")
 proj.refresh()
-writer = DataWriterInternal()
+writer = TimeWriterInternal()
 writer.setOutPath(
     Path(proj.timePath, "site1_gaps", "meas_2012-02-10_11-05-00_section1")
 )
@@ -39,7 +39,7 @@ writer.setOutPath(
 )
 writer.writeData(headers, chanHeaders, timeOriginal2, physical=True)
 
-from resistics.project.projectTime import viewTime
+from resistics.project.time import viewTime
 
 # now view time
 fig = viewTime(
@@ -54,22 +54,22 @@ fig = viewTime(
 )
 fig.savefig(preprocessImages / "viewTimeGaps.png")
 
-from resistics.ioHandlers.dataReaderInternal import DataReaderInternal
+from resistics.time.reader_internal import TimeReaderInternal
 
 siteGaps = proj.getSiteData("site1_gaps")
-readerSection1 = DataReaderInternal(
+readerSection1 = TimeReaderInternal(
     siteGaps.getMeasurementTimePath("meas_2012-02-10_11-05-00_section1")
 )
 timeData1 = readerSection1.getPhysicalSamples(remaverage=False)
 timeData1.printInfo()
 
-readerSection2 = DataReaderInternal(
+readerSection2 = TimeReaderInternal(
     siteGaps.getMeasurementTimePath("meas_2012-02-10_11-05-00_section2")
 )
 timeData2 = readerSection2.getPhysicalSamples(remaverage=False)
 timeData2.printInfo()
 
-from resistics.utilities.utilsInterp import fillGap
+from resistics.time.interp import fillGap
 
 timeDataFilled = fillGap(timeData1, timeData2)
 timeDataFilled.printInfo()
@@ -81,7 +81,7 @@ fig.savefig(preprocessImages / "timeDataFilled.png")
 proj.createSite("site1_filled")
 proj.refresh()
 # use channel headers from one of the datasets, stop date will be automatically amended
-writer = DataWriterInternal()
+writer = TimeWriterInternal()
 writer.setOutPath(
     Path(proj.timePath, "site1_filled", "meas_2012-02-10_11-05-00_filled")
 )

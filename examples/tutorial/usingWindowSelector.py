@@ -1,23 +1,22 @@
-import os
-from resistics.project.projectIO import loadProject
+from datapaths import projectPath, imagePath
+from resistics.project.io import loadProject
 
 # load project and configuration file
-projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath, configFile="tutorialConfig.ini")
 
 # get decimation parameters
-from resistics.utilities.utilsProject import getDecimationParameters
+from resistics.project.shortcuts import getDecimationParameters
 
 decimationParameters = getDecimationParameters(4096, projData.config)
 decimationParameters.printInfo()
 
 # get the window parameters
-from resistics.utilities.utilsProject import getWindowParameters
+from resistics.project.shortcuts import getWindowParameters
 
 windowParameters = getWindowParameters(decimationParameters, projData.config)
 windowParameters.printInfo()
 
-from resistics.utilities.utilsProject import getWindowSelector
+from resistics.project.shortcuts import getWindowSelector
 
 decimationParameters = getDecimationParameters(128, projData.config)
 windowParameters = getWindowParameters(decimationParameters, projData.config)

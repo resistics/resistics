@@ -1,12 +1,11 @@
-import os
-from resistics.project.projectIO import loadProject
+from datapaths import projectPath, imagePath
+from resistics.project.io import loadProject
 
 # load project and configuration file
-projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath, configFile="tutorialConfig.ini")
 
 # get a mask data object and specify the sampling frequency to mask (128Hz)
-from resistics.project.projectMask import newMaskData
+from resistics.project.mask import newMaskData
 
 maskData = newMaskData(projData, 128)
 # set the statistics to use in our masking - these must already be calculated out
@@ -20,11 +19,11 @@ maskData.printInfo()
 maskData.printConstraints()
 
 # calculate a file of masked windows for the sampling frequency associated with the maskData
-from resistics.project.projectMask import calculateMask
+from resistics.project.mask import calculateMask
 
 calculateMask(projData, maskData, sites=["site1"])
 fig = maskData.view(0)
-fig.savefig(os.path.join("tutorialProject", "images", "maskData_128_coh_dec0"))
+fig.savefig(imagePath / "usingMasks_maskData_128_coh_dec0")
 
 # do the same for 4096 Hz
 maskData = newMaskData(projData, 4096)
@@ -35,7 +34,7 @@ maskData.printInfo()
 maskData.printConstraints()
 calculateMask(projData, maskData, sites=["site1"])
 fig = maskData.view(0)
-fig.savefig(os.path.join("tutorialProject", "images", "maskData_4096_coh_dec0"))
+fig.savefig(imagePath / "usingMasks_maskData_4096_coh_dec0")
 
 # calculate out statistics again, but this time use both transfer function and coherence
 maskData = newMaskData(projData, 128)
@@ -53,7 +52,7 @@ maskData.addConstraint(
 maskData.maskName = "coh70_100_tfConstrained"
 calculateMask(projData, maskData, sites=["site1"])
 fig = maskData.view(0)
-fig.savefig(os.path.join("tutorialProject", "images", "maskData_128_coh_tf_dec0"))
+fig.savefig(imagePath / "usingMasks_maskData_128_coh_tf_dec0")
 
 maskData = newMaskData(projData, 4096)
 maskData.setStats(["coherence", "transferFunction"])
@@ -70,5 +69,5 @@ maskData.addConstraint(
 maskData.maskName = "coh70_100_tfConstrained"
 calculateMask(projData, maskData, sites=["site1"])
 fig = maskData.view(0)
-fig.savefig(os.path.join("tutorialProject", "images", "maskData_4096_coh_tf_dec0"))
+fig.savefig(imagePath / "usingMasks_maskData_4096_coh_tf_dec0")
 

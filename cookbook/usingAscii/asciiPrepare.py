@@ -1,8 +1,8 @@
-from configuration import projectPath
-from resistics.ioHandlers.dataWriter import DataWriter
+from datapaths import projectPath
+from resistics.time.writer import TimeWriter
 
 asciiPath = projectPath / "timeData" / "site1" / "meas"
-writer = DataWriter()
+writer = TimeWriter()
 writer.setOutPath(asciiPath)
 chan2FileMap = {
     "Ex": "exmuVm.ascii",

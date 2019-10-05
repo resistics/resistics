@@ -1,12 +1,11 @@
-import os
-from resistics.project.projectIO import loadProject
+from datapaths import projectPath, imagePath
+from resistics.project.io import loadProject
 
 # load project and configuration file
-projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath, configFile="tutorialConfig.ini")
 
 # Process the data with this mask
-from resistics.project.projectTransferFunction import processProject
+from resistics.project.transfunc import processProject
 
 processProject(
     projData,
@@ -17,11 +16,17 @@ processProject(
     postpend="coh70_100",
 )
 
-from resistics.project.projectTransferFunction import viewImpedance
+from resistics.project.transfunc import viewImpedance
 
-viewImpedance(
-    projData, sites=["site1"], postpend="coh70_100", oneplot=False, save=True, show=True
+figs = viewImpedance(
+    projData,
+    sites=["site1"],
+    postpend="coh70_100",
+    oneplot=False,
+    save=False,
+    show=True,
 )
+figs[0].savefig(imagePath / "runWithMask_coh70_100")
 
 processProject(
     projData,
@@ -32,7 +37,7 @@ processProject(
     postpend="coh70_100_tfConstrained",
 )
 
-viewImpedance(
+figs = viewImpedance(
     projData,
     sites=["site1"],
     postpend="coh70_100_tfConstrained",
@@ -40,3 +45,4 @@ viewImpedance(
     save=True,
     show=True,
 )
+figs[0].savefig(imagePath / "runWithMask_coh70_100_tfConstrained")

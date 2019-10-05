@@ -1,17 +1,16 @@
-import os
-from resistics.project.projectIO import loadProject
+from datapaths import projectPath, imagePath
+from resistics.project.io import loadProject
 
 # need the project path for loading
-projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath)
 
 # get default statistic names
-from resistics.utilities.utilsStats import getStatNames
+from resistics.statistics.utils import getStatNames
 
 stats, remotestats = getStatNames()
 
 # calculate statistics
-from resistics.project.projectStatistics import calculateStatistics
+from resistics.project.statistics import calculateStatistics
 
 calculateStatistics(projData, stats=stats)
 
@@ -22,7 +21,7 @@ projData.printInfo()
 calculateStatistics(projData, stats=stats)
 
 # to get statistic data, we need the site, the measurement and the statistic we want
-from resistics.project.projectStatistics import getStatisticData
+from resistics.project.statistics import getStatisticData
 
 # coherence statistic data
 statData = getStatisticData(
@@ -30,13 +29,13 @@ statData = getStatisticData(
 )
 # view statistic value over time
 fig = statData.view(0)
-fig.savefig(os.path.join("tutorialProject", "images", "statistic_coherence_view"))
+fig.savefig(imagePath / "usingStats_statistic_coherence_view")
 # view statistic histogram
 fig = statData.histogram(0)
-fig.savefig(os.path.join("tutorialProject", "images", "statistic_coherence_histogram"))
+fig.savefig(imagePath / "usingStats_statistic_coherence_histogram")
 # view statistic crossplot
 fig = statData.crossplot(0, crossplots=[["cohExHy", "cohEyHx"], ["cohExHx", "cohEyHy"]])
-fig.savefig(os.path.join("tutorialProject", "images", "statistic_coherence_crossplot"))
+fig.savefig(imagePath / "usingStats_statistic_coherence_crossplot")
 
 
 # transfer function statistic data
@@ -45,10 +44,10 @@ statData = getStatisticData(
 )
 # view statistic value over time
 fig = statData.view(0, ylim=[-2000, 2000])
-fig.savefig(os.path.join("tutorialProject", "images", "statistic_transferfunction_view"))
+fig.savefig(imagePath / "statistic_transferfunction_view")
 # view statistic histogram
 fig = statData.histogram(0, xlim=[-500, 500])
-fig.savefig(os.path.join("tutorialProject", "images", "statistic_transferfunction_histogram"))
+fig.savefig(imagePath / "statistic_transferfunction_histogram")
 # view statistic crossplot
 fig = statData.crossplot(
     0,
@@ -61,47 +60,51 @@ fig = statData.crossplot(
     xlim=[-2500, 2500],
     ylim=[-2500, 2500],
 )
-fig.savefig(os.path.join("tutorialProject", "images", "statistic_transferfunction_crossplot"))
+fig.savefig(imagePath / "statistic_transferfunction_crossplot")
 # look at the next evaluation frequency
 fig = statData.view(1, ylim=[-2000, 2000])
-fig.savefig(os.path.join("tutorialProject", "images", "statistic_transferfunction_view_eval1"))
+fig.savefig(imagePath / "statistic_transferfunction_view_eval1")
 
 # plot statistic values in time for all data of a specified sampling frequency in a site
-from resistics.project.projectStatistics import viewStatistic
+from resistics.project.statistics import viewStatistic
 
 # statistic in time
-viewStatistic(
+fig = viewStatistic(
     projData,
     "site1",
     128,
     "transferFunction",
     ylim=[-2000, 2000],
-    save=True,
+    save=False,
     show=False,
 )
+fig.savefig(imagePath / "usingStats_projstat_transfunction_view")
 
 # plot statistic histogram for all data of a specified sampling frequency in a site
-from resistics.project.projectStatistics import viewStatisticHistogram
+from resistics.project.statistics import viewStatisticHistogram
 
 # statistic histogram
-viewStatisticHistogram(
-    projData, "site1", 128, "transferFunction", xlim=[-500, 500], save=True, show=False
+fig = viewStatisticHistogram(
+    projData, "site1", 128, "transferFunction", xlim=[-500, 500], save=False, show=False
 )
+fig.savefig(imagePath / "usingStats_projstat_transfunction_hist")
 
 # more examples
 # change the evaluation frequency
-viewStatistic(
+fig = viewStatistic(
     projData,
     "site1",
     128,
     "transferFunction",
     ylim=[-2000, 2000],
     eFreqI=1,
-    save=True,
+    save=False,
     show=False,
 )
+fig.savefig(imagePath / "usingStats_projstat_transfunction_view_efreq")
+
 # change the decimation level
-viewStatistic(
+fig = viewStatistic(
     projData,
     "site1",
     128,
@@ -112,3 +115,4 @@ viewStatistic(
     save=True,
     show=False,
 )
+fig.savefig(imagePath / "usingStats_projstat_transfunction_view_declevel")

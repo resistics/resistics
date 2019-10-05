@@ -1,14 +1,14 @@
-from configuration import remotePath, remoteImages
-from resistics.project.projectIO import loadProject
-from resistics.project.projectSpectra import calculateSpectra
-from resistics.project.projectTransferFunction import processProject, viewImpedance
-from resistics.project.projectStatistics import (
+from datapaths import remotePath, remoteImages
+from resistics.project.io import loadProject
+from resistics.project.spectra import calculateSpectra
+from resistics.project.transfunc import processProject, viewImpedance
+from resistics.project.statistics import (
     calculateStatistics,
     calculateRemoteStatistics,
     viewStatistic,
 )
-from resistics.project.projectMask import newMaskData, calculateMask
-from resistics.utilities.utilsPlotter import plotOptionsTransferFunction, getPaperFonts
+from resistics.project.mask import newMaskData, calculateMask
+from resistics.common.plot import plotOptionsTransferFunction, getPaperFonts
 
 plotOptions = plotOptionsTransferFunction(plotfonts=getPaperFonts())
 proj = loadProject(remotePath, "manualWindowsConfig.ini")

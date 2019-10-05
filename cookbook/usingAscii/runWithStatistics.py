@@ -1,17 +1,17 @@
-from configuration import projectPath, imagePath
-from resistics.project.projectIO import loadProject
+from datapaths import projectPath, imagePath
+from resistics.project.io import loadProject
 
 #  load the project and also provide a config file
 projData = loadProject(projectPath, configFile="asciiconfig.ini")
 projData.printInfo()
 
 # calculate statistics
-from resistics.project.projectStatistics import calculateStatistics
+from resistics.project.statistics import calculateStatistics
 
 calculateStatistics(projData)
 
 # create a mask based on coherence
-from resistics.project.projectMask import newMaskData, calculateMask
+from resistics.project.mask import newMaskData, calculateMask
 
 maskData = newMaskData(projData, 0.5)
 maskData.setStats(["coherence"])
@@ -22,15 +22,15 @@ fig = maskData.view(0)
 fig.savefig(imagePath / "maskcoh")
 
 # calculate impedance tensor
-from resistics.project.projectTransferFunction import processProject
+from resistics.project.transfunc import processProject
 
 processProject(
     projData, outchans=["Ex", "Ey"], masks={"site1": maskData.maskName}, postpend=maskData.maskName
 )
 
 # plot transfer function and save the plot
-from resistics.project.projectTransferFunction import viewImpedance
-from resistics.utilities.utilsPlotter import plotOptionsTransferFunction, getPaperFonts
+from resistics.project.transfunc import viewImpedance
+from resistics.common.plot import plotOptionsTransferFunction, getPaperFonts
 
 plotoptions = plotOptionsTransferFunction(plotfonts=getPaperFonts())
 plotoptions["xlim"] = [0.01, 1000000]

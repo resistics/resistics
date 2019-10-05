@@ -1,9 +1,9 @@
-import os
-from resistics.ioHandlers.dataReaderInternal import DataReaderInternal
+from datapaths import timePath, timeImages
+from resistics.time.reader_internal import TimeReaderInternal
 
 # data paths
-internalPath = os.path.join("timeData", "atsInternal")
-internalReader = DataReaderInternal(internalPath)
+internalPath = timePath / "atsInternal"
+internalReader = TimeReaderInternal(internalPath)
 internalReader.printInfo()
 
 # get data
@@ -17,7 +17,7 @@ fig = plt.figure(figsize=(16, 3 * internalData.numChans))
 internalData.view(fig=fig, sampleStart=0, sampleStop=1000)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "internalData.png"))
+fig.savefig(timeImages / "internalData.png")
 
 # get the data file for each channel
 channels = internalData.chans
@@ -28,7 +28,7 @@ for chan in channels:
 # read in the Ex data using numpy
 import numpy as np
 
-dataFile = os.path.join(internalPath, chan2File["Ex"])
+dataFile = internalPath / chan2File["Ex"]
 npData = np.fromfile(dataFile, np.float32)
 
 # plot the numpy data versus the internal format data
@@ -38,11 +38,11 @@ plt.plot(internalData.getDateArray()[0:251], npData[0:251], label="numpy read")
 plt.legend()
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "internalData_vs_npLoad.png"))
+fig.savefig(timeImages / "internalData_vs_npLoad.png")
 
 # they do not look the same
-# this is because of the average being removed in DataReaderInternal.getPhysicalSamples()
-# read the data again using DataReaderInternal, but this time leave the average there
+# this is because of the average being removed in TimeReaderInternal.getPhysicalSamples()
+# read the data again using TimeReaderInternal, but this time leave the average there
 internalData = internalReader.getPhysicalSamples(
     startSample=0, endSample=20000, remaverage=False
 )
@@ -52,4 +52,4 @@ plt.plot(internalData.getDateArray()[0:251], npData[0:251], label="numpy read")
 plt.legend(loc=2)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "internalDataWithAvg_vs_npLoad.png"))
+fig.savefig(timeImages / "internalDataWithAvg_vs_npLoad.png")

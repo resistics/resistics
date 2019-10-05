@@ -1,9 +1,9 @@
-import os
-from resistics.ioHandlers.dataReaderSpam import DataReaderSPAM
+from datapaths import timePath, timeImages
+from resistics.time.reader_spam import TimeReaderSPAM
 
 # read in spam data
-spamPath = os.path.join("timeData", "spam")
-spamReader = DataReaderSPAM(spamPath)
+spamPath = timePath / "spam"
+spamReader = TimeReaderSPAM(spamPath)
 spamReader.printInfo()
 
 # get physical data from SPAM
@@ -17,20 +17,20 @@ fig = plt.figure(figsize=(16, 3 * physicalSPAMData.numChans))
 physicalSPAMData.view(fig=fig, sampleStop=2000)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "spam.png"))
+fig.savefig(timeImages / "spam.png")
 
 # write out as the internal format
-from resistics.ioHandlers.dataWriterInternal import DataWriterInternal
+from resistics.time.writer_internal import TimeWriterInternal
 
-spam_2internal = os.path.join("timeData", "spamInternal")
-writer = DataWriterInternal()
+spam_2internal = timePath / "spamInternal"
+writer = TimeWriterInternal()
 writer.setOutPath(spam_2internal)
 writer.writeDataset(spamReader, physical=True)
 
 # read in the internal format dataset and see what's in the comments
-from resistics.ioHandlers.dataReaderInternal import DataReaderInternal
+from resistics.time.reader_internal import TimeReaderInternal
 
-internalReader = DataReaderInternal(spam_2internal)
+internalReader = TimeReaderInternal(spam_2internal)
 internalReader.printInfo()
 internalReader.printComments()
 physicalInternalData = internalReader.getPhysicalData(startTime, stopTime)
@@ -42,22 +42,22 @@ physicalSPAMData.view(fig=fig, sampleStop=500, label="SPAM format")
 physicalInternalData.view(fig=fig, sampleStop=500, label="Internal format", legend=True)
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "spam_vs_internal.png"))
+fig.savefig(timeImages / "spam_vs_internal.png")
 
 # all we see is 50Hz and 16Hz noise - apply a band pass filter
-from resistics.utilities.utilsFilter import bandPass
+from resistics.time.filter import bandPass
 
 filteredSPAMData = bandPass(physicalSPAMData, 0.2, 16, inplace=False)
 filteredSPAMData.printInfo()
 
 # write out a filtered data - this is a subset of the data
-spam_2filteredSubset = os.path.join("timeData", "spamInternalFiltered")
+spam_2filteredSubset = timePath / "spamInternalFiltered"
 writer.setOutPath(spam_2filteredSubset)
 chanHeaders, chanMap = spamReader.getChanHeaders()
 writer.writeData(spamReader.getHeaders(), chanHeaders, filteredSPAMData, physical=True)
 
 # let's try reading in again
-internalReaderFiltered = DataReaderInternal(spam_2filteredSubset)
+internalReaderFiltered = TimeReaderInternal(spam_2filteredSubset)
 internalReaderFiltered.printInfo()
 internalReaderFiltered.printComments()
 
@@ -73,4 +73,4 @@ filteredInternalData.view(
 )
 fig.tight_layout(rect=[0, 0.02, 1, 0.96])
 plt.show()
-fig.savefig(os.path.join("images", "spam_vs_internal_filtered.png"))
+fig.savefig(timeImages / "spam_vs_internal_filtered.png")

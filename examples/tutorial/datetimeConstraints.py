@@ -1,8 +1,7 @@
-import os
-from resistics.project.projectIO import loadProject
+from datapaths import projectPath, imagePath
+from resistics.project.io import loadProject
 
 # load the project
-projectPath = os.path.join("tutorialProject")
 projData = loadProject(projectPath, configFile="tutorialConfig.ini")
 
 # define date/time constraints - only time windows within the constraints will be used
@@ -12,23 +11,24 @@ datetimes.append(
 )
 
 # process the spectra
-from resistics.project.projectTransferFunction import processProject
+from resistics.project.transfunc import processProject
 
 processProject(
     projData, sampleFreqs=[128], datetimes=datetimes, postpend="datetimeConstraint"
 )
 
 # plot transfer function and save the plot
-from resistics.project.projectTransferFunction import viewImpedance
+from resistics.project.transfunc import viewImpedance
 
-viewImpedance(
+figs = viewImpedance(
     projData,
     sites=["site1"],
     postpend="datetimeConstraint",
     oneplot=False,
-    save=True,
-    show=True,
+    save=False,
+    show=False,
 )
+figs[0].savefig(imagePath / "datetimeConstraints_viewimp")
 
 # process again with a mask too
 processProject(
@@ -46,6 +46,7 @@ viewImpedance(
     sites=["site1"],
     postpend="coh70_100_tfConstrained_datetimeConstrained",
     oneplot=False,
-    save=True,
-    show=True,
+    save=False,
+    show=False,
 )
+figs[0].savefig(imagePath / "datetimeConstraints_viewimp_mask_coh70_100_tfConstrained")
