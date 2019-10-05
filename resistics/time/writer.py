@@ -6,6 +6,7 @@ from typing import List, Dict, Union, Any
 
 from resistics.common.base import ResisticsBase
 from resistics.common.io import checkAndMakeDir
+from resistics.common.print import breakComment
 from resistics.time.data import TimeData
 from resistics.time.reader import TimeReader
 
@@ -578,12 +579,17 @@ class TimeWriter(ResisticsBase):
         comments : List[str]
             List of strings with data comments
         """
+        import resistics
+
         with open(os.path.join(self.getOutPath(), "comments.txt"), "w") as f:
             for c in comments:
                 f.write("{}\n".format(c))
-            # add another comment about writing
-            f.write("Dataset written to {} on {}".format(self.getOutPath(), datetime.now()))
-            f.write("Using resistics version {}".format(resistics.__version__))
+            f.write(
+                "Time series dataset written to {} on {} using resistics {}\n".format(
+                    self.getOutPath(), datetime.now(), resistics.__version__
+                )
+            )
+            f.write(breakComment())
 
     def writeDataFiles(self, chans, timeData) -> None:
         """Write out data files"""

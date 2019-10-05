@@ -6,7 +6,7 @@ from typing import List, Tuple
 
 from resistics.common.base import ResisticsBase
 from resistics.common.io import checkAndMakeDir
-from resistics.common.print import arrayToString
+from resistics.common.print import arrayToString, breakPrint
 from resistics.statistics.data import StatisticData
 
 
@@ -77,9 +77,7 @@ class StatisticIO(ResisticsBase):
         # want a channel ordering
         if not os.path.exists(infoFile) or not os.path.exists(statFile):
             self.printWarning(
-                "Unable to find info file {} or stat file {}".format(
-                    infoFile, statFile
-                ),
+                "Unable to find info file {} or stat file {}".format(infoFile, statFile)
             )
             return False
         f = open(infoFile, "r")
@@ -191,15 +189,20 @@ class StatisticIO(ResisticsBase):
         # check to save comments
         # only want this on the first increment - no need to rewrite after the others
         if inc < 1:
-            comments = statData.comments + [
-                "Statistic data for statistic {} written to {} on {}".format(
-                    statData.statName, self.datapath, datetime.now()
-                ),
-                "Using resistics version {}".format(resistics.__version__)
-            ]
+            import resistics
+
             with open(commentFile, "w") as f:
-                for c in comments:
+                for c in statData.comments:
                     f.write("{}\n".format(c))
+                f.write(
+                    "Statistic data for statistic {} written to {} on {} using resistics {}\n".format(
+                        statData.statName,
+                        self.datapath,
+                        datetime.now(),
+                        resistics.__version__,
+                    )
+                )
+                f.write(breakComment())
 
         # save binary stat file
         np.save(statFile, statData.stats)
