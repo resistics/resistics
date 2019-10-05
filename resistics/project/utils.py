@@ -2,7 +2,7 @@ import inspect
 from datetime import datetime
 from typing import Dict, List, Union, Any
 
-from resistics.project.utils import generalPrint, warningPrint, errorPrint, blockPrint
+from resistics.common.print import generalPrint, warningPrint, errorPrint, blockPrint
 
 
 def projectText(infoStr: str) -> None:
