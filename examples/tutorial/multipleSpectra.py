@@ -20,7 +20,7 @@ fig = viewSpectra(
     "meas_2012-02-10_11-30-00",
     specdir="notch",
     plotoptions=plotOptions,
-    show=True,
+    show=False,
     save=False,
 )
 fig.savefig(imagePath / "multspec_viewspec_notch_spec")
@@ -31,7 +31,7 @@ fig = viewSpectraSection(
     "meas_2012-02-10_11-30-00",
     specdir="notch",
     plotoptions=plotOptions,
-    show=True,
+    show=False,
     save=False,
 )
 fig.savefig(imagePath / "multspec_viewspec_notch_section")
@@ -50,17 +50,19 @@ figs = viewImpedance(
     sampleFreqs=[128],
     oneplot=False,
     specdir="notch",
-    save=True,
+    save=False,
+    show=False,
 )
 figs[0].savefig(imagePath / "multspec_viewimp_notch")
 
 # and compare to the original
-fig = viewImpedance(
+figs = viewImpedance(
     projData,
     sites=["site1"],
     sampleFreqs=[128],
     oneplot=False,
     specdir="spectra",
-    save=True,
+    save=False,
+    show=False,
 )
 figs[0].savefig(imagePath / "multspec_viewimp_nonotch")

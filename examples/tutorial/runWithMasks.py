@@ -24,7 +24,7 @@ figs = viewImpedance(
     postpend="coh70_100",
     oneplot=False,
     save=False,
-    show=True,
+    show=False,
 )
 figs[0].savefig(imagePath / "runWithMask_coh70_100")
 
@@ -42,7 +42,7 @@ figs = viewImpedance(
     sites=["site1"],
     postpend="coh70_100_tfConstrained",
     oneplot=False,
-    save=True,
-    show=True,
+    save=False,
+    show=False,
 )
 figs[0].savefig(imagePath / "runWithMask_coh70_100_tfConstrained")

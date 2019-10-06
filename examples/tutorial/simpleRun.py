@@ -23,12 +23,12 @@ figs[0].savefig(imagePath / "simpleRun_viewimp_default")
 
 # or keep the two most important polarisations on the same plot
 figs = viewImpedance(
-    projData, sites=["site1"], polarisations=["ExHy", "EyHx"], save=True
+    projData, sites=["site1"], polarisations=["ExHy", "EyHx"], save=False, show=False
 )
 figs[0].savefig(imagePath / "simpleRun_viewimp_polarisations")
 
 # this plot is quite busy, let's plot all the components on separate plots
-figs = viewImpedance(projData, sites=["site1"], oneplot=False, save=False)
+figs = viewImpedance(projData, sites=["site1"], oneplot=False, save=False, show=False)
 figs[0].savefig(imagePath / "simpleRun_viewimp_multplot")
 
 # get a transfer function data object

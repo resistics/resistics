@@ -15,5 +15,5 @@ projData.refresh()
 from resistics.project.transfunc import processProject, viewImpedance
 
 processProject(projData)
-figs = viewImpedance(projData, sites=["site1"], oneplot=False, save=False)
+figs = viewImpedance(projData, sites=["site1"], oneplot=False, save=False, show=False)
 figs[0].savefig(imagePath / "usingConfigFiles_viewimp")

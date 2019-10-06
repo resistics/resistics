@@ -29,7 +29,7 @@ for chan in channels:
 import numpy as np
 
 dataFile = internalPath / chan2File["Ex"]
-npData = np.fromfile(dataFile, np.float32)
+npData = np.fromfile(str(dataFile), np.float32)
 
 # plot the numpy data versus the internal format data
 fig = plt.figure(figsize=(20, 4))

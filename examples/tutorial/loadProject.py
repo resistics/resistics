@@ -7,10 +7,10 @@ projData.printInfo()
 
 # view the project timeline
 fig = projData.view()
-fig.savefig(imagePath / "projectTimeline")
+fig.savefig(imagePath / "loadProj_projectTimeline")
 
 # get site data
 siteData = projData.getSiteData("site1")
 siteData.printInfo()
 fig = siteData.view()
-fig.savefig(imagePath / "siteTimeline")
+fig.savefig(imagePath / "loadProj_siteTimeline")

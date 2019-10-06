@@ -41,7 +41,7 @@ processProject(
     postpend="coh70_100_tfConstrained_datetimeConstrained",
 )
 
-viewImpedance(
+figs = viewImpedance(
     projData,
     sites=["site1"],
     postpend="coh70_100_tfConstrained_datetimeConstrained",

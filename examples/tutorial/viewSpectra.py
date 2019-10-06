@@ -95,7 +95,7 @@ fig = viewSpectraStack(
     "meas_2012-02-10_11-05-00",
     coherences=[["Ex", "Hy"], ["Ey", "Hx"]],
     plotoptions=plotOptions,
-    show=True,
-    save=True,
+    show=False,
+    save=False,
 )
 fig.savefig(imagePath / "viewSpec_projspec_4096_view_stack_coherences")

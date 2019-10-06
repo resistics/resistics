@@ -1,24 +1,24 @@
 from datapaths import projectPath, imagePath
 from resistics.project.io import loadProject
 
-# need the project path for loading
-projData = loadProject(projectPath)
+# # need the project path for loading
+# projData = loadProject(projectPath)
 
-# get default statistic names
-from resistics.statistics.utils import getStatNames
+# # get default statistic names
+# from resistics.statistics.utils import getStatNames
 
-stats, remotestats = getStatNames()
+# stats, remotestats = getStatNames()
 
-# calculate statistics
-from resistics.project.statistics import calculateStatistics
+# # calculate statistics
+# from resistics.project.statistics import calculateStatistics
 
-calculateStatistics(projData, stats=stats)
+# calculateStatistics(projData, stats=stats)
 
 # calculate statistics for a different spectra directory
 # load the project with the tutorial configuration file
 projData = loadProject(projectPath, configFile="tutorialConfig.ini")
 projData.printInfo()
-calculateStatistics(projData, stats=stats)
+# calculateStatistics(projData, stats=stats)
 
 # to get statistic data, we need the site, the measurement and the statistic we want
 from resistics.project.statistics import getStatisticData
@@ -36,6 +36,14 @@ fig.savefig(imagePath / "usingStats_statistic_coherence_histogram")
 # view statistic crossplot
 fig = statData.crossplot(0, crossplots=[["cohExHy", "cohEyHx"], ["cohExHx", "cohEyHy"]])
 fig.savefig(imagePath / "usingStats_statistic_coherence_crossplot")
+# view statistic density plot
+fig = statData.densityplot(
+    0,
+    crossplots=[["cohExHy", "cohEyHx"], ["cohExHx", "cohEyHy"]],
+    xlim=[0, 1],
+    ylim=[0, 1],
+)
+fig.savefig(imagePath / "usingStats_statistic_coherence_densityplot")
 
 
 # transfer function statistic data
@@ -61,6 +69,19 @@ fig = statData.crossplot(
     ylim=[-2500, 2500],
 )
 fig.savefig(imagePath / "statistic_transferfunction_crossplot")
+# view statistic crossplot
+fig = statData.densityplot(
+    0,
+    crossplots=[
+        ["ExHxReal", "ExHxImag"],
+        ["ExHyReal", "ExHyImag"],
+        ["EyHxReal", "EyHxImag"],
+        ["EyHyReal", "EyHyImag"],
+    ],
+    xlim=[-60, 60],
+    ylim=[-60, 60],
+)
+fig.savefig(imagePath / "statistic_transferfunction_densityplot")
 # look at the next evaluation frequency
 fig = statData.view(1, ylim=[-2000, 2000])
 fig.savefig(imagePath / "statistic_transferfunction_view_eval1")
@@ -112,7 +133,7 @@ fig = viewStatistic(
     ylim=[-2000, 2000],
     declevel=1,
     eFreqI=0,
-    save=True,
+    save=False,
     show=False,
 )
 fig.savefig(imagePath / "usingStats_projstat_transfunction_view_declevel")
