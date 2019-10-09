@@ -312,6 +312,7 @@ class TimeReader(ResisticsBase):
 
     def getGain2(self) -> np.ndarray:
         """Get value of gain 2
+        
         Returns
         -------
         np.ndarray
