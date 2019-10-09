@@ -52,10 +52,10 @@ statData = getStatisticData(
 )
 # view statistic value over time
 fig = statData.view(0, ylim=[-2000, 2000])
-fig.savefig(imagePath / "statistic_transferfunction_view")
+fig.savefig(imagePath / "usingStats_statistic_transferfunction_view")
 # view statistic histogram
 fig = statData.histogram(0, xlim=[-500, 500])
-fig.savefig(imagePath / "statistic_transferfunction_histogram")
+fig.savefig(imagePath / "usingStats_statistic_transferfunction_histogram")
 # view statistic crossplot
 fig = statData.crossplot(
     0,
@@ -68,7 +68,7 @@ fig = statData.crossplot(
     xlim=[-2500, 2500],
     ylim=[-2500, 2500],
 )
-fig.savefig(imagePath / "statistic_transferfunction_crossplot")
+fig.savefig(imagePath / "usingStats_statistic_transferfunction_crossplot")
 # view statistic crossplot
 fig = statData.densityplot(
     0,
@@ -81,10 +81,10 @@ fig = statData.densityplot(
     xlim=[-60, 60],
     ylim=[-60, 60],
 )
-fig.savefig(imagePath / "statistic_transferfunction_densityplot")
+fig.savefig(imagePath / "usingStats_statistic_transferfunction_densityplot")
 # look at the next evaluation frequency
 fig = statData.view(1, ylim=[-2000, 2000])
-fig.savefig(imagePath / "statistic_transferfunction_view_eval1")
+fig.savefig(imagePath / "usingStats_statistic_transferfunction_view_eval1")
 
 # plot statistic values in time for all data of a specified sampling frequency in a site
 from resistics.project.statistics import viewStatistic
