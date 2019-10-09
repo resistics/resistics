@@ -1,0 +1,13 @@
+- Implementation of multiprocessing to speed up processing times
+- Statistic documentation in features
+- Improved robust regression
+- Improved estimation of the regression uncertainty to feed into inversion
+- Full support of Phoenix data and calibration files
+- Support for miniseed data format
+- More parameters in transfunc data (induction arrows etc), rotation
+- Support for SPAM XTRX header files
+- Investigating how the statistics can be best combined
+- Addition of signal processing methods to denoise in time domain
+- Possible denoising in frequency domain
+- Extraction of more meaningful window features
+- Supporting the use of custom statistics
