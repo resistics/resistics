@@ -7,6 +7,6 @@ calPath = datapath / "calData"
 calImages = Path("calImages")
 
 # doc paths
-docPath = Path("..", "..", "docs", "source", "_examples", "formats")
+docPath = Path("..", "..", "docs", "source", "_static", "examples", "formats")
 docTime = docPath / "time"
 docCal = docPath / "cal"

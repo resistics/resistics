@@ -5,4 +5,4 @@ projectPath = datapath / "tutorialProject"
 imagePath = Path("images")
 
 # doc paths
-docPath = Path("..", "..", "docs", "source", "_examples", "tutorial")
+docPath = Path("..", "..", "docs", "source", "_static", "examples", "tutorial")
