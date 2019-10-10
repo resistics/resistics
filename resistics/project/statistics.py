@@ -134,8 +134,6 @@ def calculateStatistics(projData: ProjectData, **kwargs):
         A list of sites to calculate statistics for
     sampleFreqs : List[float], optional
         List of sampling frequencies for which to calculate statistics
-    chans : List[str], optional
-        List of data channels to use
     specdir : str, optional
         The spectra directory for which to calculate statistics
     stats : List[str], optional
@@ -263,8 +261,6 @@ def calculateRemoteStatistics(projData: ProjectData, remoteSite: str, **kwargs):
         A list of sites to calculate statistics for
     sampleFreqs : List[float], optional
         List of sampling frequencies for which to calculate statistics
-    chans : List[str], optional
-        List of data channels to use
     specdir : str, optional
         The spectra directory for which to calculate statistics
     remotestats : List[str], optional
