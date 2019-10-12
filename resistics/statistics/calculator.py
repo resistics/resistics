@@ -102,7 +102,6 @@ class StatisticCalculator(ResisticsBase):
     printList()
         Class information returned as list of strings  
     """
-
     def __init__(self) -> None:
         """Initialise the statistic calculator"""
 
@@ -143,7 +142,6 @@ class StatisticCalculator(ResisticsBase):
         List[float]
             List of evaluation frequencies
         """
-
         return deepcopy(self.evalFreq)
 
     def getInChans(self) -> List[str]:
@@ -154,7 +152,6 @@ class StatisticCalculator(ResisticsBase):
         List[str]
             List of input channels
         """
-
         return deepcopy(self.inChans)
 
     def getOutChans(self) -> List[str]:
@@ -165,7 +162,6 @@ class StatisticCalculator(ResisticsBase):
         List[str]
             List of output channels
         """
-
         return deepcopy(self.outChans)
 
     def getSpecChans(self):
@@ -176,7 +172,6 @@ class StatisticCalculator(ResisticsBase):
         List[str]
             List of spectra channels
         """
-
         return deepcopy(self.specChans)
 
     def getRemoteChans(self) -> List[str]:
@@ -187,7 +182,6 @@ class StatisticCalculator(ResisticsBase):
         List[str]
             List of remote reference channels
         """
-
         return deepcopy(self.remoteChans)
 
     def getPSDChans(self) -> List[str]:
@@ -198,7 +192,6 @@ class StatisticCalculator(ResisticsBase):
         List[str]
             List of power spectral density channels
         """
-
         return deepcopy(self.psdChans)
 
     def getCohPairs(self) -> List[List[str]]:
@@ -209,7 +202,6 @@ class StatisticCalculator(ResisticsBase):
         List[List[str]]
             List of coherence pairs
         """
-
         return deepcopy(self.cohPairs)
 
     def getPolDirs(self) -> List[List[str]]:
@@ -220,7 +212,6 @@ class StatisticCalculator(ResisticsBase):
         List[List[str]]
             List of polarisation direction pairs
         """
-
         return deepcopy(self.polDirs)
 
     def getAutoPower(self, chan: str) -> np.ndarray:
@@ -236,7 +227,6 @@ class StatisticCalculator(ResisticsBase):
         np.ndarray
             The auto power for the channel
         """
-
         idx = self.specChans.index(chan)
         # then return the autopower
         return self.spectralMatrix[idx, idx].real
@@ -256,7 +246,6 @@ class StatisticCalculator(ResisticsBase):
         np.ndarray
             The auto power for the channel
         """
-
         idx = self.specChans.index(chan)
         # then return the autopower
         return self.evalMatrix[idx, idx, eIdx].real
@@ -276,7 +265,6 @@ class StatisticCalculator(ResisticsBase):
         np.ndarray
             The cross power spectral density
         """
-
         idx1 = self.specChans.index(chan1)
         idx2 = self.specChans.index(chan2)
         # then return the autopower
@@ -299,7 +287,6 @@ class StatisticCalculator(ResisticsBase):
         np.ndarray
             The cross power spectral density
         """
-
         idx1 = self.specChans.index(chan1)
         idx2 = self.specChans.index(chan2)
         # then return the autopower
@@ -313,7 +300,6 @@ class StatisticCalculator(ResisticsBase):
         Dict
             The statistic output data
         """
-
         return deepcopy(self.outData)
 
     def setInChans(self, inChans: List[str]) -> None:
@@ -324,7 +310,6 @@ class StatisticCalculator(ResisticsBase):
         inChans : List[str]
             Input channels for the magnetotelluric linear system
         """
-
         self.inChans = inChans
         self.inSize = len(self.inChans)
 
@@ -336,7 +321,6 @@ class StatisticCalculator(ResisticsBase):
         inChans : List[str]
             Output channels for the magnetotelluric linear system
         """
-
         self.outChans = outChans
         self.outSize = len(self.outChans)
 
@@ -348,7 +332,6 @@ class StatisticCalculator(ResisticsBase):
         inChans : List[str]
             Input channels for the magnetotelluric linear system
         """
-
         self.remoteChans = remoteChans
 
     def setPSDChans(self, psdChans: List[str]) -> None:
@@ -359,7 +342,6 @@ class StatisticCalculator(ResisticsBase):
         psdChans : List[str]
             Power spectral density channels. An example input would be: ["Ex", "Ey", "Hx", "Hy"]
         """
-
         self.psdChans = psdChans
 
     def setCohPairs(self, cohPairs: List[List[str]]) -> None:
@@ -376,7 +358,6 @@ class StatisticCalculator(ResisticsBase):
         cohPairs : List[List[str]]
             Set the coherence pairs using a list of channel pairs, for example: [["Ex", "Hx"], ["Ex", "Hy"], ["Ey", "Hx"], ["Ey", "Hy"]]
         """
-
         self.cohPairs = cohPairs
 
     def setPolDirs(self, polDirs: List[List[str]]) -> None:
@@ -391,7 +372,6 @@ class StatisticCalculator(ResisticsBase):
         polDirs : List[List[str]]
             Set polarisation direction channel pairs, for example: [["Ex", "Ey"], ["Hx", "Hy"]]
         """
-
         self.polDirs = polDirs
 
     def setSpectra(
@@ -408,7 +388,6 @@ class StatisticCalculator(ResisticsBase):
         evalFreq : np.ndarray
             Evaluation frequency array
         """
-
         self.freq = freq
         self.spec: Dict[np.ndarray] = specData.data
         self.evalFreq = evalFreq
@@ -429,7 +408,6 @@ class StatisticCalculator(ResisticsBase):
         intercept : bool
             Boolean flag for having an intercept in the transfer function calculation
         """
-
         self.intercept = intercept
 
     def calculateSpectralMatrix(self) -> None:
@@ -441,7 +419,6 @@ class StatisticCalculator(ResisticsBase):
         numChans * numChans * numFrequencies
         The elements of this are calculated by multiplying the spectra of one channel by the complex conjugate of the spectra of another channel.
         """
-
         # create the 3d array
         self.spectralMatrix = np.empty(
             shape=(self.numChans, self.numChans, self.dataSize), dtype="complex"
@@ -471,7 +448,6 @@ class StatisticCalculator(ResisticsBase):
         numChans * numChans * numEvaluationFrequencies
         The elements of this are calculated by taking the cross powers spectral matrix and using the result there to interpolate the values at the evaluation frequencies.
         """
-
         # create the array
         self.evalMatrix = np.empty(
             shape=(self.numChans, self.numChans, len(self.evalFreq)), dtype="complex"
@@ -497,7 +473,6 @@ class StatisticCalculator(ResisticsBase):
         remoteChans : List[str]
             The channels to use from remote reference data
         """
-
         self.remoteSpec = remoteData.data
         if len(remoteChans) > 0:
             self.remoteChans = remoteChans
@@ -516,7 +491,6 @@ class StatisticCalculator(ResisticsBase):
         numRemoteChans * numRemoteChans * numFrequencies
         The elements of this are calculated by multiplying the spectra of one channel by the complex conjugate of the spectra of another channel.
         """
-
         # create the 3d array
         numRemoteChans = len(self.remoteChans)
         self.remoteSpectralMatrix = np.empty(
@@ -543,7 +517,6 @@ class StatisticCalculator(ResisticsBase):
 
         Takes the cross power spectral data calculate for the remote reference channels and interpoaltes it to the evaluation frequencies
         """
-
         # create the array
         numRemoteChans = len(self.remoteChans)
         self.remoteEvalMatrix = np.empty(
@@ -567,7 +540,6 @@ class StatisticCalculator(ResisticsBase):
         numChans * numRemoteChans * numFrequencies
         The elements of this are calculated by multiplying a channel of the site spectral data by the complex conjugate of a channel from the remote reference. 
         """
-
         # cannot use conjugate symmetry in this case
         self.referenceSpectralMatrix = np.empty(
             shape=(self.numChans, len(self.remoteChans), self.dataSize), dtype="complex"
@@ -583,7 +555,6 @@ class StatisticCalculator(ResisticsBase):
     def calculateReferenceEvalMatrix(self):
         """Interpolate the remote and site cross powers spectral matrix to the evaluation frequencies.
         """
-
         self.referenceEvalMatrix = np.empty(
             shape=(self.numChans, len(self.remoteChans), len(self.evalFreq)),
             dtype="complex",
@@ -607,7 +578,6 @@ class StatisticCalculator(ResisticsBase):
         np.ndarray
             The autopower array (real for autopowers)
         """
-
         idx = self.remoteChans.index(chan)
         return self.remoteSpectralMatrix[idx, idx].real
 
@@ -626,7 +596,6 @@ class StatisticCalculator(ResisticsBase):
         float
             The autopower of the channel at the evaluation frequency
         """
-
         idx = self.remoteChans.index(chan)
         return self.remoteEvalMatrix[idx, idx, eIdx].real
 
@@ -645,7 +614,6 @@ class StatisticCalculator(ResisticsBase):
         np.ndarray
             The cross power array 
         """
-
         idx1 = self.remoteChans.index(chan1)
         idx2 = self.remoteChans.index(chan2)
         return self.remoteSpectralMatrix[idx1, idx2]
@@ -667,7 +635,6 @@ class StatisticCalculator(ResisticsBase):
         float
             The value of the cross power at the evaluation frequency 
         """
-
         idx1 = self.remoteChans.index(chan1)
         idx2 = self.remoteChans.index(chan2)
         return self.remoteSpectralMatrix[idx1, idx2, eIdx]
@@ -687,7 +654,6 @@ class StatisticCalculator(ResisticsBase):
         np.ndarray
             The cross power array 
         """
-
         idx1 = self.specChans.index(dataChan)
         idx2 = self.remoteChans.index(remoteChan)
         return self.referenceSpectralMatrix[idx1, idx2]
@@ -711,7 +677,6 @@ class StatisticCalculator(ResisticsBase):
         float
             The value of the cross power at the evaluation frequency 
         """
-
         idx1 = self.specChans.index(dataChan)
         idx2 = self.remoteChans.index(remoteChan)
         return self.referenceEvalMatrix[idx1, idx2, eIdx]
@@ -729,7 +694,6 @@ class StatisticCalculator(ResisticsBase):
         np.ndarray
             Data interpolated to evaluation frequencies
         """
-
         interpFunc = interp.interp1d(self.freq, data)
         interpData = interpFunc(self.evalFreq)
         return interpData
@@ -740,7 +704,6 @@ class StatisticCalculator(ResisticsBase):
         The outData dictionary is indexed in the following way:
         outData[evaluation frequency][statistic component] = value
         """
-
         self.outData = {}
         for e in self.evalFreq:
             self.outData[e] = {}
@@ -763,7 +726,6 @@ class StatisticCalculator(ResisticsBase):
         Dict
             The output dictionary
         """
-
         if statName == "absvalEqn":
             return self.winAbsVal()
         elif statName == "coherence":
@@ -802,7 +764,6 @@ class StatisticCalculator(ResisticsBase):
         Dict : 
             Dictionary with statistic values, indexed by [evaluation frequency][statistic component]
         """
-
         # need to divide by length of time too
         freqLen = self.freq.size
         timeLen = (freqLen - 1) * 2  # minus 1 because time sections are usually even
@@ -824,7 +785,6 @@ class StatisticCalculator(ResisticsBase):
         Dict : 
             Dictionary with statistic values, indexed by [evaluation frequency][statistic component]
         """
-
         for idx, p in enumerate(self.getCohPairs()):
             c1 = p[0]  # chan1
             c2 = p[1]  # chan2
@@ -849,7 +809,6 @@ class StatisticCalculator(ResisticsBase):
         Dict : 
             Dictionary with statistic values, indexed by [evaluation frequency][statistic component]
         """
-
         for idx, p in enumerate(self.getPolDirs()):
             c1 = p[0]  # chan1
             c2 = p[1]  # chan2
@@ -882,7 +841,6 @@ class StatisticCalculator(ResisticsBase):
         -----
         Based on paper by Weckmann, Magunia Ritter 2005.
         """
-
         # get the coherences - these will be required later
         winCoherence = self.winCoherence()
 
@@ -942,7 +900,6 @@ class StatisticCalculator(ResisticsBase):
         Dict : 
             Dictionary with statistic values, indexed by [evaluation frequency][statistic component]
         """
-
         for eIdx, eFreq in enumerate(self.evalFreq):
             for iChan, chan in enumerate(self.specChans):
                 # first do the outchans multiplied by every other channel
@@ -967,7 +924,6 @@ class StatisticCalculator(ResisticsBase):
         Dict : 
             Dictionary with statistic values, indexed by [evaluation frequency][statistic component]
         """
-
         totalSize = self.inSize + self.outSize
         # now want to calculate the transfer function for each evaluation frequency
         output = np.empty(
@@ -1035,7 +991,6 @@ class StatisticCalculator(ResisticsBase):
         Dict : 
             Dictionary with statistic values, indexed by [evaluation frequency][statistic component]
         """
-
         # now let's calculate coherency
         # abs(crosspower(A,B))^2/autopower(A)*autpower(B)
         for dataChan in self.specChans:
@@ -1068,7 +1023,6 @@ class StatisticCalculator(ResisticsBase):
         Dict : 
             Dictionary with statistic values, indexed by [evaluation frequency][statistic component]
         """
-
         # now calculate out the relevant coherencies
         # here we calculate the coherency between <Ex,HyR> and <Hy,HyR> for example
         for iOut, outChan in enumerate(self.outChans):
@@ -1122,7 +1076,6 @@ class StatisticCalculator(ResisticsBase):
         Dict : 
             Dictionary with statistic values, indexed by [evaluation frequency][statistic component]
         """
-
         for eIdx, eFreq in enumerate(self.evalFreq):
             for iOut, outChan in enumerate(self.outChans):
                 for iRemote, remoteChan in enumerate(self.remoteChans):
@@ -1147,7 +1100,6 @@ class StatisticCalculator(ResisticsBase):
         Dict : 
             Dictionary with statistic values, indexed by [evaluation frequency][statistic component]
         """
-
         output = np.empty(
             shape=(self.evalFreq.size, self.outSize, self.inSize), dtype="complex"
         )
@@ -1211,7 +1163,6 @@ class StatisticCalculator(ResisticsBase):
         out : list
             List of strings with information
         """
-
         textLst = []
         textLst.append("Default options")
         textLst.append("\tInput Chans = {}".format(listToString(self.getInChans())))
