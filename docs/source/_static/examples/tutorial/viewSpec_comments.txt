@@ -1,0 +1,36 @@
+Unscaled data 2012-02-10 11:30:00 to 2012-02-11 23:03:43.992188 read in from measurement E:\magnetotellurics\code\resisticsdata\tutorial\tutorialProject\timeData\site1\meas_2012-02-10_11-30-00, samples 0 to 16387071
+Sampling frequency 128.0
+Scaling channel Ex with scalar -0.000112591 to give mV
+Dividing channel Ex by electrode distance 0.08 km to give mV/km
+Scaling channel Ey with scalar -0.000112512 to give mV
+Dividing channel Ey by electrode distance 0.091 km to give mV/km
+Scaling channel Hx with scalar -0.00360174 to give mV
+Scaling channel Hy with scalar -0.00360038 to give mV
+Scaling channel Hz with scalar -0.0036007 to give mV
+Remove zeros: False, remove nans: False, remove average: True
+---------------------------------------------------
+Calculating project spectra
+Using default configuration
+Channel Ex not calibrated
+Channel Ey not calibrated
+Channel Hx calibrated with calibration data from file E:\magnetotellurics\code\resisticsdata\tutorial\tutorialProject\calData\Hx_MFS06365.TXT
+Channel Hy calibrated with calibration data from file E:\magnetotellurics\code\resisticsdata\tutorial\tutorialProject\calData\Hy_MFS06357.TXT
+Channel Hz calibrated with calibration data from file E:\magnetotellurics\code\resisticsdata\tutorial\tutorialProject\calData\Hz_MFS06307.TXT
+Decimating with 7 levels and 7 frequencies per level
+Evaluation frequencies for this level 32.0, 22.62741699796952, 16.0, 11.31370849898476, 8.0, 5.65685424949238, 4.0
+Windowing with window size 512 samples and overlap 128 samples
+Time data decimated from 128.0 Hz to 16.0 Hz, new start time 2012-02-10 11:30:00, new end time 2012-02-11 23:03:43.937500
+Evaluation frequencies for this level 2.82842712474619, 2.0, 1.414213562373095, 1.0, 0.7071067811865475, 0.5, 0.35355339059327373
+Windowing with window size 512 samples and overlap 128 samples
+Time data decimated from 16.0 Hz to 2.0 Hz, new start time 2012-02-10 11:30:00, new end time 2012-02-11 23:03:43.500000
+Evaluation frequencies for this level 0.25, 0.17677669529663687, 0.125, 0.08838834764831843, 0.0625, 0.044194173824159216, 0.03125
+Windowing with window size 512 samples and overlap 128 samples
+Time data decimated from 2.0 Hz to 0.25 Hz, new start time 2012-02-10 11:30:00, new end time 2012-02-11 23:03:40
+Time data decimated from 0.25 Hz to 0.125 Hz, new start time 2012-02-10 11:30:00, new end time 2012-02-11 23:03:36
+Evaluation frequencies for this level 0.022097086912079608, 0.015625, 0.011048543456039804, 0.0078125, 0.005524271728019902, 0.00390625, 0.002762135864009951
+Windowing with window size 512 samples and overlap 128 samples
+Time data decimated from 0.125 Hz to 0.015625 Hz, new start time 2012-02-10 11:30:00, new end time 2012-02-11 23:03:20
+Evaluation frequencies for this level 0.001953125, 0.0013810679320049755, 0.0009765625, 0.0006905339660024878, 0.00048828125, 0.0003452669830012439, 0.000244140625
+Windowing with window size 512 samples and overlap 128 samples
+Spectra data written out to E:\magnetotellurics\code\resisticsdata\tutorial\tutorialProject\specData\site1\meas_2012-02-10_11-30-00\spectra on 2019-10-05 19:17:48.174074 using resistics 0.0.6.dev2
+---------------------------------------------------

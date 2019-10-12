@@ -6,12 +6,16 @@ Submodules
 
 .. toctree::
 
-   resistics.project.projectIO
-   resistics.project.projectMask
-   resistics.project.projectSpectra
-   resistics.project.projectStatistics
-   resistics.project.projectTime
-   resistics.project.projectTransferFunction
+   resistics.project.data
+   resistics.project.io
+   resistics.project.mask
+   resistics.project.preprocess
+   resistics.project.shortcuts
+   resistics.project.spectra
+   resistics.project.statistics
+   resistics.project.time
+   resistics.project.transfunc
+   resistics.project.utils
 
 Module contents
 ---------------

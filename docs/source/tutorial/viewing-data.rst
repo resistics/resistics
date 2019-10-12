@@ -15,17 +15,17 @@
 Viewing timeseries data
 ------------------------
 
-After time data files are in place, they can be visualised. Begin by loading the project and then using the methods in the :mod:`~resistics.project.projectTime` module.
+After time data files are in place, they can be visualised. Begin by loading the project and then using the methods in the project :mod:`~resistics.project.time` module.
 
 .. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
-    :lines: 1-12
+    :lines: 1-14
     :lineno-start: 1
 
 This yields the below plot:
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/timeData_2012-02-11_01-00-00__2012-02-11_01-10-00.png
+.. figure:: ../_static/examples/tutorial/viewTime_projtime_view.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -37,10 +37,10 @@ By default, channels |Ex|, |Ey|, |Hx|, |Hy|, |Hz| are all plotted. However, the 
 .. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
-    :lines: 14-22
-    :lineno-start: 14
+    :lines: 16-26
+    :lineno-start: 16
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/timeData_2012-02-11_01-00-00__2012-02-11_01-02-00.png
+.. figure:: ../_static/examples/tutorial/viewTime_projtime_view_chans.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -52,10 +52,10 @@ There are a number of pre-processing options that can be optionally applied to t
 .. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
-    :lines: 24-33
-    :lineno-start: 24
+    :lines: 28-39
+    :lineno-start: 28
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/timeData_2012-02-11_01-00-00__2012-02-11_01-02-00.1.png
+.. figure:: ../_static/examples/tutorial/viewTime_projtime_view_calibrate.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -67,10 +67,10 @@ Low pass filters can be applied to the data as shown below:
 .. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
-    :lines: 35-45
-    :lineno-start: 35
+    :lines: 41-53
+    :lineno-start: 41
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/timeData_2012-02-11_01-00-00__2012-02-11_01-02-00.2.png
+.. figure:: ../_static/examples/tutorial/viewTime_projtime_view_calibrate_lpfilt.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -82,26 +82,26 @@ High pass, band pass and notch filters can also be applied to the data in a simi
 .. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
-    :lines: 47-81
-    :lineno-start: 44
+    :lines: 55-95
+    :lineno-start: 55
 
 The channels can be individually normalised by using the normalise option. The normalisation factor here is calculated using the numpy.linalg.norm method.
 
 .. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
-    :lines: 83-93
-    :lineno-start: 83
+    :lines: 97-109
+    :lineno-start: 97
 
 Resistics can automatically save plots as images in the project images directory. When batching, it can often be useful to not show the plots (which tend to block the progress of the code) but rather save the plot without showing it. This can be achieved in the following way:
 
 .. literalinclude:: ../../../examples/tutorial/viewTime.py
     :linenos:
     :language: python
-    :lines: 95-106
-    :lineno-start: 88
+    :lines: 111-123
+    :lineno-start: 111
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/timeData_2012-02-11_01-00-00__2012-02-11_01-02-00.7.png
+.. figure:: ../_static/examples/tutorial/viewTime_projtime_view_calibrate_bpfilt_save.png
     :align: center
     :alt: alternate text
     :figclass: align-center

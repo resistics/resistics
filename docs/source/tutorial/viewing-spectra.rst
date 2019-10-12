@@ -48,11 +48,11 @@ Spectra data is stored in the following locations.
 
 Each spectra file that is calculated is written out with a set of comments. The comment file is a text file that can be opened in any text editor and records the various parameters used when calculating out spectra. An example is given below.
 
-.. literalinclude:: ../../../examples/tutorial/tutorialProject/specData/site1/meas_2012-02-10_11-30-00/spectra/comments.txt
+.. literalinclude:: ../_static/examples/tutorial/viewSpec_comments.txt
     :linenos:
     :language: text
 
-There are a few methods in :mod:`~resistics.project.projectSpectra` that can be used to visualise spectra. These are:
+There are a few methods in the project :mod:`~resistics.project.spectra` module that can be used to visualise spectra. These are:
 
 - View raw spectra data for time windows
 - View spectra sections - an image of spectras calculated over the period of recording
@@ -63,27 +63,27 @@ To begin looking at spectra, load the project in the standard way.
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 1-6
+    :lines: 1-5
     :lineno-start: 1
 
-The fourier spectra can be viewed using the :meth:`~resistics.project.projectSpectra.viewSpectra` method, which takes a site and measurement as arguments. 
+The fourier spectra can be viewed using the :meth:`~resistics.project.spectra.viewSpectra` method, which takes a site and measurement as arguments. 
 
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 8-11
-    :lineno-start: 8
+    :lines: 7-11
+    :lineno-start: 7
 
 This gives the following output: 
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
+.. figure:: ../_static/examples/tutorial/viewSpec_projspec_128_view.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Plot of the first time window spectrum
 
-Plotting options can be defined using the :python:`plotoptions` keyword for :meth:`~resistics.project.projectSpectra.viewSpectra`. This needs to be a dictionary defining layout options (limits etc). There are some built-in plot options for different types of plots. In the below example, :meth:`~resistics.utilities.utilsPlotter.plotOptionsSpec` returns a dictionary of standard plot options for spectra. Further, :meth:`~resistics.utilities.utilsPlotter.getPaperFonts` returns a dictionary of font sizes to use for the plot targetted at papers. 
+Plotting options can be defined using the :python:`plotoptions` keyword for :meth:`~resistics.project.spectra.viewSpectra`. This needs to be a dictionary defining layout options (limits etc). There are some built-in plot options for different types of plots. In the below example, :meth:`~resistics.common.plot.plotOptionsSpec` returns a dictionary of standard plot options for spectra. Further, :meth:`~resistics.common.plot.getPaperFonts` returns a dictionary of font sizes to use for the plot targetted at papers. 
 
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
@@ -102,10 +102,10 @@ Now plotting the spectra again with the new plot options gives the same plot but
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 19-27
+    :lines: 19-28
     :lineno-start: 19
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.1.png
+.. figure:: ../_static/examples/tutorial/viewSpec_projspec_128_view_plotoptions.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -123,25 +123,25 @@ In the below example, :python:`plotwindow = "all"` which means that 20 windows a
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 29-39
-    :lineno-start: 29
+    :lines: 30-41
+    :lineno-start: 30
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.2.png
+.. figure:: ../_static/examples/tutorial/viewSpec_projspec_128_view_plotall_chans.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Plot of multiple window spectra
 
-Another useful way to inspect the variation of spectra across the time series measurement is to plot a spectra section using the :meth:`~resistics.project.projectSpectra.viewSpectraSection` method of :mod:`~resistics.project.projectSpectra`. This is a 2-D image of the spectra with time across the x-axis and frequency across the y-axis with colour representing the amplitude. An example of plotting a spectra section and the image is shown below.
+Another useful way to inspect the variation of spectra across the time series measurement is to plot a spectra section using the :meth:`~resistics.project.spectra.viewSpectraSection` method of the project :mod:`~resistics.project.spectra` module. This is a 2-D image of the spectra with time across the x-axis and frequency across the y-axis with colour representing the amplitude. An example of plotting a spectra section and the image is shown below.
 
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 41-51
+    :lines: 43-54
     :lineno-start: 41
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraSection_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
+.. figure:: ../_static/examples/tutorial/viewSpec_projspec_128_section.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -150,48 +150,48 @@ Another useful way to inspect the variation of spectra across the time series me
 
 Spectra sections plot 250 window spectra across the duration of the time series measurement.
 
-To understand the dominant frequencies in a time series measurement, it can be useful to perform spectral stacking. This can be achieved using the :meth:`~resistics.project.projectSpectra.viewSpectraStack` method of :mod:`~resistics.project.projectSpectra`. Spectra stacking will averages the spectra amplitudes across multiple windows.
+To understand the dominant frequencies in a time series measurement, it can be useful to perform spectral stacking. This can be achieved using the :meth:`~resistics.project.spectra.viewSpectraStack` method of the project :mod:`~resistics.project.spectra` module. Spectra stacking will averages the spectra amplitudes across multiple windows.
 
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 53-64
-    :lineno-start: 53
+    :lines: 56-68
+    :lineno-start: 56
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraStack_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
+.. figure:: ../_static/examples/tutorial/viewSpec_projspec_128_stack.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Plot of a spectra stacking for 128Hz sampling frequency data
 
-Adding the **coherences** keyword also stacks the coherences. The number of stacks to perform across the duration of the time series measurement can be controlled using the **numstacks** keyword. For more information, see the documentation for :meth:`~resistics.project.projectSpectra.viewSpectraStack`.
+Adding the **coherences** keyword also stacks the coherences. The number of stacks to perform across the duration of the time series measurement can be controlled using the **numstacks** keyword. For more information, see the documentation for :meth:`~resistics.project.spectra.viewSpectraStack`.
 
 The above were demonstrated on data sampled at 128Hz sampling rate but can be easily repeated for the 4096Hz data of the tutorial project. 
 
 .. literalinclude:: ../../../examples/tutorial/viewSpectra.py
     :linenos:
     :language: python
-    :lines: 66-94
-    :lineno-start: 66
+    :lines: 70-101
+    :lineno-start: 70
 
 The resultant plots are:
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
+.. figure:: ../_static/examples/tutorial/viewSpec_projspec_4096_view_plotall.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Plot of a spectra for 20 windows across the 4096Hz measurement
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraSection_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
+.. figure:: ../_static/examples/tutorial/viewSpec_projspec_4096_view_section.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Plot of spectra section for the 4096Hz measurement
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraStack_site1_meas_2012-02-10_11-05-00_dec0_spectra.png
+.. figure:: ../_static/examples/tutorial/viewSpec_projspec_4096_view_stack_coherences.png
     :align: center
     :alt: alternate text
     :figclass: align-center

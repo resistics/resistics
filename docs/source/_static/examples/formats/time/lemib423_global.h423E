@@ -1,0 +1,8 @@
+HEADER = GLOBAL
+sample_freq = 500
+num_samples = 10799501
+start_time = 09:20:34.000000
+start_date = 2019-05-27
+stop_time = 15:20:33.000000
+stop_date = 2019-05-27
+meas_channels = 4

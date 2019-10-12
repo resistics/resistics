@@ -1,0 +1,38 @@
+-----------------------------
+TimeData1 comments
+Unscaled data 2012-02-10 11:05:00 to 2012-02-10 11:09:00 read in from measurement E:\magnetotellurics\code\resisticsdata\advanced\preprocessProject\timeData\site1\meas_2012-02-10_11-05-00, samples 0 to 983040
+Sampling frequency 4096.0
+Scaling channel Ex with scalar -0.000112591 to give mV
+Dividing channel Ex by electrode distance 0.08 km to give mV/km
+Scaling channel Ey with scalar -0.000112512 to give mV
+Dividing channel Ey by electrode distance 0.091 km to give mV/km
+Scaling channel Hx with scalar -0.00360174 to give mV
+Scaling channel Hy with scalar -0.00360038 to give mV
+Scaling channel Hz with scalar -0.0036007 to give mV
+Remove zeros: False, remove nans: False, remove average: False
+Time series dataset written to E:\magnetotellurics\code\resisticsdata\advanced\preprocessProject\timeData\site1_gaps\meas_2012-02-10_11-05-00_section1 on 2019-10-05 22:46:06.751226 using resistics 0.0.6.dev2
+---------------------------------------------------
+Unscaled data 2012-02-10 11:05:00 to 2012-02-10 11:09:00 read in from measurement E:\magnetotellurics\code\resisticsdata\advanced\preprocessProject\timeData\site1_gaps\meas_2012-02-10_11-05-00_section1, samples 0 to 983040
+Sampling frequency 4096.0
+Remove zeros: False, remove nans: False, remove average: False
+-----------------------------
+TimeData2 comments
+Unscaled data 2012-02-10 11:10:00 to 2012-02-10 11:14:00 read in from measurement E:\magnetotellurics\code\resisticsdata\advanced\preprocessProject\timeData\site1\meas_2012-02-10_11-05-00, samples 1228800 to 2211840
+Sampling frequency 4096.0
+Scaling channel Ex with scalar -0.000112591 to give mV
+Dividing channel Ex by electrode distance 0.08 km to give mV/km
+Scaling channel Ey with scalar -0.000112512 to give mV
+Dividing channel Ey by electrode distance 0.091 km to give mV/km
+Scaling channel Hx with scalar -0.00360174 to give mV
+Scaling channel Hy with scalar -0.00360038 to give mV
+Scaling channel Hz with scalar -0.0036007 to give mV
+Remove zeros: False, remove nans: False, remove average: False
+Time series dataset written to E:\magnetotellurics\code\resisticsdata\advanced\preprocessProject\timeData\site1_gaps\meas_2012-02-10_11-05-00_section2 on 2019-10-05 22:46:06.814273 using resistics 0.0.6.dev2
+---------------------------------------------------
+Unscaled data 2012-02-10 11:10:00 to 2012-02-10 11:14:00 read in from measurement E:\magnetotellurics\code\resisticsdata\advanced\preprocessProject\timeData\site1_gaps\meas_2012-02-10_11-05-00_section2, samples 0 to 983040
+Sampling frequency 4096.0
+Remove zeros: False, remove nans: False, remove average: False
+-----------------------------
+Gap filled from 2012-02-10 11:09:00.000244 to 2012-02-10 11:09:59.999756
+Time series dataset written to E:\magnetotellurics\code\resisticsdata\advanced\preprocessProject\timeData\site1_filled\meas_2012-02-10_11-05-00_filled on 2019-10-05 22:46:58.830430 using resistics 0.0.6.dev2
+---------------------------------------------------

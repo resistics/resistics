@@ -158,7 +158,7 @@ The headers for the magnetotellruic and telluric data have been generated and th
     :lines: 25-29
     :lineno-start: 29
 
-.. figure:: ../../../examples/advanced/intersiteImages/timeline.png
+.. figure:: ../_static/examples/advanced/intersite/timeline.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -167,11 +167,11 @@ The headers for the magnetotellruic and telluric data have been generated and th
 
 The configuration that will be used is the same that was used in the :doc:`../cookbook/processing-lemi-b423` example, which has more information about why that configuration was chosen. The configuration parameters are shown below.
 
-.. literalinclude:: ../../../examples/advanced/customconfig.ini
+.. literalinclude:: ../_static/examples/advanced/intersite/customconfig.ini
     :linenos:
     :language: text
 
-Time data can be viewed in the usual way with the :meth:`~resistics.project.projectTime.viewTime` method.
+Time data can be viewed in the usual way with the :meth:`~resistics.project.time.viewTime` method.
 
 .. literalinclude:: ../../../examples/advanced/intersiteRun.py
     :linenos:
@@ -179,7 +179,7 @@ Time data can be viewed in the usual way with the :meth:`~resistics.project.proj
     :lines: 31-42
     :lineno-start: 31
 
-.. figure:: ../../../examples/advanced/intersiteImages/viewTime.png
+.. figure:: ../_static/examples/advanced/intersite/viewTime.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -214,14 +214,14 @@ With the statistics calculated, the intersite processing can be performed, initi
     :lines: 58-84
     :lineno-start: 58
 
-The important call in this section of code is the call to :meth:`~resistics.project.projectTransferFunction.processSite`. In this call, we have set the output site as "site2_te" or the telluric site. The optional input of inputsite has been set to the magnetotellruic site, site1_mt. The result of this is:
+The important call in this section of code is the call to :meth:`~resistics.project.transfunc.processSite`. In this call, we have set the output site as "site2_te" or the telluric site. The optional input of inputsite has been set to the magnetotellruic site, site1_mt. The result of this is:
 
 - electric channel data will be taken from site2_te or the telluric site
 - magnetic channel data will be take from site1_mt or the magnetotelluric site
 
 The resultant intersite transfer function is shown below.
 
-.. figure:: ../../../examples/advanced/intersiteImages/intersiteTransferFunction.png
+.. figure:: ../_static/examples/advanced/intersite/intersiteTransferFunction.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -236,14 +236,14 @@ In the :doc:`../cookbook/processing-lemi-b423` example, a significantly better r
     :lines: 86-133
     :lineno-start: 86
 
-.. figure:: ../../../examples/advanced/intersiteImages/intersiteTransferFunctionMask.png
+.. figure:: ../_static/examples/advanced/intersite/intersiteTransferFunctionMask.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     The intersite transfer function with variable masking
 
-There is still problems with the output at long periods, most noticeably in the phase. This is likely to be synchronisation issue between the two sites. 
+There is still problems with the output at long periods, most noticeably in the phase. This is likely to be a synchronisation issue between the two sites. 
 
 Complete example scripts
 ~~~~~~~~~~~~~~~~~~~~~~~~

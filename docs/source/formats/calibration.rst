@@ -1,7 +1,7 @@
 Calibration data
 ----------------
 
-Calibration data for magnetotelluric recordings comes in many different flavours. Resistics aim to provide a unified experience when handling calibration data. This means that upon reading a calibration data file, a :class:`~resistics.dataObjects.calibrationData.CalibrationData` object is returned, which has the calibration data in units:
+Calibration data for magnetotelluric recordings comes in many different flavours. Resistics aim to provide a unified experience when handling calibration data. This means that upon reading a calibration data file, a :class:`~resistics.calibrate.data.CalibrationData` object is returned, which has the calibration data in units:
 
 - Magnitude in mV/nT (with static gain applied)
 - Phase in radians
@@ -12,10 +12,14 @@ Calibration data for magnetotelluric recordings comes in many different flavours
 
 The package tries to support the major formats, though this becomes harder when they are binary formatted. Currently, there are four supported calibration formats. These are:
 
-- :doc:`Metronix <calibration/metronix-calibration>`
-- :doc:`RSP <calibration/rsp-calibration>`
-- :doc:`RSPX <calibration/rspx-calibration>`
-- A simple :doc:`ASCII <calibration/ascii-calibration>` format for when none of the others make sense
+.. toctree::
+    :maxdepth: 2
+    :titlesonly:
+
+    calibration/metronix-calibration.rst
+    calibration/rsp-calibration.rst
+    calibration/rspx-calibration.rst
+    calibration/ascii-calibration.rst
 
 .. note::
 
@@ -45,15 +49,3 @@ Viewing calibration data
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 As calibration is another major point of pain and failure in the processing of magnetotelluric data, resistics includes tools for viewing calibration data. This is good practice, to ensure that calibration files are being read in appropriately. See the sections covering each format for examples of viewing calibration data.
-
-
-.. toctree::
-    :maxdepth: 2
-    :titlesonly:
-    :glob:
-    :hidden:
-
-    calibration/metronix-calibration.rst
-    calibration/rsp-calibration.rst
-    calibration/rspx-calibration.rst
-    calibration/ascii-calibration.rst

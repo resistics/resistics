@@ -1,7 +1,7 @@
 Partial Coherences
 ------------------
 
-.. figure:: ../../_images/histPartialCoherence.png
+.. figure:: ../../_static/examples/features/stats/histPartialCoherence.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -10,7 +10,7 @@ Partial Coherences
 
 
 
-.. figure:: ../../_images/timePartialCoherence.png
+.. figure:: ../../_static/examples/features/stats/timePartialCoherence.png
     :align: center
     :alt: alternate text
     :figclass: align-center

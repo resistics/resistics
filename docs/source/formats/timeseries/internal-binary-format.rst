@@ -49,13 +49,13 @@ Internal format data folders tend to look like:
 
 The global header file contains the following information:
 
-.. literalinclude:: ../../../../examples/formats/timeData/atsInternal/global.hdr
+.. literalinclude:: ../../_static/examples/formats/time/atsInternal_global.hdr
     :linenos:
     :language: text
 
 And channel headers have channel specific header information:
 
-.. literalinclude:: ../../../../examples/formats/timeData/atsInternal/chan_00.hdr
+.. literalinclude:: ../../_static/examples/formats/time/atsInternal_chan_00.hdr
     :linenos:
     :language: text
 
@@ -68,17 +68,17 @@ And channel headers have channel specific header information:
 
 .. note::
 
-    In most cases, internally formatted data is written out from data already in field units. If the channel header scaling_applied is True, no scaling will be applied in either :meth:`~resistics.ioHandlers.dataReader.DataReader.getUnscaledSamples` or :meth:`~resistics.ioHandlers.dataReader.DataReader.getPhysicalSamples`. However, if scaling_applied is False, then :meth:`~resistics.ioHandlers.dataReader.DataReader.getPhysicalSamples` will scale the data using the ts_lsb header and divide electric channels by the electrode spacing in km.
+    In most cases, internally formatted data is written out from data already in field units. If the channel header scaling_applied is True, no scaling will be applied in either :meth:`~resistics.time.reader.TimeReader.getUnscaledSamples` or :meth:`~resistics.time.reader.TimeReader.getPhysicalSamples`. However, if scaling_applied is False, then :meth:`~resistics.time.reader.TimeReader.getPhysicalSamples` will scale the data using the ts_lsb header and divide electric channels by the electrode spacing in km.
 
 Internally formatted binary data is usually written out with comments in a separate file. An example comments file for internally formatted data is given below.
 
-.. literalinclude:: ../../../../examples/formats/timeData/atsInternal/comments.txt
+.. literalinclude:: ../../_static/examples/formats/time/atsInternal_comments.txt
     :linenos:
     :language: text
 
 The easiest method of formatting ASCII data as the internal binary format is to follow the instructions in the :doc:`ASCII timeseries <ascii-timeseries>` example.
 
-The following will show how to read internally formatted binary data with numpy. To begin with, read an internally formatted dataset with the inbuilt :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class.
+The following will show how to read internally formatted binary data with numpy. To begin with, read an internally formatted dataset with the inbuilt :class:`~resistics.time.reader_internal.TimeReaderInternal` class.
 
 .. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
@@ -86,13 +86,13 @@ The following will show how to read internally formatted binary data with numpy.
     :lines: 1-7
     :lineno-start: 1
 
-The :meth:`~resistics.ioHandlers.IOHandlers.printInfo` method shows information about the dataset, including various recording parameters. 
+The :meth:`~resistics.common.base.ResisticsBase.printInfo` method shows information about the dataset, including various recording parameters. 
 
-.. literalinclude:: ../../_text/printInternal.txt
+.. literalinclude:: ../../_static/examples/formats/time/printInternal.txt
     :linenos:
     :language: text
 
-The :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class does not automatically load the data into memory. Data has to be requested, which can be done using the :meth:`~resistics.ioHandlers.dataReader.DataReader.getPhysicalSamples` or :meth:`~resistics.ioHandlers.dataReader.DataReader.getUnscaledSamples` methods if all the data is required or only a sample range. To request data using dates, the :meth:`~resistics.ioHandlers.dataReader.DataReader.getPhysicalData` or :meth:`~resistics.ioHandlers.dataReader.DataReader.getUnscaledData` methods should be used. All of these return a :class:`~resistics.dataObjects.timeData.TimeData` object. In this case, a range of samples are requested and then information about the timeseries data is printed out to the terminal.
+The :class:`~resistics.time.reader_internal.TimeReaderInternal` class does not automatically load the data into memory. Data has to be requested, which can be done using the :meth:`~resistics.time.reader.TimeReader.getPhysicalSamples` or :meth:`~resistics.time.reader.TimeReader.getUnscaledSamples` methods if all the data is required or only a sample range. To request data using dates, the :meth:`~resistics.time.reader.TimeReader.getPhysicalData` or :meth:`~resistics.time.reader.TimeReader.getUnscaledData` methods should be used. All of these return a :class:`~resistics.time.data.TimeData` object. In this case, a range of samples are requested and then information about the timeseries data is printed out to the terminal.
 
 .. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
@@ -100,11 +100,11 @@ The :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class d
     :lines: 9-11
     :lineno-start: 9
 
-.. literalinclude:: ../../_text/printInternalData.txt
+.. literalinclude:: ../../_static/examples/formats/time/printInternalData.txt
     :linenos:
     :language: text
 
-The data can be plotted by using the :meth:`~resistics.dataObjects.timeData.TimeData.view` method of :class:`~resistics.dataObjects.timeData.TimeData`. By passing a matplotlib figure, the layout of the plot can be further controlled. 
+The data can be plotted by using the :meth:`~resistics.time.data.TimeData.view` method of :class:`~resistics.time.data.TimeData`. By passing a matplotlib figure, the layout of the plot can be further controlled. 
 
 .. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
@@ -112,7 +112,7 @@ The data can be plotted by using the :meth:`~resistics.dataObjects.timeData.Time
     :lines: 13-20
     :lineno-start: 13
 
-.. figure:: ../../../../examples/formats/images/internalData.png
+.. figure:: ../../_static/examples/formats/time/internalData.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -135,7 +135,7 @@ To read in channel |Ex|, all that is required is to use the numpy fromfile metho
     :lines: 28-32
     :lineno-start: 28
 
-This method can be compared to the :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class by plotting the two on the same plot. Matplotlib can help out with this. 
+This method can be compared to the :class:`~resistics.time.reader_internal.TimeReaderInternal` class by plotting the two on the same plot. Matplotlib can help out with this. 
 
 .. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
@@ -143,14 +143,14 @@ This method can be compared to the :class:`~resistics.ioHandlers.dataReaderInter
     :lines: 34-40
     :lineno-start: 34
 
-.. figure:: ../../../../examples/formats/images/internalData_vs_npLoad.png
+.. figure:: ../../_static/examples/formats/time/internalData_vs_npLoad.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Internal data read in versus using numpy. There is a shift between the datasets.
 
-As can be seen in the image, there is a shift between the two methods. This is because the get data methods of the various :class:`~resistics.ioHandlers.dataReader.DataReader` classes return data minus the average value of the data. This can be optionally turned off as in the example below.
+As can be seen in the image, there is a shift between the two methods. This is because the get data methods of the various :class:`~resistics.time.reader.TimeReader` classes return data minus the average value of the data. This can be optionally turned off as in the example below.
 
 .. literalinclude:: ../../../../examples/formats/internalReaderExamples.py
     :linenos:
@@ -160,7 +160,7 @@ As can be seen in the image, there is a shift between the two methods. This is b
 
 Replotting the data now shows that the two are comparable.
 
-.. figure:: ../../../../examples/formats/images/internalDataWithAvg_vs_npLoad.png
+.. figure:: ../../_static/examples/formats/time/internalDataWithAvg_vs_npLoad.png
     :align: center
     :alt: alternate text
     :figclass: align-center

@@ -1,0 +1,12 @@
+Unscaled data 2016-02-21 02:35:00 to 2016-02-21 06:27:12.375000 read in from measurement E:\magnetotellurics\code\resisticsdata\formats\timeData\ats, samples 0 to 1783344
+Sampling frequency 128.0
+Scaling channel Ex with scalar -1.76666e-06 to give mV
+Dividing channel Ex by electrode distance 0.086 km to give mV/km
+Scaling channel Ey with scalar -1.76514e-06 to give mV
+Dividing channel Ey by electrode distance 0.0861 km to give mV/km
+Scaling channel Hx with scalar -0.000112802 to give mV
+Scaling channel Hy with scalar -0.000225735 to give mV
+Scaling channel Hz with scalar -1.41103e-05 to give mV
+Remove zeros: False, remove nans: False, remove average: True
+Time series dataset written to E:\magnetotellurics\code\resisticsdata\formats\timeData\atsInternal on 2019-10-05 18:09:07.436640 using resistics 0.0.6.dev2
+---------------------------------------------------

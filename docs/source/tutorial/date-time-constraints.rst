@@ -18,7 +18,7 @@ As always, the means of providing date and time constraints will be demonstrated
 .. literalinclude:: ../../../examples/tutorial/datetimeConstraints.py
     :linenos:
     :language: python
-    :lines: 1-6
+    :lines: 1-5
     :lineno-start: 1
 
 The next step is define a list to hold the date/time constraints and add a single date/time constraint, which is in the form of a dictionary.
@@ -26,8 +26,8 @@ The next step is define a list to hold the date/time constraints and add a singl
 .. literalinclude:: ../../../examples/tutorial/datetimeConstraints.py
     :linenos:
     :language: python
-    :lines: 8-12
-    :lineno-start: 8
+    :lines: 7-11
+    :lineno-start: 7
 
 As stated above, there are three types of datetime constraints. They are each specified in the following way:
 
@@ -40,14 +40,14 @@ Multiple date/time constraints can be provided and they will be combined and onl
 .. literalinclude:: ../../../examples/tutorial/datetimeConstraints.py
     :linenos:
     :language: python
-    :lines: 14-31
-    :lineno-start: 14
+    :lines: 13-31
+    :lineno-start: 13
 
 There is little new in this example apart from the addition of the *datetimes* keyword to specify the date/time constraints.
 
 The processing gives the resultant transfer function (note, only processing 128 Hz time series data here).
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_dec8_5_datetimeConstraint.png
+.. figure:: ../_static/examples/tutorial/datetimeConstraints_viewimp.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -56,7 +56,7 @@ The processing gives the resultant transfer function (note, only processing 128 
 
 Compare this to the same processing but without datetime constraints.
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_dec8_5.png
+.. figure:: ../_static/examples/tutorial/usingConfigFiles_viewimp.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -68,12 +68,12 @@ Finally, date/time constraints and masks can be combined as shown in the followi
 .. literalinclude:: ../../../examples/tutorial/datetimeConstraints.py
     :linenos:
     :language: python
-    :lines: 33-51
+    :lines: 33-52
     :lineno-start: 33
 
 This gives the below transfer function.
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_dec8_5_coh70_100_tfConstrained_datetimeConstrained.png
+.. figure:: ../_static/examples/tutorial/datetimeConstraints_viewimp_mask_coh70_100_tfConstrained.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -82,12 +82,16 @@ This gives the below transfer function.
 
 In comparison, the transfer function with just the mask.
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_dec8_5_coh70_100_tfConstrained.png
+.. figure:: ../_static/examples/tutorial/runWithMask_coh70_100_tfConstrained.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Impedance tensor estimate with just the masking based on coherence and transfer function statistics
+
+.. note::
+
+    This was the last section of the tutorial. To explore more advanced use cases or user provided examples, please visit the :doc:`Advanced <../advanced>` and :doc:`Cookbook <../cookbook>` sections respectively.
 
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~

@@ -13,15 +13,15 @@ Resistics uses a project structure for processing magnetotelluric data. There ar
 
     The reference time should be a time before any time data was recorded and gives a reference point for time windowing the entire project. 
 
-Below is an example of setting up a new project in the folder tutorialProject. The :meth:`~resistics.project.projectIO.newProject` method create new folders as required and returns a :class:`~resistics.dataObjects.projectData.ProjectData` object which holds the project information. 
+Below is an example of setting up a new project in the folder tutorialProject. The :meth:`~resistics.project.io.newProject` method create new folders as required and returns a :class:`~resistics.project.data.ProjectData` object which holds the project information. 
 
 .. literalinclude:: ../../../examples/tutorial/createProject.py
     :linenos:
     :language: python
-    :lines: 1-10
+    :lines: 1-8
     :lineno-start: 1
 
-Project information can be viewed by calling the :meth:`~resistics.dataObjects.dataObject.DataObject.printInfo` method or by simply :python:`print(projData)`.
+Project information can be viewed by calling the :meth:`~resistics.common.base.ResisticsBase.printInfo` method or by simply :python:`print(projData)`.
 
 .. code-block:: text
 
@@ -54,17 +54,17 @@ Within the folder tutorialProject, resistics creates another set of folders as s
 
 The mtProj.prj project file stores some information about the project allowing it to be reloaded easily. It is a text file and can be opened in a text editor such as notepad or notepad++. For this tutorialProject, the mtProj.prj file looks like:
 
-.. literalinclude:: ../../../examples/tutorial/tutorialProject/mtProj.prj
+.. literalinclude:: ../_static/examples/tutorial/mtProj.prj
     :linenos:
     :language: text
 
-The next step is to create a directory for a new site. This can be done using the :meth:`~resistics.dataObjects.projectData.ProjectData.createSite` method of :class:`~resistics.dataObjects.projectData.ProjectData`. However, printing the project information again still shows zero sites. This is because only folders with timeseries data in them are counted as sites. 
+The next step is to create a directory for a new site. This can be done using the :meth:`~resistics.project.data.ProjectData.createSite` method of :class:`~resistics.project.data.ProjectData`. However, printing the project information again still shows zero sites. This is because only folders with timeseries data in them are counted as sites. 
 
 .. literalinclude:: ../../../examples/tutorial/createProject.py
     :linenos:
     :language: python
-    :lines: 11-13
-    :lineno-start: 11
+    :lines: 9-11
+    :lineno-start: 9
 
 Creating a new site only involves creating a new directory. This can also be done manually in the timeData folder. 
 
@@ -115,7 +115,7 @@ Once a project has been created and a site populated with data folders, the proj
 .. literalinclude:: ../../../examples/tutorial/loadProject.py
     :linenos:
     :language: python
-    :lines: 1-8
+    :lines: 1-6
     :lineno-start: 1    
 
 Printing the project information now that there is a site with data shows the number of sites found and their start and end dates.
@@ -136,28 +136,28 @@ Printing the project information now that there is a site with data shows the nu
     13:01:50 ProjectData: site1             start: 2012-02-10 11:05:00      end: 2012-02-11 23:03:43.992188
     13:01:50 ProjectData: Sampling frequencies found in project (Hz): 128.0, 4096.0
 
-Another useful function is to view the project timeline. This can be done with the :meth:`~resistics.dataObjects.projectData.ProjectData.view` method of :class:`~resistics.dataObjects.projectData.ProjectData`. The :meth:`~resistics.dataObjects.projectData.ProjectData.view` method returns a matplotlib figure object, which can then be saved in the usual way for matplotlib figures. 
+Another useful function is to view the project timeline. This can be done with the :meth:`~resistics.project.data.ProjectData.view` method of :class:`~resistics.project.data.ProjectData`. The :meth:`~resistics.project.data.ProjectData.view` method returns a matplotlib figure object, which can then be saved in the usual way for matplotlib figures. 
 
 .. literalinclude:: ../../../examples/tutorial/loadProject.py
     :linenos:
     :language: python
-    :lines: 10-12
-    :lineno-start: 10    
+    :lines: 8-10
+    :lineno-start: 8    
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/projectTimeline.png
+.. figure:: ../_static/examples/tutorial/loadProj_projectTimeline.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     The tutorialProject timeline
 
-Site information can be accessed by using the :meth:`~resistics.dataObjects.projectData.ProjectData.getSiteData` method of :class:`~resistics.dataObjects.projectData.ProjectData`. This returns a  :class:`~resistics.dataObjects.siteData.SiteData` object, which holds information about sites. Site information can be printed to the terminal in the same way as project information.
+Site information can be accessed by using the :meth:`~resistics.project.data.ProjectData.getSiteData` method of :class:`~resistics.project.data.ProjectData`. This returns a  :class:`~resistics.site.data.SiteData` object, which holds information about sites. Site information can be printed to the terminal in the same way as project information.
 
 .. literalinclude:: ../../../examples/tutorial/loadProject.py
     :linenos:
     :language: python
-    :lines: 14-16
-    :lineno-start: 14
+    :lines: 12-14
+    :lineno-start: 12
 
 .. code-block:: text
 
@@ -174,15 +174,15 @@ Site information can be accessed by using the :meth:`~resistics.dataObjects.proj
     13:51:26 SiteData: meas_2012-02-10_11-05-00             4096.0          2012-02-10 11:05:00         2012-02-10 11:24:59.999756
     13:51:26 SiteData: meas_2012-02-10_11-30-00             128.0           2012-02-10 11:30:00         2012-02-11 23:03:43.992188
 
-Site timelines can also be viewed using the :meth:`~resistics.dataObjects.siteData.SiteData.view` method of :class:`~resistics.dataObjects.siteData.SiteData`, which again returns a matplotlib figure object allowing the plot to be easily saved. 
+Site timelines can also be viewed using the :meth:`~resistics.site.data.SiteData.view` method of :class:`~resistics.site.data.SiteData`, which again returns a matplotlib figure object allowing the plot to be easily saved. 
 
 .. literalinclude:: ../../../examples/tutorial/loadProject.py
     :linenos:
     :language: python
-    :lines: 17-18
-    :lineno-start: 17
+    :lines: 15-16
+    :lineno-start: 15
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/siteTimeline.png
+.. figure:: ../_static/examples/tutorial/loadProj_siteTimeline.png
     :align: center
     :alt: alternate text
     :figclass: align-center

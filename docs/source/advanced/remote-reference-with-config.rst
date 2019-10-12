@@ -26,9 +26,9 @@ Simple configuration
 ~~~~~~~~~~~~~~~~~~~~
 Configuration files provide an easy way to define processing parameters. They are described in more detail :doc:`here <../features/configuration>` and :doc:`here <../tutorial/configuration-files>`.
 
-The below configuration file changes the decimation scheme to 8 decimation levels with 5 evaluation frequencies per level and the minimum window size. In addition, the remote statistics to calculate have been explicitly defined so they do not need to be specifed in the call to :meth:`~resistics.project.projectStatistics.calculateRemoteStatistics`.
+The below configuration file changes the decimation scheme to 8 decimation levels with 5 evaluation frequencies per level and the minimum window size. In addition, the remote statistics to calculate have been explicitly defined so they do not need to be specifed in the call to :meth:`~resistics.project.statistics.calculateRemoteStatistics`.
 
-.. literalinclude:: ../../../examples/advanced/remoteConfig.ini
+.. literalinclude:: ../_static/examples/advanced/remote/remoteConfig.ini
     :linenos:
     :language: text
 
@@ -46,14 +46,14 @@ The following recalculates the spectra, the single site impedance tensors, the r
 
 The single site impedance tensor estimates are shown below.
 
-.. figure:: ../../../examples/advanced/remoteImages/singleSiteM6_128_dec8_5.png
+.. figure:: ../_static/examples/advanced/remote/singleSiteM6_128_dec8_5.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Single site impedance tensor estimates for Site M6 at 128 Hz using 8 decimation levels and 5 evaluation frequencies per level with a minimum window size of 256 points.
 
-.. figure:: ../../../examples/advanced/remoteImages/singleSiteRemote_128_dec8_5.png
+.. figure:: ../_static/examples/advanced/remote/singleSiteRemote_128_dec8_5.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -62,16 +62,16 @@ The single site impedance tensor estimates are shown below.
 
 The long periods have now improved, particularly for the Remote site. However, the dead band remains an issue for Remote and Site M6. 
 
-The remote reference processing result for Site M6 is shown below. The long periods are noticeably better in both phase and apparent resistivity than the results with the standard processing scheme. As stated earlier, the dead band shows now discernible improvement. 
+The remote reference processing result for Site M6 is shown below. The long periods are noticeably better in both phase and apparent resistivity than the results with the standard processing scheme. As stated earlier, the dead band shows no discernible improvement. 
 
-.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6_128_RR_dec8_5_coh_datetime_01.png
+.. figure:: ../_static/examples/advanced/remote/remoteReferenceM6_128_RR_dec8_5_coh_datetime_01.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Remote reference impedance tensor estimates for Site M6 at 128 Hz using 8 decimation levels and 5 evaluation frequencies per level with a minimum window size of 256 points. Masks and time constraints are applied.
 
-.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6_128_RR_coh_datetime_01.png
+.. figure:: ../_static/examples/advanced/remote/remoteReferenceM6_128_RR_coh_datetime_01.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -80,9 +80,9 @@ The remote reference processing result for Site M6 is shown below. The long peri
 
 Customised windowing
 ~~~~~~~~~~~~~~~~~~~~
-Resistics gives fine grained control over windowing and overlaps. In the below configuration file, the same decimation scheme is used, with 8 decimation levels and 5 evaluation frequencies per level. However, the windowing has been defined explicitly for each decimation level. In addition and similar to the dec8_5 configuration file, the statistics and remote statistics to calculate have been explicitly defined so they do not need to be specifed in calls to :meth:`~resistics.project.projectStatistics.calculateStatistics` and :meth:`~resistics.project.projectStatistics.calculateRemoteStatistics`.
+Resistics gives fine grained control over windowing and overlaps. In the below configuration file, the same decimation scheme is used, with 8 decimation levels and 5 evaluation frequencies per level. However, the windowing has been defined explicitly for each decimation level. In addition and similar to the dec8_5 configuration file, the statistics and remote statistics to calculate have been explicitly defined so they do not need to be specifed in calls to :meth:`~resistics.project.statistics.calculateStatistics` and :meth:`~resistics.project.statistics.calculateRemoteStatistics`.
 
-.. literalinclude:: ../../../examples/advanced/manualWindowsConfig.ini
+.. literalinclude:: ../_static/examples/advanced/remote/manualWindowsConfig.ini
     :linenos:
     :language: text
 
@@ -94,14 +94,14 @@ Like with the dec8_5 configuration file, begin with single site processing.
     :lines: 1-63
     :lineno-start: 1
 
-.. figure:: ../../../examples/advanced/remoteImages/singleSiteM6_128_man8_5.png
+.. figure:: ../_static/examples/advanced/remote/singleSiteM6_128_man8_5.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Single site impedance tensor estimates for Site M6 at 128 Hz using 8 decimation levels and 5 evaluation frequencies per level with a custom window size per decimation level.
 
-.. figure:: ../../../examples/advanced/remoteImages/singleSiteRemote_128_man8_5.png
+.. figure:: ../_static/examples/advanced/remote/singleSiteRemote_128_man8_5.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -110,12 +110,12 @@ Like with the dec8_5 configuration file, begin with single site processing.
 
 In addition to single site processing, Remote is processed with a coherence mask giving the below impedance tensor estimate. 
 
-.. figure:: ../../../examples/advanced/remoteImages/singleSiteRemote_128_man8_5_coh80.png
+.. figure:: ../_static/examples/advanced/remote/singleSiteRemote_128_man8_5_coh80.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Single site impedance tensor estimates for the Remote site at 128 Hz using 8 decimation levels and 5 evaluation frequencies per level with a custom window size per decimation level. An coherence mask of 0.8 has applied to discard noisy windows.
+    Single site impedance tensor estimates for the Remote site at 128 Hz using 8 decimation levels and 5 evaluation frequencies per level with a custom window size per decimation level. A coherence mask of 0.8 has applied to discard noisy windows.
 
 Applying the coherence mask has significantly improved the single site impedance tensor estimates for Remote in the dead band. However, in some cases, it has left no windows at the long periods (this is clear from the missing markers for some evaluation frequencies).
 
@@ -129,7 +129,7 @@ Next, the same remote reference processing is repeated with matching parameters 
 
 The resultant remote reference impedance tensor estimate for Site M6 is shown below. 
 
-.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6_128_RR_man8_5_coh_datetime_01.png
+.. figure:: ../_static/examples/advanced/remote/remoteReferenceM6_128_RR_man8_5_coh_datetime_01.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -146,7 +146,7 @@ As an additional test, another mask is applied, which is the single site mask fo
     :lines: 100-123
     :lineno-start: 100
 
-.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6_128_RR_man8_5_2coh_datetime_01.png
+.. figure:: ../_static/examples/advanced/remote/remoteReferenceM6_128_RR_man8_5_2coh_datetime_01.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -155,7 +155,7 @@ As an additional test, another mask is applied, which is the single site mask fo
 
 The result here is not so good, but it has reduced the biasing in the dead band where previously phases were reaching 0. With extra work and configuration testing, this may be promising.
 
-For a last try, variable single site coherence thresholds could be used to limit the Remote data using the :meth:`~resistics.dataObjects.maskData.MaskData.addConstraintLevel` method of :class:`~resistics.dataObjects.maskData.MaskData`. An example and the result are provided below.
+For a last try, variable single site coherence thresholds could be used to limit the Remote data using the :meth:`~resistics.mask.data.MaskData.addConstraintLevel` method of :class:`~resistics.mask.data.MaskData`. An example and the result are provided below.
 
 .. literalinclude:: ../../../examples/advanced/remoteManualWindows.py
     :linenos:
@@ -163,7 +163,7 @@ For a last try, variable single site coherence thresholds could be used to limit
     :lines: 125-159
     :lineno-start: 125
 
-.. figure:: ../../../examples/advanced/remoteImages/remoteReferenceM6_128_RR_man8_5_cohvar_datetime_01.png
+.. figure:: ../_static/examples/advanced/remote/remoteReferenceM6_128_RR_man8_5_cohvar_datetime_01.png
     :align: center
     :alt: alternate text
     :figclass: align-center

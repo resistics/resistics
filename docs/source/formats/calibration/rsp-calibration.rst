@@ -75,61 +75,61 @@ Therefore, the file could be named:
 
 Example
 ~~~~~~~
-The class :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` can be used to read in RSP calibration files. 
+The class :class:`~resistics.calibrate.io.CalibrationIO` can be used to read in RSP calibration files. 
 
 .. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
-    :lines: 1-9
+    :lines: 1-8
     :lineno-start: 1 
 
-When using :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` to read a calibration file, the filepath and calibration data format (rsp) need to be defined. Further, the extension rule can be optionally passed. Because RSP files only contain one set of calibration data (unlike Metronix files which may have calibration data for both chopper on and off), the chopper keyword is unused for reading RSP files.
+When using :class:`~resistics.calibrate.io.CalibrationIO` to read a calibration file, the filepath and calibration data format (rsp) need to be defined. Further, the extension rule can be optionally passed. Because RSP files only contain one set of calibration data (unlike Metronix files which may have calibration data for both chopper on and off), the chopper keyword is unused for reading RSP files.
 
-The method :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.read` returns a :class:`~resistics.dataObjects.calibrationData.CalibrationData` object. Information about this can be printed to the terminal, giving:
+The method :meth:`~resistics.calibrate.io.CalibrationIO.read` returns a :class:`~resistics.calibrate.data.CalibrationData` object. Information about this can be printed to the terminal, giving:
 
-.. literalinclude:: ../../_text/calibrationRSPPrint.txt
+.. literalinclude:: ../../_static/examples/formats/cal/calibrationRSPPrint.txt
     :linenos:
     :language: text
 
-Once the calibration data file is read in, the calibration curve can be viewed by using the :meth:`~resistics.dataObjects.calibrationData.CalibrationData.view` method of :class:`~resistics.dataObjects.calibrationData.CalibrationData`. By passing a matplotlib figure to this, the layout of the plot can be controlled.
+Once the calibration data file is read in, the calibration curve can be viewed by using the :meth:`~resistics.calibrate.data.CalibrationData.view` method of :class:`~resistics.calibrate.data.CalibrationData`. By passing a matplotlib figure to this, the layout of the plot can be controlled.
 
 .. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
-    :lines: 11-18
-    :lineno-start: 11
+    :lines: 10-17
+    :lineno-start: 10
 
-.. figure:: ../../../../examples/formats/images/calibrationRSP.png
+.. figure:: ../../_static/examples/formats/cal/calibrationRSP.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Viewing the unextended calibration data
 
-The calibration static gain is applied to the magnitude data by default. To view the data without static gain, pass :python:`staticgain=False` to the :meth:`~resistics.dataObjects.calibrationData.CalibrationData.view` call. Further, to plot the phase in degrees, pass :python:`degrees=True` to  :meth:`~resistics.dataObjects.calibrationData.CalibrationData.view`.
+The calibration static gain is applied to the magnitude data by default. To view the data without static gain, pass :python:`staticgain=False` to the :meth:`~resistics.calibrate.data.CalibrationData.view` call. Further, to plot the phase in degrees, pass :python:`degrees=True` to  :meth:`~resistics.calibrate.data.CalibrationData.view`.
 
 To visualise the influence of the static gain correction, the calibration data can be plotted with and without static gain as shown in the following example.
 
 .. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
-    :lines: 20-30
-    :lineno-start: 20
+    :lines: 19-29
+    :lineno-start: 19
 
-.. figure:: ../../../../examples/formats/images/calibrationRSP_staticGainAndDegrees.png
+.. figure:: ../../_static/examples/formats/cal/calibrationRSP_staticGainAndDegrees.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Viewing the unextended calibration data with and without static gain
 
-The calibration data can be written out in the internal ASCII format using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.writeInternalFormat` method of :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO`.
+The calibration data can be written out in the internal ASCII format using the :meth:`~resistics.calibrate.io.CalibrationIO.writeInternalFormat` method of :class:`~resistics.calibrate.io.CalibrationIO`.
 
 .. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
-    :lines: 32-34
-    :lineno-start: 32
+    :lines: 31-33
+    :lineno-start: 31
 
 The internal ascii calibration format writes out values in the following units:
 
@@ -138,7 +138,7 @@ The internal ascii calibration format writes out values in the following units:
 
 This gives the file below:
 
-.. literalinclude:: ../../../../examples/formats/calData/rsp2ascii.TXT
+.. literalinclude:: ../../_static/examples/formats/cal/rsp2ascii.TXT
     :linenos:
     :language: text
 
@@ -146,25 +146,25 @@ This gives the file below:
 
     When writing out in internal format, the static gain is removed from the magnitude but recorded in the file. When reading in the internal format again, the static gain will be reapplied.
 
-To read in the internal ASCII format calibration file, the parameters of :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` need to be reset using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.refresh` method. This time, the fileformat needs to be set to "induction".
+To read in the internal ASCII format calibration file, the parameters of :class:`~resistics.calibrate.io.CalibrationIO` need to be reset using the :meth:`~resistics.calibrate.io.CalibrationIO.refresh` method. This time, the fileformat needs to be set to "induction".
 
 .. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
-    :lines: 36-39
-    :lineno-start: 36
+    :lines: 35-38
+    :lineno-start: 35
 
 Finally, plotting the original data and the internal ASCII format data can be done in the following way:
 
 .. literalinclude:: ../../../../examples/formats/calibrationRSPExample.py
     :linenos:
     :language: python
-    :lines: 41-47
-    :lineno-start: 41
+    :lines: 40-46
+    :lineno-start: 40
 
 The resultant figure is:
 
-.. figure:: ../../../../examples/formats/images/calibrationRSPvsASCII.png
+.. figure:: ../../_static/examples/formats/cal/calibrationRSPvsASCII.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -180,6 +180,6 @@ For the purposes of clarity, the example script in full.
     :linenos:
     :language: python
 
-.. literalinclude:: ../../../../examples/formats/calData/Metronix_Coil-----TYPE-006_BB-ID-000365.RSP
+.. literalinclude:: ../../_static/examples/formats/cal/Metronix_Coil-----TYPE-006_BB-ID-000365.RSP
     :linenos:
     :language: text

@@ -9,9 +9,9 @@
 
 Welcome to resistics
 --------------------
-Resistics is a native Python 3 package for the processing of magnetotelluric (MT) data. It incorporates standard robust processing methods and adopts a modular approach to processing which allows for customisation and future improvements to be quickly adopted. 
+Resistics is an open-source, native Python 3 package for the processing of magnetotelluric (MT) data. It incorporates standard robust regression methods and adopts a modular approach to processing which allows for customisation and future improvements to be quickly adopted. 
 
-.. figure:: _images/welcome.jpg
+.. figure:: _static/images/welcome.jpg
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -20,28 +20,31 @@ Resistics is a native Python 3 package for the processing of magnetotelluric (MT
 
 Latest news
 ~~~~~~~~~~~
-**2019-09-29:** Resistics is currently in beta mode and updates are being made regularly. The focus of updates for release 0.0.6 is:
+**2019-10-06:** Resistics is currently in beta mode and updates are being made regularly. The focus of updates for release 0.0.6 is:
 
+- Restructure of resistics code to make imports more natural and intuitive
 - More complete documentation with more examples. The tutorial is complete, but additional examples are coming to cover advanced methods such as pre-processing, remote reference processing, inter-operability, remote reference statistics, intersite transfer functions. 
 - Speeding up of processing
-- Support for Phoenix data
 
-There is a chance that method and module names may change in the near future as they are an artefact of how the code grew up. For more information, please :doc:`contact us <contact>`.
-
-The latest development version of resistics can be downloaded by specifying 0.0.6.dev2 when downloading using pip. 
+The latest development version of resistics can be downloaded by specifying 0.0.6.dev3 when installing using pip. 
 
 .. code-block:: text
     
-    python -m pip install resistics==0.0.6.dev2
+    python -m pip install resistics==0.0.6.dev3
 
-This release introduces support for: 
-
-- Lemi B423 magnetotelluric and B423E telluric data. See :doc:`formats/timeseries/LemiB423-timeseries`
-- Plotting statistic density plots. See :doc:`advanced/remote-reference-statistics` 
+For more information on what has changed, please view the :doc:`changelog <changelog>`.
 
 About
 ~~~~~
 Resistics began as a set of Python classes to help analyse noisy MT timeseries data acquired in northern Switzerland through increased use of statistics and time window based features. Since then, it has grown into a MT data processing package. The name is an amalgamation of resistivty and statistics...resistics!
+
+Whilst other codes exist, resistics was written for the following purpose:
+
+- Freely accessible (MIT licence), open-source and cross platform
+- Compatible with several :doc:`time data formats <formats/timeseries>` and corresponding :doc:`calibration data <formats/calibration>`
+- :doc:`Configuration files <features/configuration>` and :doc:`dataset history <features/comments>`
+- :doc:`Dataset investigation <features/statistics>`, tools for dealing with noisy MT data
+- Well documented with :ref:`clear explanation of methods <tutorial:Processing theory>`, :ref:`tutorials <tutorial:Working through the tutorial>`, :doc:`advanced examples <advanced>` and a :doc:`cookbook <cookbook>` for showcasing lower level API usage.
 
 Audience
 ~~~~~~~~
@@ -49,7 +52,7 @@ Resistics is intended for people who use magnetotelluric methods to estimate the
 
 Getting started
 ~~~~~~~~~~~~~~~
-Read more about the magnetotelluric method and resistics in the :doc:`Introduction <introduction>`. Installation instructions are provided :doc:`here <installation>`. The quickest way to get started with resistics is to install it from pip, the python package repository, and continue through to the :doc:`tutorial <tutorial>`.
+Installation instructions are provided :doc:`here <installation>`. The quickest way to get started with resistics is to install it from pip, the python package repository, and continue through to the :doc:`tutorial <tutorial>`.
 
 .. code-block:: text
     
@@ -59,10 +62,9 @@ Resistics uses a number of conventions which are described :doc:`here <conventio
 
 The :doc:`tutorial <tutorial>` section covers the resistics project environment and basic processing of magnetotelluric data. More advanced processing, including pre-processing of timeseries data, remote reference processing and remote reference statistics are detailed in the :doc:`advanced <advanced>` section. Specialised functionality or examples of using lower level APIs will be added in the :doc:`cookbook <cookbook>` as and when it is developed. The :doc:`case studies <case-studies>` will cover the use of resistics to process complete field surveys. A complete API reference can be found :doc:`here <modules>`. 
 
-A roadmap for future development can be accessed :doc:`here <roadmap>`. Useful magnetotelluric references are provided in the :doc:`Bibliography <bibliography>`.
+A changelog and backlog for future resistics development can be accessed :doc:`here <changelog>`. Useful magnetotelluric references are provided in the :doc:`Bibliography <bibliography>`.
 
-For those interested in seeing who is contributing to the project and how resistics can be cited see the :doc:`Credits <roadmap>`. Anyone who wants to donate can do so :doc:`here <donate>`.
-
+For those interested in seeing who is contributing to the project and how resistics can be cited see the :doc:`Credits <credits>`. Anyone who wants to donate can do so :doc:`here <donate>`.
 
 Open-source
 ~~~~~~~~~~~
@@ -76,7 +78,6 @@ Resistics is available for free under the MIT licence. The resistics source code
     :hidden:
 
     Home <self>
-    introduction.rst
     installation.rst
     conventions.rst 
     features.rst
@@ -86,7 +87,7 @@ Resistics is available for free under the MIT licence. The resistics source code
     cookbook.rst
     case-studies.rst
     modules.rst
-    roadmap.rst   
+    changelog.rst   
     bibliography.rst   
     credits.rst
     donate.rst

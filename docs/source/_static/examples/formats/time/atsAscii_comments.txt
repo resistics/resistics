@@ -1,0 +1,5 @@
+Unscaled data 2018-01-01 12:00:00 to 2018-01-11 10:53:18 read in from measurement E:\magnetotellurics\code\resisticsdata\formats\timeData\ascii, samples 0 to 429999
+Sampling frequency 0.5
+Remove zeros: False, remove nans: False, remove average: True
+Time series dataset written to E:\magnetotellurics\code\resisticsdata\formats\timeData\asciiInternal on 2019-10-05 18:08:36.041289 using resistics 0.0.6.dev2
+---------------------------------------------------

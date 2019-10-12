@@ -1,0 +1,8 @@
+HEADER = GLOBAL
+sample_freq = 128.0
+num_samples = 1783345
+start_time = 02:35:00.000000
+start_date = 2016-02-21
+stop_time = 06:27:12.375000
+stop_date = 2016-02-21
+meas_channels = 5

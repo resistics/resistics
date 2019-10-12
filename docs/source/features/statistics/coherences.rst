@@ -17,7 +17,7 @@ In most cases, the off-diagonals are expected to be small and the coherences of 
 
 The coherence is a value between 0 and 1. A larger value indicates a stronger the relationship between signals. A useful way to visualise coherence is by plotting the histogram of coherences.
 
-.. figure:: ../../_images/histCoherence.png
+.. figure:: ../../_static/examples/features/stats/histCoherence.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -26,7 +26,7 @@ The coherence is a value between 0 and 1. A larger value indicates a stronger th
 
 In this example, the coherences are clearly higher between channels |Ey|-|Hx| and |Ex|-|Hy| as expected. If the windows were limited to only those with high coherences for this evaluation frequency, it is clear that there will be still a large set of windows.
 
-.. figure:: ../../_images/timeCoherence.png
+.. figure:: ../../_static/examples/features/stats/timeCoherence.png
     :align: center
     :alt: alternate text
     :figclass: align-center

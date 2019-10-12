@@ -3,7 +3,7 @@ Polarisation Directions
 
 The polarisation of light is the direction in which the electric field osciallates. 
 
-.. figure:: ../../_images/histPolarisationDirection.png
+.. figure:: ../../_static/examples/features/stats/histPolarisationDirection.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -12,7 +12,7 @@ The polarisation of light is the direction in which the electric field osciallat
 
 
 
-.. figure:: ../../_images/timePolarisationDirection.png
+.. figure:: ../../_static/examples/features/stats/timePolarisationDirection.png
     :align: center
     :alt: alternate text
     :figclass: align-center

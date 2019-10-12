@@ -14,14 +14,18 @@ Reading
 
 Resistics currently supports five data formats for reading:
 
-- :doc:`ATS <timeseries/ATS-timeseries>`
-- :doc:`SPAM <timeseries/SPAM-timeseries>`
-- :doc:`Lemi B423 <timeseries/LemiB423-timeseries>`
-- :doc:`Phoenix <timeseries/Phoenix-timeseries>`
-- :doc:`ASCII <timeseries/ascii-timeseries>`
-- :doc:`resistics internal binary format <timeseries/internal-binary-format>` based on numpy save
+.. toctree::
+    :maxdepth: 2
+    :titlesonly:
 
-Each of these data formats has its own peculiarities, outlined in the individual sections. Resistics aims to give users a consistent output through the :class:`~resistics.ioHandlers.dataReader.DataReader` class. All data readers can return either unscaled or physically scaled samples. Whilst the meaning of unscaled samples differs from format to format, when requesting physical samples from a data reader, the data is returned in the following units:
+    timeseries/ATS-timeseries.rst
+    timeseries/SPAM-timeseries.rst
+    timeseries/LemiB423-timeseries.rst
+    timeseries/Phoenix-timeseries.rst
+    timeseries/ascii-timeseries.rst
+    timeseries/internal-binary-format.rst
+
+Each of these data formats has its own peculiarities, outlined in the individual sections. Resistics aims to give users a consistent output through the :class:`~resistics.time.reader.TimeReader` class. All data readers can return either unscaled or physically scaled samples. Whilst the meaning of unscaled samples differs from format to format, when requesting physical samples from a data reader, the data is returned in the following units:
 
 - Electric channels |Ex|, |Ey| are in mV/km
 - Magnetic channels |Hx|, |Hy| and |Hz| are in mV
@@ -37,10 +41,7 @@ Each of these data formats has its own peculiarities, outlined in the individual
 Writing
 ~~~~~~~
 
-Writing out of timeseries is supported in resistics in the following formats:
-
-- :doc:`ASCII <timeseries/ascii-timeseries>`
-- :doc:`resistics internal binary format <timeseries/internal-binary-format>`
+Writing out of timeseries is supported in resistics in for :doc:`ASCII <timeseries/ascii-timeseries>` and :doc:`internal <timeseries/internal-binary-format>` formats.
 
 The reason for supporting an internal binary format is two-fold. Firstly, it is based on numpy save, which allows easy reading and portability outside of the resistics environment as long as there is access to Python and numpy. Secondly, the headers are all in ASCII format, which makes it easier to read the various recording metadata in comparison to binary formatted header information. 
 
@@ -57,6 +58,12 @@ Interpolating to the second
 
 Data which is not sampled on the second should be interpolated on the second to ensure best results. This can be achieved using inbuilt functionality. 
 
+.. toctree::
+    :maxdepth: 2
+    :titlesonly:
+
+    timeseries/interpolation-to-second.rst
+
 For an example of a dataset not sampled on the second, consider recording at 10 Hz, with the first sample at 0.05 seconds. Then the sample times will be:
 
 .. code-block:: text
@@ -71,16 +78,3 @@ Interpolating to the second will change the sample times to:
 
 Whenever operating with multiple different file formats in one project, it is best practice to ensure that all datasets are sampled on the second prior to estimating impedance tensors.
 
-.. toctree::
-    :maxdepth: 2
-    :titlesonly:
-    :glob:
-    :hidden:
-
-    timeseries/ATS-timeseries.rst
-    timeseries/SPAM-timeseries.rst
-    timeseries/LemiB423-timeseries.rst
-    timeseries/Phoenix-timeseries.rst
-    timeseries/ascii-timeseries.rst
-    timeseries/internal-binary-format.rst
-    timeseries/interpolation-to-second.rst

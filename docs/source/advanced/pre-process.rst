@@ -15,7 +15,7 @@
 Pre-processing timeseries data
 ------------------------------
 
-There are scenarios in which time series data must be pre-processed and saved before transfer function calculation. Pre-processing is predominantly performed in the project environment using the :meth:`~resistics.project.projectTime.preProcess` method. There are several pre-processing options available in :meth:`~resistics.project.projectTime.preProcess` method, including:
+There are scenarios in which time series data must be pre-processed and saved before transfer function calculation. Pre-processing is predominantly performed in the project environment using the :meth:`~resistics.project.time.preProcess` method. There are several pre-processing options available in :meth:`~resistics.project.time.preProcess` method, including:
 
     - :ref:`advanced/pre-process:Data resampling`
     - :ref:`advanced/pre-process:Polarity reversal`
@@ -26,11 +26,11 @@ There are scenarios in which time series data must be pre-processed and saved be
     - :ref:`advanced/pre-process:Data normalisation`
     - :ref:`advanced/pre-process:Interpolation to second`
 
-Another preprocessing method of use, but not available within the :meth:`~resistics.project.projectTime.preProcess` method is gap filling. This can help increase the number of windows at long periods. 
+Another preprocessing method of use, but not available within the :meth:`~resistics.project.time.preProcess` method is gap filling. This can help increase the number of windows at long periods. 
 
     - :ref:`advanced/pre-process:Gap filling` 
 
-In addition, there are lower levels APIs for performing these actions for advanced users. Please see the :doc:`API doc <../api>` for more information or check the :doc:`Cookbook <../cookbook>`.
+In addition, there are lower levels APIs for performing these actions for advanced users. Please see the :doc:`API doc <../modules>` for more information or check the :doc:`Cookbook <../cookbook>`.
 
 The preprocessing options are explained in more detail below. The data is the same 4096 Hz data from the tutorial and is saved in "site1". A project has already been setup following the instructions in :doc:`Project environment <../tutorial/project-environment>`. In all the following, the project has already been loaded as shown below.
 
@@ -50,7 +50,7 @@ For plotting the time data, different plot options are used to give larger fonts
 
 Data resampling
 ~~~~~~~~~~~~~~~
-Resampling time series data might be required to ensure matching sampling rates between different datasets, for example a local site and a reference site. This can be achieved through the resampling option in :meth:`~resistics.project.projectTime.preProcess` method which can save the data either to the same site or to a new site altogether.
+Resampling time series data might be required to ensure matching sampling rates between different datasets, for example a local site and a reference site. This can be achieved through the resampling option in :meth:`~resistics.project.time.preProcess` method which can save the data either to the same site or to a new site altogether.
 
 Below is an exampling of downsampling a 4096 Hz dataset to 1024 Hz. The output will be saved to a new site named "site1_resample". If the site does not already exist, it will be created. The name of the measurement in the new site will be:
 
@@ -69,12 +69,12 @@ As the measurement is being written out to a new site, prepend is being set "" (
 
 These produce the following plots:
 
-.. figure:: ../../../examples/advanced/preprocessImages/viewTimeResample.png
+.. figure:: ../_static/examples/advanced/preprocess/viewTimeResample.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Resampling data from 4096 Hz to 1024 Hz example using the :meth:`~resistics.project.projectTime.preProcess` method.
+    Resampling data from 4096 Hz to 1024 Hz example using the :meth:`~resistics.project.time.preProcess` method.
 
 Polarity reversal
 ~~~~~~~~~~~~~~~~~
@@ -88,16 +88,16 @@ This simply multiples the requested channels by -1. This is particularly useful 
 
 The results of this can be seen in the following figure.
 
-.. figure:: ../../../examples/advanced/preprocessImages/viewTimePolarityReversal.png
+.. figure:: ../_static/examples/advanced/preprocess/viewTimePolarityReversal.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Polarity reversal for channel |Ey| using the :meth:`~resistics.project.projectTime.preProcess` method.
+    Polarity reversal for channel |Ey| using the :meth:`~resistics.project.time.preProcess` method.
 
 Scaling
 ~~~~~~~
-If more arbitrary scaling control is required than simply multiplying by -1, the scale option of :meth:`~resistics.project.projectTime.preProcess` can be used. 
+If more arbitrary scaling control is required than simply multiplying by -1, the scale option of :meth:`~resistics.project.time.preProcess` can be used. 
 
 .. literalinclude:: ../../../examples/advanced/preprocessMath.py
     :linenos:
@@ -107,12 +107,12 @@ If more arbitrary scaling control is required than simply multiplying by -1, the
 
 This will scale the |Ex| channel by -2 and the |Ey| channel by 0.5.
 
-.. figure:: ../../../examples/advanced/preprocessImages/viewTimeScale.png
+.. figure:: ../_static/examples/advanced/preprocess/viewTimeScale.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Scaling channel |Ex| by -2 and |Ey| by 0.5 using the scale option of the :meth:`~resistics.project.projectTime.preProcess` method.
+    Scaling channel |Ex| by -2 and |Ey| by 0.5 using the scale option of the :meth:`~resistics.project.time.preProcess` method.
 
 Calibration
 ~~~~~~~~~~~
@@ -128,16 +128,16 @@ Below is an example of calibrating time series:
 
 This will calibrate the magnetic channels in the data, converting them from mV to nT.
 
-.. figure:: ../../../examples/advanced/preprocessImages/viewTimeCalibrate.png
+.. figure:: ../_static/examples/advanced/preprocess/viewTimeCalibrate.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Calibrating the magnetic channels of the data using the calibration option of the :meth:`~resistics.project.projectTime.preProcess` method.
+    Calibrating the magnetic channels of the data using the calibration option of the :meth:`~resistics.project.time.preProcess` method.
 
 Low, band and high pass filtering
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Time series data can be low, band and high pass filtered as required. This normally useful for viewing but can be useful for exporting or other purposes. Filter options can be specified in Hz using the *filter* keyword to the :meth:`~resistics.project.projectTime.preProcess` method. The keyword expects a dictionary with various filter options such as:
+Time series data can be low, band and high pass filtered as required. This normally useful for viewing but can be useful for exporting or other purposes. Filter options can be specified in Hz using the *filter* keyword to the :meth:`~resistics.project.time.preProcess` method. The keyword expects a dictionary with various filter options such as:
 
 - lpfilt : low pass filtering
 - hpfilt : high pass filtering
@@ -153,12 +153,12 @@ Low pass filtering using the lpfilt option to filter 4096 Hz to 32 Hz (without i
     :lines: 10-28
     :lineno-start: 10
 
-.. figure:: ../../../examples/advanced/preprocessImages/viewTimeLowpass.png
+.. figure:: ../_static/examples/advanced/preprocess/viewTimeLowpass.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Low pass filtering the time series data and saving it out to another site using the *filter* keyword to the :meth:`~resistics.project.projectTime.preProcess` method.
+    Low pass filtering the time series data and saving it out to another site using the *filter* keyword to the :meth:`~resistics.project.time.preProcess` method.
 
 Highpass filtering can be specified in a similar way.
 
@@ -168,12 +168,12 @@ Highpass filtering can be specified in a similar way.
     :lines: 30-45
     :lineno-start: 30
 
-.. figure:: ../../../examples/advanced/preprocessImages/viewTimeHighpass.png
+.. figure:: ../_static/examples/advanced/preprocess/viewTimeHighpass.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    High pass filtering the time series data and saving it out to another site using the *filter* keyword to the :meth:`~resistics.project.projectTime.preProcess` method.
+    High pass filtering the time series data and saving it out to another site using the *filter* keyword to the :meth:`~resistics.project.time.preProcess` method.
 
 Band pass filtering can performed as follows:
 
@@ -183,16 +183,16 @@ Band pass filtering can performed as follows:
     :lines: 47-66
     :lineno-start: 47
 
-.. figure:: ../../../examples/advanced/preprocessImages/viewTimeBandpass.png
+.. figure:: ../_static/examples/advanced/preprocess/viewTimeBandpass.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Band pass filtering the time series data and saving it out to another site using the *filter* keyword to the :meth:`~resistics.project.projectTime.preProcess` method. Unlike high pass or low pass filtering, two frequencies need to provided, one defining the low cut and the other, the high cut.
+    Band pass filtering the time series data and saving it out to another site using the *filter* keyword to the :meth:`~resistics.project.time.preProcess` method. Unlike high pass or low pass filtering, two frequencies need to provided, one defining the low cut and the other, the high cut.
 
 Notch filter
 ~~~~~~~~~~~~
-Notch filters are useful ways to remove unwanted signal in data. The most common frequency domain noise spikes which may need filtering are powerline noise or railway noise at 50 Hz and 16.6 Hz respectively. Notching frequencies are specified in Hz using the *notch* keyword to the :meth:`~resistics.project.projectTime.preProcess` method. This is expected to be a list of frequencies to notch in Hz.
+Notch filters are useful ways to remove unwanted signal in data. The most common frequency domain noise spikes which may need filtering are powerline noise or railway noise at 50 Hz and 16.6 Hz respectively. Notching frequencies are specified in Hz using the *notch* keyword to the :meth:`~resistics.project.time.preProcess` method. This is expected to be a list of frequencies to notch in Hz.
 
 An example is given below of removing 50 Hz from time series data.
 
@@ -202,12 +202,12 @@ An example is given below of removing 50 Hz from time series data.
     :lines: 68-81
     :lineno-start: 68
 
-.. figure:: ../../../examples/advanced/preprocessImages/viewTimeNotch.png
+.. figure:: ../_static/examples/advanced/preprocess/viewTimeNotch.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Notch filtering the time series data and saving it out to another site using the *notch* keyword to the :meth:`~resistics.project.projectTime.preProcess` method. 
+    Notch filtering the time series data and saving it out to another site using the *notch* keyword to the :meth:`~resistics.project.time.preProcess` method. 
 
 Data normalisation
 ~~~~~~~~~~~~~~~~~~
@@ -219,12 +219,12 @@ Data normalisation normalises the data by diving by the norm of the data as calc
     :lines: 55-75
     :lineno-start: 55
 
-.. figure:: ../../../examples/advanced/preprocessImages/viewTimeNorm.png
+.. figure:: ../_static/examples/advanced/preprocess/viewTimeNorm.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
-    Normalising the time series data and saving it out to another site using the *normalise* keyword to the :meth:`~resistics.project.projectTime.preProcess` method.
+    Normalising the time series data and saving it out to another site using the *normalise* keyword to the :meth:`~resistics.project.time.preProcess` method.
 
 Interpolation to second
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -233,7 +233,7 @@ Resistics assumes that data is sampled on the second. For more information on th
 
 Gap filling
 ~~~~~~~~~~~
-In some situations, it is beneficial to stitch together two separate time series to increase the number of windows at long periods. This can be done through gap filling. However, resistics gap filling is external to the :meth:`~resistics.project.projectTime.preProcess` method and has to be specified using other APIs.
+In some situations, it is beneficial to stitch together two separate time series to increase the number of windows at long periods. This can be done through gap filling. However, resistics gap filling is external to the :meth:`~resistics.project.time.preProcess` method and has to be specified using other APIs.
 
 To see an example, begin by saving smaller pieces of data from site1. Here, two smaller subsets are being saved to the same site, "site1_gaps". To understand more about data readers in resistics, please see :doc:`time series formats <../formats/timeseries>`. 
 
@@ -243,16 +243,16 @@ To see an example, begin by saving smaller pieces of data from site1. Here, two 
     :lines: 12-55
     :lineno-start: 12
 
-.. figure:: ../../../examples/advanced/preprocessImages/viewTimeGaps.png
+.. figure:: ../_static/examples/advanced/preprocess/viewTimeGaps.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Splitting up site1 data into two smaller measurements in a new site named "site1_gaps". Note, for the electric channel, the data does not sit on top of each other because the mean is being removed from all the measurements independently for visualisation. 
 
-It is important at this stage not to remove the mean when getting the time data. Removing the mean will remove separate means for the independent sub time series as can be seen in the above figure. Mean is removed automatically for visualisation when using the :meth:`resistics.project.projectTime.viewTime` method. However, by specifying when getting the time data that :python:`remaverage=False`, the underlying data will still have the original average when written out. 
+It is important at this stage not to remove the mean when getting the time data. Removing the mean will remove separate means for the independent sub time series as can be seen in the above figure. Mean is removed automatically for visualisation when using the :meth:`~resistics.project.projectTime.viewTime` method. However, by specifying when getting the time data that :python:`remaverage=False`, the underlying data will still have the original average when written out. 
 
-The next stage is to read the separate data in as :class:`~resistics.dataObjects.timeData.TimeData` objects by using the :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class.
+The next stage is to read the separate data in as :class:`~resistics.time.data.TimeData` objects by using the :class:`~resistics.time.reader_internal.TimeReaderInternal` class.
 
 .. literalinclude:: ../../../examples/advanced/preprocessGapFill.py
     :linenos:
@@ -260,7 +260,7 @@ The next stage is to read the separate data in as :class:`~resistics.dataObjects
     :lines: 57-70
     :lineno-start: 57
 
-The two separate datasets can be stitched together using the :meth:`resistics.utilities.utilsInterp.fillGap` method of module :mod:`resistics.utilities.utilsInterp`.
+The two separate datasets can be stitched together using the :meth:`~resistics.time.interp.fillGap` method of module :mod:`~resistics.time.interp`.
 
 .. literalinclude:: ../../../examples/advanced/preprocessGapFill.py
     :linenos:
@@ -268,16 +268,16 @@ The two separate datasets can be stitched together using the :meth:`resistics.ut
     :lines: 72-78
     :lineno-start: 68
 
-The filled time data can be viewed using the :meth:`~resistics.dataObjects.timeData.TimeData.view` method of the :class:`~resistics.dataObjects.timeData.TimeData` class. 
+The filled time data can be viewed using the :meth:`~resistics.time.data.TimeData.view` method of the :class:`~resistics.time.data.TimeData` class. 
 
-.. figure:: ../../../examples/advanced/preprocessImages/timeDataFilled.png
+.. figure:: ../_static/examples/advanced/preprocess/timeDataFilled.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     The filled time data. The missing points have now been filled in linearly between the two datasets. Note, this data is not low pass filtered like in the previous plot.
 
-Now the data can be written out using the :class:`~resistics.ioHandlers.dataWriterInternal.DataWriterInternal` class.
+Now the data can be written out using the :class:`~resistics.time.writer_internal.TimeWriterInternal` class.
 
 .. literalinclude:: ../../../examples/advanced/preprocessGapFill.py
     :linenos:
@@ -293,7 +293,7 @@ Finally, view the new site with filled time data compared to the original.
     :lines: 93-104
     :lineno-start: 93
 
-.. figure:: ../../../examples/advanced/preprocessImages/viewTimeGapsFilled.png
+.. figure:: ../_static/examples/advanced/preprocess/viewTimeGapsFilled.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -302,6 +302,40 @@ Finally, view the new site with filled time data compared to the original.
 
 For a better understanding of the processing sequence, it is possible to look at the comments file (dataset history) of the sticthed data.
 
-.. literalinclude:: ../_text/commentsAdvancedGapfill.txt
+.. literalinclude:: ../_static/examples/advanced/preprocess/gapfill_comments.txt
     :linenos:
     :language: text
+
+Complete example scripts
+~~~~~~~~~~~~~~~~~~~~~~~~
+For the purposes of clarity, the complete example scripts are provided below.
+
+Project create:
+
+.. literalinclude:: ../../../examples/advanced/preprocessCreate.py
+    :linenos:
+    :language: python
+
+Data resampling:
+
+.. literalinclude:: ../../../examples/advanced/preprocessResample.py
+    :linenos:
+    :language: python
+
+Scaling, polarity reversal, normalising:
+
+.. literalinclude:: ../../../examples/advanced/preprocessMath.py
+    :linenos:
+    :language: python
+
+Filtering and calibrating:
+
+.. literalinclude:: ../../../examples/advanced/preprocessFilter.py
+    :linenos:
+    :language: python
+
+Gap filling:
+
+.. literalinclude:: ../../../examples/advanced/preprocessGapFill.py
+    :linenos:
+    :language: python

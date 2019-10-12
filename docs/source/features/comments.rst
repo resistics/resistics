@@ -5,6 +5,6 @@ To help traceability and reproducibility of processing results, most datasets wh
 
 Only timeseries data, spectra data and statistic data are written out with comment files. Transfer function files do not have associated comments files as they are usually calculated out from a set of data sources.
 
-.. literalinclude:: ../_text/comments.txt
+.. literalinclude:: ../_static/examples/features/comments/features_comments.txt
     :linenos:
     :language: text

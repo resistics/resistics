@@ -1,0 +1,10 @@
+Unscaled data 2016-02-07 02:09:59.999200 to 2016-02-07 02:29:59.999200 read in from measurement E:\magnetotellurics\code\resisticsdata\formats\timeData\spam, samples 1949999 to 2249999
+Data read from 1 files in total
+Data scaled to mV for all channels using scalings in header files
+Sampling frequency 250.0
+Dividing channel Ex by electrode distance 0.0587 km to give mV/km
+Dividing channel Ey by electrode distance 0.0564 km to give mV/km
+Remove zeros: False, remove nans: True, remove average: True
+Band pass filter applied with cutoffs 0.2 Hz and 16 Hz
+Time series dataset written to E:\magnetotellurics\code\resisticsdata\formats\timeData\spamInternalFiltered on 2019-10-05 18:15:29.301430 using resistics 0.0.6.dev2
+---------------------------------------------------

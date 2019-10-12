@@ -7,41 +7,21 @@
 Statistics
 ----------
 
-There are two motivating factors for the calculation of statistics:
+There are two main motivating factors for the calculation of statistics:
 
-- Selecting windows for further processing
 - Investigating data quality  
+- Selecting windows for further processing
 
-Statistics are calculated on an evaluation frequency basis, meaning that different windows can be selected for each evaluation frequency.
+When processing magnetotelluric data, it can often be difficult to understand why transfer function estimates are poor. Statistics help investigation of data quality by showing the variation of a selection of parameters over the course of the recording. Based on the statistic data, users can specify criteria for selecting windows based on the parameter values. The most familiar example is coherence statistics, which are widely used already in magnetotelluric data processing. 
 
-Selection of windows
-~~~~~~~~~~~~~~~~~~~~
-The philosophy of Resistics is that all timeseries data is windowed and transformed into the frequency domain. Selection of windows happens after this point using either date and time constraints or constraints based on the calculation of statistics. 
+The philosophy of resistics is that all timeseries data is windowed and transformed into the frequency domain. Selection of windows happens after this point using either date and time constraints or constraints based on the calculation of statistics. Statistics are calculated on an evaluation frequency basis, meaning that different windows can be selected for each evaluation frequency.
 
-There are a number of statistics already included in Resistics. These are:
-
-- Coherence between channels
-- Transfer function components
-- Apparent resistivity and phase 
-- Polarisation direction
-- Partial coherence
-
-In addition, statistics have been added that include remote reference data:
-
-
-
-The following sections dive into each one of the statistics in more detail. The intention is to support custom statistics in the future but the architecture of this has not yet been decided.
-
-
-Data investigation
-~~~~~~~~~~~~~~~~~~
-The second reason behind the calculation of statistics in Resistics is to allow transparent investigation of the data. The ability to see the variation in time of certain statistic values offers insight into 
+There are a number of statistics already included in resistics. These are:
 
 .. toctree::
     :maxdepth: 2
     :titlesonly:
     :glob:
-    :hidden:
 
     statistics/powerSpectralDensity.rst
     statistics/coherences.rst
@@ -49,3 +29,7 @@ The second reason behind the calculation of statistics in Resistics is to allow 
     statistics/polarisationDirection.rst
     statistics/transferFunction.rst
     statistics/resistivityPhase.rst
+
+The following sections dive into each one of the statistics in more detail. The intention is to support custom statistics in the future but the architecture of this has not yet been decided.
+
+Standard statitsics support local site processing. For remote reference processing continue :doc:`here <remote-statistics>`.

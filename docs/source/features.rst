@@ -7,12 +7,11 @@ Resistics implements a number of useful features, a few of which are described i
 
 Any timeseries, frequency or statistic data written out using resistics is written out with :doc:`comment files <features/comments>`. These comments summarise the processing sequence applied to the data and the configuration used. This allows for straightforward traceability and useful transparency.
 
-:doc:`Statistics <features/statistics>` are another useful feature baked into Resistics. Statistics can be used to mask windows (remove windows from processing) but importantly, can be used to investigate and understand the raw MT timeseries data.
+:doc:`Statistics <features/statistics>` and :doc:`remote reference statistics <features/remote-statistics>` are another useful feature baked into resistics. Statistics can be used to mask windows (remove windows from processing) but importantly, can be used to investigate and understand the raw MT timeseries data. Standard :doc:`statistics <features/statistics>` are for processing a local site and :doc:`remote reference statistics <features/remote-statistics>` should be used when incoporating remote reference data. For more information on using statistics, see :doc:`using statistics <tutorial/statistics>` and :doc:`remote reference statistics <advanced/remote-reference-statistics>`. 
 
 .. toctree::
     :maxdepth: 2
     :titlesonly:
-    :hidden:
 
     features/configuration.rst
     features/comments.rst

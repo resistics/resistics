@@ -90,8 +90,8 @@ pygments_style = "monokai"
 #
 # html_theme = "sphinx_rtd_theme"
 html_theme = 'sphinx_ustack_theme'
-html_logo = os.path.join("_images", "logo.png")
-html_favicon = os.path.join("_images", "favicon.png")
+html_logo = os.path.join("_static", "images", "logo.png")
+html_favicon = os.path.join("_static", "images", "favicon.png")
 
 
 # Theme options are theme-specific and customize the look and feel of a theme

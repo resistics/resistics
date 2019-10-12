@@ -8,7 +8,7 @@ Using robust statistical methods to calculate out total impedance tensors does m
 An example of 
 
 
-.. figure:: ../../_images/histTransferFunction.png
+.. figure:: ../../_static/examples/features/stats/histTransferFunction.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -17,7 +17,7 @@ An example of
 
 
 
-.. figure:: ../../_images/timeTransferFunction.png
+.. figure:: ../../_static/examples/features/stats/timeTransferFunction.png
     :align: center
     :alt: alternate text
     :figclass: align-center

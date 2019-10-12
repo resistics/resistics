@@ -1,0 +1,8 @@
+Calibration data path = E:\magnetotellurics\code\resisticsdata\tutorial\tutorialProject\calData
+Time data path = E:\magnetotellurics\code\resisticsdata\tutorial\tutorialProject\timeData
+Spectra data path = E:\magnetotellurics\code\resisticsdata\tutorial\tutorialProject\specData
+Statistics data path = E:\magnetotellurics\code\resisticsdata\tutorial\tutorialProject\statData
+Mask data path = E:\magnetotellurics\code\resisticsdata\tutorial\tutorialProject\maskData
+TransFunc data path = E:\magnetotellurics\code\resisticsdata\tutorial\tutorialProject\transFuncData
+Image data path = E:\magnetotellurics\code\resisticsdata\tutorial\tutorialProject\images
+Reference time = 2012-02-10 00:00:00

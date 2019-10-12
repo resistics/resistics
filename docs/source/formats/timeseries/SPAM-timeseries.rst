@@ -61,7 +61,7 @@ as long as together, the recordings are continuous and without gaps.
 
     Raw SPAM timeseries data in the data files is in Volts. However, some scaling is applied to give "unscaled" data in mV. The reason for this is due to varying gains between SPAM data files, even when they together constitute a single continuous recording. Therefore, for the data to make sense as a single data source, gains are removed, leaving "unscaled" data in mV. When getting "physical" samples, electric channels are further divided by the electrode spacing in km.
 
-SPAM recordings are opened in resistics using the :class:`~resistics.ioHandlers.dataReaderSpam.DataReaderSPAM` class. An example is provided below:
+SPAM recordings are opened in resistics using the :class:`~resistics.time.reader_spam.TimeReaderSPAM` class. An example is provided below:
 
 .. literalinclude:: ../../../../examples/formats/spamReaderExamples.py
     :linenos:
@@ -71,7 +71,7 @@ SPAM recordings are opened in resistics using the :class:`~resistics.ioHandlers.
 
 :python:`spamReader.printInfo()` prints the measurement information out to the terminal and displays various recording parameters.
 
-.. literalinclude:: ../../_text/printSPAM.txt
+.. literalinclude:: ../../_static/examples/formats/time/printSPAM.txt
     :linenos:
     :language: text
 
@@ -85,13 +85,13 @@ Resistics does not immediately load timeseries data into memory. In order to rea
     :lines: 9-20
     :lineno-start: 9
 
-:python:`spamReader.getPhysicalData(startTime, stopTime)` will read timeseries data from the data files and returns a :class:`~resistics.dataObjects.timeData.TimeData` object with data in field units. Alternatively, to get all the data without any time restrictions, use the :meth:`~resistics.ioHandlers.dataReaderSpam.DataReaderSPAM.getPhysicalSamples` method. Information about the time data can be printed using either the :meth:`~resistics.ioHandlers.ioHandler.IOHandler.printInfo` method or by simply printing a :class:`~resistics.dataObjects.timeData.TimeData` object. An example of the time data information is below:
+:python:`spamReader.getPhysicalData(startTime, stopTime)` will read timeseries data from the data files and returns a :class:`~resistics.dataObjects.timeData.TimeData` object with data in field units. Alternatively, to get all the data without any time restrictions, use the :meth:`~resistics.time.reader_spam.TimeReaderSPAM.getPhysicalSamples` method. Information about the time data can be printed using either the :meth:`~resistics.common.base.ResisticsBase.printInfo` method or by simply printing a :class:`~resistics.time.data.TimeData` object. An example of the time data information is below:
 
-.. literalinclude:: ../../_text/printSPAMData.txt
+.. literalinclude:: ../../_static/examples/formats/time/printSPAMData.txt
     :linenos:
     :language: text
 
-After reading in some data, it is natural to view it. Time data can be viewed using the :meth:`~resistics.dataObjects.timeData.TimeData.view` method of the class. By providing a matplotlib figure object to the call to view, 
+After reading in some data, it is natural to view it. Time data can be viewed using the :meth:`~resistics.time.data.TimeData.view` method of the class. By providing a matplotlib figure object to the call to view, 
 
 .. code-block:: python
     
@@ -99,14 +99,14 @@ After reading in some data, it is natural to view it. Time data can be viewed us
 
 plots can be formatted in more detail. In this case, the figure size and layout is being set external of the view method.
 
-.. figure:: ../../../../examples/formats/images/spam.png
+.. figure:: ../../_static/examples/formats/time/spam.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Viewing physical data  
 
-SPAM data can be converted to the internal data format using the :class:`~resistics.ioHandlers.dataWriterInternal.DataWriterInternal`. In nearly all cases, it is better to write out physical data.
+SPAM data can be converted to the internal data format using the :class:`~resistics.time.writer_internal.TimeWriterInternal`. In nearly all cases, it is better to write out physical data.
 
 .. literalinclude:: ../../../../examples/formats/spamReaderExamples.py
     :linenos:
@@ -120,7 +120,7 @@ SPAM data can be converted to the internal data format using the :class:`~resist
 
 Writing out an internally formatted dataset will additionally write out a set of comments. These comments keep track of what has been done to the timeseries data and are there to improve repoducibility and traceability. Read more about comments :doc:`here <../../features/comments>`. The comments for this internally formatted dataset are:
 
-.. literalinclude:: ../../../../examples/formats/timeData/spamInternal/comments.txt
+.. literalinclude:: ../../_static/examples/formats/time/spamInternal_comments.txt
     :linenos:
     :language: text
 
@@ -132,14 +132,14 @@ The internal format data can be read in and compared to the original data.
     :lines: 30-45
     :lineno-start: 30
 
-.. figure:: ../../../../examples/formats/images/spam_vs_internal.png
+.. figure:: ../../_static/examples/formats/time/spam_vs_internal.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Original SPAM data versus the internally formatted data
 
-There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`~resistics.utilities`. In the example below, the time data is band pass filtered between 0.2 Hz and 16 Hz.
+There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`~resistics.time`. In the example below, the time data is band pass filtered between 0.2 Hz and 16 Hz.
 
 .. literalinclude:: ../../../../examples/formats/spamReaderExamples.py
     :linenos:
@@ -149,7 +149,7 @@ There are a few helpful methods built in to resistics for manipulating timeserie
 
 Printing the new time data information using :python:`filteredSPAMData.printInfo()` now includes the application of the filter in the time data comments.
 
-.. literalinclude:: ../../_text/printSPAMDataFiltered.txt
+.. literalinclude:: ../../_static/examples/formats/time/printSPAMDataFiltered.txt
     :linenos:
     :language: text
 
@@ -159,13 +159,13 @@ It is possible to write out a modified time data object in internal (or ASCII) f
  
     writer.writeDataset(spamReader, physical=True) 
 
-which writes out a whole dataset given a DataReader object, use
+which writes out a whole dataset given a :class:`~resistics.time.reader.TimeReader` object, use
 
 .. code-block:: python
     
     writer.writeData(spamReader.getHeaders(), chanHeaders, filteredSPAMData, physical=True)
 
-to write out a TimeData object directly. Header information needs to be explicitly passed to this function. For more information, see the example below and :class:`~resistics.ioHandlers.dataWriter.DataWriter>`. In the below example, the filtered time data is written out.
+to write out a :class:`~resistics.time.dataTimeData` object directly. Header information needs to be explicitly passed to this function. For more information, see the example below and :class:`~resistics.time.writer.TimeWriter>`. In the below example, the filtered time data is written out.
 
 .. literalinclude:: ../../../../examples/formats/spamReaderExamples.py
     :linenos:
@@ -175,7 +175,7 @@ to write out a TimeData object directly. Header information needs to be explicit
 
 Opening the comments file for the newly written dataset, it can be seen that a line has been added which records the application of a filter to the dataset.
 
-.. literalinclude:: ../../../../examples/formats/timeData/spamInternalFiltered/comments.txt
+.. literalinclude:: ../../_static/examples/formats/time/spamInternalFiltered_comments.txt
     :linenos:
     :language: text
 
@@ -189,7 +189,7 @@ Finally, to check everything is fine with the new dataset, the internal formatte
 
 Plotting the two time data objects on the same plot results in the image below. 
 
-.. figure:: ../../../../examples/formats/images/spam_vs_internal_filtered.png
+.. figure:: ../../_static/examples/formats/time/spam_vs_internal_filtered.png
     :align: center
     :alt: alternate text
     :figclass: align-center

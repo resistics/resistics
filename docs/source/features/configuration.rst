@@ -9,7 +9,7 @@ Resistics allows users to set various parameters through configuration files. Th
 
 Configuration files are separated into several sections which describe which part of the process the parameters affect. The parameters are detailed in the :ref:`features/configuration:Configuration parameters` section. The first thing to note is that all configuration files have a name. This is to help traceability. Configuration names are always entered into dataset comments.
 
-A good way to begin creating a custom configuration file is to copy the default parameterisation. This can be done by using the inbuilt :meth:`~resistics.utilities.utilsConfig.copyDefaultConfig` functionality:
+A good way to begin creating a custom configuration file is to copy the default parameterisation. This can be done by using the inbuilt :meth:`~resistics.config.defaults.copyDefaultConfig` functionality:
 
 .. literalinclude:: ../../../examples/features/copyconfig.py
     :linenos:

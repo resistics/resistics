@@ -121,44 +121,44 @@ The easiest way to understand masking is to step through an example. Begin, as u
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 1-6
+    :lines: 1-5
     :lineno-start: 1
 
-To generate new mask data, the method  :meth:`~resistics.project.projectMask.newMaskData` in module :mod:`~resistics.project.projectMask` is used. To create a new mask, the sampling frequency to which the mask applies must be specified. 
+To generate new mask data, the method  :meth:`~resistics.project.mask.newMaskData` in project module :mod:`~resistics.project.mask` is used. To create a new mask, the sampling frequency to which the mask applies must be specified. 
 
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 8-11
-    :lineno-start: 8
+    :lines: 7-10
+    :lineno-start: 7
 
-The method :meth:`~resistics.project.projectMask.newMaskData` returns a :class:`~resistics.dataObjects.maskData.MaskData` object, which will hold information about the statistics to use and the constraints. 
+The method :meth:`~resistics.project.mask.newMaskData` returns a :class:`~resistics.mask.data.MaskData` object, which will hold information about the statistics to use and the constraints. 
 
 The next step is to set the statistics to use for excluding windows. These statistics must already be calculated and were so in the :doc:`Statistics <statistics>` section. 
 
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 12-13
-    :lineno-start: 12
+    :lines: 11-12
+    :lineno-start: 11
 
 After the statistics are chosen, the constraints can be defined. 
 
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 14-15
-    :lineno-start: 14
+    :lines: 13-14
+    :lineno-start: 13
 
 In the above example, a mask is being created that requires the |Ex|-|Hy| coherence **and** the |Ey|-|Hx| coherence to be between 0.70 and 1.00 for a time window. If this is not the case, then the time window will be masked (excluded) for the transfer funciton calculation. 
 
-Before writing out a mask dataset, the :class:`~resistics.dataObjects.maskData.MaskData` instance should be given a name.
+Before writing out a mask dataset, the :class:`~resistics.mask.data.MaskData` instance should be given a name.
 
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 16-17
-    :lineno-start: 16
+    :lines: 15-16
+    :lineno-start: 15
 
 The naming of mask files is made up of two parts:
 
@@ -170,13 +170,13 @@ Therefore, for the above example, the mask files will be:
 - The info file: coh70_100_128_000.info
 - The mask data file: coh70_100_128_000.npy 
 
-The :class:`~resistics.dataObjects.maskData.MaskData` parameters can be viewed by using the :meth:`~resistics.dataObjects.dataObject.DataObject.printInfo` method of the :class:`~resistics.dataObjects.dataObject.DataObject` parent class. The masking constraints can be printed to the terminal using the :meth:`~resistics.dataObjects.maskData.MaskData.printConstraints` method.
+The :class:`~resistics.mask.data.MaskData` parameters can be viewed by using the :meth:`~resistics.common.base.ResisticsBase.printInfo` method of the :class:`~resistics.common.base.ResisticsBase` parent class. The masking constraints can be printed to the terminal using the :meth:`~resistics.mask.data.MaskData.printConstraints` method.
 
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 18-20
-    :lineno-start: 18
+    :lines: 17-19
+    :lineno-start: 17
 
 So far, the following information has been defined:
 
@@ -184,19 +184,19 @@ So far, the following information has been defined:
 - The statistics to use for masking
 - The constraints for the statistics
 
-However, the windows to mask have not yet been calculated. This is achieved by using the :meth:`~resistics.project.projectMask.calculateMask` method of the module :mod:`~resistics.project.projectMask`. This method runs through the pre-calculated statistic data for all data of the given sampling frequency in a site and finds and saves the windows which do not meet the constraints.
+However, the windows to mask have not yet been calculated. This is achieved by using the :meth:`~resistics.project.mask.calculateMask` method of the project module :mod:`~resistics.project.mask`. This method runs through the pre-calculated statistic data for all data of the given sampling frequency in a site and finds and saves the windows which do not meet the constraints.
 
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 22-27
-    :lineno-start: 22
+    :lines: 21-26
+    :lineno-start: 21
 
 As statistics are calculated on an evaluation frequency basis, masked windows are calculated for each evaluation frequency too. 
 
-Once the masked windows are calculated, they can then be viewed using the :meth:`~resistics.dataObjects.maskData.MaskData.view` method of :class:`~resistics.dataObjects.maskData.MaskData`. When using the :meth:`~resistics.dataObjects.maskData.MaskData.view` method, the decimation level has to be specified. In the example above, this has been set to 0, which is the first decimation level. The resultant plot is shown below.
+Once the masked windows are calculated, they can then be viewed using the :meth:`~resistics.mask.data.MaskData.view` method of :class:`~resistics.mask.data.MaskData`. When using the :meth:`~resistics.mask.data.MaskData.view` method, the decimation level has to be specified. In the example above, this has been set to 0, which is the first decimation level. The resultant plot is shown below.
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/maskData_128_coh_dec0.png
+.. figure:: ../_static/examples/tutorial/usingMasks_maskData_128_coh_dec0.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -210,12 +210,12 @@ The same process can be repeated for the 4096 Hz data.
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 29-38
-    :lineno-start: 29
+    :lines: 28-37
+    :lineno-start: 28
 
 The mask data plot for the 4096 Hz data is shown below.
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/maskData_4096_coh_dec0.png
+.. figure:: ../_static/examples/tutorial/usingMasks_maskData_4096_coh_dec0.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -227,12 +227,12 @@ Calculating masks with more than a single statistic can be done too. However, it
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 40-56
-    :lineno-start: 40
+    :lines: 39-55
+    :lineno-start: 39
 
 This produces the plot:
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/maskData_128_coh_tf_dec0.png
+.. figure:: ../_static/examples/tutorial/usingMasks_maskData_128_coh_tf_dec0.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -244,12 +244,12 @@ Notice that adding more constraints has increased the number of masked windows a
 .. literalinclude:: ../../../examples/tutorial/usingMasks.py
     :linenos:
     :language: python
-    :lines: 58-73
-    :lineno-start: 58
+    :lines: 57-72
+    :lineno-start: 57
 
 This produces the plot:
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/maskData_4096_coh_tf_dec0.png
+.. figure:: ../_static/examples/tutorial/usingMasks_maskData_4096_coh_tf_dec0.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -260,8 +260,8 @@ Here, the constraints have masked many windows for evaluation frequencies 1024 H
 
 Up until now, all mask constraints have been specified globally (i.e. as applying to all evaluation frequencies). However, statistic constraints can be defined in a more targeted manner, at evaluation frequencies that are noisier than others. More targeted constraints can be specified using the listed methods.
 
-1. :meth:`~resistics.dataObjects.maskData.MaskData.addConstraintLevel` method of :class:`~resistics.dataObjects.maskData.MaskData`, which allows setting constraints just for a specific decimation level.
-2. :meth:`~resistics.dataObjects.maskData.MaskData.addConstraintFreq` method of :class:`~resistics.dataObjects.maskData.MaskData`, which allows setting constraints for a specific evaluation frequency.
+1. :meth:`~resistics.mask.data.MaskData.addConstraintLevel` method of :class:`~resistics.mask.data.MaskData`, which allows setting constraints just for a specific decimation level.
+2. :meth:`~resistics.mask.data.MaskData.addConstraintFreq` method of :class:`~resistics.mask.data.MaskData`, which allows setting constraints for a specific evaluation frequency.
 
 Using the second option requires specification of decimation level and evaluation frequency. In resistics, these are generally specified using indices as shown in the :doc:`Statistics <statistics>` section. 
 
@@ -275,12 +275,12 @@ The impact of masks on statistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 A more useful visualisation of masks is to see how removing selected time windows effects the statistics. In the :doc:`Statistics <statistics>` section, the plotting of statistics was demonstrated. Plotting statistics with masks applied is similar.
 
-Load the project and use the :meth:`~resistics.project.projectMask.getMaskData` method of the :mod:`~resistics.project.projectMask` module to open up a previous calculated mask dataset at a sampling frequency of 4096 Hz.
+Load the project and use the :meth:`~resistics.project.mask.getMaskData` method of the :mod:`~resistics.project.mask` module to open up a previous calculated mask dataset at a sampling frequency of 4096 Hz.
 
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 1-11
+    :lines: 1-10
     :lineno-start: 1
 
 Next, get a set of masked windows for an evaluation frequency of 1024 Hz, which translates to decimation level 0 and evaluation frequency index 0.
@@ -288,16 +288,16 @@ Next, get a set of masked windows for an evaluation frequency of 1024 Hz, which 
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 12-13
-    :lineno-start: 12
+    :lines: 11-12
+    :lineno-start: 11
 
-To be able to plot the statistic data, this needs to be loaded too and can be by using the :meth:`~resistics.project.projectStatistics.getStatisticData` method of module :mod:`~resistics.project.projectStatistics`. For more information, see the :doc:`Statistics <statistics>` section.
+To be able to plot the statistic data, this needs to be loaded too and can be by using the :meth:`~resistics.project.statistics.getStatisticData` method of project module :mod:`~resistics.project.statistics`. For more information, see the :doc:`Statistics <statistics>` section.
 
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 15-20
-    :lineno-start: 15
+    :lines: 14-19
+    :lineno-start: 14
 
 Now the statistic data can be plotted with the mask data. In the examples below, the statistic data is plotted both with and without masking to demonstrate the difference.
 
@@ -306,17 +306,17 @@ Viewing transfer function statistic data:
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 22-26
-    :lineno-start: 22
+    :lines: 21-25
+    :lineno-start: 21
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_nomask_view.png
+.. figure:: ../_static/examples/tutorial/masksAndStats_statistic_4096_nomask_view.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic data without masking 
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_maskcoh_view.png
+.. figure:: ../_static/examples/tutorial/masksAndStats_statistic_4096_maskcoh_view.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -330,17 +330,17 @@ Histograms of transfer function statistic data:
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 27-31
-    :lineno-start: 27
+    :lines: 26-30
+    :lineno-start: 26
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_nomask_hist.png
+.. figure:: ../_static/examples/tutorial/masksAndStats_statistic_4096_nomask_hist.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic histogram without masking 
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_maskcoh_hist.png
+.. figure:: ../_static/examples/tutorial/masksAndStats_statistic_4096_maskcoh_hist.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -354,17 +354,17 @@ Crossplots of transfer function statistic data:
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 32-57
-    :lineno-start: 32
+    :lines: 31-56
+    :lineno-start: 31
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_nomask_crossplot.png
+.. figure:: ../_static/examples/tutorial/masksAndStats_statistic_4096_nomask_crossplot.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic crossplot without masking 
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_maskcoh_crossplot.png
+.. figure:: ../_static/examples/tutorial/masksAndStats_statistic_4096_maskcoh_crossplot.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -378,24 +378,24 @@ Repeating the same process with the second mask that was calculated (using both 
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 59-78
-    :lineno-start: 59
+    :lines: 58-77
+    :lineno-start: 58
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_maskcoh_tf_view.png
+.. figure:: ../_static/examples/tutorial/masksAndStats_statistic_4096_maskcoh_tf_view.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic with masking (constraints on both coherence and transfer function)
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_maskcoh_tf_hist.png
+.. figure:: ../_static/examples/tutorial/masksAndStats_statistic_4096_maskcoh_tf_hist.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic histogram with masking (constraints on both coherence and transfer function)
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/statistic_4096_maskcoh_tf_crossplot.png
+.. figure:: ../_static/examples/tutorial/masksAndStats_statistic_4096_maskcoh_tf_crossplot.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -404,13 +404,13 @@ Repeating the same process with the second mask that was calculated (using both 
 
 As suggested earlier, adding the extra mask constraints for this evaluation frequency was over-zealous, mainly due to the ExHyImag and EyHxImag constraints. Only a handful of time windows meet these constraints and the transfer function estimate at this evaluation frequency is likely to be poorer than when simply using the coherence mask.
 
-Remember that statistic data is saved for each individual time series measurement directory. Hence, currently only the statistic values from one time series recordings are being considered. To really understand how masking windows will influence the transfer function calculation, the effect on the statistics for all time series measurements at a single sampling frequency in a site needs to be considered. This information can be plotted using the :meth:`~resistics.project.projectStatistics.viewStatistic` and  :meth:`~resistics.project.projectStatistics.viewStatisticHistogram` of the :mod:`~resistics.project.projectStatistics` module. An example is provided below. 
+Remember that statistic data is saved for each individual time series measurement directory. Hence, currently only the statistic values from one time series recordings are being considered. To really understand how masking windows will influence the transfer function calculation, the effect on the statistics for all time series measurements at a single sampling frequency in a site needs to be considered. This information can be plotted using the :meth:`~resistics.project.statistics.viewStatistic` and  :meth:`~resistics.project.statistics.viewStatisticHistogram` of the project :mod:`~resistics.project.statistics` module. An example is provided below. 
 
 .. literalinclude:: ../../../examples/tutorial/masksAndStatistics.py
     :linenos:
     :language: python
-    :lines: 80-107
-    :lineno-start: 71
+    :lines: 79-108
+    :lineno-start: 79
 
 .. warning::
 
@@ -418,14 +418,14 @@ Remember that statistic data is saved for each individual time series measuremen
 
 The result plots are shown below.
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/stat_coherence_site1_128_000_dec0_efreq0_dec8_5_coh70_100.png
+.. figure:: ../_static/examples/tutorial/masksAndStats_projstat_128_maskcoh_coh_view.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Transfer function statistic histogram with masking (constraints on both coherence and transfer function)
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/statHist_coherence_site1_128_000_dec0_efreq0_dec8_5_coh70_100.png
+.. figure:: ../_static/examples/tutorial/masksAndStats_projstat_128_maskcoh_coh_hist.png
     :align: center
     :alt: alternate text
     :figclass: align-center

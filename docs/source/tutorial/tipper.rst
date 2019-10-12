@@ -47,33 +47,33 @@ These will pribably both give slightly different solutions for the tipper compon
 
     Including |Hz| as one of the output channels with |Ex| and |Ey| will likely give slightly different results for |Zxy|, |Zxx|, |Zyx| and |Zyy| than when the it is excluded. This is due to changing the nature of the robust regression.
 
-Continuing on from the example in the previous section, the spectra have already been calculated and it is possible to simply process the same spectra again, but this time using different input and output channels. However, to avoid overwriting the previously calculated transfer function, pass :python:`postpend="with_Hz"` to :meth:`~resistics.project.projectTransferFunction.processProject`. The postpend is simply a string that is concantenated to the end of the transfer function data file.
+Continuing on from the example in the previous section, the spectra have already been calculated and it is possible to simply process the same spectra again, but this time using different input and output channels. However, to avoid overwriting the previously calculated transfer function, pass :python:`postpend="with_Hz"` to :meth:`~resistics.project.transfunc.processProject`. The postpend is simply a string that is concantenated to the end of the transfer function data file.
 
 .. literalinclude:: ../../../examples/tutorial/simpleRunWithTipper.py
     :linenos:
     :language: python
-    :lines: 1-14
+    :lines: 1-12
     :lineno-start: 1
 
 The output transfer function data file looks like this.
 
-.. literalinclude:: ../../../examples/tutorial/tutorialProject/transFuncData/site1/128_000/site1_fs128_000_spectra_with_Hz
+.. literalinclude:: ../_static/examples/tutorial/site1_fs128_000_spectra_with_Hz
     :linenos:
     :language: text
 
 It now has some extra terms in the file compared to the one shown in the :doc:`Up and running <up-and-running>` section. These terms are the tipper terms.
 
-The tipper can be viewed using the :meth:`~resistics.project.projectTransferFunction.viewTipper` method available in the :mod:`~resistics.project.projectTransferFunction`.
+The tipper can be viewed using the :meth:`~resistics.project.transfunc.viewTipper` method available in the project :mod:`~resistics.project.transfunc` module.
 
 .. literalinclude:: ../../../examples/tutorial/simpleRunWithTipper.py
     :linenos:
     :language: python
-    :lines: 16-19
-    :lineno-start: 16
+    :lines: 14-18
+    :lineno-start: 14
 
 This produces the following plot:
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/tipper_site1_spectra_with_Hz.png
+.. figure:: ../_static/examples/tutorial/simpleRunWithTipper_viewtip_withHz.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -85,12 +85,12 @@ However, including the tipper in the overall calculation may change the estimati
 .. literalinclude:: ../../../examples/tutorial/simpleRunWithTipper.py
     :linenos:
     :language: python
-    :lines: 21-30
-    :lineno-start: 21
+    :lines: 20-31
+    :lineno-start: 20
 
 Running with |Hz| as an output channel produces the below impedance tensor estimate, which is comparable to the one calculated in the previous section.
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra_with_Hz.png
+.. figure:: ../_static/examples/tutorial/simpleRunWithTipper_viewimp_withHz_polarisations.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -98,7 +98,7 @@ Running with |Hz| as an output channel produces the below impedance tensor estim
 
     Plot of the impedance tensor result when |Hz| is added to the output channels
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.1.png
+.. figure:: ../_static/examples/tutorial/simpleRun_viewimp_polarisations.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -111,12 +111,12 @@ As stated earlier, another way to calculate the tipper is to use |Hz| as the onl
 .. literalinclude:: ../../../examples/tutorial/simpleRunWithTipper.py
     :linenos:
     :language: python
-    :lines: 32-35
-    :lineno-start: 32
+    :lines: 33-36
+    :lineno-start: 33
 
 The tipper result is given in the below figure. The result here is different to the result above when |Hz| is one of a set of output channels.
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/tipper_site1_spectra_only_Hz.png
+.. figure:: ../_static/examples/tutorial/simpleRunWithTipper_viewtip_onlyHz.png
     :align: center
     :alt: alternate text
     :figclass: align-center

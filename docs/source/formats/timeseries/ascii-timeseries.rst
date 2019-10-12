@@ -68,7 +68,7 @@ Remember, ASCII data files need to have the extension .ascii (otherwise it would
     ├── exmuVm.ascii              
     └── eymuVm.ascii 
 
-The :class:`~resistics.ioHandlers.dataWriter.DataWriter` class has a handy function for autogenerating header files named :meth:`~resistics.ioHandlers.dataWriter.DataWriter.writeTemplateHeaderFiles`. Its use is shown below:
+The :class:`~resistics.time.writer.TimeWriter` class has a handy function for autogenerating header files named :meth:`~resistics.time.writer.TimeWriter.writeTemplateHeaderFiles`. Its use is shown below:
 
 .. literalinclude:: ../../../../examples/formats/asciiReaderExamples.py
     :linenos:
@@ -76,7 +76,7 @@ The :class:`~resistics.ioHandlers.dataWriter.DataWriter` class has a handy funct
     :lines: 1-17
     :lineno-start: 1
 
-The :python:`chan2FileMap` is a dictionary that maps channel names to the actual data files. The call to :meth:`~resistics.ioHandlers.dataWriter.DataWriter.writeTemplateHeaderFiles` needs to specify several parameters:
+The :python:`chan2FileMap` is a dictionary that maps channel names to the actual data files. The call to :meth:`~resistics.time.writer.TimeWriter.writeTemplateHeaderFiles` needs to specify several parameters:
 
 - The channels as a list of strings
 - The map from the channel name to the data file
@@ -103,17 +103,17 @@ Given this information, resistics will produce a set of header files such that t
 
 The end time of the recording is automatically calculated given the start time, sampling frequency and number of samples. This information is inserted into the header files. The global header file contains the following information: 
 
-.. literalinclude:: ../../../../examples/formats/timeData/ascii/global.hdr
+.. literalinclude:: ../../_static/examples/formats/time/ascii_global.hdr
     :linenos:
     :language: text
 
 Channel metadata is stored in the channel header files. For example, the header file for channel |Ex| contains the following information:
 
-.. literalinclude:: ../../../../examples/formats/timeData/ascii/chan_00.hdr
+.. literalinclude:: ../../_static/examples/formats/time/ascii_chan_00.hdr
     :linenos:
     :language: text
 
-The data is now ready to be read in by resistics, which is achieved with the :class:`~resistics.ioHandlers.dataReaderAscii.DataReaderAscii` class. 
+The data is now ready to be read in by resistics, which is achieved with the :class:`~resistics.time.reader_ascii.TimeReaderAscii` class. 
 
 .. literalinclude:: ../../../../examples/formats/asciiReaderExamples.py
     :linenos:
@@ -121,13 +121,13 @@ The data is now ready to be read in by resistics, which is achieved with the :cl
     :lines: 19-23
     :lineno-start: 19
 
-The recording information can be printed to the terminal using the :meth:`~resistics.ioHandlers.IOHandler.printInfo` method of all input, output handlers. An example of the output is shown below:
+The recording information can be printed to the terminal using the :meth:`~resistics.common.base.ResisticsBase.printInfo` method of all input, output handlers. An example of the output is shown below:
 
-.. literalinclude:: ../../_text/printAscii.txt
+.. literalinclude:: ../../_static/examples/formats/time/printAscii.txt
     :linenos:
     :language: text
 
-The next step is to read some data and plot it. Resistics does not load the data into memory until it is requested. Further, the package only reads the requested data. The full dataset can be read by using the :meth:`~resistics.ioHandlers.dataReaderAscii.DataReaderAscii.getPhysicalSamples` method. Note again that no scaling is applied anywhere for ASCII data and :meth:`~resistics.ioHandlers.dataReaderAscii.DataReaderAscii.getPhysicalSamples` will return the same result as :meth:`~resistics.ioHandlers.dataReaderAscii.DataReaderAscii.getUnscaledSamples`. Both of these return a :class:`~resistics.dataObjects.timeData.TimeData` object.
+The next step is to read some data and plot it. Resistics does not load the data into memory until it is requested. Further, the package only reads the requested data. The full dataset can be read by using the :meth:`~resistics.time.reader_ascii.TimeReaderAscii.getPhysicalSamples` method. Note again that no scaling is applied anywhere for ASCII data and :meth:`~resistics.time.reader_ascii.TimeReaderAscii.getPhysicalSamples` will return the same result as :meth:`~resistics.time.reader_ascii.TimeReaderAscii.getUnscaledSamples`. Both of these return a :class:`~resistics.time.data.TimeData` object.
 
 .. literalinclude:: ../../../../examples/formats/asciiReaderExamples.py
     :linenos:
@@ -137,20 +137,20 @@ The next step is to read some data and plot it. Resistics does not load the data
 
 :python:`asciiData.printInfo()` prints time data information to the terminal. An alternative way to do this is to simply :python:`print(asciiData)`. 
 
-.. literalinclude:: ../../_text/printAsciiData.txt
+.. literalinclude:: ../../_static/examples/formats/time/printAsciiData.txt
     :linenos:
     :language: text
 
-Time data can be plotted by using the class :meth:`~resistics.dataObjects.timeData.TimeData.view` method. By passing a matplotlib figure to this, the layout can be controlled as required. The resulting image is:
+Time data can be plotted by using the class :meth:`~resistics.time.data.TimeData.view` method. By passing a matplotlib figure to this, the layout can be controlled as required. The resulting image is:
 
-.. figure:: ../../../../examples/formats/images/ascii.png
+.. figure:: ../../_static/examples/formats/time/ascii.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Viewing ASCII data  
 
-Ascii time data objects are like any other time data objects returned by the other data readers. The time data object can be written out in the internal binary format to increase reading speed and reduce storage cost. This can be done with the :class:`~resistics.ioHandlers.dataWriterInternal.DataWriterInternal` class. 
+Ascii time data objects are like any other time data objects returned by the other data readers. The time data object can be written out in the internal binary format to increase reading speed and reduce storage cost. This can be done with the :class:`~resistics.time.writer_internal.TimeWriterInternal` class. 
 
 .. literalinclude:: ../../../../examples/formats/asciiReaderExamples.py
     :linenos:
@@ -160,11 +160,11 @@ Ascii time data objects are like any other time data objects returned by the oth
 
 This dataset will be written out with a comments file that tracks the history of the data. For this example, the comments file looks like:
 
-.. literalinclude:: ../../../../examples/formats/timeData/asciiInternal/comments.txt
+.. literalinclude:: ../../_static/examples/formats/time/asciiInternal_comments.txt
     :linenos:
     :language: text
 
-To validate the output against the input, the internally formatted data can be read back in using the :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class and compared to the original ASCII data.
+To validate the output against the input, the internally formatted data can be read back in using the :class:`~resistics.time.reader_internal.TimeReaderInternal` class and compared to the original ASCII data.
 
 .. literalinclude:: ../../../../examples/formats/asciiReaderExamples.py
     :linenos:
@@ -172,9 +172,9 @@ To validate the output against the input, the internally formatted data can be r
     :lines: 44-59
     :lineno-start: 44
 
-Reading in the internal data is very similar to reading in the ASCII data. Another benefit of creating a figure and passing it through to the :meth:`~resistics.dataObjects.timeData.TimeData.view` method is that multiple datasets can be plotted on the same figure. The final data comparison figure is shown below.
+Reading in the internal data is very similar to reading in the ASCII data. Another benefit of creating a figure and passing it through to the :meth:`~resistics.time.data.TimeData.view` method is that multiple datasets can be plotted on the same figure. The final data comparison figure is shown below.
 
-.. figure:: ../../../../examples/formats/images/ascii_vs_internal.png
+.. figure:: ../../_static/examples/formats/time/ascii_vs_internal.png
     :align: center
     :alt: alternate text
     :figclass: align-center

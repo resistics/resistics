@@ -65,13 +65,13 @@ Under the site directory, a time series measurement directory needs to be create
     ├── images
     └── mtProj.prj
 
-After the project, site and measurement directory have been created, the data has to be prepared to be read in by resistics. This is achieved by using the :meth:`~resistics.ioHandlers.dataWriter.DataWriter.writeTemplateHeaderFiles` method of the class :class:`~resistics.ioHandlers.dataWriter.DataWriter`. 
+After the project, site and measurement directory have been created, the data has to be prepared to be read in by resistics. This is achieved by using the :meth:`~resistics.time.writer.TimeWriter.writeTemplateHeaderFiles` method of the class :class:`~resistics.time.writer.TimeWriter`. 
 
 .. literalinclude:: ../../../cookbook/usingAscii/asciiPrepare.py
     :linenos:
     :language: python
 
-The :meth:`~resistics.ioHandlers.dataWriter.DataWriter.writeTemplateHeaderFiles` creates dummy header files for the ASCII data allowing resistics to read it in appropriately. The dummy files it creates are:
+The :meth:`~resistics.time.writer.TimeWriter.writeTemplateHeaderFiles` creates dummy header files for the ASCII data allowing resistics to read it in appropriately. The dummy files it creates are:
 
 - chan_00.hdr
 - chan_01.hdr
@@ -119,21 +119,21 @@ The time series is now ready to be read in. In the below code block, the project
     :lines: 1-25
     :lineno-start: 1
 
-.. figure:: ../../../cookbook/usingAscii/images/projectTimeline.png
+.. figure:: ../_static/cookbook/usingAscii/projectTimeline.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Project timeline, though the reference time is purely a dummy one.
 
-.. figure:: ../../../cookbook/usingAscii/images/siteTimeline.png
+.. figure:: ../_static/cookbook/usingAscii/siteTimeline.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Site timeline.
 
-.. figure:: ../../../cookbook/usingAscii/images/viewTime.png
+.. figure:: ../_static/cookbook/usingAscii/viewTime.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -150,7 +150,7 @@ The next step is to calculate out the spectra and then produce a spectra stack p
 
 The spectra stack is shown below:
 
-.. figure:: ../../../cookbook/usingAscii/images/viewSpectraStack.png
+.. figure:: ../_static/cookbook/usingAscii/viewSpectraStack.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -167,7 +167,7 @@ The easiest way to process the ascii data is using the default parameterisation,
 
 This gives the below impedance tensor estimate.
 
-.. figure:: ../../../cookbook/usingAscii/images/impedance_default.png
+.. figure:: ../_static/cookbook/usingAscii/impedance_default.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -189,7 +189,7 @@ Looking at the phase estimates, the phase for the ExHy component is in the wrong
 
 The tipper estimate is shown below.
 
-.. figure:: ../../../cookbook/usingAscii/images/impedance_default_withHz.png
+.. figure:: ../_static/cookbook/usingAscii/impedance_default_withHz.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -202,7 +202,7 @@ As described in the :doc:`Using configuration files <../tutorial/configuration-f
 
 A new configuration file has been made and is included below:
 
-.. literalinclude:: ../../../cookbook/usingAscii/asciiconfig.ini
+.. literalinclude:: ../_static/cookbook/usingAscii/asciiconfig.ini
     :linenos:
     :language: text
 
@@ -218,7 +218,7 @@ To use the configuration file, the project needs to be loaded along with the con
 
     As the new configuration file includes new windowing parameters, a new set of spectra will be calculated out. The **specdir** option in the configuration deals with this. 
 
-The first task it to view the time series data with a polarity reversal. This can be done by specifying the :python:`polreverse` keyword for :meth:`~resistics.project.projectTime.viewTime` as demonstrated below.
+The first task it to view the time series data with a polarity reversal. This can be done by specifying the :python:`polreverse` keyword for :meth:`~resistics.project.time.viewTime` as demonstrated below.
 
 .. literalinclude:: ../../../cookbook/usingAscii/runWithConfig.py
     :linenos:
@@ -226,7 +226,7 @@ The first task it to view the time series data with a polarity reversal. This ca
     :lines: 8-20
     :lineno-start: 8
 
-.. figure:: ../../../cookbook/usingAscii/images/viewTime_polreverse.png
+.. figure:: ../_static/cookbook/usingAscii/viewTime_polreverse.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -241,7 +241,7 @@ Following a similar scheme as the default example, the spectra can be calculated
     :lines: 22-42
     :lineno-start: 22   
 
-.. figure:: ../../../cookbook/usingAscii/images/viewSpectraStack_config_polreverse.png
+.. figure:: ../_static/cookbook/usingAscii/viewSpectraStack_config_polreverse.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -260,7 +260,7 @@ Finally, the spectra can be processed to estimate the impedance tensor and tippe
 
 The impedance tensor estimate is shown below and now the phases are all in the correct quadrants.
 
-.. figure:: ../../../cookbook/usingAscii/images/impedance_config.png
+.. figure:: ../_static/cookbook/usingAscii/impedance_config.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -276,7 +276,7 @@ And for the tipper:
     :lines: 66-77
     :lineno-start: 66
 
-.. figure:: ../../../cookbook/usingAscii/images/impedance_config_withHz.png
+.. figure:: ../_static/cookbook/usingAscii/impedance_config_withHz.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -311,7 +311,7 @@ Next create a mask to perform simple coherence based rejection of time windows a
     :lines: 13-22
     :lineno-start: 13
 
-.. figure:: ../../../cookbook/usingAscii/images/maskcoh.png
+.. figure:: ../_static/cookbook/usingAscii/maskcoh.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -328,7 +328,7 @@ Finally, calculate the impedance tensor estimate with the mask applied to exclud
     :lines: 24-47
     :lineno-start: 24
 
-.. figure:: ../../../cookbook/usingAscii/images/impedance_config_masked.png
+.. figure:: ../_static/cookbook/usingAscii/impedance_config_masked.png
     :align: center
     :alt: alternate text
     :figclass: align-center

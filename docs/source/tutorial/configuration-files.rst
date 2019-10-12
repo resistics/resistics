@@ -21,7 +21,7 @@ A user supplied configuration only needs to include non-default parameters (thos
 
 To use configuration files, they should be specified when loading in a project. An example configuration file is shown below. 
 
-.. literalinclude:: ../../../examples/tutorial/tutorialconfig.ini
+.. literalinclude:: ../_static/examples/tutorial/tutorialconfig.ini
     :linenos:
     :language: text
 
@@ -32,18 +32,18 @@ The below shows how to load a project with a configuration specified by a config
 .. literalinclude:: ../../../examples/tutorial/usingConfigFiles.py
     :linenos:
     :language: python
-    :lines: 1-7
+    :lines: 1-6
     :lineno-start: 1
 
-The configuration file above specifies a spectra directory to use. For more on what this means, please see the :doc:`Multiple spectra <multiple-spectra>` page. The result is that all project methods which use the :class:`~resistics.dataObjects.projectData.ProjectData` instance loaded with the configuration file will pick up the configuration parameters.
+The configuration file above specifies a spectra directory to use. For more on what this means, please see the :doc:`Multiple spectra <multiple-spectra>` page. The result is that all project methods which use the :class:`~resistics.project.data.ProjectData` instance loaded with the configuration file will pick up the configuration parameters.
 
-Calculating spectra is now straightforward. When passing the :class:`~resistics.dataObjects.projectData.ProjectData` instance loaded with the tutorialConfig.ini configuration file to :meth:`~resistics.project.projectSpectra.calculateSpectra`, the **specdir** option in the configuration file will automatically be picked up.
+Calculating spectra is now straightforward. When passing the :class:`~resistics.project.data.ProjectData` instance loaded with the tutorialConfig.ini configuration file to :meth:`~resistics.project.spectra.calculateSpectra`, the **specdir** option in the configuration file will automatically be picked up.
 
 .. literalinclude:: ../../../examples/tutorial/usingConfigFiles.py
     :linenos:
     :language: python
-    :lines: 9-13
-    :lineno-start: 9
+    :lines: 8-12
+    :lineno-start: 8
 
 The spectra will be stored in the following location:
 
@@ -77,24 +77,24 @@ The spectra will be stored in the following location:
     ├── images
     └── mtProj.prj
 
-To process these spectra, it's a similar situation. Passing the :class:`~resistics.dataObjects.projectData.ProjectData` instance loaded with the tutorialConfig.ini configuration file to :meth:`~resistics.project.projectTransferFunction.processProject`, the **specdir** option in the configuration file will automatically be picked up.
+To process these spectra, it's a similar situation. Passing the :class:`~resistics.project.data.ProjectData` instance loaded with the tutorialConfig.ini configuration file to :meth:`~resistics.project.transfunc.processProject`, the **specdir** option in the configuration file will automatically be picked up.
 
 .. literalinclude:: ../../../examples/tutorial/usingConfigFiles.py
     :linenos:
     :language: python
-    :lines: 15-19
-    :lineno-start: 15
+    :lines: 14-19
+    :lineno-start: 14
 
 Now the plot using the new configuration parameters (8 decimation levels with 5 evaluation frequencies per decimation level) can be compared to the default parameterisation.
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_dec8_5.png
+.. figure:: ../_static/examples/tutorial/usingConfigFiles_viewimp.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Using the customised configuration
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.2.png
+.. figure:: ../_static/examples/tutorial/simpleRun_viewimp_multplot.png
     :align: center
     :alt: alternate text
     :figclass: align-center

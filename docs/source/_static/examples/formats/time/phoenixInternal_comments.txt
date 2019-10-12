@@ -1,0 +1,12 @@
+Unscaled data 2011-11-13 17:04:02 to 2011-11-14 14:29:46.933333 read in from measurement E:\magnetotellurics\code\resisticsdata\formats\timeData\phoenix, samples 0 to 1157174
+Scaling channel Ex with scalar 0.1 to give mV
+Dividing channel Ex by electrode distance 0.093 km to give mV/km
+Scaling channel Ey with scalar 0.1 to give mV
+Dividing channel Ey by electrode distance 0.093 km to give mV/km
+Scaling channel Hx with scalar 0.08333333333333333 to give mV
+Scaling channel Hy with scalar 0.08333333333333333 to give mV
+Scaling channel Hz with scalar 0.08333333333333333 to give mV
+The required Phoneix scaling to field units is still unverified. This is experimental and use cautiously.
+Remove zeros: False, remove nans: False, remove average: True
+Time series dataset written to E:\magnetotellurics\code\resisticsdata\formats\timeData\phoenixInternal\meas_ts5_2011-11-13-17-04-02_2011-11-14-14-29-46 on 2019-10-05 18:14:54.116435 using resistics 0.0.6.dev2
+---------------------------------------------------

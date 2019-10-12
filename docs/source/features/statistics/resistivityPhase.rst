@@ -5,7 +5,7 @@ Looking at the transfer function components for each evaluation frequency is use
 
 Example
 
-.. figure:: ../../_images/histResPhase.png
+.. figure:: ../../_static/examples/features/stats/histResPhase.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -14,7 +14,7 @@ Example
 
 
 
-.. figure:: ../../_images/timeResPhase.png
+.. figure:: ../../_static/examples/features/stats/timeResPhase.png
     :align: center
     :alt: alternate text
     :figclass: align-center

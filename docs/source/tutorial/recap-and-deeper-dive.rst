@@ -1,7 +1,7 @@
 Recap and deeper dive
 ---------------------
 
-Now that many of the basic features of resistics have been introduced, it is a useful time to recap some theory and consider some lower level resistics API. The :class:`~resistics.calculators.decimationParams.DecimationParams`, :class:`~resistics.calculators.windowParams.WindowParams` and :class:`~resistics.calculators.windowSelector.WindowSelector` classes are central to how resistics processes magnetotelluric data. They are lower level elements of the resistics package but are useful to know and understand, particularly before approaching the :doc:`Advanced <../advanced>` and :doc:`Cookbook <../cookbook>` sections. 
+Now that many of the basic features of resistics have been introduced, it is a useful time to recap some theory and consider some lower level resistics API. The :class:`~resistics.decimate.parameters.DecimationParameters`, :class:`~resistics.window.parameters.WindowParameters` and :class:`~resistics.window.selector.WindowSelector` classes are central to how resistics processes magnetotelluric data. They are lower level elements of the resistics package but are useful to know and understand, particularly before approaching the :doc:`Advanced <../advanced>` and :doc:`Cookbook <../cookbook>` sections. 
 
 Recap
 ~~~~~
@@ -82,17 +82,17 @@ In the following sections, the resistics approach to decimation parameters, wind
 Decimation parameters
 ~~~~~~~~~~~~~~~~~~~~~
 
-The :class:`~resistics.calculators.decimationParams.DecimationParams` class holds the decimation information. Decimation parameters can be set using configuration files (see :doc:`Using configuration files <configuration-files>`). To see what the :class:`~resistics.calculators.decimationParams.DecimationParams` class holds, consider an example.
+The :class:`~resistics.decimate.parameters.DecimationParameters` class holds the decimation information. Decimation parameters can be set using configuration files (see :doc:`Using configuration files <configuration-files>`). To see what the :class:`~resistics.decimate.parameters.DecimationParameters` class holds, consider an example.
 
 .. literalinclude:: ../../../examples/tutorial/usingWindowSelector.py
     :linenos:
     :language: python
-    :lines: 1-12
+    :lines: 1-11
     :lineno-start: 1
 
-The project has been loaded along with the configuration file, which has specified 8 decimation levels and 5 evaluation frequencies per level. The decimation paramters can be printed to the terminal using the :meth:`~resistics.calculators.calculator.Calculator.printInfo` method to give:
+The project has been loaded along with the configuration file, which has specified 8 decimation levels and 5 evaluation frequencies per level. The decimation paramters can be printed to the terminal using the parent class :meth:`~resistics.common.base.ResisticsBase.printInfo` method to give:
 
-.. literalinclude:: ../_text/printDecimationParameters.txt
+.. literalinclude:: ../_static/examples/tutorial/printDecimationParameters.txt
     :linenos:
     :language: text
 
@@ -101,19 +101,19 @@ The information provides all the decimation factors and the sampling frequencies
 Window parameters
 ~~~~~~~~~~~~~~~~~
 
-The :class:`~resistics.calculators.windowParams.WindowParams` class contains information about the windowing parameters. Window parameters can be set using configuration files (see :doc:`Using configuration files <configuration-files>`).
+The :class:`~resistics.window.parameters.WindowParameters` class contains information about the windowing parameters. Window parameters can be set using configuration files (see :doc:`Using configuration files <configuration-files>`).
 
 Again, consider an example which continues from the decimation paramters example:
 
 .. literalinclude:: ../../../examples/tutorial/usingWindowSelector.py
     :linenos:
     :language: python
-    :lines: 14-18
-    :lineno-start: 14
+    :lines: 13-17
+    :lineno-start: 13
 
-The project has been loaded along with the configuration file, which has specified a minimum window size of 256 samples and a minimum overlap of 64 samples. However, resistics is free to use window and overlap sizes greater than these if it makes sense. Windowing parameter information can be printed to the terminal using the :meth:`~resistics.calculators.calculator.Calculator.printInfo` method.
+The project has been loaded along with the configuration file, which has specified a minimum window size of 256 samples and a minimum overlap of 64 samples. However, resistics is free to use window and overlap sizes greater than these if it makes sense. Windowing parameter information can be printed to the terminal using the :meth:`~resistics.common.base.ResisticsBase.printInfo` method.
 
-.. literalinclude:: ../_text/printWindowParameters.txt
+.. literalinclude:: ../_static/examples/tutorial/printWindowParameters.txt
     :linenos:
     :language: text
 
@@ -122,7 +122,7 @@ In this case, for the 4096 Hz data, the for the lower decimation levels, larger 
 Window selector
 ~~~~~~~~~~~~~~~
 
-The :class:`~resistics.calculators.windowSelector.WindowSelector` class is a key component of resistics. Before processing time windows (and their respective spectra) to calculate transfer function estimates, the windows to use have to be selected. The :class:`~resistics.calculators.windowSelector.WindowSelector` class is the how windows are selected. 
+The :class:`~resistics.window.selector.WindowSelector` class is a key component of resistics. Before processing time windows (and their respective spectra) to calculate transfer function estimates, the windows to use have to be selected. The :class:`~resistics.window.selector.WindowSelector` class is the how windows are selected. 
 
 Below are a few scenarios under which windows might have to be selected:
 
@@ -134,95 +134,95 @@ Below are a few scenarios under which windows might have to be selected:
 
 Let's compare 1 and 2 as simple examples. The others will be introduced in the :doc:`Advanced <../advanced>` section.
 
-Begin by getting a :class:`~resistics.calculators.windowSelector.WindowSelector` instance. In this case, the 128 Hz data is being used. 
+Begin by getting a :class:`~resistics.window.selector.WindowSelector` instance. In this case, the 128 Hz data is being used. 
 
 .. literalinclude:: ../../../examples/tutorial/usingWindowSelector.py
     :linenos:
     :language: python
-    :lines: 20-25
-    :lineno-start: 25
+    :lines: 19-24
+    :lineno-start: 24
 
-The :class:`~resistics.calculators.windowSelector.WindowSelector` needs to know the :class:`~resistics.calculators.decimationParams.DecimationParams` and :class:`~resistics.calculators.windowParams.WindowParams`. Information can be printed to the terminal using the :meth:`~resistics.calculators.calculator.Calculator.printInfo` method. This gives:
+The :class:`~resistics.window.selector.WindowSelector` needs to know the :class:`~resistics.decimate.parameters.DecimationParameters` and :class:`~resistics.window.parameters.WindowParameters`. Information can be printed to the terminal using the :meth:`~resistics.common.base.ResisticsBase.printInfo` method. This gives:
 
-.. literalinclude:: ../_text/printWindowSelector_1.txt
+.. literalinclude:: ../_static/examples/tutorial/printWindowSelector_1.txt
     :linenos:
     :language: text
 
-Currently, no sites have been specified for the :class:`~resistics.calculators.windowSelector.WindowSelector` instance. Therefore, there are yet no windows to select from. The next step then is to specify a list of sites. 
+Currently, no sites have been specified for the :class:`~resistics.window.selector.WindowSelector` instance. Therefore, there are yet no windows to select from. The next step then is to specify a list of sites. 
 
 .. literalinclude:: ../../../examples/tutorial/usingWindowSelector.py
     :linenos:
     :language: python
-    :lines: 27-29
-    :lineno-start: 27
+    :lines: 26-28
+    :lineno-start: 26
 
 Printing information gives the following, which details the recordings and the global windows for those recordings. The global windows are the window numbers beginning from the project reference time. Here there is nothing for decimation level 7 as the time series was not long enough to give sufficient windows after decimation. 
 
-.. literalinclude:: ../_text/printWindowSelector_2.txt
+.. literalinclude:: ../_static/examples/tutorial/printWindowSelector_2.txt
     :linenos:
     :language: text
 
-Now the shared windows can be calculated using the :meth:`~resistics.calculators.windowSelector.WindowSelector.calcSharedWindows` method. In this case, only a single site is specified so there are no other sites to share windows with. When more than a single site is specified, the shared windows between the sites will be calculated. **This means the times where both sites were recording**. This is an essential step for remote reference and intersite processing (see :doc:`Advanced <../advanced>`). 
+Now the shared windows can be calculated using the :meth:`~resistics.window.selector.WindowSelector.calcSharedWindows` method. In this case, only a single site is specified so there are no other sites to share windows with. When more than a single site is specified, the shared windows between the sites will be calculated. **This means the times where both sites were recording**. This is an essential step for remote reference and intersite processing (see :doc:`Advanced <../advanced>`). 
 
 .. literalinclude:: ../../../examples/tutorial/usingWindowSelector.py
     :linenos:
     :language: python
-    :lines: 31-33
-    :lineno-start: 31
+    :lines: 30-32
+    :lineno-start: 30
 
-The shared windows can be printed to the terminal using the :meth:`~resistics.calculators.windowSelector.WindowSelector.printSharedWindows` method.
+The shared windows can be printed to the terminal using the :meth:`~resistics.window.selector.WindowSelector.printSharedWindows` method.
 
-.. literalinclude:: ../_text/printWindowSelector_3.txt
+.. literalinclude:: ../_static/examples/tutorial/printWindowSelector_3.txt
     :linenos:
     :language: text
 
-The :class:`~resistics.calculators.windowSelector.WindowSelector` has functionality to limit windows using date and time constraints. Date and time constraints can be provided using the :meth:`~resistics.calculators.windowSelector.WindowSelector.addDateConstraint`, :meth:`~resistics.calculators.windowSelector.WindowSelector.addTimeConstraint` and :meth:`~resistics.calculators.windowSelector.WindowSelector.addDatetimeConstraint` methods. 
+The :class:`~resistics.window.selector.WindowSelector` has functionality to limit windows using date and time constraints. Date and time constraints can be provided using the :meth:`~resistics.window.selector.WindowSelector.addDateConstraint`, :meth:`~resistics.window.selector.WindowSelector.addTimeConstraint` and :meth:`~resistics.window.selector.WindowSelector.addDatetimeConstraint` methods. 
 
 .. important::
 
     Providing a date or time constraint means that only windows which are inside these date/time constraints will be selected. Any windows which are outside the date/time constraint will be discarded.
 
-Below is an example of providing a date constraint using the :meth:`~resistics.calculators.windowSelector.WindowSelector.addDateConstraint` method. After running the :meth:`~resistics.calculators.windowSelector.WindowSelector.calcSharedWindows` method, only time windows within this date/time constraint will be selected. 
+Below is an example of providing a date constraint using the :meth:`~resistics.window.selector.WindowSelector.addDateConstraint` method. After running the :meth:`~resistics.window.selector.WindowSelector.calcSharedWindows` method, only time windows within this date/time constraint will be selected. 
 
 .. literalinclude:: ../../../examples/tutorial/usingWindowSelector.py
     :linenos:
     :language: python
-    :lines: 35-39
-    :lineno-start: 35
+    :lines: 34-38
+    :lineno-start: 34
 
-The datetime constraints can be printed to the terminal using the :meth:`~resistics.calculators.windowSelector.WindowSelector.printDatetimeConstraints` method. The various print methods give the following: 
+The datetime constraints can be printed to the terminal using the :meth:`~resistics.window.selector.WindowSelector.printDatetimeConstraints` method. The various print methods give the following: 
 
-.. literalinclude:: ../_text/printWindowSelector_4.txt
+.. literalinclude:: ../_static/examples/tutorial/printWindowSelector_4.txt
     :linenos:
     :language: text
 
-Comparing the number of shared windows to the previous results, it is clear that the number of shared windows has now reduced. This is due to the application of the date constraint. To reset the date constraint, the :meth:`~resistics.calculators.windowSelector.WindowSelector.resetDatetimeConstraints` method can be used as in the following example, where the current date/time constraint is cleared and a new one added. 
+Comparing the number of shared windows to the previous results, it is clear that the number of shared windows has now reduced. This is due to the application of the date constraint. To reset the date constraint, the :meth:`~resistics.window.selector.WindowSelector.resetDatetimeConstraints` method can be used as in the following example, where the current date/time constraint is cleared and a new one added. 
 
 .. literalinclude:: ../../../examples/tutorial/usingWindowSelector.py
     :linenos:
     :language: python
-    :lines: 41-46
-    :lineno-start: 41
+    :lines: 40-45
+    :lineno-start: 40
 
 Calculating the shared windows again with this new datetime constraint and printing the information to the terminal gives:
 
-.. literalinclude:: ../_text/printWindowSelector_5.txt
+.. literalinclude:: ../_static/examples/tutorial/printWindowSelector_5.txt
     :linenos:
     :language: text
 
 The number of shared windows has reduced even more. Instead of using a full day (24 hours) of data as in the previous example with the date constraint, now only the evening and night has been specified, totalling 13 hours.  
 
-Masks can also be specified in the :class:`~resistics.calculators.windowSelector.WindowSelector` using the :meth:`~resistics.calculators.windowSelector.WindowSelector.addWindowMask` method.
+Masks can also be specified in the :class:`~resistics.window.selector.WindowSelector` using the :meth:`~resistics.window.selector.WindowSelector.addWindowMask` method.
 
 .. literalinclude:: ../../../examples/tutorial/usingWindowSelector.py
     :linenos:
     :language: python
-    :lines: 48-52
-    :lineno-start: 48
+    :lines: 47-51
+    :lineno-start: 47
 
 And printing the information to the terminal gives:
 
-.. literalinclude:: ../_text/printWindowSelector_6.txt
+.. literalinclude:: ../_static/examples/tutorial/printWindowSelector_6.txt
     :linenos:
     :language: text
 
@@ -237,8 +237,8 @@ The loop below can demonstrate the effect of masks on the number of windows for 
 .. literalinclude:: ../../../examples/tutorial/usingWindowSelector.py
     :linenos:
     :language: python
-    :lines: 54-71
-    :lineno-start: 54
+    :lines: 53-70
+    :lineno-start: 53
 
 The output from this loop is shown below.
 

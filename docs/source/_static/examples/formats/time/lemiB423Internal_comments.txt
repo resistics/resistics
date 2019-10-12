@@ -1,0 +1,24 @@
+Unscaled data 2019-05-27 09:43:28 to 2019-05-27 15:43:27 read in from measurement E:\magnetotellurics\code\resisticsdata\formats\timeData\lemiB423, samples 0 to 10799500
+Sampling frequency 500.0
+Data read from 2 files in total
+Scaling = True
+Scaling channel Hx of file E:\magnetotellurics\code\resisticsdata\formats\timeData\lemiB423\1558950203.B423 with multiplier 5.816314e-06 and adding -99.946
+Scaling channel Hy of file E:\magnetotellurics\code\resisticsdata\formats\timeData\lemiB423\1558950203.B423 with multiplier 5.816975e-06 and adding -99.952
+Scaling channel Hz of file E:\magnetotellurics\code\resisticsdata\formats\timeData\lemiB423\1558950203.B423 with multiplier 5.817061e-06 and adding -99.956
+Scaling channel Ex of file E:\magnetotellurics\code\resisticsdata\formats\timeData\lemiB423\1558950203.B423 with multiplier 0.0002910952 and adding -5018.7
+Scaling channel Ey of file E:\magnetotellurics\code\resisticsdata\formats\timeData\lemiB423\1558950203.B423 with multiplier 0.0002910181 and adding -4981.6
+Scaling channel Hx of file E:\magnetotellurics\code\resisticsdata\formats\timeData\lemiB423\1558961007.B423 with multiplier 5.816314e-06 and adding -99.946
+Scaling channel Hy of file E:\magnetotellurics\code\resisticsdata\formats\timeData\lemiB423\1558961007.B423 with multiplier 5.816975e-06 and adding -99.952
+Scaling channel Hz of file E:\magnetotellurics\code\resisticsdata\formats\timeData\lemiB423\1558961007.B423 with multiplier 5.817061e-06 and adding -99.956
+Scaling channel Ex of file E:\magnetotellurics\code\resisticsdata\formats\timeData\lemiB423\1558961007.B423 with multiplier 0.0002910952 and adding -5018.7
+Scaling channel Ey of file E:\magnetotellurics\code\resisticsdata\formats\timeData\lemiB423\1558961007.B423 with multiplier 0.0002910181 and adding -4981.6
+Removing gain of 16 from channel Hx
+Removing gain of 16 from channel Hy
+Removing gain of 16 from channel Hz
+Dividing channel Ex by 1000 to convert microvolt to millivolt
+Dividing channel Ex by electrode distance 0.06 km to give mV/km
+Dividing channel Ey by 1000 to convert microvolt to millivolt
+Dividing channel Ey by electrode distance 0.060700 km to give mV/km
+Remove zeros: False, remove nans: False, remove average: True
+Time series dataset written to E:\magnetotellurics\code\resisticsdata\formats\timeData\lemiB423Internal on 2019-10-05 18:13:59.133157 using resistics 0.0.6.dev2
+---------------------------------------------------

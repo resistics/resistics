@@ -51,7 +51,7 @@ The Lemi B423 data is placed as follows:
     ├── images
     └── mtProj.prj
 
-To make the header files, the :meth:`~resistics.ioHandlers.dataReaderLemiB423.folderB423Headers` method of module :mod:`:meth:`~resistics.ioHandlers.dataReaderLemiB423` is used.
+To make the header files, the :meth:`~resistics.time.reader_lemib423.folderB423Headers` method of module :mod:`:meth:`~resistics.time.reader_lemib423` is used.
 
 .. literalinclude:: ../../../cookbook/usingLemiB423/process.py
     :linenos:
@@ -138,14 +138,14 @@ Now the project can be loaded in the normal way and a timeline viewed.
     :lines: 10-16
     :lineno-start: 10
 
-.. figure:: ../../../cookbook/usingLemiB423/images/timeline.png
+.. figure:: ../_static/cookbook/usingLemiB423/timeline.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Project timeline
 
-Time data can be viewed in the usual way using the :meth:`~resistics.project.projectTime.viewTime` method.
+Time data can be viewed in the usual way in the project environment using the :meth:`~resistics.project.time.viewTime` method.
 
 .. literalinclude:: ../../../cookbook/usingLemiB423/process.py
     :linenos:
@@ -153,7 +153,7 @@ Time data can be viewed in the usual way using the :meth:`~resistics.project.pro
     :lines: 18-29
     :lineno-start: 18
 
-.. figure:: ../../../cookbook/usingLemiB423/images/viewTime.png
+.. figure:: ../_static/cookbook/usingLemiB423/viewTime.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -170,7 +170,7 @@ Next, process the data to estimate the impedance tensor. This involves calculati
 
 The resultant impedance tensor estimate is shown below.
 
-.. figure:: ../../../cookbook/usingLemiB423/images/impedance_default.png
+.. figure:: ../_static/cookbook/usingLemiB423/impedance_default.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -184,7 +184,7 @@ Looking at the impedance tensor estimate, there are two issues:
 
 To deal with the second point, define a new configuration setup that will provide more windows at long periods and redo the processing. Now that because the windowing scheme has changed, a new set of spectra and statistics will need to be calculated.
 
-.. literalinclude:: ../../../cookbook/usingLemiB423/customconfig.ini
+.. literalinclude:: ../_static/cookbook/usingLemiB423/customconfig.ini
     :linenos:
     :language: text
 
@@ -194,7 +194,7 @@ To deal with the second point, define a new configuration setup that will provid
     :lines: 1-21
     :lineno-start: 1
 
-.. figure:: ../../../cookbook/usingLemiB423/images/impedance_config.png
+.. figure:: ../_static/cookbook/usingLemiB423/impedance_config.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -209,7 +209,7 @@ The new windowing scheme, which reduces the window size at the long periods has 
     :lines: 23-62
     :lineno-start: 23
 
-.. figure:: ../../../cookbook/usingLemiB423/images/impedance_config_masks.png
+.. figure:: ../_static/cookbook/usingLemiB423/impedance_config_masks.png
     :align: center
     :alt: alternate text
     :figclass: align-center

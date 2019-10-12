@@ -41,7 +41,7 @@ ATS format is a one of the more straight-forward formats to support. Header file
 
     - All channels are in integer counts
 
-ATS files are opened in resistics using the :class:`~resistics.ioHandlers.dataReaderATS.DataReaderATS` class. An example is provided below:
+ATS files are opened in resistics using the :class:`~resistics.time.reader_ats.TimeReaderATS` class. An example is provided below:
 
 .. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
@@ -51,7 +51,7 @@ ATS files are opened in resistics using the :class:`~resistics.ioHandlers.dataRe
 
 :python:`atsReader.printInfo()` prints the measurement information out to the terminal and displays various recording parameters.
 
-.. literalinclude:: ../../_text/printATS.txt
+.. literalinclude:: ../../_static/examples/formats/time/printATS.txt
     :linenos:
     :language: text
 
@@ -65,9 +65,9 @@ Resistics does not immediately load timeseries data into memory. In order to rea
     :lines: 9-13
     :lineno-start: 9
 
-:python:`atsReader.getUnscaledData(startTime, stopTime)` will read timeseries data from the data files and returns a :class:`~resistics.dataObjects.timeData.TimeData` object. Unscaled data is the raw data without any conversion to field units. The units for unscaled data are not consistent between data formats and in the case of ATS data are integer counts.
+:python:`atsReader.getUnscaledData(startTime, stopTime)` will read timeseries data from the data files and returns a :class:`~resistics.time.data.TimeData` object. Unscaled data is the raw data without any conversion to field units. The units for unscaled data are not consistent between data formats and in the case of ATS data are integer counts.
 
-After reading in some data, it is natural to view it. :class:`~resistics.dataObjects.timeData.TimeData` can be viewed using the :meth:`~resistics.dataObjects.timeData.TimeData.view` method of the class. Passing a matplotlib figure object to this method allows for more control over the layout of the plot.
+After reading in some data, it is natural to view it. :class:`~resistics.time.data.TimeData` can be viewed using the :meth:`~resistics.time.data.TimeData.view` method of the class. Passing a matplotlib figure object to this method allows for more control over the layout of the plot.
 
 .. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
@@ -75,14 +75,14 @@ After reading in some data, it is natural to view it. :class:`~resistics.dataObj
     :lines: 15-22
     :lineno-start: 15
 
-.. figure:: ../../../../examples/formats/images/ats_unscaledData.png
+.. figure:: ../../_static/examples/formats/time/ats_unscaledData.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Viewing unscaled data
 
-Physical data, which is converted to field units, can be returned by using the :meth:`~resistics.ioHandlers.dataReader.DataReader.getPhysicalData` method. If physical data for the whole recording is required, an alternative is to use :meth:`~resistics.ioHandlers.dataReader.DataReader.getPhysicalSamples`, which does not require specification of a start and end time.
+Physical data, which is converted to field units, can be returned by using the :meth:`~resistics.time.reader.TimeReader.getPhysicalData` method. If physical data for the whole recording is required, an alternative is to use :meth:`~resistics.time.reader.TimeReader.getPhysicalSamples`, which does not require specification of a start and end time.
 
 .. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
@@ -90,14 +90,14 @@ Physical data, which is converted to field units, can be returned by using the :
     :lines: 24-31
     :lineno-start: 24
 
-.. figure:: ../../../../examples/formats/images/ats_physicalData.png
+.. figure:: ../../_static/examples/formats/time/ats_physicalData.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Viewing data scaled to field units
 
-There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`~resistics.utilities`. In the example below, the time data is low pass filtered at 4Hz to remove any powerline or rail noise that might be in the data.
+There are a few helpful methods built in to resistics for manipulating time series data. These are in :mod:`~resistics.time`. In the example below, the time data is low pass filtered at 4Hz to remove any powerline or rail noise that might be in the data.
 
 .. literalinclude:: ../../../../examples/formats/atsReaderExamples.py
     :linenos:
@@ -105,7 +105,7 @@ There are a few helpful methods built in to resistics for manipulating timeserie
     :lines: 33-41
     :lineno-start: 33
 
-.. figure:: ../../../../examples/formats/images/ats_filteredData.png
+.. figure:: ../../_static/examples/formats/time/ats_filteredData.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -128,7 +128,7 @@ In nearly every case, it is best to write out data in physical format. When this
 
 Writing out an internally formatted dataset will additionally write out a set of comments. These comments keep track of what has been done to the timeseries data and are there to improve repoducibility and traceability. Read more about comments :doc:`here <../../features/comments>`. The comments for this internally formatted dataset are:
 
-.. literalinclude:: ../../../../examples/formats/timeData/atsInternal/comments.txt
+.. literalinclude:: ../../_static/examples/formats/time/atsInternal_comments.txt
     :linenos:
     :language: text
 
@@ -140,7 +140,7 @@ The internal format data can be read in and visually compared to the original da
     :lines: 51-66
     :lineno-start: 51
 
-.. figure:: ../../../../examples/formats/images/ats_vs_internal.png
+.. figure:: ../../_static/examples/formats/time/ats_vs_internal.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -157,7 +157,7 @@ Additionally, resistics can write out data in ASCII format, which allows users t
 
 Again, this dataset is written out with a set of comments. 
 
-.. literalinclude:: ../../../../examples/formats/timeData/atsAscii/comments.txt
+.. literalinclude:: ../../_static/examples/formats/time/atsAscii_comments.txt
     :linenos:
     :language: text
 
@@ -169,7 +169,7 @@ The same exercise of reading back the ascii data and comparing it to the origina
     :lines: 76-93
     :lineno-start: 76
 
-.. figure:: ../../../../examples/formats/images/ats_vs_ascii.png
+.. figure:: ../../_static/examples/formats/time/ats_vs_ascii.png
     :align: center
     :alt: alternate text
     :figclass: align-center

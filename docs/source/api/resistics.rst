@@ -6,11 +6,19 @@ Subpackages
 
 .. toctree::
 
-   resistics.calculators
-   resistics.dataObjects
-   resistics.ioHandlers
+   resistics.calibrate
+   resistics.common
+   resistics.config
+   resistics.decimate
+   resistics.mask
    resistics.project
-   resistics.utilities
+   resistics.regression
+   resistics.site
+   resistics.spectra
+   resistics.statistics
+   resistics.time
+   resistics.transfunc
+   resistics.window
 
 Module contents
 ---------------

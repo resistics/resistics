@@ -42,56 +42,56 @@ As can be seen, there is no ability to distinguish different sensors with the sa
 
 Example
 ~~~~~~~
-The internal ASCII format calibration file will not usually be provided and will have to be created from scratch. The :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` class provides the handy :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.writeInternalTemplate` method for producing a template internal ASCII format calibration file. A template can be made as follows:
+The internal ASCII format calibration file will not usually be provided and will have to be created from scratch. The :class:`~resistics.calibrate.io.CalibrationIO` class provides the handy :meth:`~resistics.calibrate.io.CalibrationIO.writeInternalTemplate` method for producing a template internal ASCII format calibration file. A template can be made as follows:
 
 .. literalinclude:: ../../../../examples/formats/calibrationInductionExample.py
     :linenos:
     :language: python
-    :lines: 1-8
+    :lines: 1-7
     :lineno-start: 1 
 
 This produces an empty calibration file with some basic information in:
 
-.. literalinclude:: ../../../../examples/formats/calData/ascii.TXT
+.. literalinclude:: ../../_static/examples/formats/cal/ascii.TXT
     :linenos:
     :language: text
 
-The basic metadata can either be corrected in the file or passed as keywords to :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.writeInternalTemplate`. The actual calibration data needs to be copied in and should be in the units:
+The basic metadata can either be corrected in the file or passed as keywords to :meth:`~resistics.calibrate.io.CalibrationIO.writeInternalTemplate`. The actual calibration data needs to be copied in and should be in the units:
 
 - Magnitude in mV/nT without static gain
 - Phase in units which match the "Phase unit" header, which can either be degrees or radians
 
 An example file with calibration data copied is provided below.
 
-.. literalinclude:: ../../../../examples/formats/calData/asciiWithData.TXT
+.. literalinclude:: ../../_static/examples/formats/cal/asciiWithData.TXT
     :linenos:
     :language: text
 
-This internal format ASCII calibration file can now be read in using the :class:`~resistics.ioHandlers.calibrationIO.CalibrationIO` class. First, the reading parameters need to be reset using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.refresh` method. Using the :meth:`~resistics.ioHandlers.calibrationIO.CalibrationIO.read` method will return a :class:`~resistics.dataObjects.calibrationData.CalibrationData` object.
+This internal format ASCII calibration file can now be read in using the :class:`~resistics.calibrate.io.CalibrationIO` class. First, the reading parameters need to be reset using the :meth:`~resistics.calibrate.io.CalibrationIO.refresh` method. Using the :meth:`~resistics.calibrate.io.CalibrationIO.read` method will return a :class:`~resistics.calibrate.data.CalibrationData` object.
 
 .. literalinclude:: ../../../../examples/formats/calibrationInductionExample.py
     :linenos:
     :language: python
-    :lines: 10-14
-    :lineno-start: 10
+    :lines: 9-13
+    :lineno-start: 9
 
-The :meth:`~resistics.dataObjects.dataObject.DataObject.printInfo` method prints information about the calibration data.
+The :meth:`~resistics.common.base.ResisticsBase.printInfo` method prints information about the calibration data.
 
-.. literalinclude:: ../../_text/calibrationInductionPrint.txt
+.. literalinclude:: ../../_static/examples/formats/cal/calibrationInductionPrint.txt
     :linenos:
     :language: text
  
-To view the calibration data, the :meth:`~resistics.dataObjects.calibrationData.CalibrationData.view` method of :class:`~resistics.dataObjects.calibrationData.CalibrationData` can be used. By passing a matplotlib figure to this, the layout of the plot can be controlled.
+To view the calibration data, the :meth:`~resistics.calibrate.data.CalibrationData.view` method of :class:`~resistics.calibrate.data.CalibrationData` can be used. By passing a matplotlib figure to this, the layout of the plot can be controlled.
 
 .. literalinclude:: ../../../../examples/formats/calibrationInductionExample.py
     :linenos:
     :language: python
-    :lines: 16-23
-    :lineno-start: 16
+    :lines: 15-22
+    :lineno-start: 15
 
 This produces the following plot:
 
-.. figure:: ../../../../examples/formats/images/calibrationASCII.png
+.. figure:: ../../_static/examples/formats/cal/calibrationASCII.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -106,6 +106,6 @@ For the purposes of clarity, the example script in full.
     :linenos:
     :language: python
 
-.. literalinclude:: ../../../../examples/formats/calData/asciiWithData.txt
+.. literalinclude:: ../../_static/examples/formats/cal/asciiWithData.txt
     :linenos:
     :language: text

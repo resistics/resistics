@@ -41,7 +41,7 @@ The highest TS number is the file with the continuously sampled data, which is n
     
     Phoenix binary formatted calibration files are also not supported but ASCII files can be used instead as required.
 
-Phoenix recordings are opened in resistics using the :class:`~resistics.ioHandlers.dataReaderPhoenix.DataReaderPhoenix` class. An example is provided below:
+Phoenix recordings are opened in resistics using the :class:`~resistics.time.reader_phoenix.TimeReaderPhoenix` class. An example is provided below:
 
 .. literalinclude:: ../../../../examples/formats/phoenixReaderExamples.py
     :linenos:
@@ -49,9 +49,9 @@ Phoenix recordings are opened in resistics using the :class:`~resistics.ioHandle
     :lines: 1-8
     :lineno-start: 1
 
-The phoenix data reader can show information about the sampling frequencies for the various data files by using the :meth:`~resistics.ioHandlers.dataReaderPhoenix.DataReaderPhoenix.printDataFileList` method.
+The phoenix data reader can show information about the sampling frequencies for the various data files by using the :meth:`~resistics.time.reader_phoenix.TimeReaderPhoenix.printDataFileList` method.
 
-.. literalinclude:: ../../_text/printPhoenixFileList.txt
+.. literalinclude:: ../../_static/examples/formats/time/printPhoenixFileList.txt
     :linenos:
     :language: text
 
@@ -59,7 +59,7 @@ Three data files are listed, along with their sampling frequencies and the numbe
 
 The phoenix data reader essentially only supports the continuous data file. When data is requested, only data from the continuous data channel is returned. Similarly, headers refer to the continuous recording data file as can been seen when printing the recording information out using :python:`phoenixReader.printInfo()`.
 
-.. literalinclude:: ../../_text/printPhoenix.txt
+.. literalinclude:: ../../_static/examples/formats/time/printPhoenix.txt
     :linenos:
     :language: text
 
@@ -73,15 +73,15 @@ Resistics does not immediately load timeseries data into memory. In order to rea
     :lines: 10-14
     :lineno-start: 10
 
-:python:`phoenixReader.getUnscaledData(startTime, stopTime)` will read timeseries data from the data files and returns a :class:`~resistics.dataObjects.timeData.TimeData` object with data in the raw data units. Alternatively, to get all the data without any time restrictions, use :python:`phoenixReader.getUnscaledSamples()`. 
+:python:`phoenixReader.getUnscaledData(startTime, stopTime)` will read timeseries data from the data files and returns a :class:`~resistics.time.data.TimeData` object with data in the raw data units. Alternatively, to get all the data without any time restrictions, use :python:`phoenixReader.getUnscaledSamples()`. 
 
 Information about the time data can be printed using either :python:`unscaledData.printInfo()` or simply :python:`print(unscaledData)`. An example of the time data information is below:
 
-.. literalinclude:: ../../_text/printPhoenixData.txt
+.. literalinclude:: ../../_static/examples/formats/time/printPhoenixData.txt
     :linenos:
     :language: text
 
-After reading in some data, it is natural to view it. Time data can be viewed using the :meth:`~resistics.dataObjects.timeData.TimeData.view` method of the class. By additionally providing a matplotlib figure object, the style and layout of the plot can be controlled.
+After reading in some data, it is natural to view it. Time data can be viewed using the :meth:`~resistics.time.data.TimeData.view` method of the class. By additionally providing a matplotlib figure object, the style and layout of the plot can be controlled.
 
 .. literalinclude:: ../../../../examples/formats/phoenixReaderExamples.py
     :linenos:
@@ -89,7 +89,7 @@ After reading in some data, it is natural to view it. Time data can be viewed us
     :lines: 16-23
     :lineno-start: 16
 
-.. figure:: ../../../../examples/formats/images/phoenixUnscaled.png
+.. figure:: ../../_static/examples/formats/time/phoenixUnscaled.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -110,14 +110,14 @@ returns a time data object in physical units. This time data object can also be 
     :lines: 25-32
     :lineno-start: 25
 
-.. figure:: ../../../../examples/formats/images/phoenixPhysical.png
+.. figure:: ../../_static/examples/formats/time/phoenixPhysical.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Viewing physically scaled data
 
-There are a few helpful methods built in to resistics for manipulating timeseries data. These are generally in :mod:`~resistics.utilities`. In the example below, the time data is high pass filtered 4 Hz and then plotted.
+There are a few helpful methods built in to resistics for manipulating time series data. These are generally in :mod:`~resistics.time.filter`. In the example below, the time data is high pass filtered 4 Hz and then plotted.
 
 .. literalinclude:: ../../../../examples/formats/phoenixReaderExamples.py
     :linenos:
@@ -125,7 +125,7 @@ There are a few helpful methods built in to resistics for manipulating timeserie
     :lines: 34-42
     :lineno-start: 34
 
-.. figure:: ../../../../examples/formats/images/phoenixFiltered.png
+.. figure:: ../../_static/examples/formats/time/phoenixFiltered.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -140,21 +140,21 @@ The phoenix reader has a helpful function for reformatting the continuous phoeni
     :lines: 44-46
     :lineno-start: 44
 
-To check the fidelity of this function, the internally formatted data can be read back in and plotted with the original data. To read the data back in, use the :class:`~resistics.ioHandlers.dataReaderInternal.DataReaderInternal` class. 
+To check the fidelity of this function, the internally formatted data can be read back in and plotted with the original data. To read the data back in, use the :class:`~resistics.time.reader_internal.TimeReaderInternal` class. 
 
 .. literalinclude:: ../../../../examples/formats/phoenixReaderExamples.py
     :linenos:
     :language: python
-    :lines: 48-56
+    :lines: 48-55
     :lineno-start: 48
 
 The comments of this reformatted dataset show the various scalings and modifications that have been applied to the data. 
 
-.. literalinclude:: ../../../../examples/formats/timeData/phoenixInternal/meas_ts5_2011-11-13-17-04-02_2011-11-14-14-29-46/comments.txt
+.. literalinclude:: ../../_static/examples/formats/time/phoenixInternal_comments.txt
     :linenos:
     :language: text
 
-The datasets can be compared by plotting them together. First, read in some physical data from the internal data reader.
+The datasets can be compared by plotting them together. First, read in some physical data from the internal time data reader.
 
 .. literalinclude:: ../../../../examples/formats/phoenixReaderExamples.py
     :linenos:
@@ -170,7 +170,7 @@ And then plot both the original data and the internally formatted data on the sa
     :lines: 60-66
     :lineno-start: 60
 
-.. figure:: ../../../../examples/formats/images/phoenix_vs_internal_continuous.png
+.. figure:: ../../_static/examples/formats/time/phoenix_vs_internal_continuous.png
     :align: center
     :alt: alternate text
     :figclass: align-center

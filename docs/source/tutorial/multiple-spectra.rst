@@ -52,13 +52,13 @@ By default, the **specdir** is called **spectra** and spectra data is saved in t
     ├── images
     └── mtProj.prj
 
-However, by specifying the **specdir** option in :meth:`~resistics.project.projectSpectra.calculateSpectra`, a new set of spectra can be calculated.
+However, by specifying the **specdir** option in :meth:`~resistics.project.spectra.calculateSpectra`, a new set of spectra can be calculated.
 In the :doc:`Viewing spectra <viewing-spectra>` section, it was clear that the time series spectra had a peak at 50 Hz, which is a common powerline frequency. Therefore, an example is shown below where a second set of spectra are calculated with a notch filter applied at 50 Hz and **specdir** is specified as :python:`specdir = "notch"`.
 
 .. literalinclude:: ../../../examples/tutorial/multipleSpectra.py
     :linenos:
     :language: python
-    :lines: 1-11
+    :lines: 1-10
     :lineno-start: 1
 
 The new set of spectra data with :python:`specdir = "notch"` are saved in the following way: 
@@ -96,24 +96,24 @@ The new set of spectra data with :python:`specdir = "notch"` are saved in the fo
     ├── images
     └── mtProj.prj
 
-To view the new spectra data, **specdir** needs to be specified in the calls to :meth:`~resistics.project.projectSpectra.viewSpectra`, :meth:`~resistics.project.projectSpectra.viewSpectraSection` and :meth:`~resistics.project.projectSpectra.viewSpectraStack`. An example is provided below using :meth:`~resistics.project.projectSpectra.viewSpectraSection`.
+To view the new spectra data, **specdir** needs to be specified in the calls to :meth:`~resistics.project.spectra.viewSpectra`, :meth:`~resistics.project.spectra.viewSpectraSection` and :meth:`~resistics.project.spectra.viewSpectraStack`. An example is provided below using :meth:`~resistics.project.spectra.viewSpectraSection`.
 
 .. literalinclude:: ../../../examples/tutorial/multipleSpectra.py
     :linenos:
     :language: python
-    :lines: 13-26
-    :lineno-start: 13
+    :lines: 12-26
+    :lineno-start: 12
 
 In the plots below, the default spectra data and the notched spectra data are shown. 
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_spectra.png
+.. figure:: ../_static/examples/tutorial/viewSpec_projspec_128_view.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Default spectra data
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraData_site1_meas_2012-02-10_11-30-00_dec0_notch.png
+.. figure:: ../_static/examples/tutorial/multspec_viewspec_notch_spec.png
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -125,42 +125,57 @@ A spectra section can also be plotted in a similar to way the example shown in :
 .. literalinclude:: ../../../examples/tutorial/multipleSpectra.py
     :linenos:
     :language: python
-    :lines: 28-36
+    :lines: 28-37
     :lineno-start: 28
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/spectraSection_site1_meas_2012-02-10_11-30-00_dec0_notch.png
+.. figure:: ../_static/examples/tutorial/multspec_viewspec_notch_section.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Notched spectra section
 
-The next step is to process the notched spectra data. To do this, **specdir** has to be specified in the call to :meth:`~resistics.project.projectTransferFunction.processProject` as shown below:
+For the sake of comarpison, the default (no notch) spectra section.
+
+.. figure:: ../_static/examples/tutorial/viewSpec_projspec_128_section.png
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    Default spectra section
+
+Further, inspecting the comments of the notched spectra data, the application of the notch filter and the frequency is recorded.
+
+.. literalinclude:: ../_static/examples/tutorial/multspec_comments.txt
+    :linenos:
+    :language: text
+
+The next step is to process the notched spectra data. To do this, **specdir** has to be specified in the call to :meth:`~resistics.project.transfunc.processProject` as shown below:
 
 .. literalinclude:: ../../../examples/tutorial/multipleSpectra.py
     :linenos:
     :language: python
-    :lines: 38-41
-    :lineno-start: 38
+    :lines: 39-42
+    :lineno-start: 39
 
-Finally, the transfer function data for the notched spectra data can be viewed by once more specifying the **specdir** option in the call to :meth:`~resistics.project.projectTransferFunction.viewImpedance`
+Finally, the transfer function data for the notched spectra data can be viewed by once more specifying the **specdir** option in the call to :meth:`~resistics.project.transfunc.viewImpedance`
 
 .. literalinclude:: ../../../examples/tutorial/multipleSpectra.py
     :linenos:
     :language: python
-    :lines: 43-63
-    :lineno-start: 43
+    :lines: 44-68
+    :lineno-start: 44
 
 The impedance for the default spectra calculated parameters and then for the notch parameters are shown below.
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_notch.png
+.. figure:: ../_static/examples/tutorial/multspec_viewimp_notch.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Default impedance tensor estimation
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.3.png
+.. figure:: ../_static/examples/tutorial/multspec_viewimp_nonotch.png
     :align: center
     :alt: alternate text
     :figclass: align-center

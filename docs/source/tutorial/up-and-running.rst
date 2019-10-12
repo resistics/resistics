@@ -17,12 +17,12 @@ Up and running
 
 Resistics can quickly run projects with default settings by using the :mod:`~resistics.project` API. Default configuration options are detailed in :ref:`features/configuration:Configuration parameters` section.
 
-Begin by loading the project and calculating spectra. Spectra can be batch calculated using the :meth:`~resistics.project.projectSpectra.calculateSpectra` method in :mod:`~resistics.project.projecSpectra`. The are several options for calculating spectra, which are detailed in the API documentation.
+Begin by loading the project and calculating spectra. Spectra can be batch calculated using the :meth:`~resistics.project.spectra.calculateSpectra` method in :mod:`~resistics.project.spectra`. The are several options for calculating spectra, which are detailed in the API documentation.
 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 1-12
+    :lines: 1-11
     :lineno-start: 1
 
 .. note:: 
@@ -62,13 +62,13 @@ Spectra data files are stored in project specData directory. The folder structur
 
 By default spectra are stored in a folder called spectra under the dataFolder. The reason for this will become clearer in the section covering :doc:`multiple spectra <multiple-spectra>`.
 
-The next step is to process the spectra to estimate the impedance tensor. This is done using the :meth:`~resistics.project.projectTransferFunction.processProject` method in :mod:`~resistics.project.projectTransferFunction`. 
+The next step is to process the spectra to estimate the impedance tensor. This is done using the :meth:`~resistics.project.transfunc.processProject` method in project :mod:`~resistics.project.transfunc` module. 
 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 14-17
-    :lineno-start: 14
+    :lines: 13-16
+    :lineno-start: 13
 
 Transfer function data is stored under the transFuncData folder as shown below. As transfer functions are calculated out for each unique sampling frequency in a site, the data is stored with respect to sampling frequencies. 
 
@@ -106,21 +106,21 @@ Transfer function data is stored under the transFuncData folder as shown below. 
 
 Transfer functions are saved in an internal format. This is a minimal format currently and could possibly be amended in the future. An example transfer function data file is given below.
 
-.. literalinclude:: ../../../examples/tutorial/tutorialProject/transFuncData/site1/128_000/site1_fs128_000_spectra
+.. literalinclude:: ../_static/examples/tutorial/site1_fs128_000_spectra
     :linenos:
     :language: text
 
 The reason to use this rather than EDI for now is an intention to build this out further to include more information about uncertainty that can be taken further into an inversion process.
 
-Once the components of the impedance tensor have been calculated, it is possible to visualise them using the :meth:`~resistics.project.projectTransferFunction.viewImpedance` method available in the :mod:`~resistics.project.projectTransferFunction` module.
+Once the components of the impedance tensor have been calculated, it is possible to visualise them using the :meth:`~resistics.project.transfunc.viewImpedance` method available in the :mod:`~resistics.project.transfunc` module.
 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 19-22
-    :lineno-start: 22
+    :lines: 18-22
+    :lineno-start: 18
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.png
+.. figure:: ../_static/examples/tutorial/simpleRun_viewimp_default.png
     :align: center
     :alt: alternate text
     :width: 400
@@ -133,10 +133,10 @@ However, this plot is quite busy. One way to simplify the plot is to explicitly 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 24-27
+    :lines: 24-28
     :lineno-start: 24
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.1.png
+.. figure:: ../_static/examples/tutorial/simpleRun_viewimp_polarisations.png
     :align: center
     :alt: alternate text
     :width: 400
@@ -149,39 +149,39 @@ On occasion, it can be more useful to plot each component separately. This can b
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 29-30
-    :lineno-start: 29
+    :lines: 30-32
+    :lineno-start: 30
 
 This results in the following plot.
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transFunction_site1_spectra.2.png
+.. figure:: ../_static/examples/tutorial/simpleRun_viewimp_multplot.png
     :align: center
     :alt: alternate text
     :figclass: align-center
 
     Polarisations of impedance tensor plotted on separate plots
 
-To read in a transfer function directly, the :meth:`~resistics.project.projectTransferFunction.getTransferFunctionData` method of the :mod:`~resistics.project.projectTransferFunction` module can be used. The :meth:`~resistics.project.projectTransferFunction.getTransferFunctionData` will read in the transfer function data file and return a :class:`~resistics.dataObjects.transferFunctionData.TransferFunctionData` object with information about the components of the transfer function data.
+To read in a transfer function directly, the :meth:`~resistics.project.transfunc.getTransferFunctionData` method of the :mod:`~resistics.project.transfunc` module can be used. The :meth:`~resistics.project.transfunc.getTransferFunctionData` will read in the transfer function data file and return a :class:`~resistics.transfunc.data.TransferFunctionData` object with information about the components of the transfer function data.
 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 32-35
-    :lineno-start: 32
+    :lines: 34-37
+    :lineno-start: 34
 
 .. warning:: 
 
     Currently, resistics uses a proprietry, but still ASCII, transfer function file format. As .edi files are the standard format for magnetotellurics, these will be properly supported going forwards. However, the intention with current file format is to allow for additional future changes that capture more information that would be useful for geophysical inversion.
 
-The transfer function data can be plotted using the :meth:`~resistics.dataObjects.transferFunctionData.TransferFunctionData.view` method of :class:`~resistics.dataObjects.transferFunctionData`. This is shown below, along with the plot.
+The transfer function data can be plotted using the :meth:`~resistics.transfunc.data.TransferFunctionData.view` method of :class:`~resistics.transfunc.data.TransferFunctionData`. This is shown below, along with the plot.
 
 .. literalinclude:: ../../../examples/tutorial/simpleRun.py
     :linenos:
     :language: python
-    :lines: 36-37
-    :lineno-start: 36
+    :lines: 38-39
+    :lineno-start: 38
 
-.. figure:: ../../../examples/tutorial/tutorialProject/images/transferFunctionViewExample.png
+.. figure:: ../_static/examples/tutorial/simpleRun_tfData_view.png
     :align: center
     :width: 400    
     :alt: alternate text
