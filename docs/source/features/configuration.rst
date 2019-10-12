@@ -3,7 +3,7 @@ Configuration files
 
 Resistics allows users to set various parameters through configuration files. The package itself comes with its default configuration. Users can change certain parameters by specifying them in a separate configuration file. Below is the default configuration:
 
-.. literalinclude:: ../../../examples/features/resisticsDefaultConfig.ini
+.. literalinclude:: ../_static/examples/features/config/resisticsDefaultConfig.ini
     :linenos:
     :language: text
 
@@ -19,9 +19,32 @@ A good way to begin creating a custom configuration file is to copy the default 
 
 When providing a custom configuration file, only the settings which will be changed need to be entered. Below is an example of a user specified configuration file
 
-.. literalinclude:: ../../../examples/tutorial/tutorialConfig.ini
+.. literalinclude:: ../_static/examples/features/config/exampleConfig1.ini
     :linenos:
     :language: text
+
+In the above configuration file, several paramters have been changed from the default. Resistics will now try and create 6 decimation levels with 8 evaluation frequencies per level. Once decimated, timeseries will need to have at least 256 samples to be a valid decimation level. The minimum allowable window size is 256 samples, with a minimum overlap of 64 samples. Spectra calculated using this configuration file will be saved under the *example1* spectra directory (to understand more about this, see the tutorial :doc:`multiple spectra <../tutorial/multiple-spectra>` and the tutorial :doc:`configuration files <../tutorial/configuration-files>` sections). For calculating the frequency data, a parzen window will be used. And finally, the standard statistics to calculate are *coherence* and *transferFunction* and the remote statistics are *RR_coherence* and *RR_transferFunction*.
+ 
+A second example is shown below which has slightly different parameters. 
+
+.. literalinclude:: ../_static/examples/features/config/exampleConfig2.ini
+    :linenos:
+    :language: text
+
+For this configuration file, there are 8 decimation levels with 5 evaluation frequencies per level. The window and overlap sizes are defined explicitly with a window size of: 
+
+- 1024 samples for decimation level 0 (non-decimation timeseries data) with 256 sample overlap
+- 512 for decimation level 1 with 128 sample overlap
+- 512 for decimation level 2 with 128 sample overlap
+- 256 for decimation level 3 with 64 sample overlap
+- 256 for decimation level 4 with 64 sample overlap
+- 256 for decimation level 5 with 64 sample overlap
+- 256 for decimation level 6 with 64 sample overlap
+- 256 for decimation level 7 with 64 sample overlap
+
+.. note::
+
+    When specifying window and overlap sizes manually, a window and overlap size must be defined for each decimation level.
 
 When using resistics, information about the configuraiton being used can be printed to the terminal. This will detail which parameters have been specified by the user and which ones are being defaulted. 
 

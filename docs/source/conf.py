@@ -89,6 +89,9 @@ pygments_style = "monokai"
 # a list of builtin themes.
 #
 # html_theme = "sphinx_rtd_theme"
+# html_theme = 'sphinx_redactor_theme'
+# import sphinx_redactor_theme
+# html_theme_path = [sphinx_redactor_theme.get_html_theme_path()]
 html_theme = 'sphinx_ustack_theme'
 html_logo = os.path.join("_static", "images", "logo.png")
 html_favicon = os.path.join("_static", "images", "favicon.png")

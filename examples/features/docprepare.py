@@ -1,12 +1,43 @@
-from datapaths import projectPath, imagePath, docPath
 import shutil
+from datapaths import (
+    projectPath,
+    imagePath,
+    docPathConfig,
+    docPathComments,
+    docPathStats,
+    docPathRemote,
+)
 
-# tutorial images
-for image in imagePath.glob("*.png"):
-    shutil.copy2(image, docPath)
-# copy config
-shutil.copy2("tutorialConfig.ini", docPath)
-shutil.copy2("usingWindowSelector.txt", docPath)
-# copy the project file
-shutil.copy2(projectPath / "mtProj.prj", docPath)
+
+# configuration files
+shutil.copy2("resisticsDefaultConfig.ini", docPathConfig)
+shutil.copy2("exampleConfig1.ini", docPathConfig)
+shutil.copy2("exampleConfig2.ini", docPathConfig)
+
+# comments
+timeCommentsPath = (
+    projectPath / "timeData" / "Remote_M1" / "run4_2016-03-24_02-35-00" / "comments.txt"
+)
+shutil.copy2(timeCommentsPath, docPathComments / "features_time_comments.txt")
+spectraCommentsPath = (
+    projectPath
+    / "specData"
+    / "Remote_M1"
+    / "run4_2016-03-24_02-35-00"
+    / "spectra"
+    / "comments.txt"
+)
+shutil.copy2(spectraCommentsPath, docPathComments / "features_spec_comments.txt")
+statCommentsPath = (
+    projectPath
+    / "statData"
+    / "Remote_M1"
+    / "run4_2016-03-24_02-35-00"
+    / "spectra"
+    / "partialCoherence"
+    / "comments.txt"
+)
+shutil.copy2(statCommentsPath, docPathComments / "features_stat_comments.txt")
+
+# spectra images
 

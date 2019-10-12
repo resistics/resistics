@@ -1,0 +1,44 @@
+Unscaled data 2016-03-24 02:34:59.999200 to 2016-03-25 01:54:58.999200 read in from measurement project\timeData\RemoteSPAM\run4, samples 45524999 to 66524749
+Data read from 2 files in total
+Data scaled to mV for all channels using scalings in header files
+Sampling frequency 250.0
+Dividing channel Ex by electrode distance 0.0587 km to give mV/km
+Dividing channel Ey by electrode distance 0.0564 km to give mV/km
+Remove zeros: False, remove nans: False, remove average: True
+Time data interpolated to nearest second. New start time 2016-03-24 02:35:00, new end time 2016-03-25 01:54:58.996000, new number of samples 20999750
+Time data resampled from 250.000000 Hz to 128.000000 Hz
+Dataset written to project\timeData\Remote_M1\run4_2016-03-24_02-35-00 on 2019-09-15 16:21:28.901345
+Unscaled data 2016-03-24 02:35:00 to 2016-03-25 01:54:58.992188 read in from measurement E:\magnetotellurics\code\resisticsdata\features\featureProject\timeData\Remote_M1\run4_2016-03-24_02-35-00, samples 0 to 10751871
+Sampling frequency 128.0
+Remove zeros: False, remove nans: False, remove average: True
+---------------------------------------------------
+Calculating project spectra
+Using default configuration
+Channel Ex not calibrated
+Channel Ey not calibrated
+Channel Hx calibrated with calibration data from file E:\magnetotellurics\code\resisticsdata\features\featureProject\calData\Metronix_Coil-----TYPE-006_LF-ID-000133.RSP
+Channel Hy calibrated with calibration data from file E:\magnetotellurics\code\resisticsdata\features\featureProject\calData\Metronix_Coil-----TYPE-006_LF-ID-000135.RSP
+Decimating with 7 levels and 7 frequencies per level
+Evaluation frequencies for this level 32.0, 22.62741699796952, 16.0, 11.31370849898476, 8.0, 5.65685424949238, 4.0
+Windowing with window size 512 samples and overlap 128 samples
+Time data decimated from 128.0 Hz to 16.0 Hz, new start time 2016-03-24 02:35:00, new end time 2016-03-25 01:54:58.937500
+Evaluation frequencies for this level 2.82842712474619, 2.0, 1.414213562373095, 1.0, 0.7071067811865475, 0.5, 0.35355339059327373
+Windowing with window size 512 samples and overlap 128 samples
+Time data decimated from 16.0 Hz to 2.0 Hz, new start time 2016-03-24 02:35:00, new end time 2016-03-25 01:54:58.500000
+Evaluation frequencies for this level 0.25, 0.17677669529663687, 0.125, 0.08838834764831843, 0.0625, 0.044194173824159216, 0.03125
+Windowing with window size 512 samples and overlap 128 samples
+Time data decimated from 2.0 Hz to 0.25 Hz, new start time 2016-03-24 02:35:00, new end time 2016-03-25 01:54:56
+Time data decimated from 0.25 Hz to 0.125 Hz, new start time 2016-03-24 02:35:00, new end time 2016-03-25 01:54:52
+Evaluation frequencies for this level 0.022097086912079608, 0.015625, 0.011048543456039804, 0.0078125, 0.005524271728019902, 0.00390625, 0.002762135864009951
+Windowing with window size 512 samples and overlap 128 samples
+Time data decimated from 0.125 Hz to 0.015625 Hz, new start time 2016-03-24 02:35:00, new end time 2016-03-25 01:54:28
+Evaluation frequencies for this level 0.001953125, 0.0013810679320049755, 0.0009765625, 0.0006905339660024878, 0.00048828125, 0.0003452669830012439, 0.000244140625
+Windowing with window size 512 samples and overlap 128 samples
+Spectra data written out to E:\magnetotellurics\code\resisticsdata\features\featureProject\specData\Remote_M1\run4_2016-03-24_02-35-00\spectra on 2019-10-10 20:37:52.600884 using resistics 0.0.6.dev2
+---------------------------------------------------
+Reading spectra data in path E:\magnetotellurics\code\resisticsdata\features\featureProject\specData\Remote_M1\run4_2016-03-24_02-35-00\spectra
+Using default configuration
+Calculating statistic: partialCoherence
+Statistic components: bivarEx, bivarEy, parExHx, parExHy, parEyHx, parEyHy
+Statistic data for statistic partialCoherence written to E:\magnetotellurics\code\resisticsdata\features\featureProject\statData\Remote_M1\run4_2016-03-24_02-35-00\spectra on 2019-10-10 21:48:39.668874 using resistics 0.0.6.dev2
+---------------------------------------------------
