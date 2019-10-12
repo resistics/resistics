@@ -78,7 +78,6 @@ fig = viewTime(
     show=False,
     save=False,
 )
-print(fig)
 fig.savefig(imagePath / "viewTime_projtime_view_calibrate_bpfilt")
 
 # notch
@@ -118,7 +117,7 @@ fig = viewTime(
     chans=["Ex", "Hy"],
     calibrate=True,
     filter={"bpfilt": [1, 8]},
-    save=False,
+    save=True,
     show=False,
 )
 fig.savefig(imagePath / "viewTime_projtime_view_calibrate_bpfilt_save")

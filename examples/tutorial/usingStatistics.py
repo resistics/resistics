@@ -1,24 +1,24 @@
 from datapaths import projectPath, imagePath
 from resistics.project.io import loadProject
 
-# # need the project path for loading
-# projData = loadProject(projectPath)
+# need the project path for loading
+projData = loadProject(projectPath)
 
-# # get default statistic names
-# from resistics.statistics.utils import getStatNames
+# get default statistic names
+from resistics.statistics.utils import getStatNames
 
-# stats, remotestats = getStatNames()
+stats, remotestats = getStatNames()
 
-# # calculate statistics
-# from resistics.project.statistics import calculateStatistics
+# calculate statistics
+from resistics.project.statistics import calculateStatistics
 
-# calculateStatistics(projData, stats=stats)
+calculateStatistics(projData, stats=stats)
 
 # calculate statistics for a different spectra directory
 # load the project with the tutorial configuration file
 projData = loadProject(projectPath, configFile="tutorialConfig.ini")
 projData.printInfo()
-# calculateStatistics(projData, stats=stats)
+calculateStatistics(projData, stats=stats)
 
 # to get statistic data, we need the site, the measurement and the statistic we want
 from resistics.project.statistics import getStatisticData
@@ -45,7 +45,6 @@ fig = statData.densityplot(
 )
 fig.savefig(imagePath / "usingStats_statistic_coherence_densityplot")
 
-
 # transfer function statistic data
 statData = getStatisticData(
     projData, "site1", "meas_2012-02-10_11-30-00", "transferFunction", declevel=0
@@ -69,7 +68,7 @@ fig = statData.crossplot(
     ylim=[-2500, 2500],
 )
 fig.savefig(imagePath / "usingStats_statistic_transferfunction_crossplot")
-# view statistic crossplot
+# view statistic densityplot
 fig = statData.densityplot(
     0,
     crossplots=[
@@ -82,6 +81,7 @@ fig = statData.densityplot(
     ylim=[-60, 60],
 )
 fig.savefig(imagePath / "usingStats_statistic_transferfunction_densityplot")
+
 # look at the next evaluation frequency
 fig = statData.view(1, ylim=[-2000, 2000])
 fig.savefig(imagePath / "usingStats_statistic_transferfunction_view_eval1")
