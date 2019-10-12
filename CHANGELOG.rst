@@ -1,8 +1,9 @@
 Resistics 0.0.6.dev3
 ^^^^^^^^^^^^^^^^^^^^
-*Oct 06, 2019*
+*Oct 13, 2019*
 
 - **Added:** Modules common, config, time, spectra, statistics, mask, transfunc, calibration, window, decimate, regression, project, site as part of a restructure of the resistics code base to give more meaningful imports.
+- **Added:** Statistic documentation in the features section
 - **Changed:** Tutorial changed to reflect new code structure.
 - **Changed:** Advanced examples to reflect new code structure.
 - **Changed:** Time series and calibration format examples changed to reflect new code structure.

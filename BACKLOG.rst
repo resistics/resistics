@@ -1,5 +1,4 @@
 - Implementation of multiprocessing to speed up processing times
-- Statistic documentation in features
 - Improved robust regression
 - Improved estimation of the regression uncertainty to feed into inversion
 - Full support of Phoenix data and calibration files
