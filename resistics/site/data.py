@@ -2,6 +2,7 @@ import sys
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from datetime import datetime, timedelta
 from typing import List, Dict, Union
 
@@ -338,7 +339,7 @@ class SiteData(ResisticsBase):
         else:
             return False
 
-    def view(self, **kwargs) -> plt.figure:
+    def view(self, **kwargs) -> Figure:
         """Plot a timeline of the measurements in the site
         
         Parameters

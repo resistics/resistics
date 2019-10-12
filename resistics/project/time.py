@@ -3,6 +3,7 @@ import os
 import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from typing import Dict, Union, List
 
 from resistics.project.data import ProjectData
@@ -220,7 +221,7 @@ def preProcess(projData: ProjectData, **kwargs) -> None:
 
 def viewTime(
     projData: ProjectData, startDate: str, endDate: str, **kwargs
-) -> Union[plt.figure, None]:
+) -> Union[Figure, None]:
     """View timeseries in the project
 
     Parameters

@@ -3,6 +3,7 @@ import os
 import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from typing import Union, List, Dict
 
 from resistics.common.checks import parseKeywords, isElectric, isMagnetic
@@ -274,7 +275,7 @@ def processSite(
     processor.process()
 
 
-def viewImpedance(projData: ProjectData, **kwargs) -> List[plt.figure]:
+def viewImpedance(projData: ProjectData, **kwargs) -> List[Figure]:
     """View impedance tensor data
 
     Parameters
@@ -412,7 +413,7 @@ def viewImpedance(projData: ProjectData, **kwargs) -> List[plt.figure]:
     return figs
 
 
-def viewTipper(projData: ProjectData, **kwargs) -> List[plt.figure]:
+def viewTipper(projData: ProjectData, **kwargs) -> List[Figure]:
     """View transfer function data
 
     Parameters

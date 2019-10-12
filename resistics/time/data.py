@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from typing import List, Union
 
 from resistics.common.base import ResisticsBase
@@ -168,10 +169,8 @@ class TimeData(ResisticsBase):
             self.getComments(),
         )
 
-    def view(self, **kwargs) -> plt.figure:
-        """Plot statistics for evaluation frequency index
-
-        Plots a simple scatter of each statistic with datetime on the xaxis (datetime of the window start dates). Number of subplots is equal to numStaStatPerWindow.
+    def view(self, **kwargs) -> Figure:
+        """View timeseries data as a line plot
 
         Parameters
         ----------

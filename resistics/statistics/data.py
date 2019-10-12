@@ -10,6 +10,7 @@ from matplotlib.dates import (
     AutoDateLocator,
     AutoDateFormatter,
 )
+from matplotlib.figure import Figure
 from typing import List, Dict, Tuple, Union, Any
 
 # import from package
@@ -382,7 +383,7 @@ class StatisticData(ResisticsBase):
         """
         self.comments.append(comment)
 
-    def view(self, eFreqI: int, **kwargs) -> plt.figure:
+    def view(self, eFreqI: int, **kwargs) -> Figure:
         """Plot statistics for evaluation frequency index
 
         Plots a simple scatter of each statistic with datetime on the xaxis (datetime of the window start dates). Number of subplots is equal to numStaStatPerWindow.
@@ -517,7 +518,7 @@ class StatisticData(ResisticsBase):
 
         return fig
 
-    def histogram(self, eFreqI: int, **kwargs) -> plt.figure:
+    def histogram(self, eFreqI: int, **kwargs) -> Figure:
         """Plot statistics for evaluation frequency index
 
         Plots a histogram of each statistic with bins on the xaxis and count on the yaxis. Ideal for exploring the distribution of statistic values over the windows.
@@ -607,7 +608,7 @@ class StatisticData(ResisticsBase):
 
         return fig
 
-    def crossplot(self, eFreqI: int, **kwargs) -> plt.figure:
+    def crossplot(self, eFreqI: int, **kwargs) -> Figure:
         """Plots crossplots of statistic components for evaluation frequency index
 
         Notes
@@ -750,7 +751,7 @@ class StatisticData(ResisticsBase):
 
         return fig
 
-    def densityplot(self, eFreqI: int, **kwargs) -> plt.figure:
+    def densityplot(self, eFreqI: int, **kwargs) -> Figure:
         """Plots density plots of statistic components for evaluation frequency index
 
         Notes

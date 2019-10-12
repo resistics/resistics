@@ -4,6 +4,7 @@ import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from matplotlib.figure import Figure
 from typing import Dict, Union, List
 
 from resistics.project.data import ProjectData
@@ -405,7 +406,7 @@ def calculateRemoteStatistics(projData: ProjectData, remoteSite: str, **kwargs):
 
 def viewStatistic(
     projData: ProjectData, site: str, sampleFreq: Union[int, float], stat: str, **kwargs
-) -> Union[plt.figure, None]:
+) -> Union[Figure, None]:
     """View statistic data for a single sampling frequency of a site
     
     Parameters
@@ -552,7 +553,7 @@ def viewStatistic(
 
 def viewStatisticHistogram(
     projData: ProjectData, site: str, sampleFreq: float, stat: str, **kwargs
-) -> Union[plt.figure, None]:
+) -> Union[Figure, None]:
     """View statistic histograms for a single sampling frequency of a site
     
     Parameters
@@ -712,7 +713,7 @@ def viewStatisticCrossplot(
     stat: str,
     crossplots: List[List[str]],
     **kwargs
-) -> Union[plt.figure, None]:
+) -> Union[Figure, None]:
     """View statistic crossplot data for a single sampling frequency of a site
     
     Parameters
@@ -868,7 +869,7 @@ def viewStatisticDensityplot(
     stat: str,
     crossplots: List[List[str]],
     **kwargs
-) -> Union[plt.figure, None]:
+) -> Union[Figure, None]:
     """View statistic data as a density plot for a single sampling frequency of a site
     
     Parameters

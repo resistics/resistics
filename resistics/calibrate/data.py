@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from typing import List, Union
 
 from resistics.common.base import ResisticsBase
@@ -89,7 +90,7 @@ class CalibrationData(ResisticsBase):
         self.serial: int = serial
         self.sensor: bool = sensor
 
-    def view(self, **kwargs) -> plt.figure:
+    def view(self, **kwargs) -> Figure:
         """Plot of the calibration function
 
         Parameters

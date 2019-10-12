@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from matplotlib.figure import Figure
 from datetime import datetime, timedelta
 from typing import List, Dict, Set
 
@@ -234,7 +235,7 @@ class MaskData(ResisticsBase):
                 # i.e. remove none
                 self.maskWindows[eFreq] = set()
 
-    def view(self, declevel: int = 0, **kwargs) -> plt.figure:
+    def view(self, declevel: int = 0, **kwargs) -> Figure:
         """Produces a 2-D plot with all the masked windows along the bottom for a decimation level
         
         Parameters

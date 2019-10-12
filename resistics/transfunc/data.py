@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from typing import List, Dict, Tuple
 
 from resistics.common.base import ResisticsBase
@@ -196,7 +197,7 @@ class TransferFunctionData(ResisticsBase):
         tipperAngleIm = np.arctan(tyIm / txIm)
         return tipperLength, tipperAngleRe, tipperAngleIm
 
-    def viewImpedance(self, **kwargs) -> plt.figure:
+    def viewImpedance(self, **kwargs) -> Figure:
         """Plots the transfer function data
 
         For resistivity data, both axes are log scale (period and resistivity). For phase data, period is in log scale and phase is linear scale.
@@ -366,7 +367,7 @@ class TransferFunctionData(ResisticsBase):
 
         return fig
 
-    def viewTipper(self, **kwargs) -> plt.figure:
+    def viewTipper(self, **kwargs) -> Figure:
         """Plots tipper data where available
 
         For length data, both axes are log scale (period and length). For angle data, period is in log scale and phase is linear scale.

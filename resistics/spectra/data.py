@@ -2,6 +2,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from typing import List, Dict, Union
 
 from resistics.common.base import ResisticsBase
@@ -192,7 +193,7 @@ class SpectrumData(ResisticsBase):
             self.getComments(),
         )
 
-    def view(self, **kwargs) -> plt.figure:
+    def view(self, **kwargs) -> Figure:
         """Plot spectra data
 
         Parameters

@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from typing import List, Dict, Union, ClassVar
 
 from resistics.common.base import ResisticsBase
@@ -291,7 +292,7 @@ class ProjectData(ResisticsBase):
         checkAndMakeDir(sitePath)
         return True
 
-    def view(self, **kwargs) -> plt.figure:
+    def view(self, **kwargs) -> Figure:
         """Plot a timeline of the project
         
         Parameters

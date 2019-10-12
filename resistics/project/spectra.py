@@ -2,6 +2,7 @@ import sys
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from datetime import datetime
 from typing import List, Union, Dict
 
@@ -247,7 +248,7 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
 
 def viewSpectra(
     projData: ProjectData, site: str, meas: str, **kwargs
-) -> Union[plt.figure, None]:
+) -> Union[Figure, None]:
     """View spectra for a measurement
 
     Parameters
@@ -382,7 +383,7 @@ def viewSpectra(
 
 def viewSpectraSection(
     projData: ProjectData, site: str, meas: str, **kwargs
-) -> Union[plt.figure, None]:
+) -> Union[Figure, None]:
     """View spectra section for a measurement
 
     Parameters
@@ -531,7 +532,7 @@ def viewSpectraSection(
 
 def viewSpectraStack(
     projData: ProjectData, site: str, meas: str, **kwargs
-) -> Union[plt.figure, None]:
+) -> Union[Figure, None]:
     """View spectra stacks for a measurement
 
     Parameters
