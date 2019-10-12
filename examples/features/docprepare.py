@@ -1,7 +1,8 @@
 import shutil
 from datapaths import (
     projectPath,
-    imagePath,
+    statImagePath,
+    remoteImagePath,
     docPathConfig,
     docPathComments,
     docPathStats,
@@ -39,5 +40,10 @@ statCommentsPath = (
 )
 shutil.copy2(statCommentsPath, docPathComments / "features_stat_comments.txt")
 
-# spectra images
+# statistic images
+for image in statImagePath.glob("*.png"):
+    shutil.copy2(image, docPathStats)
 
+# remote statistic examples
+for image in remoteImagePath.glob("*.png"):
+    shutil.copy2(image, docPathRemote)
