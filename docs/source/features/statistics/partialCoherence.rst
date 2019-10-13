@@ -35,7 +35,7 @@ Partial coherences measure the linear relationship between two signals after the
 
 .. math::
 
-    parcoh_{xy} = \frac{bivar_x - coherence_{xx}}{1 - coherence_{xx}}
+    parcoh_{xy} = \frac{bivar_x^2 - coherence_{xx}^2}{1 - coherence_{xx}^2}
 
 Where coherence\ :sub:`xx` is the standard coherence between |Ex| and |Hx|.
 

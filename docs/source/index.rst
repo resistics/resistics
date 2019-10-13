@@ -20,15 +20,15 @@ Resistics is an open-source, native Python 3 package for the processing of magne
 
 Latest news
 ~~~~~~~~~~~
-**2019-10-13:** Resistics 0.0.6.dev3 has just been pushed to the python package repository and brings with it an internal restructure. 
+**2019-10-13:** Resistics 0.0.6.dev3 has been pushed to the python package repository and brings with it an internal restructure. 
 
-.. important::
+.. warning::
     
     This version of resistics is no longer backwards compatible and scripts written using older versions of the package will no longer function due to broken imports. All documentation has been re-written to match the new structure. 
 
 The features remaining to be implemented before completing resistics 0.0.6 are: 
 
-- Speeding up of processing
+- Implementation of multiprocessing to speed up processing times
 
 The latest development version of resistics can be downloaded by specifying 0.0.6.dev3 when installing using pip. 
 
