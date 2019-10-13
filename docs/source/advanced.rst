@@ -18,7 +18,7 @@ More detail is given about the advanced processing methods below and in the corr
 
 Pre-processing
 ~~~~~~~~~~~~~~
-There are several use cases requiring pre-processing of time series data. Common ones include scaling of channel data, resampling of time series data, interpolating time data on to the second and others. In the project environment, these are managed by the :meth:`~resistics.project.projectTime.preProcess` method of the :mod:`~resistics.project.projectTime` module.
+There are several use cases requiring pre-processing of time series data. Common ones include scaling of channel data, resampling of time series data, interpolating time data on to the second and others. In the project environment, these are managed by the :meth:`~resistics.project.time.preProcess` method of the :mod:`~resistics.project.time` module.
 
 .. toctree::
     :maxdepth: 2
