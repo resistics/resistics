@@ -4,7 +4,7 @@
 .. |Hy| replace:: H\ :sub:`y`
 .. |Hz| replace:: H\ :sub:`z`
 
-Polarisation Directions
+Polarisation directions
 -----------------------  
 
 The polarisation directions of the electric and magnetic fields are given by:

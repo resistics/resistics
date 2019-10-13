@@ -4,7 +4,7 @@
 .. |Hy| replace:: H\ :sub:`y`
 .. |Hz| replace:: H\ :sub:`z`
 
-Resistivity and Phase
+Resistivity and phase
 ---------------------
 
 Looking at the transfer function components for each evaluation frequency is useful, but in many cases, it is easier to consider the apparent resistivity and phase. Apparent resitivty and phase are more physically relateable and can be a better choice for restricting window selection.

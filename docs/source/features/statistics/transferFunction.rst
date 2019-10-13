@@ -4,7 +4,7 @@
 .. |Hy| replace:: H\ :sub:`y`
 .. |Hz| replace:: H\ :sub:`z`
 
-Transfer Functions
+Transfer functions
 ------------------
 
 It is possible to calculate out the transfer function for each window (and evaluation frequency). Whilst the geoelectric and geomagnetic fields may vary with time, the components of the transfer function should stay constant through time. Calculating out transfer function components on an evaluation frequency basis for each window allows the study of the variation in transfer function components over time and the identification of noisy windows which should be removed from further analysis.

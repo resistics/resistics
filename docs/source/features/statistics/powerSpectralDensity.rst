@@ -4,7 +4,7 @@
 .. |Hy| replace:: H\ :sub:`y`
 .. |Hz| replace:: H\ :sub:`z`
 
-Power Spectral Density
+Power spectral density
 ----------------------
 
 The power spectral density of a timeseries represents the distribution of power across its frequency components (`Wikipedia <https://en.wikipedia.org/wiki/Spectral_density>`_). However, what the power spectral density statistic measures in resistics in the how the power spectral density of a single frequency (some evaluation frequency) varies over the time of the recording. It is a proxy for the energy of the eletromagnetic data (volume, amplitude).

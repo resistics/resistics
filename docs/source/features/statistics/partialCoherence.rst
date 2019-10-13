@@ -10,7 +10,7 @@
 .. |Bix| replace:: bivar\ :sub:`x`
 .. |Biy| replace:: bivar\ :sub:`y`
 
-Partial Coherence
+Partial coherence
 -----------------
 
 The bivariate coherence between inputs |Hx| and |Hy| and output |Ex| is given by:
