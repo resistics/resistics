@@ -226,6 +226,8 @@ def viewTime(
 
     Parameters
     ----------
+    projData : ProjectData
+        The project data instance
     startDate : str
         The start of the data range to plot
     endDate : str

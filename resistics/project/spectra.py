@@ -444,7 +444,7 @@ def viewSpectraSection(
     if numWindows > 250:
         windows = list(np.linspace(0, numWindows, 250, endpoint=False, dtype=np.int32))
     else:
-        windows = np.arange(0, 250)
+        windows = np.arange(0, numWindows)
 
     # create figure
     plotfonts = options["plotoptions"]["plotfonts"]
@@ -678,7 +678,7 @@ def viewSpectraStack(
                     stopTime.strftime("%m-%d %H:%M:%S"),
                 ),
             )
-            if len(ampLim) > 2:
+            if len(ampLim) == 2:
                 ax1.set_ylim(ampLim)
             else:
                 ax1.set_ylim(0.01, 1000)
@@ -747,7 +747,7 @@ def viewSpectraStack(
     fig.tight_layout(rect=[0.01, 0.01, 0.98, 0.81])
     # legend
     legax = plt.axes(position=[0.01, 0.82, 0.98, 0.12], in_layout=False)
-    plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom="False")
+    plt.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False)
     plt.box(False)
     legax.legend(h, l, ncol=4, loc="upper center", fontsize=plotfonts["legend"])
 
