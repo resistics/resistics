@@ -11,7 +11,7 @@ from resistics.site.data import SiteData
 from resistics.spectra.io import SpectrumReader
 from resistics.common.checks import parseKeywords, isMagnetic
 from resistics.common.print import listToString, breakComment
-from resistics.project.utils import projectText, projectError
+from resistics.project.utils import projectText, projectWarning, projectError
 
 
 def getSpecReader(
@@ -596,6 +596,11 @@ def viewSpectraStack(
 
     # calculate num of windows to stack in each set
     stackSize = int(np.floor(1.0 * numWindows / options["numstacks"]))
+    if stackSize == 0:
+        projectWarning("Too few windows for number of stacks {}".format(options["numstacks"]))
+        options["numstacks"] = numWindows
+        stackSize = 1
+        projectWarning("Number of stacks changed to {}".format(options["numstacks"]))
 
     # calculate number of rows - in case interested in coherences too
     nrows = (
