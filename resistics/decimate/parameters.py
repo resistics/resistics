@@ -45,7 +45,7 @@ class DecimationParameters(ResisticsBase):
         Get the decimation factor from level 0 to decLevel
     getIncrementalFactor(decLevel)
         Get the decimation factor from decLevel-1 to decLevel
-    getEvalFrequenciesPerLevel(decLevel)
+    getEvalFrequenciesForLevel(decLevel)
         Returns evaluation frequencies for decLevel
     setFrequencyParams(evalFreq, freqPerLevel, maxLevel)
         Set decimation parameters by evaluation frequencies and frequencies per level
