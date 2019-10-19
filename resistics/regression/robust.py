@@ -217,7 +217,7 @@ def olsModel(A, y, **kwargs) -> Tuple:
     if options["intercept"]:
         # add a constant term for the intercept
         A = np.hstack((np.ones(shape=(A.shape[0], 1), dtype="complex"), A))
-    params, squareResid, rank, s = linalg.lstsq(A, y)
+    params, squareResid, rank, s = linalg.lstsq(A, y, rcond=None)
     resids = y - np.dot(A, params)
     return params, resids, squareResid, rank, s
 
