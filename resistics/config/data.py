@@ -159,7 +159,6 @@ class ConfigData(ResisticsBase):
             textLst.append("Configuration file = Default configuration")
         else:
             textLst.append("Configuration file = {:s}".format(self.configFile))
-
         textLst.append("Configuration name = {:s}".format(self.configParams["name"]))
 
         textLst.append("Flags:")
@@ -168,6 +167,7 @@ class ConfigData(ResisticsBase):
 
         textLst.append("Configuration Parameters:")
         textLst.append("Name = {:s}".format(self.configParams["name"]))
+        textLst.append("ncores = {:d}".format(self.configParams["ncores"]))
         textLst = textLst + self.printListSection("Calibration")
         textLst = textLst + self.printListSection("Decimation")
         textLst = textLst + self.printListSection("Frequencies")
@@ -175,7 +175,6 @@ class ConfigData(ResisticsBase):
         textLst = textLst + self.printListSection("Spectra")
         textLst = textLst + self.printListSection("Statistics")
         textLst = textLst + self.printListSection("Solver")
-
         return textLst
 
     def printListSection(self, section: str) -> List[str]:
@@ -195,5 +194,4 @@ class ConfigData(ResisticsBase):
         if len(self.configParams[section].defaults) > 0:
             defaultOptions = listToString(self.configParams[section].defaults)
         textLst.append("\tDefaulted options = {:s}".format(defaultOptions))
-
         return textLst
