@@ -44,12 +44,12 @@ class StatisticCalculator(ResisticsBase):
         Pairs of channels for coherence calculations
     polDirs : List[List[str]]
         Pairs of channels of polarisation direction calculation
-    spec: Dict = {}
-
+    spec: Dict[str, np.ndarray]
+        The spectra data dictionary mapping channel to data array
     tfCalculated : bool 
         Boolean flag to show that the transfer function has been calculated for a window
     remoteCalculated : bool 
-        Boolean flag to show...
+        Boolean flag to show if the remote transfer function has been calculated
     intercept : bool   
         Boolean flag to include an intercept into the 
     outData: Dict = {}
@@ -58,50 +58,95 @@ class StatisticCalculator(ResisticsBase):
     -------
     __init__()
     getEvalFreq()
+        Get a list of the evaluation frequency
     getInChans()
+        Get a list of the input channels for the transfer function calculation
     getOutChans()
+        Get a list of the output channels for the transfer function calculation
     getSpecChans()
+        Get a list of the spectra channels
     getRemoteChans()
+        Get a list of the remote channels
     getPSDChans()
+        Get a list of channels for which to calculate power spectral density
     getCohPairs()
+        Get a list of coherence pairs to calculate
     getPolDirs()
+        Get a list of polarisation direction channels to calculate
     getAutoPower(chan)
+        Get auto power data for a channel
     getAutoPowerEval(chan, eIdx)
+        Get auto power data for a channel calculated at evaluation frequencies
     getCrossPower(chan1, chan2)
+        Get cross power data between two channels
     getCrossPowerEval(chan1, chan2, eIdx)
+        Get cross power data between two channels at the evaluation frequencies
     getOutData()
+        Get the output data
     setInChans(inChans)
+        Set the input channels for transfer function statistics
     setOutChans(outChans)
+        Set the output channels for the transfer function statistics
     setSpectra(freq, winData, evalFreq)
+        Set the spectra data
     setIntercept(intercept)
+        Boolean flag for adding an intercept term
     calculateSpectralMatrix()
+        Calculate the cross power spectra matrix
     calculateEvalMatrix()
+        Calculate the cross power spectra matrix at the evaluation frequencies
     addRemoteSpec(remoteData, **kwargs)
+        Add a remote reference spectra
     calculateRemoteSpectralMatrix()
+        Calculate the remote data power spectral matrix
     calculateRemoteEvalMatrix()
+        Calculate the remote data power spectra matrix at the evaluation frequencies
     calculateReferenceSpectralMatrix()
+        Calculate the power spectral matrix for remote reference processing
     calculateReferenceEvalMatrix()
+        Calculate the power spectral matrix for remote reference processing at the evaluation frequencies
     getRemoteAutoPower(chan)
+        Get remote data auto power spectra
     getRemoteAutoPowerEval(chan, eIdx)
+        Get remote data auto power spectra at evaluation frequency
     getRemoteCrossPower(chan1, chan2)
+        Get remote cross power spectra data
     getRemoteCrossPowerEval(chan1, chan2, eIdx)
+        Get remote cross power spectra value at evaluation frequency
     getReferenceCrossPower(dataChan, remoteChan)
+        Get the remote reference formulation cross power spectra
     getReferenceCrossPowerEval(dataChan, remoteChan, eIdx)
+        Get the remote reference formulation cross power spectra at a given evaluation frequency
     interpolateToEvalFreq(data)
+        Interpolate data to evaluation frequencies
     prepareOutDict()
+        Prepare the output dictionary which will be returned
     getDataForStatName(statName)
+        Get the statistic data for a statistic
     winPSD()
+        Calculate window power spectral density
     winCoherence()
+        Calculate window coherence for coherence pairs
     winPolarisations()
+        Calculate polarisation directions
     winPartials()
+        Calculate window partial coherences
+    winAbsVal()
+        Calculate window absolute values for the evaluation frequencies        
     winTransferFunction()
+        Calculate window transfer function
     winRemoteCoherence()
+        Calculate window remote coherence with local data
     winRemoteEqnCoherence()
+        Calculate remote equation coherence
     winRemoteAbsVal()
+        Calculate remote absolute value
     winRemoteTransferFunction()
+        Calculate remote transfer function
     printList()
         Class information returned as list of strings  
     """
+
     def __init__(self) -> None:
         """Initialise the statistic calculator"""
 
@@ -127,7 +172,7 @@ class StatisticCalculator(ResisticsBase):
         self.polDirs: List[List[str]] = [["Ex", "Ey"], ["Hx", "Hy"]]
         # set data presets
         self.freq: Union[np.ndarray, None] = None
-        self.spec: Dict[np.ndarray] = {}
+        self.spec: Dict[str, np.ndarray] = {}
         # output data and marker for transfer function calculated
         self.tfCalculated: bool = False
         self.remoteCalculated: bool = False
@@ -389,9 +434,8 @@ class StatisticCalculator(ResisticsBase):
             Evaluation frequency array
         """
         self.freq = freq
-        self.spec: Dict[np.ndarray] = specData.data
+        self.spec: Dict[str, np.ndarray] = specData.data
         self.evalFreq = evalFreq
-        # self.specChans = sorted(self.spec.keys())
         self.numChans = len(self.specChans)
         self.dataSize = specData.dataSize
         # calculate the power matrix
