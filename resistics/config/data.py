@@ -81,6 +81,54 @@ class ConfigData(ResisticsBase):
                     quitRun=True,
                 )
 
+    def getSpectraCores(self) -> int:
+        """Returns the number of cores to run specrta calculations on
+        
+        There is a global ncores parameter and one in the Spectra section. The Spectra one takes precedent when they are both set. 
+
+        Returns
+        -------
+        ncores : int
+            The number of cores to run spectra calculations on
+        """
+        if self.configParams["Spectra"]["ncores"] != -1:
+            return self.configParams["Spectra"]["ncores"]
+        if self.configParams["ncores"] != -1:
+            return self.configParams["ncores"]
+        return 0
+
+    def getStatisticCores(self) -> int:
+        """Returns the number of cores to run statistic calculations on
+        
+        There is a global ncores parameter and one in the Statistics section. The Statistics one takes precedent when they are both set. 
+
+        Returns
+        -------
+        ncores : int
+            The number of cores to run statistic calculations on
+        """
+        if self.configParams["Statistics"]["ncores"] != -1:
+            return self.configParams["Statistics"]["ncores"]
+        if self.configParams["ncores"] != -1:
+            return self.configParams["ncores"]
+        return 0
+
+    def getSolverCores(self) -> int:
+        """Returns the number of cores to run solver calculations on
+        
+        There is a global ncores parameter and one in the Solver section. The Solver one takes precedent when they are both set. 
+
+        Returns
+        -------
+        ncores : int
+            The number of cores to run solver calculations on
+        """
+        if self.configParams["Solver"]["ncores"] != -1:
+            return self.configParams["Solver"]["ncores"]
+        if self.configParams["ncores"] != -1:
+            return self.configParams["ncores"]
+        return 0
+
     def getConfigComment(self) -> str:
         """Returns a string to add as a comment to data
 
@@ -93,7 +141,9 @@ class ConfigData(ResisticsBase):
         if self.configFile == "":
             return "Using default configuration"
         else:
-            return "Using configuration with name {} in configuration file {}".format(self.configParams["name"], self.configFile)
+            return "Using configuration with name {} in configuration file {}".format(
+                self.configParams["name"], self.configFile
+            )
 
     def printList(self) -> List[str]:
         """Class information as a list of strings
@@ -109,7 +159,7 @@ class ConfigData(ResisticsBase):
             textLst.append("Configuration file = Default configuration")
         else:
             textLst.append("Configuration file = {:s}".format(self.configFile))
-        
+
         textLst.append("Configuration name = {:s}".format(self.configParams["name"]))
 
         textLst.append("Flags:")
@@ -125,7 +175,7 @@ class ConfigData(ResisticsBase):
         textLst = textLst + self.printListSection("Spectra")
         textLst = textLst + self.printListSection("Statistics")
         textLst = textLst + self.printListSection("Solver")
-        
+
         return textLst
 
     def printListSection(self, section: str) -> List[str]:
@@ -143,7 +193,7 @@ class ConfigData(ResisticsBase):
             textLst.append("\t{:s} = {}".format(key, value))
         defaultOptions = "No defaults used"
         if len(self.configParams[section].defaults) > 0:
-            defaultOptions = listToString(self.configParams[section].defaults) 
+            defaultOptions = listToString(self.configParams[section].defaults)
         textLst.append("\tDefaulted options = {:s}".format(defaultOptions))
-        
+
         return textLst
