@@ -1,6 +1,6 @@
 import os
 from datetime import date, time, datetime, timedelta
-from typing import List, Dict, Set, Union
+from typing import List, Dict, Set, Union, Any, Tuple
 
 # import from package
 from resistics.common.base import ResisticsBase
@@ -321,6 +321,89 @@ class WindowSelector(ResisticsBase):
             )
         )
         return False, False
+
+    def getSpecReaderBatches(self, declevel: int) -> Tuple[List, List]:
+        """Batch the readers into wndow groups that can be read as required in a more efficient way
+
+        First sorts all the site spectra files by global window range, putting them in ascending order. Loops over all the sites and constructs spectra batches to read in.
+
+        Parameters
+        ----------
+        declevel : int
+            The decimation level
+
+        Returns
+        -------
+        batches : List[Dict[str, All]]
+            The list of batches
+        """
+        # sort spectra files for the decimation level
+        files: Dict[str, List[str]] = dict()
+        readers: Dict[str, List[SpectrumReader]] = dict()
+        winStarts: Dict[str, List[int]] = dict()
+        winStops: Dict[str, List[int]] = dict()
+        for site in self.sites:
+            tmpFiles: List = list()
+            tmpReaders: List = list()
+            tmpStarts: List = list()
+            tmpStops: List = list()
+            for specFile, specRange in self.siteSpecRanges[site][declevel].items():
+                tmpFiles.append(specFile)
+                tmpReaders.append(self.siteSpecReaders[site][declevel][specFile])
+                tmpStarts.append(specRange[0])
+                tmpStops.append(specRange[1])
+            # now sort on winstarts using zip
+            zipped = list(zip(tmpStarts, tmpFiles, tmpReaders, tmpStops))
+            zipped.sort()
+            winStarts[site], files[site], readers[site], winStops[site] = zip(*zipped)
+        
+        print(files)
+        print(winStarts)
+        print(winStops)
+        # exit()
+        # create batches
+        mainSite: str = self.sites[0]
+        otherSites: List[str] = self.sites[1:]
+        # for saving batches
+        batches: List[Dict[str, Any]] = list()
+        for mainIdx, mainStart in enumerate(winStarts[mainSite]):
+            lastBatchWin = mainStart - 1
+            while True:
+                batch = dict()
+                batch["globalrange"] = [lastBatchWin + 1, winStops[mainSite][mainIdx]]
+                batch[mainSite] = readers[mainSite][mainIdx]
+                for site in otherSites:
+                    for otherIdx, (start, stop) in enumerate(zip(winStarts[site], winStops[site])):
+                        if start >= batch["globalrange"][1] or stop <= batch["globalrange"][0]:
+                            continue
+                        # else there is an overlap and it is the first overlap we are interested in
+                        # amend the batch range as required
+                        if start > batch["globalrange"][0]:
+                            batch["globalrange"][0] = start
+                        if stop < batch["globalrange"][1]:
+                            batch["globalrange"][1] = stop
+                        batch[site] = readers[site][otherIdx]
+                        break
+
+                # now need to decide if the batch is complete - the batch dict has an entry for every site and one globalrange
+                if len(batch.keys()) == len(self.sites) + 1:
+                    batches.append(batch)
+                lastBatchWin = batch["globalrange"][1]
+                if lastBatchWin >= winStops[mainSite][mainIdx]:
+                    break
+                # otherwise, continue in the while loop batching up
+        
+        # print information
+        self.printText("Spectra batches")
+        for batchI, batch in enumerate(batches):
+            self.printText("-----BATCH {}------".format(batchI))
+            self.printText(batch["globalrange"])
+            for site in self.sites:
+                self.printText("Site {}".format(site))
+                self.printText(batch[site].datapath)
+                self.printText(batch[site].getGlobalRange())
+        
+        return batches
 
     def getDataSize(self, declevel: int) -> int:
         """Get the spectrum reader for a window

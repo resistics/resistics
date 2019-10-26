@@ -46,7 +46,7 @@ figs = viewImpedance(
     oneplot=False,
     plotoptions=plotOptions,
     show=False,
-    save=True,
+    save=False,
 )
 figs[0].savefig(remoteImages / "remoteReferenceM6.png")
 

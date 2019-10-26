@@ -100,6 +100,8 @@ def processProject(projData: ProjectData, **kwargs) -> None:
         List of datetime constraints, each one as a dictionary. For example [{"type": "datetime", "start": 2018-08-08 00:00:00, "end": 2018-08-08 16:00:00, "levels": [0,1]}]. Note that levels is optional.            
     postpend : str, optional
         String to postpend to the transfer function output
+    ncores : int, optional
+        The number of cores to run the transfer function calculations on        
     """
     options: Dict = dict()
     options["sites"]: List[str] = projData.getSites()
@@ -114,6 +116,7 @@ def processProject(projData: ProjectData, **kwargs) -> None:
     options["masks"]: Dict = {}
     options["datetimes"]: List = []
     options["postpend"]: str = ""
+    options["ncores"] = projData.config.getSolverCores()    
     options = parseKeywords(options, kwargs)
 
     for site in options["sites"]:
@@ -165,6 +168,8 @@ def processSite(
         List of datetime constraints, each one as a dictionary. For example [{"type": "datetime", "start": 2018-08-08 00:00:00, "end": 2018-08-08 16:00:00, "levels": [0,1]}]. Note that levels is optional.
     postpend : str, optional
         String to postpend to the transfer function output
+    ncores : int, optional
+        The number of cores to run the transfer function calculations on
     """
     from resistics.decimate.decimator import Decimator
     from resistics.window.selector import WindowSelector
@@ -187,6 +192,7 @@ def processSite(
     options["masks"] = {}
     options["datetimes"] = []
     options["postpend"] = ""
+    options["ncores"] = projData.config.getSolverCores()
     options = parseKeywords(options, kwargs)
     if options["inputsite"] == "":
         options["inputsite"] = site
@@ -272,7 +278,8 @@ def processSite(
         processor.crossChannels = options["crosschannels"]
     processor.postpend = options["postpend"]
     processor.printInfo()
-    processor.process()
+    projectText("Processing data using {} cores".format(options["ncores"]))
+    processor.process(options["ncores"])
 
 
 def viewImpedance(projData: ProjectData, **kwargs) -> List[Figure]:

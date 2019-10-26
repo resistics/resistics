@@ -2,7 +2,7 @@ import os
 from copy import deepcopy
 from datetime import datetime, timedelta
 import numpy as np
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 
 from resistics.common.base import ResisticsBase
 from resistics.common.print import breakComment, arrayToStringSci
@@ -45,7 +45,7 @@ class SpectrumReader(ResisticsBase):
 		Initialise the SpectrumReader
 	getReferenceTime()
 		Get the reference time used for the spectrum calculation
-    def getChannels()
+    getChannels()
         Get the channels in the spectra data
     getNumChannels()
         Get the number of channels
@@ -57,7 +57,7 @@ class SpectrumReader(ResisticsBase):
         Get the window size used for the data
     getWindowOverlap()
         Get the window overlap size
-    def getDataSize()
+    getDataSize()
         Get the number of samples in a spectra window
     getGlobalOffset()
         Get the window global offset
@@ -120,7 +120,7 @@ class SpectrumReader(ResisticsBase):
         self.dataType = np.dtype("complex64")
         self.dataByteSize: int = self.dataType.itemsize
         self.filepath: str = ""
-        self.file: bool = False
+        self.file = None
 
     def getReferenceTime(self) -> datetime:
         """Get reference time for spectra calculation
@@ -251,8 +251,45 @@ class SpectrumReader(ResisticsBase):
         """
         return deepcopy(self.comments)
 
+    def getSpectrumData(
+        self, localIndex: int, data: Dict[str, np.ndarray]
+    ) -> SpectrumData:
+        """Return a spectrum data object from a data dictionary and the local index
+        
+        Parameters
+        ----------
+        localIndex : int
+            The local index of the spectra window
+        data : Dict[str, np.ndarray]
+            The data dictionary
+
+        Returns
+        -------
+        SpectrumData
+            A SpectrumData object
+        """
+
+        startTime, stopTime = gIndex2datetime(
+            localIndex + self.getGlobalOffset(),
+            self.getReferenceTime(),
+            self.getSampleFreq(),
+            self.getWindowSize(),
+            self.getWindowOverlap(),
+        )
+        return SpectrumData(
+            windowSize=self.getWindowSize(),
+            dataSize=self.getDataSize(),
+            sampleFreq=self.getSampleFreq(),
+            startTime=startTime,
+            stopTime=stopTime,
+            data=data,
+            comments=self.comments,
+        )
+
     def openBinaryForReading(self, filename: str, fileInc: int) -> bool:
         """Open a binary data file for reading
+
+        self.file is not set in this method because spectra data is read using memmap.
 
         Parameters
         ----------
@@ -276,8 +313,6 @@ class SpectrumReader(ResisticsBase):
         self.readCommentsFile(filepathComments)
         self.channelByteSize = self.dataByteSize * self.getDataSize()
         self.windowByteSize = self.channelByteSize * self.getNumChannels()
-        # set file to filepath - this is because binary files do not require opening using memap
-        # self.file = self.filepath
         return True
 
     def readBinaryWindowLocal(self, localIndex: int) -> SpectrumData:
@@ -305,23 +340,7 @@ class SpectrumReader(ResisticsBase):
                 offset=byteOff + chanOff,
                 shape=(self.getDataSize()),
             )
-        # return data
-        startTime, stopTime = gIndex2datetime(
-            localIndex + self.getGlobalOffset(),
-            self.getReferenceTime(),
-            self.getSampleFreq(),
-            self.getWindowSize(),
-            self.getWindowOverlap(),
-        )
-        return SpectrumData(
-            windowSize=self.getWindowSize(),
-            dataSize=self.getDataSize(),
-            sampleFreq=self.getSampleFreq(),
-            startTime=startTime,
-            stopTime=stopTime,
-            data=data,
-            comments=self.comments,
-        )
+        return self.getSpectrumData(localIndex, data)
 
     def readBinaryWindowGlobal(self, globalIndex: int) -> SpectrumData:
         """Get spectrum data for a window defined by a global index (for binary formatted data)
@@ -345,6 +364,59 @@ class SpectrumReader(ResisticsBase):
         # convert global index to local index and return readAsciiWindowLocal
         localIndex = globalIndex - self.getGlobalOffset()
         return self.readBinaryWindowLocal(localIndex)
+
+    def readBinaryBatchGlobal(
+        self, globalIndices: Union[List[int], None] = None
+    ) -> Union[List[SpectrumData], np.ndarray]:
+        """Batch read binary windows
+
+        Batch reading binary windows allows the data for calculation to be split over multi processes
+
+        Parameters
+        ----------
+        globalIndices : List[int], None, optional
+            The global indices to batch read. By default, all windows will be returned if not specified
+
+        Returns
+        -------
+        List[SpectrumData], np.ndarray
+            An array or list of SpectrumData objects
+        """
+        if globalIndices is not None and len(globalIndices) == 0:
+            # zero windows request, return empty list
+            return []
+
+        self.file = open(self.filepath, "rb")
+        batchData = np.fromfile(self.file, dtype=self.dataType)
+        self.printText(
+            "Reading {:.8f} GB of data from file {}".format(
+                os.path.getsize(self.filepath) / 1e9, self.filepath
+            )
+        )
+        self.file.close()
+        self.file = None
+
+        # find the windows to get
+        if globalIndices is not None and len(globalIndices) > 0:
+            localIndices = np.sort(np.array(list(globalIndices))) - self.getGlobalOffset()
+            localIndices = localIndices[localIndices >= 0]
+            localIndices = localIndices[localIndices < self.getNumWindows()]
+            globalIndices = localIndices + self.getGlobalOffset()
+        else:
+            localIndices = np.arange(0, self.getNumWindows())
+            globalIndices = localIndices + self.getGlobalOffset()
+
+        specData = []
+        dataSize = self.getDataSize()
+        windowSize = dataSize * self.getNumChannels()
+        for localIndex in localIndices:
+            intOff = localIndex * windowSize
+            data = {}
+            for cI, c in enumerate(self.getChannels()):
+                chanOff = intOff + cI * dataSize
+                data[c] = batchData[chanOff : chanOff + dataSize]
+            specData.append(self.getSpectrumData(localIndex, data))
+        return specData, globalIndices
 
     def openAsciiForReading(self, filename: str, fileInc: int) -> bool:
         """Open a ascii data file for reading
@@ -511,10 +583,11 @@ class SpectrumReader(ResisticsBase):
 
     def closeFile(self):
         """Close spectra file"""
-        if self.filepath != "" and self.file:
+        if self.filepath != "":
             self.printText("Closing file {}".format(self.filepath))
-            self.file.close()
             self.filepath = ""
+            if self.file is not None:
+                self.file.close()
         else:
             print("No file open")
 

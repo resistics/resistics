@@ -154,7 +154,7 @@ def mestimateModel(A: np.ndarray, y: np.ndarray, **kwargs) -> Tuple:
     while iteration < options["maxiter"]:
         # do the weighted least-squares
         Anew, ynew = weightLS(A, y, weights)
-        paramsNew, squareResidNew, rankNew, sNew = linalg.lstsq(Anew, ynew)
+        paramsNew, squareResidNew, rankNew, sNew = linalg.lstsq(Anew, ynew, rcond=None)
         residsNew = y - np.dot(A, paramsNew)
         # check residsNew to make sure not all zeros (i.e. will happen in undetermined or equally determined system)
         if np.sum(np.absolute(residsNew)) < eps():
@@ -281,7 +281,7 @@ def chatterjeeMachler(A: np.ndarray, y: np.ndarray, **kwargs) -> Tuple:
     while iteration < options["maxiter"]:
         # do the weighted least-squares
         Anew, ynew = weightLS(A, y, weights)
-        paramsNew, squareResidNew, rankNew, sNew = linalg.lstsq(Anew, ynew)
+        paramsNew, squareResidNew, rankNew, sNew = linalg.lstsq(Anew, ynew, rcond=None)
         residsNew = y - np.dot(A, paramsNew)
         # check residsNew to make sure not all zeros (i.e. will happen in undetermined or equally determined system)
         if np.sum(np.absolute(residsNew)) < eps():
@@ -356,7 +356,7 @@ def chatterjeeMachlerMod(A, y, **kwargs):
     while iteration < options["maxiter"]:
         # do the weighted least-squares
         Anew, ynew = weightLS(A, y, weights)
-        paramsNew, squareResidNew, rankNew, sNew = linalg.lstsq(Anew, ynew)
+        paramsNew, squareResidNew, rankNew, sNew = linalg.lstsq(Anew, ynew, rcond=None)
         residsNew = y - np.dot(A, paramsNew)
         # check residsNew to make sure not all zeros (i.e. will happen in undetermined or equally determined system)
         if np.sum(np.absolute(residsNew)) < eps():
@@ -394,7 +394,7 @@ def chatterjeeMachlerMod(A, y, **kwargs):
     while iteration < options["maxiter"]:
         # do the weighted least-squares
         Anew, ynew = weightLS(A, y, weights)
-        paramsNew, squareResidNew, rankNew, sNew = linalg.lstsq(Anew, ynew)
+        paramsNew, squareResidNew, rankNew, sNew = linalg.lstsq(Anew, ynew, rcond=None)
         residsNew = y - np.dot(A, paramsNew)
         # check residsNew to make sure not all zeros (i.e. will happen in undetermined or equally determined system)
         if np.sum(np.absolute(residsNew)) < eps():
@@ -548,7 +548,7 @@ def chatterjeeMachlerHadi(X, y, **kwargs):
     while iteration < options["maxiter"]:
         # do the weighted least-squares
         Anew, ynew = weightLS(X, y, weights)
-        paramsNew, squareResidNew, rankNew, sNew = linalg.lstsq(Anew, ynew)
+        paramsNew, squareResidNew, rankNew, sNew = linalg.lstsq(Anew, ynew, rcond=None)
         residsNew = y - np.dot(X, paramsNew)
         # check residsNew to make sure not all zeros (i.e. will happen in undetermined or equally determined system)
         if np.sum(np.absolute(residsNew)) < eps():

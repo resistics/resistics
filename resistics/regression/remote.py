@@ -1,9 +1,10 @@
 import os
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from resistics.common.smooth import smooth1d
 from resistics.regression.local import LocalRegressor
+from resistics.regression.compute import remoteMatrices
 from resistics.regression.robust import (
     chatterjeeMachler,
     sampleMAD0,
@@ -133,16 +134,16 @@ class RemoteRegressor(LocalRegressor):
             )
         )
 
-    def process(self) -> None:
+    def process(self, ncores: int = 0) -> None:
         """Process spectra data
 
         The processing sequence for each decimation level is as below:
 
-        1. Get shared (unmasked) windows for all relevant sites (inSite, outSite and remoteSite)
+        1. Get shared (unmasked) windows for all relevant sites (inSite and outSite)
         2. For shared unmasked windows
             
-            - Calculate out the cross-power spectra. For remote reference processing, this includes the remote site too.
-            - Interpolate calculated cross-power data to the evaluation frequencies for the decimation level. 
+            - Calculate out the cross-power spectra.
+            - Interpolate calculated cross-power data to the evaluation frequencies for the decimation level.
         
         3. For each evaluation frequency
             
@@ -151,16 +152,10 @@ class RemoteRegressor(LocalRegressor):
         The spectral power data is smoothed as this tends to improve results. The smoothing can be changed by setting the smoothing parameters. This method is still subject to change in the future as it is an area of active work
         """
         numLevels = self.decParams.numLevels
-        dataChans = self.inChannels + self.outChannels
-        for iDec in range(0, numLevels):
-            # print out some info
-            self.printText("Processing decimation level {}".format(iDec))
-
-            fs = self.winSelector.decParams.getSampleFreqLevel(iDec)
-            # get the number of all shared windows and the number of unmasked windows
-            # unmasked windows are ones that will actually be used in the calculation
-            numWindows = self.winSelector.getNumSharedWindows(iDec)
-            unmaskedWindows = self.winSelector.getUnmaskedWindowsLevel(iDec)
+        for declevel in range(0, numLevels):
+            self.printText("Processing decimation level {}".format(declevel))
+            numWindows = self.winSelector.getNumSharedWindows(declevel)
+            unmaskedWindows = self.winSelector.getUnmaskedWindowsLevel(declevel)
             numUnmasked = len(unmaskedWindows)
             self.printText(
                 "Total shared windows for decimation level = {}".format(numWindows)
@@ -171,124 +166,120 @@ class RemoteRegressor(LocalRegressor):
             if numUnmasked == 0:
                 self.printText(
                     "No unmasked windows found at this decimation level ({:d}), continuing to next level".format(
-                        iDec
+                        declevel
                     )
                 )
-                continue  # continue to next decimation level
+                continue
             self.printText("{} windows will be processed".format(numUnmasked))
 
-            # get the evaluation frequencies
-            evalFreq = self.decParams.getEvalFrequenciesForLevel(iDec)
-            # set some variables
-            totalChans = self.inSize + self.outSize
-            numEvalFreq = len(evalFreq)
-            dataSize = self.winSelector.getDataSize(iDec)
-            freq = np.linspace(0, fs / 2, dataSize)
-            # get the window smoothing params
-            smoothLen = self.getWindowSmooth(datasize=dataSize)
-
-            # create the data array
-            # for each evaluation frequency
-            # keep the spectral power information for all windows
+            # set variables
+            evalFreq = self.decParams.getEvalFrequenciesForLevel(declevel)
+            totalSize: int = self.inSize + self.outSize
+            numEvalFreq: int = len(evalFreq)
+            dataSize: int = self.winSelector.getDataSize(declevel)
+            smoothLen: int = self.getWindowSmooth(datasize=dataSize)
+            # data array for each evaluation frequency and keep spectral power information for all windows
             evalFreqData = np.empty(
-                shape=(numEvalFreq, numWindows, totalChans, self.remoteSize),
+                shape=(numEvalFreq, numWindows, totalSize, self.remoteSize),
                 dtype="complex",
             )
 
-            # an array for the in and out channels fourier data
-            winDataArray = np.empty(shape=(totalChans, dataSize), dtype="complex")
-            # an array for the remote reference fourier data
-            winRemoteArray = np.empty(
-                shape=(self.remoteSize, dataSize), dtype="complex"
-            )
-            # an array for the power spectra data
-            winSpectraMatrix = np.empty(
-                shape=(totalChans, self.remoteSize, dataSize), dtype="complex"
-            )
-
-            # loop over shared windows
-            localWin = 0
-            global2local = {}
-            for iWin in unmaskedWindows:
-                # do the local to global map
-                global2local[iWin] = localWin
-
-                # get the window for the input site
-                inSF, inReader = self.winSelector.getSpecReaderForWindow(
-                    self.inSite, iDec, iWin
+            # global to local map to help choose windows for each evaluation frequency
+            localWin: int = 0
+            global2local: Dict = {}
+            # process spectral batches
+            spectraBatches = self.winSelector.getSpecReaderBatches(declevel)
+            numBatches = len(spectraBatches)
+            for batchIdx, batch in enumerate(spectraBatches):
+                # find the unmasked batched windows and add the data
+                batchedWindows = unmaskedWindows.intersection(
+                    set(range(batch["globalrange"][0], batch["globalrange"][1] + 1))
                 )
-                inData = inReader.readBinaryWindowGlobal(iWin).data
-                # get the window and channels for the output site
-                if self.outSite != self.inSite:
-                    outSF, outReader = self.winSelector.getSpecReaderForWindow(
-                        self.outSite, iDec, iWin
+                self.printText(
+                    "Processing batch {:d} of {:d}: Global window range {:d} to {:d}, {:d} windows, {:.3%} of data".format(
+                        batchIdx + 1,
+                        numBatches,
+                        batch["globalrange"][0],
+                        batch["globalrange"][1],
+                        len(batchedWindows),
+                        len(batchedWindows) / numUnmasked,
                     )
-                    outData = outReader.readBinaryWindowGlobal(iWin).data
+                )
+                if len(batchedWindows) == 0:
+                    self.printText("Batch does not contribute any windows. Continuing to next batch.")
+                    continue
+
+                # collect spectrum data and compute spectral matrices
+                # set batchedWindows from return to ensure proper order
+                inReader = batch[self.inSite]
+                inData, batchedWindows = inReader.readBinaryBatchGlobal(
+                    globalIndices=batchedWindows
+                )
+                if self.outSite != self.inSite:
+                    outReader = batch[self.outSite]
+                    outData, _gIndicesOut = outReader.readBinaryBatchGlobal(
+                        globalIndices=batchedWindows
+                    )
                 else:
                     outData = inData
-
-                # now get the remote reference data - assume this does not equal input or output
-                remoteSF, remoteReader = self.winSelector.getSpecReaderForWindow(
-                    self.remoteSite, iDec, iWin
-                )
-                remoteData = remoteReader.readBinaryWindowGlobal(iWin).data
-
-                # get data into the right part of the arrays
-                for i in range(0, self.inSize):
-                    winDataArray[i] = inData[self.inChannels[i]]
-                for i in range(0, self.outSize):
-                    winDataArray[self.inSize + i] = outData[self.outChannels[i]]
-                for i in range(0, self.remoteSize):
-                    winRemoteArray[i] = remoteData[self.remoteChannels[i]]
-
-                # and now can fill the parts of the matrix
-                # recall, smooth the power spectra
-                for iD, dataChan in enumerate(dataChans):
-                    for iR, remoteChan in enumerate(self.remoteChannels):
-                        # calculate each one, cannot use complex symmetry here
-                        # cannot use conjugate symmetry like with the single site processor
-                        winSpectraMatrix[iD, iR] = smooth1d(
-                            winDataArray[iD] * np.conjugate(winRemoteArray[iR]),
-                            smoothLen,
-                            self.win,
-                        )
-                # after running through all windows, calculate evaluation frequencies
-                # calculate frequency array
-                evalFreqData[:, localWin] = self.calcEvalFrequencyData(
-                    freq, evalFreq, winSpectraMatrix
+                # remote data
+                remoteReader = batch[self.remoteSite]
+                remoteData, _rgIndicesOut = remoteReader.readBinaryBatchGlobal(
+                    globalIndices=batchedWindows
                 )
 
-                # increment local window
-                localWin = localWin + 1
+                out = remoteMatrices(
+                    ncores,
+                    inData,
+                    outData,
+                    remoteData,
+                    self.inChannels,
+                    self.outChannels,
+                    self.remoteChannels,
+                    smoothLen,
+                    self.win,
+                    evalFreq,
+                )
 
-            # now all the data has been collected
-            # for each evaluation frequency, do the robust processing
-            # and get the evaluation frequency data
+                for batchWin, globalWin in enumerate(batchedWindows):
+                    evalFreqData[:, localWin] = out[batchWin]
+                    # local to global map and increment local window
+                    global2local[globalWin] = localWin
+                    localWin = localWin + 1
+
+            # close spectra files for decimation level
+            for batch in spectraBatches:
+                for site in self.winSelector.sites:
+                    batch[site].closeFile()
+
+            # data has been collected for each evaluation frequency, perform robust processing
             for eIdx in range(0, numEvalFreq):
                 self.printText(
                     "Processing evaluation frequency = {:.6f} [Hz], period = {:.6f} [s]".format(
-                        evalFreq[eIdx], 1.0 / evalFreq[eIdx]
+                        evalFreq[eIdx], 1 / evalFreq[eIdx]
                     )
                 )
                 # get the constrained windows for the evaluation frequency
-                evalFreqWindows = self.winSelector.getWindowsForFreq(iDec, eIdx)
-                if len(evalFreqWindows) == 0:  # no windows meet constraints
+                evalFreqWindows = self.winSelector.getWindowsForFreq(declevel, eIdx)
+                if len(evalFreqWindows) == 0:
+                    # no windows meet constraints
                     self.printText("No windows found - possibly due to masking")
                     continue
                 localWinIndices = []
                 for iW in evalFreqWindows:
                     localWinIndices.append(global2local[iW])
+
                 self.printText(
                     "{:d} windows will be solved for".format(len(localWinIndices))
                 )
                 # restrict processing to data that meets constraints for this evaluation frequency
-                # add to class vars
                 self.evalFreq.append(evalFreq[eIdx])
-                # use process reduced - only the input channels from the remote reference
+                # solution using all components
                 numSolveWindows, obs, reg = self.prepareLinearEqn(
                     evalFreqData[eIdx, localWinIndices]
                 )
                 out, var = self.robustProcess(numSolveWindows, obs, reg)
+                # out, var = self.olsProcess(numSolveWindows, obs, reg)
                 self.impedances.append(out)
                 self.variances.append(var)
 

@@ -8,6 +8,7 @@ from typing import List, Union, Dict
 
 from resistics.project.data import ProjectData
 from resistics.site.data import SiteData
+from resistics.time.data import TimeData
 from resistics.spectra.io import SpectrumReader
 from resistics.common.checks import parseKeywords, isMagnetic
 from resistics.common.print import listToString, breakComment
@@ -91,8 +92,9 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
         Filter parameters
     specdir : str, optional
         The spectra directory to save the spectra data in
+    ncores : int, optional
+        The number of cores to run the transfer function calculations on        
     """
-    from resistics.spectra.calculator import SpectrumCalculator
     from resistics.spectra.io import SpectrumWriter
     from resistics.decimate.decimator import Decimator
     from resistics.window.windower import Windower
@@ -119,6 +121,7 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
     options["notch"]: List[float] = []
     options["filter"]: Dict = {}
     options["specdir"]: str = projData.config.configParams["Spectra"]["specdir"]
+    options["ncores"] = projData.config.getSpectraCores()
     options = parseKeywords(options, kwargs)
 
     # prepare calibrator
@@ -161,17 +164,14 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
                 timeData.addComment(breakComment())
                 timeData.addComment("Calculating project spectra")
                 timeData.addComment(projData.config.getConfigComment())
-
                 # apply various options
                 applyPolarisationReversalOptions(options, timeData)
                 applyScaleOptions(options, timeData)
                 applyCalibrationOptions(options, cal, timeData, reader)
                 applyFilterOptions(options, timeData)
                 applyNotchOptions(options, timeData)
-
                 # define decimation and window parameters
                 decParams = getDecimationParameters(sampleFreq, projData.config)
-                decParams.printInfo()
                 numLevels = decParams.numLevels
                 winParams = getWindowParameters(decParams, projData.config)
                 dec = Decimator(timeData, decParams)
@@ -182,7 +182,7 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
                 )
 
                 # loop through decimation levels
-                for iDec in range(0, numLevels):
+                for declevel in range(0, numLevels):
                     # get the data for the current level
                     check = dec.incrementLevel()
                     if not check:
@@ -194,56 +194,174 @@ def calculateSpectra(projData: ProjectData, **kwargs) -> None:
                     win = Windower(
                         datetimeRef,
                         timeData,
-                        winParams.getWindowSize(iDec),
-                        winParams.getOverlap(iDec),
+                        winParams.getWindowSize(declevel),
+                        winParams.getOverlap(declevel),
                     )
                     if win.numWindows < 2:
                         break  # do no more decimation
 
-                    # add some comments
+                    # print information and add some comments
+                    projectText(
+                        "Calculating spectra for decimation level {}".format(declevel)
+                    )
                     timeData.addComment(
                         "Evaluation frequencies for this level {}".format(
-                            listToString(decParams.getEvalFrequenciesForLevel(iDec))
+                            listToString(decParams.getEvalFrequenciesForLevel(declevel))
                         )
                     )
                     timeData.addComment(
                         "Windowing with window size {} samples and overlap {} samples".format(
-                            winParams.getWindowSize(iDec), winParams.getOverlap(iDec)
+                            winParams.getWindowSize(declevel),
+                            winParams.getOverlap(declevel),
                         )
                     )
+                    if projData.config.configParams["Spectra"]["applywindow"]:
+                        timeData.addComment(
+                            "Performing fourier transform with window function {}".format(
+                                projData.config.configParams["Spectra"]["windowfunc"]
+                            )
+                        )
+                    else:
+                        timeData.addComment(
+                            "Performing fourier transform with no window function"
+                        )
 
-                    # create the spectrum calculator and statistics calculators
-                    specCalc = SpectrumCalculator(
-                        sampleFreqDec, winParams.getWindowSize(iDec)
-                    )
-                    # get ready a file to save the spectra
+                    # collect time data
+                    timeDataList = []
+                    for iW in range(0, win.numWindows):
+                        timeDataList.append(win.getData(iW))
+
+                    # open spectra file for saving
                     specPath = os.path.join(
                         siteData.getMeasurementSpecPath(meas), options["specdir"]
                     )
                     specWrite = SpectrumWriter(specPath, datetimeRef)
                     specWrite.openBinaryForWriting(
                         "spectra",
-                        iDec,
+                        declevel,
                         sampleFreqDec,
-                        winParams.getWindowSize(iDec),
-                        winParams.getOverlap(iDec),
+                        winParams.getWindowSize(declevel),
+                        winParams.getOverlap(declevel),
                         win.winOffset,
                         win.numWindows,
                         dataChans,
                     )
-
-                    # loop though windows, calculate spectra and save
+                    if options["ncores"] > 0:
+                        specDataList = multiSpectra(
+                            options["ncores"],
+                            timeDataList,
+                            sampleFreqDec,
+                            winParams.getWindowSize(declevel),
+                            projData.config.configParams,
+                        )
+                    else:
+                        specDataList = calculateWindowSpectra(
+                            timeDataList,
+                            sampleFreqDec,
+                            winParams.getWindowSize(declevel),
+                            projData.config.configParams,
+                        )
+                    # write out to spectra file
                     for iW in range(0, win.numWindows):
-                        # get the window data
-                        winData = win.getData(iW)
-                        # calculate spectra
-                        specData = specCalc.calcFourierCoeff(winData)
-                        # write out spectra
-                        specWrite.writeBinary(specData)
-
-                    # close spectra file
+                        specWrite.writeBinary(specDataList[iW])
                     specWrite.writeCommentsFile(timeData.getComments())
                     specWrite.closeFile()
+
+
+def calculateWindowSpectra(
+    timeDataList: List[TimeData],
+    sampleFreq: float,
+    windowSize: int,
+    config: Union[Dict, None] = None,
+):
+    """Calculate spectra for a list of TimeData
+
+    Parameters
+    ----------
+    timeDataList : List[TimeData]
+        A list of TimeData objects
+    sampleFreq : float
+        The sampling frequency of the TimeData
+    windowSize : int
+        The number of samples in the window
+    
+    Returns
+    -------
+    specDataList : List[SpectrumData]
+        A list of spectra data
+    """
+    from resistics.spectra.calculator import SpectrumCalculator
+
+    specCalc = SpectrumCalculator(sampleFreq, windowSize, config=config)
+    numWindows = len(timeDataList)
+    specDataList = list()
+    # loop though windows and calculate spectra
+    for iW in range(0, numWindows):
+        timeData = timeDataList[iW]
+        specDataList.append(specCalc.calcFourierCoeff(timeData))
+    return specDataList
+
+
+def multiSpectra(
+    ncores: int,
+    timeDataList: List[TimeData],
+    sampleFreq: float,
+    windowSize: int,
+    config: Dict[str, None] = None,
+):
+    """Multiprocessing of spectra
+
+    Parameters
+    ----------
+    ncores: int
+        The number of cores for multiprocessing
+    timeDataList : List[TimeData]
+        A list of TimeData objects
+    sampleFreq : float
+        The sampling frequency of the TimeData
+    windowSize : int
+        The number of samples in the window
+    
+    Returns
+    -------
+    specDataList : List[SpectrumData]
+        A list of spectra data    
+    """
+    import multiprocessing as mp
+
+    # separate time data into batches
+    numWindows = len(timeDataList)
+    batchSize = int(np.ceil(numWindows / ncores))
+    batches = []
+    sizes = []
+    for iB in range(0, ncores):
+        batchStartWin = iB * batchSize
+        if batchStartWin >= numWindows:
+            break
+        batchEndWin = batchStartWin + batchSize
+        if batchEndWin > numWindows:
+            batchEndWin = numWindows
+        batch = []
+        for iW in range(batchStartWin, batchEndWin):
+            batch.append(timeDataList[iW])
+        batches.append(batch)
+        sizes.append(str(len(batch)))
+    # set up tuples
+    multiTuples = [(batch, sampleFreq, windowSize, config) for batch in batches]
+    # multiprocess
+    projectText("Running spectra calculations on {} cores".format(ncores))
+    projectText(
+        "{} windows being run in {} batches with sizes {}".format(
+            numWindows, len(batches), ", ".join(sizes)
+        )
+    )
+    with mp.Pool(ncores) as pool:
+        out = pool.starmap(calculateWindowSpectra, multiTuples)
+    # format the output into a single list
+    specDataList = []
+    for outBatch in out:
+        specDataList = specDataList + outBatch
+    return specDataList
 
 
 def viewSpectra(
@@ -597,7 +715,9 @@ def viewSpectraStack(
     # calculate num of windows to stack in each set
     stackSize = int(np.floor(1.0 * numWindows / options["numstacks"]))
     if stackSize == 0:
-        projectWarning("Too few windows for number of stacks {}".format(options["numstacks"]))
+        projectWarning(
+            "Too few windows for number of stacks {}".format(options["numstacks"])
+        )
         options["numstacks"] = numWindows
         stackSize = 1
         projectWarning("Number of stacks changed to {}".format(options["numstacks"]))

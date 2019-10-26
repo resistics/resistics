@@ -5,13 +5,15 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.figure import Figure
-from typing import Dict, Union, List
+from typing import Dict, Union, List, Any
 
 from resistics.project.data import ProjectData
 from resistics.statistics.data import StatisticData
+from resistics.statistics.calculator import StatisticCalculator
 from resistics.statistics.utils import getStatElements
 from resistics.window.selector import WindowSelector
 from resistics.spectra.io import SpectrumReader
+from resistics.spectra.data import SpectrumData
 from resistics.project.mask import getMaskData
 from resistics.common.io import fileFormatSampleFreq
 from resistics.common.print import listToString
@@ -139,14 +141,11 @@ def calculateStatistics(projData: ProjectData, **kwargs):
         The spectra directory for which to calculate statistics
     stats : List[str], optional
         The statistics to calculate out. Acceptable values are: "absvalEqn" "coherence", "psd", "poldir", "transFunc", "resPhase", "partialcoh". Configuration file values are used by default.
+    ncores : int, optional
+        The number of cores to run the transfer function calculations on        
     """
     from resistics.statistics.io import StatisticIO
-    from resistics.statistics.calculator import StatisticCalculator
-    from resistics.project.shortcuts import (
-        getDecimationParameters,
-        getWindowParameters,
-        getWindowSelector,
-    )
+    from resistics.project.shortcuts import getDecimationParameters
 
     options = {}
     options["sites"] = projData.getSites()
@@ -154,6 +153,7 @@ def calculateStatistics(projData: ProjectData, **kwargs):
     options["chans"] = []
     options["specdir"] = projData.config.configParams["Spectra"]["specdir"]
     options["stats"] = projData.config.configParams["Statistics"]["stats"]
+    options["ncores"] = projData.config.getStatisticCores()
     options = parseKeywords(options, kwargs)
 
     projectText(
@@ -161,12 +161,8 @@ def calculateStatistics(projData: ProjectData, **kwargs):
             listToString(options["stats"]), listToString(options["sites"])
         )
     )
-
-    # create the statistic calculator and IO object
-    statCalculator = StatisticCalculator()
-    statIO = StatisticIO()
-
     # loop through sites and calculate statistics
+    statIO = StatisticIO()
     for site in options["sites"]:
         siteData = projData.getSiteData(site)
         measurements = siteData.getMeasurements()
@@ -174,79 +170,75 @@ def calculateStatistics(projData: ProjectData, **kwargs):
         for meas in measurements:
             sampleFreq = siteData.getMeasurementSampleFreq(meas)
             if sampleFreq not in options["sampleFreqs"]:
-                # don't need to calculate statistics for this sampling frequency
                 continue
-
             projectText(
                 "Calculating stats for site {}, measurement {}".format(site, meas)
             )
-
-            # decimation parameters
             decParams = getDecimationParameters(sampleFreq, projData.config)
-            decParams.printInfo()
             numLevels = decParams.numLevels
-
-            # create the spectrum reader
             specReader = SpectrumReader(
                 os.path.join(siteData.getMeasurementSpecPath(meas), options["specdir"])
             )
 
-            # loop through decimation levels
-            for iDec in range(0, numLevels):
-                # open the spectra file for the current decimation level
-                check = specReader.openBinaryForReading("spectra", iDec)
+            # calculate statistics for decimation level if spectra file exists
+            for declevel in range(0, numLevels):
+                check = specReader.openBinaryForReading("spectra", declevel)
                 if not check:
-                    # probably because this decimation level not calculated
                     continue
-                specReader.printInfo()
-
-                # get windows
                 refTime = specReader.getReferenceTime()
                 winSize = specReader.getWindowSize()
                 winOlap = specReader.getWindowOverlap()
                 numWindows = specReader.getNumWindows()
-                evalFreq = decParams.getEvalFrequenciesForLevel(iDec)
                 sampleFreqDec = specReader.getSampleFreq()
-                globalOffset = specReader.getGlobalOffset()
-                fArray = specReader.getFrequencyArray()
+                evalFreq = decParams.getEvalFrequenciesForLevel(declevel)
 
-                statHandlers = {}
-                # create the statistic handlers
+                # dictionary for saving statistic data
+                statData = {}
                 for stat in options["stats"]:
                     statElements = getStatElements(stat)
-                    statHandlers[stat] = StatisticData(
+                    statData[stat] = StatisticData(
                         stat, refTime, sampleFreqDec, winSize, winOlap
                     )
-                    statHandlers[stat].setStatParams(numWindows, statElements, evalFreq)
-                    statHandlers[stat].comments = specReader.getComments()
-                    statHandlers[stat].addComment(projData.config.getConfigComment())
-                    statHandlers[stat].addComment(
-                        "Calculating statistic: {}".format(stat)
-                    )
-                    statHandlers[stat].addComment(
+                    statData[stat].setStatParams(numWindows, statElements, evalFreq)
+                    statData[stat].comments = specReader.getComments()
+                    statData[stat].addComment(projData.config.getConfigComment())
+                    statData[stat].addComment("Calculating statistic: {}".format(stat))
+                    statData[stat].addComment(
                         "Statistic components: {}".format(listToString(statElements))
                     )
-
-                # loop over windows and calculate the relevant statistics
-                for iW in range(0, numWindows):
-                    # get data
-                    winData = specReader.readBinaryWindowLocal(iW)
-                    globalIndex = iW + globalOffset
-                    # give the statistic calculator the spectra
-                    statCalculator.setSpectra(fArray, winData, evalFreq)
-                    # get the desired statistics
-                    for sH in statHandlers:
-                        data = statCalculator.getDataForStatName(sH)
-                        statHandlers[sH].addStat(iW, globalIndex, data)
+                # get all the spectra data in batch and process all the windows
+                spectraData, globalIndices = specReader.readBinaryBatchGlobal()
+                if options["ncores"] > 0:
+                    out = multiStatistics(
+                        options["ncores"], spectraData, evalFreq, options["stats"]
+                    )
+                    for iW in range(numWindows):
+                        for stat in options["stats"]:
+                            statData[stat].addStat(iW, globalIndices[iW], out[iW][stat])
+                else:
+                    statCalculator = StatisticCalculator()
+                    for iW in range(numWindows):
+                        winSpecData = spectraData[iW]
+                        winStatData = calculateWindowStatistics(
+                            winSpecData,
+                            evalFreq,
+                            options["stats"],
+                            statCalculator=statCalculator,
+                        )
+                        for stat in options["stats"]:
+                            statData[stat].addStat(
+                                iW, globalIndices[iW], winStatData[stat]
+                            )
+                specReader.closeFile()
 
                 # save statistic
-                for sH in statHandlers:
+                for stat in options["stats"]:
                     statIO.setDatapath(
                         os.path.join(
                             siteData.getMeasurementStatPath(meas), options["specdir"]
                         )
                     )
-                    statIO.write(statHandlers[sH], iDec)
+                    statIO.write(statData[stat], declevel)
 
 
 def calculateRemoteStatistics(projData: ProjectData, remoteSite: str, **kwargs):
@@ -281,6 +273,7 @@ def calculateRemoteStatistics(projData: ProjectData, remoteSite: str, **kwargs):
     options["chans"] = []
     options["specdir"] = projData.config.configParams["Spectra"]["specdir"]
     options["remotestats"] = projData.config.configParams["Statistics"]["remotestats"]
+    options["ncores"] = projData.config.getStatisticCores()
     options = parseKeywords(options, kwargs)
 
     projectText(
@@ -291,11 +284,7 @@ def calculateRemoteStatistics(projData: ProjectData, remoteSite: str, **kwargs):
         )
     )
 
-    # create the statistic calculator and IO object
-    statCalculator = StatisticCalculator()
     statIO = StatisticIO()
-
-    # loop over sites
     for site in options["sites"]:
         siteData = projData.getSiteData(site)
         measurements = siteData.getMeasurements()
@@ -303,105 +292,190 @@ def calculateRemoteStatistics(projData: ProjectData, remoteSite: str, **kwargs):
         for meas in measurements:
             sampleFreq = siteData.getMeasurementSampleFreq(meas)
             if sampleFreq not in options["sampleFreqs"]:
-                # don't need to calculate statistics for this sampling frequency
                 continue
-
             projectText(
                 "Calculating stats for site {}, measurement {} with reference {}".format(
                     site, meas, remoteSite
                 )
             )
-
             # decimation and window parameters
             decParams = getDecimationParameters(sampleFreq, projData.config)
-            decParams.printInfo()
             numLevels = decParams.numLevels
             winParams = getWindowParameters(decParams, projData.config)
-
             # create the window selector and find the shared windows
             winSelector = getWindowSelector(projData, decParams, winParams)
             winSelector.setSites([site, remoteSite])
-            # calc shared windows between site and remote
             winSelector.calcSharedWindows()
             # create the spectrum reader
             specReader = SpectrumReader(
                 os.path.join(siteData.getMeasurementSpecPath(meas), options["specdir"])
             )
 
-            # loop through decimation levels
-            for iDec in range(0, numLevels):
-                # open the spectra file for the current decimation level
-                check = specReader.openBinaryForReading("spectra", iDec)
+            # calculate statistics for decimation level if spectra file exists
+            for declevel in range(0, numLevels):
+                check = specReader.openBinaryForReading("spectra", declevel)
                 if not check:
-                    # probably because this decimation level not calculated
                     continue
-                specReader.printInfo()
-
-                # get a set of the shared windows at this decimation level
-                # these are the global indices
-                sharedWindows = winSelector.getSharedWindowsLevel(iDec)
-
-                # get other information regarding only this spectra file
+                # information regarding only this spectra file
                 refTime = specReader.getReferenceTime()
                 winSize = specReader.getWindowSize()
                 winOlap = specReader.getWindowOverlap()
                 numWindows = specReader.getNumWindows()
-                evalFreq = decParams.getEvalFrequenciesForLevel(iDec)
+                evalFreq = decParams.getEvalFrequenciesForLevel(declevel)
                 sampleFreqDec = specReader.getSampleFreq()
                 globalOffset = specReader.getGlobalOffset()
-                fArray = specReader.getFrequencyArray()
 
-                # now want to find the size of the intersection between the windows in this file and the shared windows
+                # find size of the intersection between the windows in this spectra file and the shared windows
+                sharedWindows = winSelector.getSharedWindowsLevel(declevel)
                 sharedWindowsMeas = sharedWindows.intersection(
                     set(np.arange(globalOffset, globalOffset + numWindows))
                 )
                 sharedWindowsMeas = sorted(list(sharedWindowsMeas))
                 numSharedWindows = len(sharedWindowsMeas)
 
-                statHandlers = {}
+                statData = {}
                 # create the statistic handlers
                 for stat in options["remotestats"]:
                     statElements = getStatElements(stat)
-                    statHandlers[stat] = StatisticData(
+                    statData[stat] = StatisticData(
                         stat, refTime, sampleFreqDec, winSize, winOlap
                     )
-                    # remember, this is with the remote reference, so the number of windows is number of shared windows
-                    statHandlers[stat].setStatParams(
+                    # with remote reference the number of windows is number of shared windows
+                    statData[stat].setStatParams(
                         numSharedWindows, statElements, evalFreq
                     )
-                    statHandlers[stat].comments = specReader.getComments()
-                    statHandlers[stat].addComment(projData.config.getConfigComment())
-                    statHandlers[stat].addComment(
+                    statData[stat].comments = specReader.getComments()
+                    statData[stat].addComment(projData.config.getConfigComment())
+                    statData[stat].addComment(
                         "Calculating remote statistic: {}".format(stat)
                     )
-                    statHandlers[stat].addComment(
+                    statData[stat].addComment(
                         "Statistic components: {}".format(listToString(statElements))
                     )
 
-                # loop over the shared windows between the remote station and local station
-                for iW, globalWindow in enumerate(sharedWindowsMeas):
-                    # get data and set in the statCalculator
-                    winData = specReader.readBinaryWindowGlobal(globalWindow)
-                    statCalculator.setSpectra(fArray, winData, evalFreq)
-                    # for the remote site, use the reader in win selector
+                # collect the spectra data
+                spectraData, _globalIndices = specReader.readBinaryBatchGlobal(
+                    sharedWindowsMeas
+                )
+                remoteData = []
+                for globalWindow in sharedWindowsMeas:
                     _, remoteReader = winSelector.getSpecReaderForWindow(
-                        remoteSite, iDec, globalWindow
+                        remoteSite, declevel, globalWindow
                     )
-                    winDataRR = remoteReader.readBinaryWindowGlobal(globalWindow)
-                    statCalculator.addRemoteSpec(winDataRR)
+                    remoteData.append(remoteReader.readBinaryWindowGlobal(globalWindow))
 
-                    for sH in statHandlers:
-                        data = statCalculator.getDataForStatName(sH)
-                        statHandlers[sH].addStat(iW, globalWindow, data)
+                # calculate
+                if options["ncores"] > 0:
+                    out = multiStatistics(
+                        options["ncores"],
+                        spectraData,
+                        evalFreq,
+                        options["remotestats"],
+                        remoteData=remoteData,
+                    )
+                    for iW, globalWindow in enumerate(sharedWindowsMeas):
+                        for stat in options["remotestats"]:
+                            statData[stat].addStat(iW, globalWindow, out[iW][stat])
+                else:
+                    statCalculator = StatisticCalculator()
+                    for iW, globalWindow in enumerate(sharedWindowsMeas):
+                        winStatData = calculateWindowStatistics(
+                            spectraData[iW],
+                            evalFreq,
+                            options["remotestats"],
+                            remoteSpecData=remoteData[iW],
+                            statCalculator=statCalculator,
+                        )
+                        for stat in options["remotestats"]:
+                            statData[stat].addStat(iW, globalWindow, winStatData[stat])
 
                 # save statistic
-                for sH in statHandlers:
+                for stat in options["remotestats"]:
                     statIO.setDatapath(
                         os.path.join(
                             siteData.getMeasurementStatPath(meas), options["specdir"]
                         )
                     )
-                    statIO.write(statHandlers[sH], iDec)
+                    statIO.write(statData[stat], declevel)
+
+
+def calculateWindowStatistics(
+    winSpecData: SpectrumData,
+    evalFreq: np.ndarray,
+    stats: List[str],
+    remoteSpecData: Union[SpectrumData, None] = None,
+    statCalculator: Union[StatisticCalculator, None] = None,
+) -> Dict[str, Any]:
+    """Calculate the statistics for a single window
+    
+    This method is meant to be used with multiprocessing
+
+    Parameters
+    ----------
+    winSpecData : SpectrumData
+        Spectrum data for a single window
+    evalFreq : np.ndarray
+        Array for evaluation frequencies
+    stats : List[str]
+        List of statistics to calculate
+    remoteSpecData : None, SpectrumData
+        Optionally add remote spectrum data to calculate remote statistics
+    statCalculator : None, StatisticCalculator
+        Provide a statistic calculator to avoid multiple creation of objects
+    """
+    if statCalculator is None:
+        statCalculator = StatisticCalculator()
+    statCalculator.setSpectra(winSpecData.freqArray, winSpecData, evalFreq)
+    if remoteSpecData is not None:
+        statCalculator.addRemoteSpec(remoteSpecData)
+    data = {}
+    for stat in stats:
+        data[stat] = statCalculator.getDataForStatName(stat)
+    return data
+
+
+def multiStatistics(
+    ncores: int,
+    spectraData: List[SpectrumData],
+    evalFreq: np.ndarray,
+    stats: List[str],
+    remoteData: Union[List[SpectrumData], None] = None,
+):
+    """Multiprocessing of statistics
+    
+    Parameters
+    ----------
+    ncores : int
+        The number of cores to use    
+    spectraData : List[SpectrumData]
+        List of spectrum data to process
+    evalFreq : np.ndarray
+        The evaluation frequencies
+    stats : List[str]
+        The statistics to calculate
+    remoteData : None, List[SpectrumData]
+        Remote data in case of remote reference statistics. None is default
+
+    Returns
+    -------
+    List[Dict[str, Any]]
+        The statistic data returned as a list with an entry for every window. The dictionary maps the statistic name to the data for that window.
+    """
+    import multiprocessing as mp
+
+    # prepare the lists
+    if remoteData is None:
+        multiTuples = [(winSpecData, evalFreq, stats) for winSpecData in spectraData]
+    else:
+        multiTuples = [
+            (winSpecData, evalFreq, stats, remoteSpecData)
+            for winSpecData, remoteSpecData in zip(spectraData, remoteData)
+        ]
+    # multiprocess
+    projectText("Running statistic calculations on {} cores".format(ncores))
+    with mp.Pool(ncores) as pool:
+        out = pool.starmap(calculateWindowStatistics, multiTuples)
+    return out
 
 
 def viewStatistic(

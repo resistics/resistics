@@ -89,10 +89,6 @@ In comparison, the transfer function with just the mask.
 
     Impedance tensor estimate with just the masking based on coherence and transfer function statistics
 
-.. note::
-
-    This was the last section of the tutorial. To explore more advanced use cases or user provided examples, please visit the :doc:`Advanced <../advanced>` and :doc:`Cookbook <../cookbook>` sections respectively.
-
 Complete example script
 ~~~~~~~~~~~~~~~~~~~~~~~
 For the purposes of clarity, the complete example script is provided below.

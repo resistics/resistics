@@ -144,6 +144,8 @@ The following tutorial sections detail basic features and requirements of resist
     tutorial/mask-processing.rst
     tutorial/recap-and-deeper-dive.rst
     tutorial/date-time-constraints.rst
+    tutorial/multiprocessing.rst
+    tutorial/next-steps.rst
     
 Resistics is a project based package, which means the first step in learning how to use the package is to set up a new project and place the time data files in the appropriate location. 
 
