@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.stats as stats
 import scipy.interpolate as interp
 from copy import deepcopy
 from typing import List, Dict, Union
