@@ -50,7 +50,7 @@ class SiteData(ResisticsBase):
         Refresh site data
     getSampleFreqs()
         Get list of unique sampling frequencies in site
-    getMeasurements(fs=None) 
+    getMeasurements(sampleFreq=None) 
         Get list of measurements in site, optionally filtered by sampling frequency
     getMeasurement(meas)
         Get the dataReader for the measurement
