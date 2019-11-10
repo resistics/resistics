@@ -1010,9 +1010,6 @@ def viewStatisticDensityplot(
         getPlotRowsAndCols,
         colorbar2dSpectra,
     )
-    from scipy.stats import kde
-    from scipy.interpolate import interpn
-    import matplotlib.colors as mcolors
 
     options = {}
     options["declevel"] = 0
