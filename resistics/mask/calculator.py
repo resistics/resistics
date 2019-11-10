@@ -88,7 +88,7 @@ class MaskCalculator(ResisticsBase):
                         )
                     )
                     statData = statIO.read(stat, iDec)
-                    if not statData:
+                    if statData is None:
                         # to next measurement
                         self.printWarning(
                             "No statistic data found for {}, measurement {} and decimation level {}".format(

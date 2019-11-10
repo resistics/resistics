@@ -2,7 +2,7 @@ import os
 import numpy as np
 import math
 from datetime import datetime, timedelta
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from resistics.common.base import ResisticsBase
 from resistics.common.io import checkAndMakeDir
@@ -55,7 +55,7 @@ class StatisticIO(ResisticsBase):
         """
         self.datapath = datapath
 
-    def read(self, statName: str, inc: int) -> StatisticData:
+    def read(self, statName: str, inc: int) -> Union[None, StatisticData]:
         """Read a statistic file
 
         Parameters
@@ -79,7 +79,7 @@ class StatisticIO(ResisticsBase):
             self.printWarning(
                 "Unable to find info file {} or stat file {}".format(infoFile, statFile)
             )
-            return False
+            return None
         f = open(infoFile, "r")
         lines = f.readlines()
         f.close()
