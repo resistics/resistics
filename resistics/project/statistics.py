@@ -43,8 +43,8 @@ def getStatisticData(
 
     Returns
     -------
-    StatisticData
-        A statistic data object
+    StatisticData, None
+        A StatisticData object or None if the statistic data does not exist
     """
     from resistics.statistics.io import StatisticIO
 
@@ -115,7 +115,7 @@ def getStatisticDataForSampleFreq(
         )
         # make sure some data was found
         chk = statIO.read(stat, declevel)
-        if chk:
+        if chk is not None:
             statData[meas] = statIO.read(stat, declevel)
         else:
             projectWarning(
@@ -519,7 +519,7 @@ def viewStatistic(
     Returns
     -------
     matplotlib.pyplot.figure or None
-        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed. If no data was found, None.
     """
     from resistics.common.plot import savePlot, plotOptionsSpec, getPlotRowsAndCols
 
@@ -550,8 +550,14 @@ def viewStatistic(
         declevel=options["declevel"],
         specdir=options["specdir"],
     )
-    # get the statistics
     statMeas = list(statData.keys())
+    if len(statMeas) == 0:
+        projectWarning(
+            "No statistic files for site {}, sampling frequency {}, statistic {} and decimation level {}".format(
+                site, sampleFreq, stat, options["declevel"]
+            )
+        )
+        return None
     # get the evaluation frequency
     eFreq = statData[statMeas[0]].evalFreq[options["eFreqI"]]
 
@@ -664,7 +670,7 @@ def viewStatisticHistogram(
     Returns
     -------
     matplotlib.pyplot.figure or None
-        A matplotlib figure unless the plot is not shown and is saved, in which case None.
+        A matplotlib figure unless the plot is not shown and is saved, in which case None. If no data was found, None.
     """
     from resistics.common.plot import savePlot, plotOptionsSpec, getPlotRowsAndCols
 
@@ -696,6 +702,13 @@ def viewStatisticHistogram(
         specdir=options["specdir"],
     )
     statMeas = list(statData.keys())
+    if len(statMeas) == 0:
+        projectWarning(
+            "No statistic files for site {}, sampling frequency {}, statistic {} and decimation level {}".format(
+                site, sampleFreq, stat, options["declevel"]
+            )
+        )
+        return None
     # get the statistic components
     statComponents = statData[statMeas[0]].winStats
     # get the evaluation frequency
@@ -826,7 +839,7 @@ def viewStatisticCrossplot(
     Returns
     -------
     matplotlib.pyplot.figure or None
-        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed. If no data was found, None.
     """
     from resistics.common.plot import savePlot, plotOptionsSpec, getPlotRowsAndCols
 
@@ -858,6 +871,13 @@ def viewStatisticCrossplot(
         specdir=options["specdir"],
     )
     statMeas = list(statData.keys())
+    if len(statMeas) == 0:
+        projectWarning(
+            "No statistic files for site {}, sampling frequency {}, statistic {} and decimation level {}".format(
+                site, sampleFreq, stat, options["declevel"]
+            )
+        )
+        return None
     # get the evaluation frequency
     eFreq = statData[statMeas[0]].evalFreq[options["eFreqI"]]
 
@@ -876,7 +896,7 @@ def viewStatisticCrossplot(
     fig = plt.figure(figsize=options["plotoptions"]["figsize"])
     # suptitle
     st = fig.suptitle(
-        "{} crossplots for {}, sampling frequency {} Hz, decimation level {} and evaluation frequency {} Hz".format(
+        "{} crossplots for {}, sampling frequency {} Hz,\ndecimation level {} and evaluation frequency {} Hz".format(
             stat, site, sampleFreq, options["declevel"], eFreq
         ),
         fontsize=plotfonts["suptitle"],
@@ -982,7 +1002,7 @@ def viewStatisticDensityplot(
     Returns
     -------
     matplotlib.pyplot.figure or None
-        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed. If no data was found, None.
     """
     from resistics.common.plot import (
         savePlot,
@@ -1022,6 +1042,13 @@ def viewStatisticDensityplot(
         specdir=options["specdir"],
     )
     statMeas = list(statData.keys())
+    if len(statMeas) == 0:
+        projectWarning(
+            "No statistic files for site {}, sampling frequency {}, statistic {} and decimation level {}".format(
+                site, sampleFreq, stat, options["declevel"]
+            )
+        )
+        return None
     # get the evaluation frequency
     eFreq = statData[statMeas[0]].evalFreq[options["eFreqI"]]
 
@@ -1040,7 +1067,7 @@ def viewStatisticDensityplot(
     fig = plt.figure(figsize=options["plotoptions"]["figsize"])
     # suptitle
     st = fig.suptitle(
-        "{} density plots for {}, sampling frequency {} Hz, decimation level {} and evaluation frequency {} Hz".format(
+        "{} density plots for {}, sampling frequency {} Hz,\ndecimation level {} and evaluation frequency {} Hz".format(
             stat, site, sampleFreq, options["declevel"], eFreq
         ),
         fontsize=plotfonts["suptitle"],

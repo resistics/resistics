@@ -17,7 +17,7 @@ from resistics.project.utils import projectText, projectWarning, projectError
 
 def getSpecReader(
     projData: ProjectData, site: str, meas: str, **kwargs
-) -> SpectrumReader:
+) -> Union[SpectrumReader, None]:
     """Get the spectrum reader for a measurement
 
     Parameters
@@ -36,7 +36,7 @@ def getSpecReader(
     Returns
     -------
     SpectrumReader
-        The spectrum reader object
+        The SpectrumReader object or None if data does not exist
     """
     options = {}
     options["declevel"]: int = 0
@@ -54,14 +54,13 @@ def getSpecReader(
     )
     specReader.printInfo()
 
-    # open the spectra file for the current decimation level
+    # open the spectra file for the current decimation level if it exists
     check = specReader.openBinaryForReading("spectra", options["declevel"])
     if not check:
-        # probably because this decimation level not calculated
-        projectError(
-            "Spectra file does not exist at level {}".format(options["declevel"]),
-            quitRun=True,
+        projectWarning(
+            "Spectra file does not exist at level {}".format(options["declevel"])
         )
+        return None
     return specReader
 
 
@@ -395,7 +394,7 @@ def viewSpectra(
     Returns
     -------
     matplotlib.pyplot.figure or None
-        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed. If no data was found, then None is returned.
     """
     from resistics.common.plot import savePlot, plotOptionsSpec, colorbarMultiline
 
@@ -411,6 +410,8 @@ def viewSpectra(
 
     projectText("Plotting spectra for measurement {} and site {}".format(meas, site))
     specReader = getSpecReader(projData, site, meas, **options)
+    if specReader is None:
+        return None
 
     # channels
     dataChans = specReader.getChannels()
@@ -528,7 +529,7 @@ def viewSpectraSection(
     Returns
     -------
     matplotlib.pyplot.figure or None
-        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed. If no data was found, then None is returned.
     """
     from matplotlib.colors import LogNorm
 
@@ -547,6 +548,8 @@ def viewSpectraSection(
         "Plotting spectra section for measurement {} and site {}".format(meas, site)
     )
     specReader = getSpecReader(projData, site, meas, **options)
+    if specReader is None:
+        return None
 
     # channels
     dataChans = specReader.getChannels()
@@ -681,7 +684,7 @@ def viewSpectraStack(
     Returns
     -------
     matplotlib.pyplot.figure or None
-        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed.
+        A matplotlib figure unless the plot is not shown and is saved, in which case None and the figure is closed. If no data was found, then None is returned.
     """
     from resistics.common.plot import savePlot, plotOptionsSpec, colorbarMultiline
 
@@ -700,6 +703,8 @@ def viewSpectraStack(
         "Plotting spectra stack for measurement {} and site {}".format(meas, site)
     )
     specReader = getSpecReader(projData, site, meas, **options)
+    if specReader is None:
+        return None
 
     # channels
     dataChans = specReader.getChannels()
