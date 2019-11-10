@@ -14,7 +14,7 @@ Next steps
 
 This page marks the end of the tutorial. However, there are more sections to explore, including:
 
-- :doc:`Features <../feautres>` to discover about the features of resistics, including configuration parameters and more details about all of the statistics available in resistics.
+- :doc:`Features <../features>` to discover about the features of resistics, including configuration parameters and more details about all of the statistics available in resistics.
 - :doc:`Formats <../formats>` to find out more about the different formats resistics supports and how users can ensure that data is being read in correctly.
 - :doc:`Advanced <../advanced>` to learn more about pre-processing of time series data, remote reference statistics and processing and intersite processing.
 - :doc:`Cookbook <../cookbook>` for examples of lower level resistics API usage.

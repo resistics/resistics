@@ -1,3 +1,16 @@
+Resistics 0.0.6.rc1
+^^^^^^^^^^^^^^^^^^^^
+*Nov 11, 2019*
+
+- **Added:** Multiprocessing added for spectra calculations, statistic calculations and transfer function estimation (predominantly the power spectra calculations).
+- **Added:** Multiprocessing documentation.
+- **Added:** Spectra batches in WindowSelector allowing batches of overlapping spectra data to be pre-read for processing. This speeds up transfer function estimation by reducing disk reads.
+- **Changed:** Speed up transfer function estimation by using WindowSelector spectra batches.
+- **Changed:** Statistics and spectra readers return None when no file is found rather than False.
+- **Deprecated:** None.
+- **Removed:** None.
+- **Fixed:** None. 
+
 Resistics 0.0.6.dev3
 ^^^^^^^^^^^^^^^^^^^^
 *Oct 13, 2019*

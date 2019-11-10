@@ -48,7 +48,9 @@ shutil.copy2(
     docPath,
 )
 # copy config
-shutil.copy2("tutorialConfig.ini", docPath)
+shutil.copy2("tutorialconfig.ini", docPath)
+shutil.copy2("multiconfig.ini", docPath)
+shutil.copy2("multiconfigSeparate.ini", docPath)
 shutil.copy2("usingWindowSelector.txt", docPath)
 # copy the project file
 shutil.copy2(projectPath / "mtProj.prj", docPath)
