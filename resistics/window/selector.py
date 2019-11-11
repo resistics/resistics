@@ -356,11 +356,7 @@ class WindowSelector(ResisticsBase):
             zipped = list(zip(tmpStarts, tmpFiles, tmpReaders, tmpStops))
             zipped.sort()
             winStarts[site], files[site], readers[site], winStops[site] = zip(*zipped)
-        
-        print(files)
-        print(winStarts)
-        print(winStops)
-        # exit()
+
         # create batches
         mainSite: str = self.sites[0]
         otherSites: List[str] = self.sites[1:]
@@ -373,8 +369,13 @@ class WindowSelector(ResisticsBase):
                 batch["globalrange"] = [lastBatchWin + 1, winStops[mainSite][mainIdx]]
                 batch[mainSite] = readers[mainSite][mainIdx]
                 for site in otherSites:
-                    for otherIdx, (start, stop) in enumerate(zip(winStarts[site], winStops[site])):
-                        if start >= batch["globalrange"][1] or stop <= batch["globalrange"][0]:
+                    for otherIdx, (start, stop) in enumerate(
+                        zip(winStarts[site], winStops[site])
+                    ):
+                        if (
+                            start >= batch["globalrange"][1]
+                            or stop <= batch["globalrange"][0]
+                        ):
                             continue
                         # else there is an overlap and it is the first overlap we are interested in
                         # amend the batch range as required
@@ -392,17 +393,19 @@ class WindowSelector(ResisticsBase):
                 if lastBatchWin >= winStops[mainSite][mainIdx]:
                     break
                 # otherwise, continue in the while loop batching up
-        
+
         # print information
         self.printText("Spectra batches")
         for batchI, batch in enumerate(batches):
-            self.printText("-----BATCH {}------".format(batchI))
-            self.printText(batch["globalrange"])
+            self.printText(
+                "SPECTRA BATCH {}, Window Range {}".format(batchI, batch["globalrange"])
+            )
             for site in self.sites:
-                self.printText("Site {}".format(site))
-                self.printText(batch[site].datapath)
-                self.printText(batch[site].getGlobalRange())
-        
+                self.printText(
+                    "SPECTRA BATCH {}, Site {}, Path {}, Window Range {}".format(
+                        batchI, site, batch[site].datapath, batch[site].getGlobalRange()
+                    )
+                )
         return batches
 
     def getDataSize(self, declevel: int) -> int:
