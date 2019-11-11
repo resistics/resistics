@@ -1,4 +1,4 @@
-Resistics 0.0.6.rc1
+Resistics 0.0.6rc1
 ^^^^^^^^^^^^^^^^^^^^
 *Nov 11, 2019*
 
