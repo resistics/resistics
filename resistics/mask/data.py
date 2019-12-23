@@ -117,8 +117,8 @@ class MaskData(ResisticsBase):
         insideOut : List[str], optional with default as range specified is range to include
             The constraints for which the range specified in the constraint is the range to exclude rather than include
         """
-        for ilevel in range(0, self.numLevels):
-            self.addConstraintLevel(stat, constraint, ilevel, insideOut)
+        for declevel in range(0, self.numLevels):
+            self.addConstraintLevel(stat, constraint, declevel, insideOut)
 
     def addConstraintLevel(
         self,
@@ -216,8 +216,8 @@ class MaskData(ResisticsBase):
 
     def prepareDicts(self) -> None:
         """Prepare dictionaries for storing masking information"""
-        for ilevel in range(0, self.numLevels):
-            for eFreq in self.evalFreq[ilevel]:
+        for declevel in range(0, self.numLevels):
+            for eFreq in self.evalFreq[declevel]:
                 # empty set for maskWindows to start off with
                 # i.e. remove none
                 self.maskWindows[eFreq] = set()
@@ -229,8 +229,8 @@ class MaskData(ResisticsBase):
 
     def resetMaskWindows(self) -> None:
         """Reset/Clear the masked windows"""
-        for ilevel in range(0, self.numLevels):
-            for eFreq in self.evalFreq[ilevel]:
+        for declevel in range(0, self.numLevels):
+            for eFreq in self.evalFreq[declevel]:
                 # empty set for maskWindows to start off with
                 # i.e. remove none
                 self.maskWindows[eFreq] = set()

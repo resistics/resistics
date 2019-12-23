@@ -46,6 +46,8 @@ class StatisticData(ResisticsBase):
         Values calculated for the statistic
     numStatsPerWindow : int
         The number of statistics per window (length of winStats)
+    stats : np.ndarray
+        The statistic data of size number of windows * number evaluation frequencies * number of window stats        
     evalFreq : List, np.ndarray
         The evaluation frequencies for the statistic data
     freq2index : Dict

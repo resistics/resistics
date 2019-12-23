@@ -92,9 +92,8 @@ class StatisticIO(ResisticsBase):
         evalFreq = np.fromstring(lines[6].strip(), dtype=float, sep=",")
         dtype = lines[7].strip()
         # now deal with the global indices
-        indexInformation = lines[
-            9:
-        ]  # this is the information about local to global map
+        # this is the information about local to global map
+        indexInformation = lines[9:]
         globalIndicesAll = np.empty(shape=(numWindows), dtype=int)
         localIndices = []
         globalIndices = []
