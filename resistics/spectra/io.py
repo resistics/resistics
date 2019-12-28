@@ -2,7 +2,7 @@ import os
 from copy import deepcopy
 from datetime import datetime, timedelta
 import numpy as np
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Tuple
 
 from resistics.common.base import ResisticsBase
 from resistics.common.print import breakComment, arrayToStringSci
@@ -367,7 +367,7 @@ class SpectrumReader(ResisticsBase):
 
     def readBinaryBatchGlobal(
         self, globalIndices: Union[List[int], None] = None
-    ) -> Union[List[SpectrumData], np.ndarray]:
+    ) -> Tuple[List[SpectrumData], np.ndarray]:
         """Batch read binary windows
 
         Batch reading binary windows allows the data for calculation to be split over multi processes
@@ -379,12 +379,14 @@ class SpectrumReader(ResisticsBase):
 
         Returns
         -------
-        List[SpectrumData], np.ndarray
-            An array or list of SpectrumData objects
+        List[SpectrumData]
+            A list of SpectrumData objects
+        globalIndices: np.ndarray
+            An array of the global indices for the SpectrumData actually returned
         """
         if globalIndices is not None and len(globalIndices) == 0:
-            # zero windows request, return empty list
-            return []
+            # zero windows request, return empty list and global indices array
+            return [], np.array([])
 
         self.file = open(self.filepath, "rb")
         batchData = np.fromfile(self.file, dtype=self.dataType)
