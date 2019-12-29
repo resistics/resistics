@@ -90,6 +90,10 @@ def getWindowParameters(
     if config is None:
         return winParams
 
+    # set window factor and overlap fraction
+    winParams.windowFactor = config.configParams["Window"]["windowfactor"]
+    winParams.overlapFraction = config.configParams["Window"]["overlapfraction"]
+
     if config.flags["customwindows"]:
         winParams.setWindowParameters(
             config.configParams["Window"]["windowsizes"],
@@ -129,13 +133,9 @@ def getWindowSelector(
     """
     if specdir is None:
         specdir = projData.config.configParams["Spectra"]["specdir"]
-        
+
     selector = WindowSelector(
-        projData,
-        decParams.sampleFreq,
-        decParams,
-        winParams,
-        specdir=specdir,
+        projData, decParams.sampleFreq, decParams, winParams, specdir=specdir
     )
     return selector
 
