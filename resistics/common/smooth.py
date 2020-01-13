@@ -5,7 +5,7 @@ from typing import List
 from resistics.common.math import intdiv
 
 
-def smooth1d(x: np.ndarray, winLen: int = 11, window: str = "hanning"):
+def smooth1d(x: np.ndarray, winLen: int = 11, window: str = "hann"):
     """Smooth in 1 dimension
 
     Parameters
@@ -15,7 +15,7 @@ def smooth1d(x: np.ndarray, winLen: int = 11, window: str = "hanning"):
     winLen : int
         The number of samples to smooth across
     window : str
-        The window function
+        The window function. Default is "hann".
 	
     Notes
     ----- 
@@ -47,7 +47,7 @@ def smooth1d(x: np.ndarray, winLen: int = 11, window: str = "hanning"):
     return y[off : off + x.size]
 
 
-def smooth2d(x: np.ndarray, winLen: List[int] = [5, 5], window: str = "hanning"):
+def smooth2d(x: np.ndarray, winLen: List[int] = [5, 5], window: str = "hann"):
     """Smooth in 2-D
 
     This smooths in a window and across windows too
@@ -59,10 +59,13 @@ def smooth2d(x: np.ndarray, winLen: List[int] = [5, 5], window: str = "hanning")
     winLen : List[int]
         A two element list with winLen[0] being smoothing across windows and winLen[1] the smoothing within a window
     window : str
-        The window function to use
+        The window function to use. Default is hann.
     """
 
-    kernel = np.outer(signal.hanning(winLen[0], 8), signal.gaussian(winLen[1], 8))
+    w1 = eval("signal." + window + "(winLen[0])")
+    w2 = eval("signal." + window + "(winLen[1])")
+    # calculate the 2d smoothing kernel
+    kernel = np.outer(w1, w2)
     # pad to help the boundaries
     padded = np.pad(x, ((winLen[0], winLen[0]), (winLen[1], winLen[1])), mode="edge")
     # 2d smoothing

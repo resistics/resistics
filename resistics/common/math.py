@@ -27,7 +27,7 @@ def intdiv(nom: Union[int, float], div: Union[int, float]) -> int:
     else:
         errorPrint(
             "utilsMath::intdiv",
-            "intdiv assumes exits upon having a remainder to make sure errors are not propagated through the code",
+            "intdiv assumes exact division and exits upon having a remainder to make sure errors are not propagated through the code",
             quitRun=True,
         )
         return 0

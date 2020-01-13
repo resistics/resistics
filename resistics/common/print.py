@@ -17,7 +17,7 @@ def generalPrint(pre: str, info: str) -> None:
 
 
 def breakPrint() -> None:
-    """Prints a break in the termainal to make things easier to read"""
+    """Prints a break in the terminal to make things easier to read"""
     print("---------------------------------------------------")
     print("")
     print("---------------------------------------------------")
@@ -165,7 +165,7 @@ def arrayToStringInt(data: np.ndarray) -> str:
     return outputStr.rstrip(",")
 
 
-def listToString(lst: List, floatlim: bool = True) -> str:
+def listToString(lst: List) -> str:
     """Convert a list to a comma separated string
 
     Parameters
@@ -188,7 +188,10 @@ def listToString(lst: List, floatlim: bool = True) -> str:
 def list2rangesFormatter(
     start: Union[int, str], end: Union[int, str], step: Union[int, str]
 ) -> str:
-    """A string for showing a range
+    """A string for showing a range as shown below
+
+    1-5:1 represents 1,2,3,4,5
+    2-10:2 represents 2,4,6,8,10
 
     Parameters
     ----------
@@ -209,6 +212,9 @@ def list2rangesFormatter(
 
 def list2ranges(data: Union[List, Set]):
     """Convert a list of numbers to a list of ranges
+
+    For example, the list [1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 26, 35, 40, 45]
+    becomes "1-4:1,6-12:2,15-24:3,26,35-45:5"
 
     Parameters
     ----------

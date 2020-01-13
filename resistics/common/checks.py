@@ -17,6 +17,11 @@ def parseKeywords(
         Dictionary of optional keywords
     printkw : bool
         Print out the keywords
+
+    Returns
+    -------
+    Dict[str, Any]
+        The dictionary with the appropriate defaults overwritten by keyword arguments
     """
     for w in default:
         if w in keywords:
