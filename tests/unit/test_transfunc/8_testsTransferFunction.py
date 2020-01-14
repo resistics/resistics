@@ -4,12 +4,16 @@ import numpy as np
 import math
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
+
 # import readers
 from magpy.ioHandlers.transferFunctionReader import TransferFunctionReader
+
 # import writers
 from magpy.ioHandlers.transferFunctionWriter import TransferFunctionWriter
+
 # import dataobjects
 from magpy.dataObjects.transferFunctionData import TransferFunctionData
+
 # import utils
 from magpy.utilities.utilsProcess import *
 from magpy.utilities.utilsIO import *
@@ -23,8 +27,7 @@ internal2edi = os.path.join("testData", "transfuncfiles", "internal2edi.edi")
 
 def readEdi():
     breakPrint()
-    generalPrint("testsTransferFunction",
-                 "Running test function: readEdi")       
+    generalPrint("testsTransferFunction", "Running test function: readEdi")
     reader = TransferFunctionReader(ediPath)
     tfData = reader.tfData
     # tfData.view(xlim=[1e-3, 1e4], phase_ylim=[-30, 120], res_ylim=[1e-2, 1e3])
@@ -35,8 +38,7 @@ def readEdi():
 
 def writeEdi():
     breakPrint()
-    generalPrint("testsTransferFunction",
-                 "Running test function: writeEdi")       
+    generalPrint("testsTransferFunction", "Running test function: writeEdi")
     reader = TransferFunctionReader(ediPath)
     tfData = reader.tfData
     writer = TransferFunctionWriter(edi2edi, tfData)
@@ -47,8 +49,7 @@ def writeEdi():
 
 def ediToInternal():
     breakPrint()
-    generalPrint("testsTransferFunction",
-                 "Running test function: ediToInternal")       
+    generalPrint("testsTransferFunction", "Running test function: ediToInternal")
     reader = TransferFunctionReader(ediPath)
     tfData = reader.tfData
     writer = TransferFunctionWriter(edi2internal, tfData)
@@ -59,8 +60,7 @@ def ediToInternal():
 
 def internalToEdi():
     breakPrint()
-    generalPrint("testsTransferFunction",
-                 "Running test function: internalToEdi")       
+    generalPrint("testsTransferFunction", "Running test function: internalToEdi")
     reader = TransferFunctionReader(internalPath)
     tfData = reader.tfData
     writer = TransferFunctionWriter(internal2edi, tfData)
