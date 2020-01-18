@@ -11,6 +11,7 @@ from matplotlib.dates import (
     AutoDateFormatter,
 )
 from matplotlib.figure import Figure
+from matplotlib.collections import PathCollection
 from typing import List, Dict, Tuple, Union, Any
 
 # import from package
@@ -885,13 +886,15 @@ class StatisticData(ResisticsBase):
 
         return fig
 
-    def addColourbar(self, plot: plt.plot, cax, title: str, plotfonts: Dict) -> None:
+    def addColourbar(
+        self, plot: PathCollection, cax, title: str, plotfonts: Dict
+    ) -> None:
         """Add a colourbar to a plot
 
         Parameters
         ----------
-        plot : plt.plot
-            Evaluation frequency index
+        plot : matplotlib.collections.PathCollection
+            A plot e.g. a scatter graph
         cax : 
             Colourbar axis
         title : str
@@ -902,13 +905,13 @@ class StatisticData(ResisticsBase):
         plt.colorbar(plot, cax=cax)
         cax.set_title(title, y=1.02, fontsize=plotfonts["title"])
 
-    def addColourbarDates(self, plot: plt.plot, cax, title: str, plotfonts: Dict):
+    def addColourbarDates(self, plot: PathCollection, cax, title: str, plotfonts: Dict):
         """Make the colourbar show dates for identifying window times where there is not date axis
 
         Parameters
         ----------
-        plot : plt.plot
-            Evaluation frequency index
+        plot : matplotlib.collections.PathCollection
+            A plot e.g. a scatter graph
         cax : 
             Colourbar axis
         title : str

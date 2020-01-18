@@ -1,11 +1,15 @@
-.topic {
-    /*background-color: #e7f2fa;*/
+/* .topic {
     background-color: #ebebeb;   
-}
+} */
 
-.topic-title {
-    /*background-color: #6ab0de;*/
+/* .topic-title {
     background-color: grey;
     color: white;
     padding: 5px 10px 5px 10px;
+} */
+
+.classifier:before {
+    font-style: normal;
+    margin: 0.2em;
+    content: ":";
 }

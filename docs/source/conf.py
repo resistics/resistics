@@ -206,8 +206,8 @@ todo_include_todos = True
 # through a change in sphinx basic.css except rtd_theme does not use basic.css.
 # In an ideal world, this would get fixed in this PR:
 # https://github.com/readthedocs/sphinx_rtd_theme/pull/747/files
-html4_writer = True
+# html4_writer = True
 
 
 def setup(app):
-    app.add_stylesheet("basic.css")
+    app.add_stylesheet("css/custom.css")
