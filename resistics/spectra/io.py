@@ -591,7 +591,7 @@ class SpectrumReader(ResisticsBase):
             if self.file is not None:
                 self.file.close()
         else:
-            print("No file open")
+            self.printText("No file open")
 
     def printList(self) -> List[str]:
         """Class information as a list of strings
@@ -899,7 +899,7 @@ class SpectrumWriter(ResisticsBase):
             self.file.close()
             self.filepath = ""
         else:
-            print("No file open")
+            self.printText("No file open")
 
     def printList(self) -> List[str]:
         """Class information as a list of strings
