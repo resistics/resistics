@@ -17,10 +17,10 @@ By contrast, the statistic :doc:`remote reference coherence <coherence>` is actu
 
     The components of the remote reference coherence equation statistic are:
 
-    - |Ex| |Hx| RR - |Hy| |Hx| RR
-    - |Ex| |Hy| RR - |Hy| |Hy| RR
-    - |Ey| |Hx| RR - |Hx| |Hx| RR
-    - |Ey| |Hy| RR - |Hx| |Hy| RR
+    - |Ex| |Hx| R - |Hy| |Hx| R
+    - |Ex| |Hy| R - |Hy| |Hy| R
+    - |Ey| |Hx| R - |Hx| |Hx| R
+    - |Ey| |Hy| R - |Hx| |Hy| R
 
 The example below shows the remote reference coherence equation statistic plotted with time. There is a significant amount of scatter and time windows with low coherence values. Ideally, these need removing.
 
