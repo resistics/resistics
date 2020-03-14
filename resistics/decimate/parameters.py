@@ -76,10 +76,10 @@ class DecimationParameters(ResisticsBase):
         self.divFactor: int = 2
         self.numLevels: int = config["Decimation"]["numlevels"]
         self.freqPerLevel: int = config["Frequencies"]["perlevel"]
-        self.decFactors: np.ndarray
-        self.decFrequencies: np.ndarray
-        self.evalFreq: np.ndarray
-        self.evalFreqPerLevel: np.ndarray
+        self.decFactors: Union[np.ndarray, None] = None
+        self.decFrequencies: Union[np.ndarray, None] = None
+        self.evalFreq: Union[np.ndarray, None] = None
+        self.evalFreqPerLevel: Union[np.ndarray, None] = None
 
         # calculate some initial values decimation parameters based on defaults
         self.calcFrequencyParams(self.numLevels, self.freqPerLevel)
