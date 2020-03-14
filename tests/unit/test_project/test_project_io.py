@@ -14,7 +14,7 @@ def test_loadProject() -> None:
     from resistics.project.io import loadProject
 
     proj = loadProject(path_integrated_singlesite)
-    assert proj.refTime.strftime("%Y-%m-%d %H:%M:%S.%f") == "2016-02-19 12:00:00.000000"
+    assert proj.refTime.strftime("%Y-%m-%d %H:%M:%S.%f") == "2016-02-18 12:00:00.000000"
     assert (
         proj.projStart.strftime("%Y-%m-%d %H:%M:%S.%f") == "2016-02-19 11:22:57.000000"
     )
