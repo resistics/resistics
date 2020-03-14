@@ -120,7 +120,7 @@ class LocalRegressor(ResisticsBase):
         self.method: str = "cm"
         # smoothing options
         self.win: str = "hanning"
-        self.winSmooth: int = -1
+        self.winSmooth: int = 9
         # output filename
         self.postpend: str = ""
         # evaluation frequency data
@@ -216,7 +216,6 @@ class LocalRegressor(ResisticsBase):
             global2local: Dict = {}
             # process spectral batches
             spectraBatches = self.winSelector.getSpecReaderBatches(declevel)
-            spectraBatches.reverse()
             numBatches = len(spectraBatches)
             for batchIdx, batch in enumerate(spectraBatches):
                 # find the unmasked batched windows and add the data
@@ -297,6 +296,7 @@ class LocalRegressor(ResisticsBase):
                 )
                 out, var = self.robustProcess(numSolveWindows, obs, reg)
                 # out, var = self.olsProcess(numSolveWindows, obs, reg)
+                # out, var = self.stackedProcess(evalFreqData[eIdx, localWinIndices])
                 self.impedances.append(out)
                 self.variances.append(var)
 
@@ -500,6 +500,9 @@ class LocalRegressor(ResisticsBase):
             )
             # out, resids, scale, weights = mmestimateModel(
             #     predictors2, observation2, intercept=self.intercept)
+            
+            if self.intercept:
+                out = out[1:]
 
             # now calculate out the varainces - have the solution out, have the weights
             # recalculate out the residuals with the final solution
@@ -516,12 +519,14 @@ class LocalRegressor(ResisticsBase):
             varPred = np.linalg.inv(varPred)  # this is a pxp matrix
             varOut = 1.91472 * residsVar * varPred
             varOut = np.diag(varOut).real  # this should be a real number
-            if self.intercept:
-                output[i] = out[1:]
-                varOutput[i] = varOut[1:]
-            else:
-                output[i] = out
-                varOutput[i] = varOut
+            # if self.intercept:
+            #     output[i] = out[1:]
+            #     varOutput[i] = varOut[1:]
+            # else:
+            #     output[i] = out
+            #     varOutput[i] = varOut
+            output[i] = out
+            varOutput[i] = varOut
 
         return output, varOutput
 
@@ -558,11 +563,9 @@ class LocalRegressor(ResisticsBase):
             # save the output
             out, resids, squareResid, rank, s = olsModel(
                 predictors, observation, intercept=self.intercept
-            )
-            # if self.intercept:
-            # 	output[i] = out[1:]
-            # else:
-            # 	output[i] = out
+            )            
+            if self.intercept:
+                out = out[1:]
 
             # now calculate out the varainces - have the solution out, have the weights
             # recalculate out the residuals with the final solution
@@ -579,12 +582,14 @@ class LocalRegressor(ResisticsBase):
             varPred = np.linalg.inv(varPred)  # this is a pxp matrix
             varOut = 1.91472 * residsVar * varPred
             varOut = np.diag(varOut).real  # this should be a real number
-            if self.intercept:
-                output[i] = out[1:]
-                varOutput[i] = varOut[1:]
-            else:
-                output[i] = out
-                varOutput[i] = varOut
+            # if self.intercept:
+            #     output[i] = out[1:]
+            #     varOutput[i] = varOut[1:]
+            # else:
+            #     output[i] = out
+            #     varOutput[i] = varOut
+            output[i] = out
+            varOutput[i] = varOut            
 
         return output, varOutput
 
@@ -635,7 +640,7 @@ class LocalRegressor(ResisticsBase):
                 output[i] = out[1:]
             else:
                 output[i] = out
-        return output
+        return output, output*0.1
 
     def writeTF(
         self,
