@@ -104,23 +104,26 @@ class MaskCalculator(ResisticsBase):
                         # now loop over evaluation frequencies
                         for eIdx, eFreq in enumerate(evalFreqs[iDec]):
                             constraintCheck = True
+                            constraintCheckInsideOut = False
+                            insideOutFlag = False
                             freqVal = winVals[eIdx]
                             for component in self.maskData.constraints[eFreq][stat]:
                                 index = winStats.index(component)
                                 componentVal = freqVal[index]
-                                test = (
-                                    componentVal
-                                    > self.maskData.constraints[eFreq][stat][component][
-                                        0
-                                    ]
-                                    and componentVal
-                                    < self.maskData.constraints[eFreq][stat][component][
-                                        1
-                                    ]
-                                )
+                                lowerLimit = self.maskData.constraints[eFreq][stat][component][0]
+                                upperLimit = self.maskData.constraints[eFreq][stat][component][1]
+                                test = (componentVal > lowerLimit) and (componentVal < upperLimit) 
+
                                 if self.maskData.insideOut[eFreq][stat][component]:
                                     test = not test
-                                constraintCheck = constraintCheck and test
+                                    constraintCheckInsideOut = constraintCheckInsideOut or test
+                                    insideOutFlag = True
+                                else:
+                                    constraintCheck = constraintCheck and test
+        
+                            if insideOutFlag:
+                                constraintCheck = constraintCheck and constraintCheckInsideOut
+                            
                             if not constraintCheck:
                                 # if the stat fails, add it - this is a list of windows to exclude
                                 self.maskData.maskWindows[eFreq].add(
