@@ -74,7 +74,7 @@ class StatisticData(ResisticsBase):
         Initialise maskData
     getStats(includewindows, maskwindows)
         Get the statistics array and choose to either include some windows or mask some windows
-    getMaskedWindows(maskwindows)
+    getUnmaskedIndices(maskwindows)
         Return the local indices to use given a set of global indices to exclude
     getStatLocal(localIndex)
         Get statistic values for a local window index
@@ -82,6 +82,8 @@ class StatisticData(ResisticsBase):
         Get statistic values for a global window index
     getGlobalIndex(localIndex)
         Get the global window index for a local window index
+    getLocalIndicesF(globalIndices)
+        Get local indices for an list or array of global indices
     getGlobalDates()
         Get the global index dates for all the windows
     setStatParams(numWindows, winStats, evalFreq)
@@ -188,35 +190,35 @@ class StatisticData(ResisticsBase):
 
     def getStats(
         self,
-        includewindows: Union[np.ndarray, List] = [],
-        maskwindows: Union[np.ndarray, List] = [],
+        includewindows: Union[np.ndarray, List, None] = None,
+        maskwindows: Union[np.ndarray, List, None] = None,
     ) -> np.ndarray:
         """Get statistics when either selecting a set of indices or wanting to mask a set of indices
 
         Parameters
         ----------
         includewindows : List, np.ndarray, optional
-            Windows to get
+            Windows to get. This should be a list of numpy array of global indices.
         maskwindows : List, np.ndarray, optional
-            Windows to exclude
+            Windows to exclude. This is expected to be a list, set or numpy array of global indices.
         
         Returns
         -------
         np.ndarray
             Statistics limited by the window selection options
         """
-        if len(includewindows) > 0:
+        if includewindows is not None:
+            includewindows = self.getLocalIndices(includewindows)
             return self.stats[includewindows, :]
-        elif len(maskwindows) > 0:
-            includewindows = self.getMaskedIndices(maskwindows)
-            # if this is false, then want to return all the statistics
-            if includewindows:
+        elif maskwindows is not None and len(maskwindows) > 0:
+            includewindows = self.getUnmaskedIndices(maskwindows)
+            if includewindows is not None:
                 return self.stats[includewindows, :]
         return self.stats
 
-    def getMaskedIndices(
+    def getUnmaskedIndices(
         self, maskWindows: Union[List, np.ndarray]
-    ) -> Union[List, bool]:
+    ) -> Union[List, None]:
         """Given a list of global windows to mask, returns the set of indices to include in the plot
 
         Parameters
@@ -226,18 +228,14 @@ class StatisticData(ResisticsBase):
         
         Returns
         -------
-        List
-            List of indices to include
+        List, None
+            List of indices to include. None if all windows should be included
         """
-        includeWindows = set(self.globalIndices) - set(maskWindows)
-        if len(includeWindows) == self.numWindows:
+        includewindows = set(self.globalIndices) - set(maskWindows)
+        if len(includewindows) == self.numWindows:
             # nothing to mask
-            return False
-
-        indices = []
-        for win in includeWindows:
-            indices.append(self.global2localMap[win])
-        return indices
+            return None
+        return self.getLocalIndices(includewindows)
 
     def getStatLocal(self, localIndex: int) -> np.ndarray:
         """Get statistics for a local window index
@@ -290,6 +288,26 @@ class StatisticData(ResisticsBase):
             Global index for local index
         """
         return self.globalIndices[localIndex]
+
+    def getLocalIndices(
+        self, globalIndices: Tuple[List[int], np.ndarray]
+    ) -> List[int]:
+        """Converts a list or array of global indices to local indices
+        
+        Parameters
+        ----------
+        globalIndices : List, np.ndarray
+            Global indices to convert into local indices
+        
+        Returns
+        -------
+        List
+            List of local indices
+        """
+        indices = []
+        for win in globalIndices:
+            indices.append(self.global2localMap[win])
+        return indices
 
     def getGlobalDates(self):
         """Get the global start dates and end dates for each window
@@ -421,7 +439,7 @@ class StatisticData(ResisticsBase):
         """
         # get windows to plot and global dates
         maskWindows = kwargs["maskwindows"] if "maskwindows" in kwargs else []
-        plotIndices = self.getMaskedIndices(maskWindows)
+        plotIndices = self.getUnmaskedIndices(maskWindows)
         globalDates = self.getGlobalDates()
         eFreq = self.evalFreq[eFreqI]
 
@@ -449,7 +467,7 @@ class StatisticData(ResisticsBase):
             # limit the data by plotIndices if not False
             plotData = np.squeeze(self.stats[:, eFreqI, idx])
             plotDates = globalDates
-            if plotIndices:
+            if plotIndices is not None:
                 plotData = plotData[plotIndices]
                 plotDates = plotDates[plotIndices]
 
@@ -552,7 +570,7 @@ class StatisticData(ResisticsBase):
         """
         # deal with maskwindows, which are global indices
         maskWindows = kwargs["maskwindows"] if "maskwindows" in kwargs else []
-        plotIndices = self.getMaskedIndices(maskWindows)
+        plotIndices = self.getUnmaskedIndices(maskWindows)
         eFreq = self.evalFreq[eFreqI]
 
         # plot options
@@ -579,7 +597,7 @@ class StatisticData(ResisticsBase):
 
             # data
             plotData = np.squeeze(self.stats[:, eFreqI, idx])
-            if plotIndices:
+            if plotIndices is not None:
                 plotData = plotData[plotIndices]
             # remove infinities and nans
             plotData = plotData[np.isfinite(plotData)]
@@ -657,7 +675,7 @@ class StatisticData(ResisticsBase):
         """
         # deal with maskwindows, which are global indices
         maskWindows = kwargs["maskwindows"] if "maskwindows" in kwargs else []
-        plotIndices = self.getMaskedIndices(maskWindows)
+        plotIndices = self.getUnmaskedIndices(maskWindows)
 
         # figure out the crossplots
         if "crossplots" in kwargs:
@@ -701,7 +719,7 @@ class StatisticData(ResisticsBase):
             plotData1 = np.squeeze(self.stats[:, eFreqI, plotI1])
             plotI2 = self.winStats.index(cplot[1])
             plotData2 = np.squeeze(self.stats[:, eFreqI, plotI2])
-            if plotIndices:
+            if plotIndices is not None:
                 plotData1 = plotData1[plotIndices]
                 plotData2 = plotData2[plotIndices]
                 colourdata = colourdata[plotIndices]
@@ -798,7 +816,7 @@ class StatisticData(ResisticsBase):
         """
         # deal with maskwindows, which are global indices
         maskWindows = kwargs["maskwindows"] if "maskwindows" in kwargs else []
-        plotIndices = self.getMaskedIndices(maskWindows)
+        plotIndices = self.getUnmaskedIndices(maskWindows)
 
         # figure out the crossplots
         if "crossplots" in kwargs:
@@ -837,7 +855,7 @@ class StatisticData(ResisticsBase):
             plotData1 = np.squeeze(self.stats[:, eFreqI, plotI1])
             plotI2 = self.winStats.index(cplot[1])
             plotData2 = np.squeeze(self.stats[:, eFreqI, plotI2])
-            if plotIndices:
+            if plotIndices is not None:
                 plotData1 = plotData1[plotIndices]
                 plotData2 = plotData2[plotIndices]
 

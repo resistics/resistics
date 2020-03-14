@@ -152,7 +152,7 @@ class StatisticCalculator(ResisticsBase):
         # default evaluation frequencies
         self.evalFreq: List = []
         # power smoothing vals
-        self.winLen: int = 13
+        self.winLen: int = 9
         self.winType: str = "hanning"
         # set some defaults
         self.inChans: List[str] = ["Hx", "Hy"]
