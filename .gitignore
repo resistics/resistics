@@ -17,3 +17,6 @@ resistics.egg-info/
 .coverage
 tests/testData
 
+# environment vars
+envars.ps1
+
