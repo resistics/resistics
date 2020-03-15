@@ -9,6 +9,6 @@ __name__ = "resistics"
 # short X.Y version
 xyversion = "0.0.6"
 # release
-release = "rc1"
+release = ""
 # combined version
 __version__ = "{}{}".format(xyversion, release)

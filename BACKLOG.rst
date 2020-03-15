@@ -1,4 +1,6 @@
-- Improved robust regression
+- Improved statistic handling, possibly with option to export to pandas and easier gathering of statistics for many recordings
+- Improved masking, more types of masking and custom masking
+- Improved robust regression and integrating this with the configuration options
 - Improved estimation of the regression uncertainty to feed into inversion
 - Full support of Phoenix data and calibration files
 - Support for miniseed data format
