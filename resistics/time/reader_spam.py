@@ -667,14 +667,14 @@ class TimeReaderSPAM(TimeReader):
                     "Not all datasets in {} have the same sample frequency.\nExiting...".format(
                         self.dataPath
                     ),
-                    quitRun=True,
+                    quitrun=True,
                 )
             if header["meas_channels"] != self.headers["meas_channels"]:
                 self.printError(
                     "Not all datasets in {} have the same number of channels.\nExiting...".format(
                         self.dataPath
                     ),
-                    quitRun=True,
+                    quitrun=True,
                 )
             # now store startTimes, stopTimes and numSamples
             # do this as datetimes, will be easier
@@ -716,7 +716,7 @@ class TimeReaderSPAM(TimeReader):
         if not check:
             self.printError(
                 "Gaps in data. All data for a single recording must be continuous. Exiting...",
-                quitRun=True,
+                quitrun=True,
             )
 
         # make sure there are no gaps

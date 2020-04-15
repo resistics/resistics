@@ -136,7 +136,7 @@ class TimeReaderATS(TimeReader):
         if len(outputSec) == 0:
             self.printError(
                 "No channels found in the ATSWriter. Unable to fully construct channel headers. Exiting.",
-                quitRun=True,
+                quitrun=True,
             )
         for chan, chanH in zip(outputSec, self.chanHeaders):
             for cH in cHeadersOutput:

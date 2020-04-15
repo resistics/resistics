@@ -375,7 +375,7 @@ class TimeReaderPhoenix(TimeReader):
         if len(dataBytes) % self.sampleByteSize != 0:
             self.printError(
                 "The number of bytes divided by the sample byte size does not give an exact number",
-                quitRun=True,
+                quitrun=True,
             )
         # calculate num samples, this should be exact
         numSamples = intdiv(len(dataBytes), self.sampleByteSize)

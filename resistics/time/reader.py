@@ -178,7 +178,7 @@ class TimeReader(ResisticsBase):
         # get a list of the xml files in the folder
         self.setParameters()
         if not self.checkFiles():
-            self.printError("No header or data files found", quitRun=True)
+            self.printError("No header or data files found", quitrun=True)
         self.readHeader()
         self.formatHeaderData()
         self.prepare()
@@ -1163,7 +1163,7 @@ class TimeReader(ResisticsBase):
         """
         if chan not in self.chans:
             self.printError(
-                "Error - Channel {} does not exist".format(chan), quitRun=True
+                "Error - Channel {} does not exist".format(chan), quitrun=True
             )
 
     def printList(self) -> List[str]:

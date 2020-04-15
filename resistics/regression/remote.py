@@ -51,7 +51,7 @@ class RemoteRegressor(LocalRegressor):
         Flag for including an intercept (static) term in the linear system
     method : str (options, "ols", "cm") 
         String for describing what solution method to use
-    win : str (default hanning)
+    win : str (default hann)
         Window function to use in robust solution
     winSmooth : int (default -1)
         The size of the window smoother. If -1, this will be autocalculated based on data size
@@ -106,7 +106,7 @@ class RemoteRegressor(LocalRegressor):
         # regression method
         self.method: str = "mm"
         # smoothing options
-        self.win: str = "hanning"
+        self.win: str = "hann"
         self.winSmooth: int = -1
         # output filename
         self.postpend: str = ""

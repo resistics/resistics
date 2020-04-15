@@ -83,7 +83,7 @@ class TimeReaderInternal(TimeReader):
         if os.path.join(self.dataPath, globalFile) not in self.headerF:
             self.printError(
                 "Global header not found. The {} file is required".format(globalFile),
-                quitRun=True,
+                quitrun=True,
             )
         globalF = open(os.path.join(self.dataPath, globalFile))
         lines = globalF.readlines()

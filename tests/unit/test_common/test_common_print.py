@@ -54,13 +54,13 @@ def test_errorPrint(capfd) -> None:
     assert captured.out[:5] == "ERROR"
     assert captured.out[16:] == "TEST: test\n"
 
-    errorPrint("test", "test", quitRun=False)
+    errorPrint("test", "test", quitrun=False)
     captured = capfd.readouterr()
     assert captured.out[:5] == "ERROR"
     assert captured.out[16:] == "TEST: test\n"
 
     with pytest.raises(SystemExit):
-        errorPrint("test", "test", quitRun=True)
+        errorPrint("test", "test", quitrun=True)
         captured = capfd.readouterr()
         assert captured.out[:5] == "ERROR"
         assert captured.out[16:] == "TEST: test\n"

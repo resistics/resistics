@@ -9,10 +9,9 @@ from resistics.window.selector import WindowSelector
 from resistics.transfunc.data import TransferFunctionData
 from resistics.transfunc.io import TransferFunctionWriter
 from resistics.common.io import checkAndMakeDir, fileFormatSampleFreq
-from resistics.common.smooth import smooth1d
 from resistics.regression.compute import spectralMatrices
+from resistics.regression.moments import getScale
 from resistics.regression.robust import (
-    sampleMAD0,
     hermitianTranspose,
     olsModel,
     chatterjeeMachler,
@@ -55,7 +54,7 @@ class LocalRegressor(ResisticsBase):
         Flag for including an intercept (static) term in the linear system
     method : str (options, "ols", "cm") 
         String for describing what solution method to use
-    win : str (default hanning)
+    win : str (default hann)
         Window function to use in robust solution
     winSmooth : int (default -1)
         The size of the window smoother. If -1, this will be autocalculated based on data size
@@ -102,7 +101,7 @@ class LocalRegressor(ResisticsBase):
         outpath : str
             The path to write the transfer function data to
         """
-        self.winSelector = winSelector
+        self.winSelector: WindowSelector = winSelector
         self.decParams = winSelector.decParams
         self.winParams = winSelector.winParams
         self.outpath: str = outpath
@@ -119,7 +118,7 @@ class LocalRegressor(ResisticsBase):
         self.intercept: bool = False
         self.method: str = "cm"
         # smoothing options
-        self.win: str = "hanning"
+        self.win: str = "hann"
         self.winSmooth: int = 9
         # output filename
         self.postpend: str = ""
@@ -500,7 +499,7 @@ class LocalRegressor(ResisticsBase):
             )
             # out, resids, scale, weights = mmestimateModel(
             #     predictors2, observation2, intercept=self.intercept)
-            
+
             if self.intercept:
                 out = out[1:]
 
@@ -510,9 +509,8 @@ class LocalRegressor(ResisticsBase):
             # and then use chatterjee machler formula to estimate variances
             # this needs work - better to use an empirical bootstrap method, but this will do for now
             resids = np.absolute(observation - np.dot(predictors, out))
-            scale = sampleMAD0(
-                resids
-            )  # some measure of standard deviation, rather than using the standard deviation
+            # some measure of standard deviation, rather than using the standard deviation
+            scale = getScale(resids, "mad0")
             residsVar = scale * scale
             # varPred = np.dot(hermitianTranspose(predictors), weights*predictors) # need to fix this
             varPred = np.dot(hermitianTranspose(predictors), predictors)
@@ -563,7 +561,7 @@ class LocalRegressor(ResisticsBase):
             # save the output
             out, resids, squareResid, rank, s = olsModel(
                 predictors, observation, intercept=self.intercept
-            )            
+            )
             if self.intercept:
                 out = out[1:]
 
@@ -573,9 +571,8 @@ class LocalRegressor(ResisticsBase):
             # and then use chatterjee machler formula to estimate variances
             # this needs work - better to use an empirical bootstrap method, but this will do for now
             resids = np.absolute(observation - np.dot(predictors, out))
-            scale = sampleMAD0(
-                resids
-            )  # some measure of standard deviation, rather than using the standard deviation
+            # some measure of standard deviation, rather than using the standard deviation
+            scale = getScale(resids, "mad0")
             residsVar = scale * scale
             # varPred = np.dot(hermitianTranspose(predictors), weights*predictors) # need to fix this
             varPred = np.dot(hermitianTranspose(predictors), predictors)
@@ -589,7 +586,7 @@ class LocalRegressor(ResisticsBase):
             #     output[i] = out
             #     varOutput[i] = varOut
             output[i] = out
-            varOutput[i] = varOut            
+            varOutput[i] = varOut
 
         return output, varOutput
 
@@ -640,7 +637,7 @@ class LocalRegressor(ResisticsBase):
                 output[i] = out[1:]
             else:
                 output[i] = out
-        return output, output*0.1
+        return output, output * 0.1
 
     def writeTF(
         self,

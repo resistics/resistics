@@ -137,7 +137,7 @@ def measB423Headers(
         errorPrint(
             "constructB423Headers",
             "All data for a single recording must be continuous.",
-            quitRun=True,
+            quitrun=True,
         )
 
     # time of first and last sample
@@ -226,7 +226,7 @@ def readB423Params(
         errorPrint(
             "readB423Params",
             "Non-integer number of samples. Maybe the sampling frequency is incorrect",
-            quitRun=True,
+            quitrun=True,
         )
     else:
         numSamples = int(numSamples)
@@ -258,7 +258,7 @@ def readB423Params(
         errorPrint("readB423Params", "There is a gap in data file {}".format(dataFile))
         errorPrint("readB423Params", "No gaps allowed within data files")
         errorPrint(
-            "readB423Params", "Please remove this file from the recording", quitRun=True
+            "readB423Params", "Please remove this file from the recording", quitrun=True
         )
     return dataHeaders, firstDatetime, lastDatetime, numSamples
 
@@ -703,7 +703,7 @@ class TimeReaderLemiB423(TimeReaderInternal):
         # if did not pass check, then exit
         if not check:
             self.printError(
-                "All data for a single recording must be continuous.", quitRun=True
+                "All data for a single recording must be continuous.", quitrun=True
             )
 
         # get a list of all the datafiles, scalings and the sample ranges

@@ -46,7 +46,7 @@ def getSpecReader(
     siteData = projData.getSiteData(site)
     measurements = siteData.getMeasurements()
     if meas not in measurements:
-        projectError("Measurement directory {} not found".format(meas), quitRun=True)
+        projectError("Measurement directory {} not found".format(meas), quitrun=True)
 
     # create the spectrum reader
     specReader = SpectrumReader(

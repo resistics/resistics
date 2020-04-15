@@ -164,13 +164,13 @@ class DecimationParameters(ResisticsBase):
             Decimation level
         """
         if decLevel < 0:
-            self.printError("Decimation level must be greater than 0", quitRun=True)
+            self.printError("Decimation level must be greater than 0", quitrun=True)
         if decLevel > self.numLevels - 1:
             self.printError(
                 "Decimation level must be less than or equal to {}".format(
                     self.numLevels - 1
                 ),
-                quitRun=True,
+                quitrun=True,
             )
 
     def setFrequencyParams(

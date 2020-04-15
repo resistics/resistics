@@ -322,7 +322,7 @@ class TimeWriter(ResisticsBase):
             An optional flag designating whether to use physical samples or not. Default is true
         """
         if self.getOutPath() == "":
-            self.printError("No output filepath given", quitRun=True)
+            self.printError("No output filepath given", quitrun=True)
         checkAndMakeDir(self.getOutPath())
         # write using information from a reader file
         headers = reader.getHeaders()

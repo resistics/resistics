@@ -54,7 +54,7 @@ def getStatisticData(
 
     siteData = projData.getSiteData(site)
     if not siteData:
-        projectError("Unable to find site {} in project".format(site), quitRun=True)
+        projectError("Unable to find site {} in project".format(site), quitrun=True)
 
     # load the statistic data
     statIO = StatisticIO()
@@ -103,7 +103,7 @@ def getStatisticDataForSampleFreq(
 
     siteData = projData.getSiteData(site)
     if not siteData:
-        projectError("Unable to find site {} in project".format(site), quitRun=True)
+        projectError("Unable to find site {} in project".format(site), quitrun=True)
 
     # load the statistic data
     statData: Dict[str, StatisticData] = {}

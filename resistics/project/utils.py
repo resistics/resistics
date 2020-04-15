@@ -38,17 +38,17 @@ def projectWarning(warnStr: str) -> None:
     warningPrint("{} Warning".format(inspect.stack()[1][3]), warnStr)
 
 
-def projectError(errorStr: str, quitRun: bool = False) -> None:
+def projectError(errorStr: str, quitrun: bool = False) -> None:
     """Error print to terminal and possibly quit
 
     Parameters
     ----------
     errorStr : str
         The string to print to the console
-    quitRun : bool, optional (False)
+    quitrun : bool, optional (False)
         If True, the code will exit
     """
-    errorPrint("{} Warning".format(inspect.stack()[1][3]), errorStr, quitRun=quitRun)
+    errorPrint("{} Warning".format(inspect.stack()[1][3]), errorStr, quitrun=quitrun)
 
 
 def checkDateOptions(options: Dict, timeStart: datetime, timeStop: datetime) -> bool:

@@ -6,7 +6,8 @@ from typing import List, Dict, Union
 from resistics.common.base import ResisticsBase
 from resistics.common.print import listToString, arrayToString
 from resistics.common.smooth import smooth1d
-from resistics.spectra.data import SpectrumData
+from resistics.spectra.data import SpectrumData, PowerData
+from resistics.spectra.calculator import autopower, crosspower
 from resistics.regression.robust import olsModel
 
 
@@ -148,12 +149,11 @@ class StatisticCalculator(ResisticsBase):
 
     def __init__(self) -> None:
         """Initialise the statistic calculator"""
-
         # default evaluation frequencies
         self.evalFreq: List = []
         # power smoothing vals
         self.winLen: int = 9
-        self.winType: str = "hanning"
+        self.winType: str = "hann"
         # set some defaults
         self.inChans: List[str] = ["Hx", "Hy"]
         self.inSize: int = len(self.inChans)
@@ -271,9 +271,10 @@ class StatisticCalculator(ResisticsBase):
         np.ndarray
             The auto power for the channel
         """
-        idx = self.specChans.index(chan)
-        # then return the autopower
-        return self.spectralMatrix[idx, idx].real
+        # idx = self.specChans.index(chan)
+        # # then return the autopower
+        # return self.spectralMatrix[idx, idx].real
+        return self.autopowers.getPower(chan, chan)
 
     def getAutoPowerEval(self, chan: str, eIdx: int) -> float:
         """Get the auto power value for an particular evaluation frequency
@@ -290,9 +291,10 @@ class StatisticCalculator(ResisticsBase):
         np.ndarray
             The auto power for the channel
         """
-        idx = self.specChans.index(chan)
-        # then return the autopower
-        return self.evalMatrix[idx, idx, eIdx].real
+        # idx = self.specChans.index(chan)
+        # # then return the autopower
+        # return self.evalMatrix[idx, idx, eIdx].real
+        return self.autopowersEval.getPower(chan, chan)[eIdx]
 
     def getCrossPower(self, chan1: str, chan2: str) -> np.ndarray:
         """Get the cross power between two channels
@@ -309,10 +311,11 @@ class StatisticCalculator(ResisticsBase):
         np.ndarray
             The cross power spectral density
         """
-        idx1 = self.specChans.index(chan1)
-        idx2 = self.specChans.index(chan2)
-        # then return the autopower
-        return self.spectralMatrix[idx1, idx2]
+        # idx1 = self.specChans.index(chan1)
+        # idx2 = self.specChans.index(chan2)
+        # # then return the autopower
+        # return self.spectralMatrix[idx1, idx2]
+        return self.autopowers.getPower(chan1, chan2)
 
     def getCrossPowerEval(self, chan1: str, chan2: str, eIdx: int) -> float:
         """Get the cross power between two channels
@@ -331,10 +334,11 @@ class StatisticCalculator(ResisticsBase):
         np.ndarray
             The cross power spectral density
         """
-        idx1 = self.specChans.index(chan1)
-        idx2 = self.specChans.index(chan2)
+        # idx1 = self.specChans.index(chan1)
+        # idx2 = self.specChans.index(chan2)
         # then return the autopower
-        return self.evalMatrix[idx1, idx2, eIdx]
+        # return self.evalMatrix[idx1, idx2, eIdx]
+        return self.autopowersEval.getPower(chan1, chan2)[eIdx]
 
     def getOutData(self) -> Dict:
         """Get the output data
@@ -433,13 +437,16 @@ class StatisticCalculator(ResisticsBase):
             Evaluation frequency array
         """
         self.freq = freq
-        self.spec: Dict[str, np.ndarray] = specData.data
-        self.evalFreq = evalFreq
-        self.numChans = len(self.specChans)
-        self.dataSize = specData.dataSize
-        # calculate the power matrix
-        self.calculateSpectralMatrix()
-        self.calculateEvalMatrix()
+        self.specData = specData
+        self.spec: Dict[str, np.ndarray] = self.specData.data
+        self.evalFreq: np.ndarray = evalFreq
+        self.numChans: int = len(self.specChans)
+        self.dataSize: int = specData.dataSize
+        # calculate the auto powers
+        # self.calculateAutoPowers()
+        self.autopowers = autopower(self.specData)
+        self.autopowers.smooth(self.winLen, self.winType, inplace=True)
+        self.autopowersEval = self.autopowers.interpolate(self.evalFreq)
         # clear the out dictionary and set that transfer function not calculated
         self.prepareOutDict()
 
@@ -453,56 +460,62 @@ class StatisticCalculator(ResisticsBase):
         """
         self.intercept = intercept
 
-    def calculateSpectralMatrix(self) -> None:
-        """Calculate out the cross power spectral matrix
+    # def calculateAutoPowers(self) -> None:
+    #     """Calculate out the cross power spectral matrix
 
-        The method calculates out the cross powers which will then be used in the other statistic calculations.
+    #     The method calculates out the cross powers which will then be used in the other statistic calculations.
 
-        The cross powers spectral matrix is a 3-D matrix of size:
-        numChans * numChans * numFrequencies
-        The elements of this are calculated by multiplying the spectra of one channel by the complex conjugate of the spectra of another channel.
-        """
-        # create the 3d array
-        self.spectralMatrix = np.empty(
-            shape=(self.numChans, self.numChans, self.dataSize), dtype="complex"
-        )
-        # now need to go through the chans
-        for ii in range(0, self.numChans):
-            for jj in range(ii, self.numChans):
-                chan1 = self.specChans[ii]
-                chan2 = self.specChans[jj]
-                self.spectralMatrix[ii, jj] = smooth1d(
-                    self.spec[chan1] * np.conjugate(self.spec[chan2]),
-                    self.winLen,
-                    self.winType,
-                )
-                if ii == jj:
-                    # conjugate symmtry
-                    self.spectralMatrix[jj, ii] = np.conjugate(
-                        self.spectralMatrix[ii, jj]
-                    )
+    #     The cross powers spectral matrix is a 3-D matrix of size:
+    #     numChans * numChans * numFrequencies
+    #     The elements of this are calculated by multiplying the spectra of one channel by the complex conjugate of the spectra of another channel.
+    #     """
+    #     create the 3d array
+    #     self.spectralMatrix = np.empty(
+    #         shape=(self.numChans, self.numChans, self.dataSize), dtype="complex"
+    #     )
+    #     # now need to go through the chans
+    #     for ii in range(0, self.numChans):
+    #         for jj in range(ii, self.numChans):
+    #             chan1 = self.specChans[ii]
+    #             chan2 = self.specChans[jj]
+    #             self.spectralMatrix[ii, jj] = smooth1d(
+    #                 self.spec[chan1] * np.conjugate(self.spec[chan2]),
+    #                 self.winLen,
+    #                 self.winType,
+    #             )
+    #             # conjugate symmtry
+    #             # if ii == jj:
+    #             # bug, this should be ii != jj, so what is happening with half of my matrix?
+    #             # print("Bug face {} {}".format(ii, jj))
+    #             if ii != jj:
+    #                 self.spectralMatrix[jj, ii] = np.conjugate(
+    #                     self.spectralMatrix[ii, jj]
+    #                 )
+    #     self.autopowers = autopower(self.specData)
+    #     self.autopowers.smooth(self.winLen, self.winType, inplace=True)
+    #     self.autopowersEval = self.autopowers.interpolate(self.evalFreq)
 
-    def calculateEvalMatrix(self):
-        """Calculate out the cross power spectral matrix at the evaluation frequencies
+    # def calculateEvalMatrix(self):
+    #     """Calculate out the cross power spectral matrix at the evaluation frequencies
 
-        The method calculates out the cross powers which will then be used in the other statistic calculations at the evaluation frequencies
+    #     The method calculates out the cross powers which will then be used in the other statistic calculations at the evaluation frequencies
 
-        The cross powers spectral matrix for evaluation frequencies is a 3-D matrix of size:
-        numChans * numChans * numEvaluationFrequencies
-        The elements of this are calculated by taking the cross powers spectral matrix and using the result there to interpolate the values at the evaluation frequencies.
-        """
-        # create the array
-        self.evalMatrix = np.empty(
-            shape=(self.numChans, self.numChans, len(self.evalFreq)), dtype="complex"
-        )
-        for ii in range(0, self.numChans):
-            for jj in range(ii, self.numChans):
-                self.evalMatrix[ii, jj] = self.interpolateToEvalFreq(
-                    self.spectralMatrix[ii, jj]
-                )
-                if ii != jj:
-                    # conjugate symmtry
-                    self.evalMatrix[jj, ii] = np.conjugate(self.evalMatrix[ii, jj])
+    #     The cross powers spectral matrix for evaluation frequencies is a 3-D matrix of size:
+    #     numChans * numChans * numEvaluationFrequencies
+    #     The elements of this are calculated by taking the cross powers spectral matrix and using the result there to interpolate the values at the evaluation frequencies.
+    #     """
+    #     # create the array
+    #     self.evalMatrix = np.empty(
+    #         shape=(self.numChans, self.numChans, len(self.evalFreq)), dtype="complex"
+    #     )
+    #     for ii in range(0, self.numChans):
+    #         for jj in range(ii, self.numChans):
+    #             self.evalMatrix[ii, jj] = self.interpolateToEvalFreq(
+    #                 self.spectralMatrix[ii, jj]
+    #             )
+    #             if ii != jj:  # the bug is being fixed here
+    #                 # conjugate symmtry
+    #                 self.evalMatrix[jj, ii] = np.conjugate(self.evalMatrix[ii, jj])
 
     def addRemoteSpec(
         self, remoteData: SpectrumData, remoteChans: List[str] = []
@@ -795,7 +808,7 @@ class StatisticCalculator(ResisticsBase):
             return self.winRemoteTransferFunction()
         else:
             self.printError(
-                "Statistic in getDataForStatName not recognised", quitRun=True
+                "Statistic in getDataForStatName not recognised", quitrun=True
             )
             return self.winCoherence()
 
@@ -994,15 +1007,12 @@ class StatisticCalculator(ResisticsBase):
                 observation = obs[i, :]
                 predictors = reg[i, :, :]
                 # now do the solution
-                out, resids, squareResid, rank, s = olsModel(
-                    predictors, observation, intercept=self.intercept
-                )
-                # out, resids, scale, weights	= mmestimateModel(predictors, observation, intercept=False)
+                soln = olsModel(predictors, observation, intercept=self.intercept)
                 # not interested in the intercept (const) term
                 if self.intercept:
-                    output[eIdx, i] = out[1:]
+                    output[eIdx, i] = soln.params[1:]
                 else:
-                    output[eIdx, i] = out
+                    output[eIdx, i] = soln.params
 
             # calculate components of transfer function and res and phase
             for i in range(0, self.outSize):

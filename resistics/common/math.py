@@ -2,6 +2,17 @@ from typing import Dict, Union
 import numpy as np
 
 
+def eps() -> float:
+    """Small number
+    
+    Returns
+    -------
+    float
+        A small number for quitting robust regression
+    """
+    return 0.0001
+
+
 def intdiv(nom: Union[int, float], div: Union[int, float]) -> int:
     """Return an integer result of division
 
@@ -26,9 +37,9 @@ def intdiv(nom: Union[int, float], div: Union[int, float]) -> int:
         return nom // div
     else:
         errorPrint(
-            "utilsMath::intdiv",
+            "common::math::intdiv",
             "intdiv assumes exact division and exits upon having a remainder to make sure errors are not propagated through the code",
-            quitRun=True,
+            quitrun=True,
         )
         return 0
 
@@ -62,7 +73,7 @@ def forwardFFT(data: np.ndarray, norm: bool = True):
     data : np.ndarray
         Time array to be transformed   
     norm : bool, optional
-        Normalisation option
+        Normalization mode. Default is None, meaning no normalization on the forward transforms and scaling by 1/n on the ifft. For norm="ortho", both directions are scaled by 1/sqrt(n).
 
     Returns
     -------
@@ -86,7 +97,7 @@ def inverseFFT(data: np.ndarray, length: int, norm: bool = True):
     length : int
         Length of output time data (to remove padding)
     norm : bool, optional
-        Normalisation option
+        Normalization mode. Default is None, meaning no normalization on the forward transforms and scaling by 1/n on the ifft. For norm="ortho", both directions are scaled by 1/sqrt(n).
 
     Returns
     -------

@@ -22,7 +22,7 @@ class ResisticsBase(object):
         Print information to console
     printWarning(warnStr)
         Print a warning to the console
-    printError(errorStr, quitRun=False)
+    printError(errorStr, quitrun=False)
         Print an error to the console and optionally quit execution  
     """
 
@@ -68,16 +68,16 @@ class ResisticsBase(object):
         """
         warningPrint("{} Warning".format(self.__class__.__name__), warnStr)
 
-    def printError(self, errorStr: str, quitRun: bool = False) -> None:
+    def printError(self, errorStr: str, quitrun: bool = False) -> None:
         """Error print to terminal and possibly quit
 
         Parameters
         ----------
         errorStr : str
             The string to print to the console
-        quitRun : bool, optional (False)
+        quitrun : bool, optional (False)
             If True, the code will exit
         """
         errorPrint(
-            "{} Error".format(self.__class__.__name__), errorStr, quitRun=quitRun
+            "{} Error".format(self.__class__.__name__), errorStr, quitrun=quitrun
         )

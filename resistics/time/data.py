@@ -4,7 +4,7 @@ from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from typing import List, Union
+from typing import List, Union, Dict
 
 from resistics.common.base import ResisticsBase
 from resistics.common.checks import isElectric
@@ -58,8 +58,8 @@ class TimeData(ResisticsBase):
         sampleFreq: float,
         startTime: Union[datetime, str],
         stopTime: Union[datetime, str],
-        data,
-        comments: Union[str, List[str]] = [],
+        data: Dict[str, np.ndarray],
+        comments: Union[str, List[str], None] = None,
     ) -> None:
         """Initialise and set object parameters
 
@@ -73,11 +73,13 @@ class TimeData(ResisticsBase):
             The stopTime of the window 
         data : Dict
             The data dictionary with keys as channels and values as spectra data
-        comments : List[str]
+        comments : str, List[str], None
             Dataset comments
         """
         self.setData(sampleFreq, startTime, stopTime, data)
         self.comments = comments
+        if self.comments is None:
+            self.comments  = []
         if isinstance(self.comments, str):
             self.comments = [self.comments]
 

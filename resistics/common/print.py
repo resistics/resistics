@@ -59,7 +59,7 @@ def warningPrint(pre: str, info: str) -> None:
     print("{} {}: {}".format(datetime.now().strftime("%H:%M:%S"), pre.upper(), info))
 
 
-def errorPrint(pre: str, info: str, quitRun: bool = False):
+def errorPrint(pre: str, info: str, quitrun: bool = False):
     """Print an error
 
     Parameters
@@ -68,7 +68,7 @@ def errorPrint(pre: str, info: str, quitRun: bool = False):
         String describing where the information is being output from 
     info : str
         Information string
-    quitRun : bool, optional
+    quitrun : bool, optional
         Bool flag for quitting execution of the code due to the error
     """
     print(
@@ -76,7 +76,7 @@ def errorPrint(pre: str, info: str, quitRun: bool = False):
             datetime.now().strftime("%H:%M:%S"), pre.upper(), info
         )
     )
-    if quitRun:
+    if quitrun:
         print("Exiting...")
         exit()
 

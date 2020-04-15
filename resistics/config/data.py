@@ -65,7 +65,7 @@ class ConfigData(ResisticsBase):
             if numUserFreqs != numExpectedFreqs:
                 self.printError(
                     "Custom frequencies provided. Please ensure that the number of frequencies is equal to numlevels * perlevel",
-                    quitRun=True,
+                    quitrun=True,
                 )
 
         # windows
@@ -78,7 +78,7 @@ class ConfigData(ResisticsBase):
             if numUserWindows != numlevels or numUserOverlaps != numlevels:
                 self.printError(
                     "When supplying custom window sizes, the number of window sizes provided should be equal to the number of decimation levels (numlevels)",
-                    quitRun=True,
+                    quitrun=True,
                 )
 
     def getSpectraCores(self) -> int:

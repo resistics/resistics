@@ -22,7 +22,7 @@ def getDefaultConfigFilepath() -> str:
         errorPrint(
             "getDefaultConfig",
             "Default configuration file could not be found",
-            quitRun=True,
+            quitrun=True,
         )
     return globalConfigFile
 
@@ -49,5 +49,5 @@ def loadConfig(filepath: str = "") -> ConfigObj:
     validator = Validator()
     result = config.validate(validator)
     if not result:
-        errorPrint("loadConfigFile", "Config file validation failed", quitRun=True)
+        errorPrint("loadConfigFile", "Config file validation failed", quitrun=True)
     return config

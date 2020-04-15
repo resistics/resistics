@@ -150,7 +150,7 @@ def getStatElements(stat: str) -> List[str]:
     errorPrint(
         "utilsStats::getStatElements",
         "Statistic {} not found".format(stat),
-        quitRun=True,
+        quitrun=True,
     )
     return False
 

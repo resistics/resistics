@@ -753,7 +753,7 @@ class WindowSelector(ResisticsBase):
         if d1 > d2:
             self.printError(
                 "A site passed to the window selector does not overlap with any other sites. There will be no shared windows",
-                quitRun=True,
+                quitrun=True,
             )
         # now with d2 > d1
         siteDates = []

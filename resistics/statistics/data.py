@@ -270,7 +270,7 @@ class StatisticData(ResisticsBase):
                 "There are two statistics with the same global window index"
             )
             self.printError("This should never happen")
-            self.printError("Exiting", quitRun=True)
+            self.printError("Exiting", quitrun=True)
         localIndex = self.global2localMap[globalIndex]
         return self.stats[localIndex]
 

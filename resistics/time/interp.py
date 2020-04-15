@@ -159,7 +159,7 @@ def fillGap(timeData1, timeData2):
         errorPrint(
             "fillGap",
             "fillGap requires both timeData objects to have the same sample rate",
-            quitRun=True,
+            quitrun=True,
         )
         return False
     sampleFreq = timeData1.sampleFreq

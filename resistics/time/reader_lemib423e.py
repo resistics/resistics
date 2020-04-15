@@ -131,7 +131,7 @@ def measB423EHeaders(
         errorPrint(
             "constructB423EHeaders",
             "All data for a single recording must be continuous.",
-            quitRun=True,
+            quitrun=True,
         )
 
     # time of first and last sample
