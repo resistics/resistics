@@ -13,11 +13,11 @@ def test_generalPrint(capfd) -> None:
 def test_breakPrint(capfd) -> None:
     from resistics.common.print import breakPrint
 
-    breakPrint()
+    breakPrint("test")
     captured = capfd.readouterr()
-    test = "---------------------------------------------------\n\n"
-    test += "---------------------------------------------------\n"
-    assert test == captured.out
+    out = captured.out[9:]
+    test = "{}: {}\n".format("test", "********************")
+    assert test == out
 
 
 # def test_blockPrint(capfd) -> None:

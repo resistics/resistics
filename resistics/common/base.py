@@ -1,6 +1,12 @@
 from typing import List
 
-from resistics.common.print import generalPrint, warningPrint, errorPrint, blockPrint
+from resistics.common.print import (
+    generalPrint,
+    breakPrint,
+    warningPrint,
+    errorPrint,
+    blockPrint,
+)
 
 
 class ResisticsBase(object):
@@ -47,6 +53,10 @@ class ResisticsBase(object):
             List of strings with information
         """
         return [""]
+
+    def printBreak(self) -> None:
+        """Print a break to the terminal to make things easier to read"""
+        breakPrint(self.__class__.__name__)
 
     def printText(self, infoStr: str) -> None:
         """General print to terminal

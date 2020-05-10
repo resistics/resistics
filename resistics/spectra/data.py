@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Tuple
 
 from resistics.common.base import ResisticsBase
 from resistics.common.checks import isElectric
@@ -157,6 +157,30 @@ class SpectrumData(ResisticsBase):
         """
         return getFrequencyArray(self.sampleFreq, self.dataSize)
 
+    def toArray(self, chans: Union[List[str], None] = None) -> np.ndarray:
+        """Convert the dictionary into a numpy array
+        
+        Each row is a channel, with the order the same as chans order
+
+        Parameters
+        ----------
+        chans : List[str], optional
+            The channels to put in the array. Defaults to all.
+        
+        Returns
+        -------
+        dataArray : np.ndarray
+            2-D array for data with each row a channel corresponding to the order in class attribute chans.
+        chans : List[str]
+            The channels in the data array in the appropriate order
+        """
+        if chans is None:
+            chans = self.chans
+        dataArray = np.empty(shape=(len(chans), self.dataSize), dtype="complex")
+        for idx, chan in enumerate(chans):
+            dataArray[idx, :] = self.data[chan]
+        return dataArray, chans
+
     def getComments(self) -> List[str]:
         """Get a deepcopy of the comments
         
@@ -220,7 +244,7 @@ class SpectrumData(ResisticsBase):
         plt.figure
             Matplotlib figure object
         """
-        f = self.freqArray
+        freqArray = self.freqArray
         fig = (
             plt.figure(kwargs["fig"].number)
             if "fig" in kwargs
@@ -243,15 +267,18 @@ class SpectrumData(ResisticsBase):
             # plot the data
             if "label" in kwargs:
                 plt.plot(
-                    f, np.absolute(self.data[chan]), color=color, label=kwargs["label"]
+                    freqArray,
+                    np.absolute(self.data[chan]),
+                    color=color,
+                    label=kwargs["label"],
                 )
             else:
-                plt.plot(f, np.absolute(self.data[chan]), color=color)
+                plt.plot(freqArray, np.absolute(self.data[chan]), color=color)
             # add frequency label
             if idx == numPlotChans - 1:
                 plt.xlabel("Frequency [Hz]", fontsize=plotFonts["axisLabel"])
             # x axis options
-            xlim = kwargs["xlim"] if "xlim" in kwargs else [f[0], f[-1]]
+            xlim = kwargs["xlim"] if "xlim" in kwargs else [freqArray[0], freqArray[-1]]
             plt.xlim(xlim)
             # y axis options
             if isElectric(chan):
@@ -300,6 +327,51 @@ class SpectrumData(ResisticsBase):
         return textLst
 
 
+def mergeSpectra(
+    specData: Tuple[SpectrumData],
+    channels: Union[Tuple[List[str]], None] = None,
+    postpend: Union[Tuple[str], None] = None,
+) -> SpectrumData:
+    """Merge spectra
+
+    Parameters
+    ----------
+    specData : Tuple[SpectrumData], List[SpectrumData]
+        A tuple or list of SpectrumData
+    channels : Tuple[List[str]], List[List[str]], optional
+        The list of channels to take from each spectrum data. Defaults to all.
+    postpend : Tuple[str], List[str], optional
+        A string to add to the end of the channels from the different SpectrumData. Default is simply the number in Tuple.
+    
+    Returns
+    -------
+    SpectrumData
+        Merged SpectrumData with all channels
+    """
+    from resistics.common.print import errorPrint
+
+    if channels is None:
+        channels = [sData.chans for sData in specData]
+    if postpend is None:
+        postpend = [str(ii) for ii in range(0, len(specData))]
+
+    # merge spectra
+    newdata = {}
+    for sData, chans, post in zip(specData, channels, postpend):
+        for chan in chans:
+            newkey = chan + post
+            newdata[newkey] = sData.data[chan]
+
+    return SpectrumData(
+        specData[0].windowSize,
+        specData[0].dataSize,
+        specData[0].sampleFreq,
+        specData[0].startTime,
+        specData[0].stopTime,
+        newdata,
+    )
+
+
 class PowerData(ResisticsBase):
     """Class for holding auto/cross power spectra data
 
@@ -322,38 +394,56 @@ class PowerData(ResisticsBase):
     -------
     __init__(kwargs)
         Initialise power spectra data
-    smooth(winLen, winType, inplace)
+    smooth(smoothLen, smoothFunc, inplace)
         Smooth the crosspower data
     interpolate(freqs)
         Interpolate the cross powers to a set of frequencies
-    copy()
-        Get a copy of the spectrum data
-    view(kwargs)
-        View the spectra data 
     printList()
         Class status returned as list of strings          
     """
 
     def __init__(
-        self, style: str, sampleFreq: int, data: Dict[str, np.ndarray]
+        self,
+        primaryChans: List[str],
+        secondaryChans: List[str],
+        data: np.ndarray,
+        sampleFreq: float,
     ) -> None:
         """Initialise power spectra data
 
         Parameters
         ----------
-        style : str
-            "auto" or "cross" confirming whether autopower spectra or crosspower spectra
         sampleFreq : float
             The sampling frequency of the original time data
         data : Dict
             Data dictionary with channel pairings (ExHy) as keys and numpy data arrays as values
         """
-        self.style: str = style
-        self.sampleFreq: float = sampleFreq
+        self.primaryChans = primaryChans
+        self.secondaryChans = secondaryChans
         self.data: Dict[str, np.ndarray] = data
-        self.powers: List[str] = list(self.data.keys())
-        self.numPowers: int = len(self.powers)
-        self.dataSize = len(self.data[self.powers[0]])
+        self.sampleFreq: float = sampleFreq
+        self.primaryMap = {}
+        self.secondaryMap = {}
+        for idx, chan in enumerate(self.primaryChans):
+            self.primaryMap[chan] = idx
+        for idx, chan in enumerate(self.secondaryChans):
+            self.secondaryMap[chan] = idx
+
+    @property
+    def dataSize(self) -> int:
+        return self.data.shape[-1]
+
+    @property
+    def powers(self) -> List[str]:
+        powers = []
+        for primary in self.primaryChans:
+            for secondary in self.secondaryChans:
+                powers.append("{}-{}".format(primary, secondary))
+        return powers
+
+    @property
+    def numPowers(self) -> int:
+        return len(self.primaryChans) * len(self.secondaryChans)
 
     @property
     def nyquist(self) -> float:
@@ -377,7 +467,21 @@ class PowerData(ResisticsBase):
         """
         return getFrequencyArray(self.sampleFreq, self.dataSize)
 
-    def getPower(self, chan1: str, chan2: str, conjugate: bool = False) -> Union[np.ndarray, None]:
+    def isFinite(self) -> bool:
+        """Checks to see if all the crosspower data is finite
+
+        Returns
+        -------
+        bool
+            True if all finite, False if there are bad values
+        """
+        if np.isfinite(self.data).all():
+            return True
+        return False
+
+    def getPower(
+        self, primary: str, secondary: str, fIdx: Union[int, None] = None
+    ) -> Union[np.ndarray, None, float]:
         """Get the auto or cross power from the data
 
         .. note::
@@ -390,32 +494,34 @@ class PowerData(ResisticsBase):
             The first channel
         chan2 : str
             The second channel
-        conjugate : bool, optional
-            Return the complex conjugate of the power data
+        fIdx : int, optional
+            The frequency index to get
         
         Returns
         -------
-        np.ndarray, None
-            Will return the data array if it exists in the data, otherwise None
+        np.ndarray, float, None
+            Will return the data array if it exists in the data, otherwise None. Where fIdx is specified, will return a float.
         """
-        power = "{}-{}".format(chan1, chan2)
-        if power not in self.powers:
-            return None
-        if conjugate:
-            return np.conjugate(self.data[power])
-        return self.data[power]
+        if fIdx is None:
+            return self.data[
+                self.primaryMap[primary], self.secondaryMap[secondary], :
+            ].squeeze()
+        else:
+            return self.data[
+                self.primaryMap[primary], self.secondaryMap[secondary], fIdx
+            ]
 
     def smooth(
-        self, winLen: int, winType: str, inplace: bool = False
+        self, smoothLen: int, smoothFunc: str, inplace: bool = False
     ) -> Union[None, ResisticsBase]:
         """Smooth the power data
 
         Parameters
         ----------
-        winLen : int
+        smoothLen : int
             The window length to use
-        winType : str
-            The window type
+        smoothFunc : str
+            The window function
         inplace : bool, optional
             Whether to do the smoothing in place or return a new PowerData instance
 
@@ -426,14 +532,18 @@ class PowerData(ResisticsBase):
         """
         from resistics.common.smooth import smooth1d
 
-        newdata = {}
-        for power in self.powers:
-            newdata[power] = smooth1d(self.data[power], winLen, winType)
+        newdata = np.empty(shape=self.data.shape, dtype="complex")
+        for iPri in range(len(self.primaryChans)):
+            for iSec in range(len(self.secondaryChans)):
+                newdata[iPri, iSec] = smooth1d(
+                    self.data[iPri, iSec], smoothLen, smoothFunc
+                )
         if inplace:
             self.data = newdata
             return None
-        # otherwise return new power data object
-        return PowerData(self.style, self.sampleFreq, newdata)
+        return PowerData(
+            self.primaryChans, self.secondaryChans, newdata, self.sampleFreq
+        )
 
     def interpolate(self, newfreqs: np.ndarray) -> ResisticsBase:
         """Interpolate the power data
@@ -450,10 +560,13 @@ class PowerData(ResisticsBase):
         """
         import scipy.interpolate as interp
 
-        newdata = {}
         freq = self.freqArray
-        for power in self.powers:
-            interpFunc = interp.interp1d(freq, self.data[power])
-            newdata[power] = interpFunc(newfreqs)
-        # otherwise return new power data object
-        return PowerData(self.style, self.sampleFreq, newdata)
+        shape = self.data.shape
+        newdata = np.empty(shape=(shape[0], shape[1], len(newfreqs)), dtype="complex")
+        for iPri in range(len(self.primaryChans)):
+            for iSec in range(len(self.secondaryChans)):
+                interpFunc = interp.interp1d(freq, self.data[iPri, iSec])
+                newdata[iPri, iSec] = interpFunc(newfreqs)
+        return PowerData(
+            self.primaryChans, self.secondaryChans, newdata, self.sampleFreq
+        )

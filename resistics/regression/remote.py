@@ -1,15 +1,13 @@
 import os
 import numpy as np
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 
-from resistics.common.smooth import smooth1d
+from resistics.window.selector import WindowSelector
+from resistics.spectra.data import PowerData
 from resistics.regression.local import LocalRegressor
-from resistics.regression.compute import remoteMatrices
 from resistics.regression.robust import (
-    chatterjeeMachler,
-    sampleMAD0,
-    hermitianTranspose,
     olsModel,
+    chatterjeeMachler,
     mmestimateModel,
 )
 
@@ -43,7 +41,7 @@ class RemoteRegressor(LocalRegressor):
         Number of output channels
     remoteSite : str
         The site to use as a remote reference
-    remoteChannels : List[str]
+    remoteCross : List[str]
         The channels to use as remote reference channels
     remoteSize : int
         Number of remote reference channels
@@ -67,12 +65,10 @@ class RemoteRegressor(LocalRegressor):
     -------
     __init__(winSelector, outpath)
         Initialise the remote reference processor
-    setRemote(remoteSite, remoteChannels)
+    setRemote(remoteSite, remoteCross)
         Set the remote site and channels
     process()
         Perform the remote reference processing
-    checkRemote()
-        Ensure remote reference site and channels are properly defined
     prepareLinearEqn(data)
         Prepare regressors and observations for regression from cross-power data
     robustProcess(numWindows, obs, reg)      
@@ -86,236 +82,186 @@ class RemoteRegressor(LocalRegressor):
     """
 
     def __init__(self, winSelector, outpath: str):
-        # required
-        self.winSelector = winSelector
+        self.winSelector: WindowSelector = winSelector
         self.decParams = winSelector.decParams
         self.winParams = winSelector.winParams
         self.outpath: str = outpath
-        # default parameters for user options
+        # configuration parameters
+        self.ncores = 0
+        self.method: str = "cm"
+        # input site options
         self.inSite: str = "dummy"
         self.inChannels: List[str] = ["Hx", "Hy"]
         self.inSize: int = len(self.inChannels)
+        self.inCross: List[str] = self.defaultInCross(self.inChannels)
+        # output site options
         self.outSite: str = "dummy"
         self.outChannels: List[str] = ["Ex", "Ey"]
         self.outSize: int = len(self.outChannels)
+        self.outCross: List[str] = self.defaultOutCross(self.outChannels)
+        # remote site options
         self.remoteSite: str = ""
-        self.remoteChannels: List[str] = ["Hx", "Hy"]
-        self.remoteSize = len(self.remoteChannels)
-        # intercept options
+        self.remoteCross: List[str] = ["Hx", "Hy"]
+        self.remoteSize = len(self.remoteCross)
+        # solution options
         self.intercept: bool = False
-        # regression method
-        self.method: str = "mm"
+        self.stack: bool = False
+        self.mmOptions: Union[None, Dict] = None
+        self.cmOptions: Union[None, Dict] = None
+        self.olsOptions: Union[None, Dict] = None
         # smoothing options
-        self.win: str = "hann"
-        self.winSmooth: int = -1
+        self.smoothFunc: str = "hann"
+        self.smoothLen: int = None
+        # attributes to store transfer function data
+        self.evalFreq = []
+        self.parameters = []
+        self.variances = []
         # output filename
         self.postpend: str = ""
-        # evaluation frequency data
-        self.evalFreq = []
-        self.impedances = []
-        self.variances = []
 
-    def setRemote(self, remoteSite: str, remoteChannels: List[str]) -> None:
-        """Set information about input site and channels
+    def defaultInCross(self, inChannels: List[str]) -> List[str]:
+        """Returning the default cross channels for the input site
+
+        For remote reference processing, the default is to only use cross channels from the remote site.
+        
+        Parameters
+        ----------
+        inChannels : List[str]
+            The input channels
+        
+        Returns
+        -------
+        inCross : List[str]
+            The cross channels for the input site
+        """
+        return []
+
+    def defaultOutCross(self, outChannels: List[str]) -> List[str]:
+        """Returning the default cross channels for the output site
+
+        For remote reference processing, the default is to only use cross channels from the remote site.
+        
+        Parameters
+        ----------
+        outChannels : List[str]
+            The output channels
+        
+        Returns
+        -------
+        outCross : List[str]
+            The cross channels for the output site
+        """
+        return []
+
+    def defaultRemoteCross(self) -> List[str]:
+        """Returning the default cross channels for the remote site
+
+        For remote reference processing, the default is to only use cross channels from the remote site. These are usually the magnetic channels for standard impedance tensor calculations.
+        
+        Returns
+        -------
+        remoteCross : List[str]
+            The cross channels for the remote site
+        """
+        return ["Hx", "Hy"]
+
+    def setRemote(self, remoteSite: str, remoteCross: Union[List[str], None],) -> None:
+        """Set information about remote site channels
+
+        For remote reference processing, it is usual to use the magnetic channels as the cross channels.
     
         Parameters
         ----------
         remoteSite : str
             Site to use for input channel data
-        remoteChannels : List[str]
-            Channels to use as the remote reference in the linear system
+        remoteCross : List[str]
+            Channels to use from the remote refence site as crosspower channels
         """
         self.remoteSite = remoteSite
-        self.remoteChannels = remoteChannels
-        self.remoteSize = len(remoteChannels)
+        self.remoteCross = remoteCross
+        if self.remoteCross is None:
+            self.remoteCross = self.defaultRemoteCross()
+        self.remoteSize = len(remoteCross)
         self.printText(
-            "Remote reference set with site {} and channels {}".format(
-                self.remoteSite, self.remoteChannels
+            "Remote reference set with site {} and cross channels {}".format(
+                self.remoteSite, self.remoteCross
             )
         )
 
-    def process(self, ncores: int = 0) -> None:
-        """Process spectra data
-
-        The processing sequence for each decimation level is as below:
-
-        1. Get shared (unmasked) windows for all relevant sites (inSite and outSite)
-        2. For shared unmasked windows
-            
-            - Calculate out the cross-power spectra.
-            - Interpolate calculated cross-power data to the evaluation frequencies for the decimation level.
+    def processBatch(
+        self, batch: Dict, batchedWindows: set, evalFreq: np.ndarray, smoothLen: int
+    ) -> Tuple[List[PowerData], np.ndarray]:
+        """Process a single batch
         
-        3. For each evaluation frequency
-            
-            - Do the robust processing to calculate the transfer function at that evaluation frequency.
-
-        The spectral power data is smoothed as this tends to improve results. The smoothing can be changed by setting the smoothing parameters. This method is still subject to change in the future as it is an area of active work
-        """
-        numLevels = self.decParams.numLevels
-        for declevel in range(0, numLevels):
-            self.printText("Processing decimation level {}".format(declevel))
-            numWindows = self.winSelector.getNumSharedWindows(declevel)
-            unmaskedWindows = self.winSelector.getUnmaskedWindowsLevel(declevel)
-            numUnmasked = len(unmaskedWindows)
-            self.printText(
-                "Total shared windows for decimation level = {}".format(numWindows)
-            )
-            self.printText(
-                "Total unmasked windows for decimation level = {}".format(numUnmasked)
-            )
-            if numUnmasked == 0:
-                self.printText(
-                    "No unmasked windows found at this decimation level ({:d}), continuing to next level".format(
-                        declevel
-                    )
-                )
-                continue
-            self.printText("{} windows will be processed".format(numUnmasked))
-
-            # set variables
-            evalFreq = self.decParams.getEvalFrequenciesForLevel(declevel)
-            totalSize: int = self.inSize + self.outSize
-            numEvalFreq: int = len(evalFreq)
-            dataSize: int = self.winSelector.getDataSize(declevel)
-            smoothLen: int = self.getWindowSmooth(datasize=dataSize)
-            # data array for each evaluation frequency and keep spectral power information for all windows
-            evalFreqData = np.empty(
-                shape=(numEvalFreq, numWindows, totalSize, self.remoteSize),
-                dtype="complex",
-            )
-
-            # global to local map to help choose windows for each evaluation frequency
-            localWin: int = 0
-            global2local: Dict = {}
-            # process spectral batches
-            spectraBatches = self.winSelector.getSpecReaderBatches(declevel)
-            numBatches = len(spectraBatches)
-            for batchIdx, batch in enumerate(spectraBatches):
-                # find the unmasked batched windows and add the data
-                batchedWindows = unmaskedWindows.intersection(
-                    set(range(batch["globalrange"][0], batch["globalrange"][1] + 1))
-                )
-                self.printText(
-                    "Processing batch {:d} of {:d}: Global window range {:d} to {:d}, {:d} windows, {:.3%} of data".format(
-                        batchIdx + 1,
-                        numBatches,
-                        batch["globalrange"][0],
-                        batch["globalrange"][1],
-                        len(batchedWindows),
-                        len(batchedWindows) / numUnmasked,
-                    )
-                )
-                if len(batchedWindows) == 0:
-                    self.printText("Batch does not contribute any windows. Continuing to next batch.")
-                    continue
-
-                # collect spectrum data and compute spectral matrices
-                # set batchedWindows from return to ensure proper order
-                inReader = batch[self.inSite]
-                inData, batchedWindows = inReader.readBinaryBatchGlobal(
-                    globalIndices=batchedWindows
-                )
-                if self.outSite != self.inSite:
-                    outReader = batch[self.outSite]
-                    outData, _gIndicesOut = outReader.readBinaryBatchGlobal(
-                        globalIndices=batchedWindows
-                    )
-                else:
-                    outData = inData
-                # remote data
-                remoteReader = batch[self.remoteSite]
-                remoteData, _rgIndicesOut = remoteReader.readBinaryBatchGlobal(
-                    globalIndices=batchedWindows
-                )
-
-                out = remoteMatrices(
-                    ncores,
-                    inData,
-                    outData,
-                    remoteData,
-                    self.inChannels,
-                    self.outChannels,
-                    self.remoteChannels,
-                    smoothLen,
-                    self.win,
-                    evalFreq,
-                )
-
-                for batchWin, globalWin in enumerate(batchedWindows):
-                    evalFreqData[:, localWin] = out[batchWin]
-                    # local to global map and increment local window
-                    global2local[globalWin] = localWin
-                    localWin = localWin + 1
-
-            # close spectra files for decimation level
-            for batch in spectraBatches:
-                for site in self.winSelector.sites:
-                    batch[site].closeFile()
-
-            # data has been collected for each evaluation frequency, perform robust processing
-            for eIdx in range(0, numEvalFreq):
-                self.printText(
-                    "Processing evaluation frequency = {:.6f} [Hz], period = {:.6f} [s]".format(
-                        evalFreq[eIdx], 1 / evalFreq[eIdx]
-                    )
-                )
-                # get the constrained windows for the evaluation frequency
-                evalFreqWindows = self.winSelector.getWindowsForFreq(declevel, eIdx)
-                if len(evalFreqWindows) == 0:
-                    # no windows meet constraints
-                    self.printText("No windows found - possibly due to masking")
-                    continue
-                localWinIndices = []
-                for iW in evalFreqWindows:
-                    localWinIndices.append(global2local[iW])
-
-                self.printText(
-                    "{:d} windows will be solved for".format(len(localWinIndices))
-                )
-                # restrict processing to data that meets constraints for this evaluation frequency
-                self.evalFreq.append(evalFreq[eIdx])
-                # solution using all components
-                numSolveWindows, obs, reg = self.prepareLinearEqn(
-                    evalFreqData[eIdx, localWinIndices]
-                )
-                out, var = self.robustProcess(numSolveWindows, obs, reg)
-                # out, var = self.olsProcess(numSolveWindows, obs, reg)
-                self.impedances.append(out)
-                self.variances.append(var)
-
-        if len(self.evalFreq) == 0:
-            self.printWarning(
-                "No data was found at any decimation level for insite {}, outsite {}, remotesite {} and specdir {}".format(
-                    self.inSite, self.outSite, self.remoteSite, self.winSelector.specdir
-                )
-            )
-            return
-
-        # write out all the data
-        self.writeTF(
-            self.winSelector.specdir,
-            self.postpend,
-            self.evalFreq,
-            self.impedances,
-            self.variances,
-            remotesite=self.remoteSite,
-            remotechans=self.remoteChannels,
-        )
-
-    def checkRemote(self):
-        """Check that the remote channels are the same as the input channels
+        Parameters
+        ----------
+        batch : Dict
+            The batch information (about the spectra readers, the global window range etc)
+        batchedWindws : set
+            The windows in the batch. This is a set, so unsorted. A sorted version with correct order gets returned by the function
+        evalFreq : np.ndarray
+            The evaluation frequencies
+        smoothLen : int
+            The smoothing length for the crosspower data
 
         Returns
         -------
-        bool   
-            Check outcome
+        crosspowers : List[PowerData]
+            List of PowerData with the crosspowers
+        batchedWindows : np.ndarray
+            The correctly ordered windows for the batch
         """
-        check = True
-        check = check and self.remoteSize == self.inSize
-        check = check and self.remoteChannels == self.inChannels
-        return check
+        from resistics.regression.crosspowers import remoteCrosspowers
 
-    def prepareLinearEqn(self, data):
+        # collect spectrum data and set batchedWindows to ensure proper order
+        inReader = batch[self.inSite]
+        inData, batchedWindows = inReader.readBinaryBatchGlobal(
+            globalIndices=batchedWindows
+        )
+        if self.outSite != self.inSite:
+            outReader = batch[self.outSite]
+            outData, _gIndicesOut = outReader.readBinaryBatchGlobal(
+                globalIndices=batchedWindows
+            )
+        else:
+            outData = inData
+        # remote data
+        remoteReader = batch[self.remoteSite]
+        remoteData, _rgIndicesOut = remoteReader.readBinaryBatchGlobal(
+            globalIndices=batchedWindows
+        )
+
+        self.printText("Calculating batch crosspowers...")
+        crosspowers = remoteCrosspowers(
+            self.ncores,
+            inData,
+            self.inChannels,
+            self.inCross,
+            outData,
+            self.outChannels,
+            self.outCross,
+            remoteData,
+            self.remoteCross,
+            smoothLen,
+            self.smoothFunc,
+            evalFreq,
+        )
+        self.printText("Calculation of crosspowers for batch complete")
+        return crosspowers, batchedWindows
+
+    def getCrossSize(self):
+        """This essentially returns the number of equations per window
+
+        The total number of cross channels that have been used in calculating crosspowers
+
+        Returns
+        -------
+        crossSize : int
+            The total number of cross channels used for crosspowers
+        """
+        return len(self.inCross) + len(self.outCross) + len(self.remoteCross)
+
+    def prepareLinearEqn(self, crosspowerData: np.ndarray, eIdx: int):
         r"""Prepare data as a linear equation for the robust regression
 
         This prepares the data for the following type of solution,
@@ -346,8 +292,10 @@ class RemoteRegressor(LocalRegressor):
 
         Parameters
         ----------
-        data : np.ndarray
+        crosspowerData : np.ndarray
             Cross-power spectral data at evaluation frequencies
+        eIdex : int
+            The evaluation frequency index (for the decimation level)
 
         Returns
         -------
@@ -358,197 +306,52 @@ class RemoteRegressor(LocalRegressor):
         reg : np.ndarray 
             Regressors array
         """
-        numWindows = data.shape[0]
-        numWindows, data = self.checkForBadValues(numWindows, data)
-        # for each output variable, have ninput regressor variables
-        # let's construct our arrays
-        obs = np.empty(
-            shape=(self.outSize, self.remoteSize * numWindows), dtype="complex"
-        )
+        numWindows = crosspowerData.size
+        # remove windows with bad values
+        numWindows, crosspowerData = self.checkForBadValues(crosspowerData)
+        # calculate out the number of equations per window per output variable
+        numInCross = len(self.inCross)
+        numOutCross = len(self.outCross)
+        crossSize = self.getCrossSize()
+        # add In and Out to the required channels
+        inChans = [inChan + "In" for inChan in self.inChannels]
+        inCross = [inChan + "In" for inChan in self.inCross]
+        outChans = [outChan + "Out" for outChan in self.outChannels]
+        outCross = [outChan + "Out" for outChan in self.outCross]
+        remoteCross = [remoteChan + "RR" for remoteChan in self.remoteCross]
+        # construct our arrays
+        obs = np.empty(shape=(self.outSize, crossSize * numWindows), dtype="complex")
         reg = np.empty(
-            shape=(self.outSize, self.remoteSize * numWindows, self.inSize),
-            dtype="complex",
+            shape=(self.outSize, crossSize * numWindows, self.inSize), dtype="complex"
         )
-        for iW in range(0, numWindows):
-            iOffset = iW * self.remoteSize
-            for i in range(0, self.outSize):
-                for j in range(0, self.remoteSize):
-                    # this is the observation row where,i is the observed output
-                    obs[i, iOffset + j] = data[iW, self.inSize + i, j]
-                    for k in range(0, self.inSize):
-                        reg[i, iOffset + j, k] = data[iW, k, j]
+        for iWin, winPower in enumerate(crosspowerData):
+            iOffset = iWin * crossSize
+            for iOut, outChan in enumerate(outChans):
+                # add in all the observations and regressors for this window
+                # the cross channels from the input data
+                for iC, xC in enumerate(inCross):
+                    obs[iOut, iOffset + iC] = winPower.getPower(outChan, xC, eIdx)
+                    for iIn, inChan in enumerate(inChans):
+                        reg[iOut, iOffset + iC, iIn] = winPower.getPower(
+                            inChan, xC, eIdx
+                        )
+                # the cross channels from the output data
+                for iC, xC in enumerate(outCross):
+                    iC += numInCross
+                    obs[iOut, iOffset + iC] = winPower.getPower(outChan, xC, eIdx)
+                    for iIn, inChan in enumerate(inChans):
+                        reg[iOut, iOffset + iC, iIn] = winPower.getPower(
+                            inChan, xC, eIdx
+                        )
+                # the cross channels from the remote data
+                for iC, xC in enumerate(remoteCross):
+                    iC += numInCross + numOutCross
+                    obs[iOut, iOffset + iC] = winPower.getPower(outChan, xC, eIdx)
+                    for iIn, inChan in enumerate(inChans):
+                        reg[iOut, iOffset + iC, iIn] = winPower.getPower(
+                            inChan, xC, eIdx
+                        )
         return numWindows, obs, reg
-
-    def robustProcess(
-        self, numWindows: int, obs: np.ndarray, reg: np.ndarray
-    ) -> Tuple[np.ndarray]:
-        """Robust regression processing
-
-        Perform robust regression processing using observations and regressors for a single evaluation frequency. 
-
-        Parameters
-        ----------
-        numWindows : int
-            The number of windows
-        obs : np.ndarray
-            The observations
-        reg : np.ndarray
-            The regressors
-
-        Returns
-        -------
-        output : np.ndarray
-            The solution to the regression problem
-        varOutput : np.ndarray
-            The variance
-        """
-        # create array for output
-        output = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
-        varOutput = np.empty(shape=(self.outSize, self.inSize), dtype="float")
-        # solve
-        for i in range(0, self.outSize):
-            observation = obs[i, :]
-            predictors = reg[i, :, :]
-            # save the output
-            out, resids, weights = chatterjeeMachler(
-                predictors, observation, intercept=self.intercept
-            )
-            # out, resids, scale, weights = mmestimateModel(predictors, observation, intercept=self.intercept)
-
-            # now take the weights, apply to the observations and predictors, stack the appropriate rows and test
-            observation2 = np.zeros(shape=(self.remoteSize), dtype="complex")
-            predictors2 = np.zeros(
-                shape=(self.remoteSize, self.inSize), dtype="complex"
-            )
-            for iChan in range(0, self.remoteSize):
-                # now need to have my indexing array
-                indexArray = np.arange(
-                    iChan, numWindows * self.remoteSize, self.remoteSize
-                )
-                weightsLim = weights[indexArray]
-                # weightsLim = weightsLim/np.sum(weightsLim) # normalise weights to 1
-                observation2[iChan] = (
-                    np.sum(obs[i, indexArray] * weightsLim) / numWindows
-                )
-                # now for the regressors
-                for j in range(0, self.inSize):
-                    predictors2[iChan, j] = (
-                        np.sum(reg[i, indexArray, j] * weightsLim) / numWindows
-                    )
-            out, resids, weights = chatterjeeMachler(
-                predictors2, observation2, intercept=self.intercept
-            )
-            # out, resids, scale, weights = mmestimateModel(predictors2, observation2, intercept=self.intercept)
-
-            # now calculate out the varainces - have the solution out, have the weights
-            # recalculate out the residuals with the final solution
-            # calculate standard deviation of residuals
-            # and then use chatterjee machler formula to estimate variances
-            # this needs work - better to use an empirical bootstrap method, but this will do for now
-            resids = np.absolute(observation - np.dot(predictors, out))
-            scale = sampleMAD0(
-                resids
-            )  # some measure of standard deviation, rather than using the standard deviation
-            residsVar = scale * scale
-            varPred = np.dot(hermitianTranspose(predictors), weights * predictors)
-            varPred = np.linalg.inv(varPred)  # this is a pxp matrix
-            varOut = 1.91472 * residsVar * varPred
-            varOut = np.diag(varOut).real  # this should be a real number
-
-            if self.intercept:
-                output[i] = out[1:]
-                varOutput[i] = varOut[1:]
-            else:
-                output[i] = out
-                varOutput[i] = varOut
-
-        return output, varOutput
-
-    def olsProcess(
-        self, numWindows: int, obs: np.ndarray, reg: np.ndarray
-    ) -> np.ndarray:
-        """Ordinary least squares regression processing
-
-        Perform ordinary least regression processing using observations and regressors for a single evaluation frequency. 
-
-        Parameters
-        ----------
-        numWindows : int
-            The number of windows
-        obs : np.ndarray
-            The observations
-        reg : np.ndarray
-            The regressors
-
-        Returns
-        -------
-        output : np.ndarray
-            The solution to the regression problem
-        varOutput : np.ndarray
-            The variance        
-        """
-        # create array for output
-        output = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
-        # solve
-        for i in range(0, self.outSize):
-            observation = obs[i, :]
-            predictors = reg[i, :, :]
-            # save the output
-            out, resids, squareResid, rank, s = olsModel(
-                predictors, observation, intercept=self.intercept
-            )
-            if self.intercept:
-                output[i] = out[1:]
-            else:
-                output[i] = out
-        return output
-
-    def stackedProcess(self, data: np.ndarray) -> np.ndarray:
-        """Ordinary least squares processing after stacking
-
-        Parameters
-        ----------
-        data : np.ndarray
-            Cross-spectra data
-
-        Returns
-        -------
-        output : np.ndarray
-            The solution to the regression problem
-        varOutput : np.ndarray
-            The variance        
-        """
-        # do various sums
-        numWindows = data.shape[0]
-        numWindows, data = self.checkForBadValues(numWindows, data)
-        # unweighted sum (i.e. normal solution)
-        unWeightedSum = np.sum(data, axis=0)
-        unWeightedSum = unWeightedSum / numWindows
-        # for each output variable, have ninput regressor variables
-        # let's construct our arrays
-        obs = np.empty(shape=(self.outSize, self.remoteSize), dtype="complex")
-        reg = np.empty(
-            shape=(self.outSize, self.remoteSize, self.inSize), dtype="complex"
-        )
-        for i in range(0, self.outSize):
-            for j in range(0, self.remoteSize):
-                obs[i, j] = unWeightedSum[self.inSize + i, j]
-                for k in range(0, self.inSize):
-                    reg[i, j, k] = unWeightedSum[k, j]
-        # create array for output
-        output = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
-        for i in range(0, self.outSize):
-            observation = obs[i, :]
-            predictors = reg[i, :, :]
-            # save the output
-            out, resids, scale, weights = mmestimateModel(
-                predictors, observation, intercept=self.intercept
-            )
-            if self.intercept:
-                output[i] = out[1:]
-            else:
-                output[i] = out
-        return output
 
     def printList(self) -> List[str]:
         """Class information as a list of strings
@@ -559,12 +362,13 @@ class RemoteRegressor(LocalRegressor):
             List of strings with information
         """
         textLst: List[str] = []
-        textLst.append("In Site = {}".format(self.inSite))
-        textLst.append("In Channels = {}".format(self.inChannels))
-        textLst.append("Out Site = {}".format(self.outSite))
-        textLst.append("Out Channels = {}".format(self.outChannels))
+        textLst.append("Input Site = {}".format(self.inSite))
+        textLst.append("Input Site Channels = {}".format(self.inChannels))
+        textLst.append("Input Site Cross Channels = {}".format(self.inCross))
+        textLst.append("Output Site = {}".format(self.outSite))
+        textLst.append("Output Site Channels = {}".format(self.outChannels))
+        textLst.append("Output Site Cross Channels = {}".format(self.outCross))
         textLst.append("Remote Site = {}".format(self.remoteSite))
-        textLst.append("Remote Channels = {}".format(self.remoteChannels))
+        textLst.append("Remote Site Cross Channels = {}".format(self.remoteCross))
         textLst.append("Sample frequency = {:.3f}".format(self.decParams.sampleFreq))
         return textLst
-

@@ -1,10 +1,7 @@
-import sys
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from datetime import datetime, timedelta
-from typing import List, Dict, Union
+from typing import List, Union
 
 from resistics.common.base import ResisticsBase
 
@@ -91,6 +88,42 @@ class RegressionData(ResisticsBase):
         if self.resids is None:
             return None
         return np.sqrt(np.sum(np.power(self.resids, 2)))
+    
+    @property
+    def gaussianVariances(self) -> np.ndarray:
+        """Calculate gaussian parametric variances for uncertainty estimation
+        
+        Returns
+        -------
+        np.ndarray
+            The variances
+        """
+        from resistics.regression.robust import hermitianTranspose
+        from resistics.regression.moments import getScale
+
+        if self.params is None:
+            return None
+        resids = self.resids
+        if resids is None:
+            resids = self.y - np.dot(self.A, self.params)
+        scale = self.scale
+        if scale is None:
+            scale = getScale(resids, "mad0")
+
+        # calculate residual variance (standard deviation squared)
+        varianceResid = scale * scale
+        
+        # calculate predictor variance - this is a pxp square matrix
+        # should the weights be incorporated?
+        # variancePredict = np.dot(hermitianTranspose(self.A), weights*self.A) 
+        variancePredict = np.dot(hermitianTranspose(self.A), self.A)
+        variancePredict = np.linalg.inv(variancePredict)  
+
+        # calculate output uncertainty 
+        varianceParams = 1.91472 * varianceResid * variancePredict
+        # take the diagonal elements - this should be a real number
+        varianceParams = np.diag(varianceParams).real 
+        return varianceParams 
 
     def setModelParameters(
         self,

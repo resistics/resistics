@@ -16,11 +16,19 @@ def generalPrint(pre: str, info: str) -> None:
     print("{} {}: {}".format(datetime.now().strftime("%H:%M:%S"), pre, info))
 
 
-def breakPrint() -> None:
-    """Prints a break in the terminal to make things easier to read"""
-    print("---------------------------------------------------")
-    print("")
-    print("---------------------------------------------------")
+def breakPrint(pre: str) -> None:
+    """Print a noticeable separator string to the terminal
+
+    Parameters
+    ----------
+    pre : str
+        String describing where the information is being output from   
+    """
+    print(
+        "{} {}: {}".format(
+            datetime.now().strftime("%H:%M:%S"), pre, "********************"
+        )
+    )
 
 
 def blockPrint(pre: str, text: Union[List, str]) -> None:

@@ -6,8 +6,41 @@ def test_getDefaultParameter() -> None:
     assert name == "default"
     ncores = getDefaultParameter("ncores")
     assert ncores == -1
+    window = getDefaultParameter("Window")
+    assert window == {
+        "minwindows": 5,
+        "windowfactor": 2.0,
+        "minwindowsize": 512,
+        "minoverlapsize": 128,
+        "overlapfraction": 0.25,
+        "windowsizes": [],
+        "overlapsizes": [],
+    }
     spectra = getDefaultParameter("Spectra")
-    assert spectra == {'specdir': 'spectra', 'applywindow': True, 'windowfunc': 'hamming', 'ncores': -1}
+    assert spectra == {
+        "specdir": "spectra",
+        "applywindow": True,
+        "windowfunc": "hann",
+        "ncores": -1,
+    }
+    statistics = getDefaultParameter("Statistics")
+    assert statistics == {
+        "ncores": -1,
+        "stats": ["coherence", "transferFunction"],
+        "remotestats": ["RR_coherence", "RR_transferFunction"],
+    }
+    solver = getDefaultParameter("Solver")
+    assert solver == {
+        "ncores": -1,
+        "smoothfunc": "hann",
+        "smoothlen": 9,
+        "intercept": False,
+        "stack": False,
+        "method": "cm",
+        "OLS": {},
+        "MM": {"weightfnc1": "huber", "weightfnc2": "bisquare"},
+        "CM": {},
+    }
 
 
 def test_copyDefaultConfig() -> None:
@@ -25,4 +58,3 @@ def test_copyDefaultConfig() -> None:
         if key == "name":
             continue
         assert config[key] == defaultConfig[key]
-

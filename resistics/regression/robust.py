@@ -115,6 +115,8 @@ def mestimateModel(A: np.ndarray, y: np.ndarray, **kwargs) -> Dict[str, Any]:
         A scale estimate
     intercept : bool, optional
         True or False for adding an intercept term
+    weights : str, optional
+        The weights to use
 
     Returns
     -------

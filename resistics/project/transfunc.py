@@ -272,6 +272,7 @@ def processSite(
         processor = getLocalRegressor(winSelector, outPath, projData.config)
 
     # add the input and output site
+    processor.setCores(options["ncores"])
     processor.setInput(options["inputsite"], options["inchans"])
     processor.setOutput(site, options["outchans"])
     if len(options["crosschannels"]) > 0:
@@ -279,7 +280,7 @@ def processSite(
     processor.postpend = options["postpend"]
     processor.printInfo()
     projectText("Processing data using {} cores".format(options["ncores"]))
-    processor.process(options["ncores"])
+    processor.process()
 
 
 def viewImpedance(projData: ProjectData, **kwargs) -> List[Figure]:

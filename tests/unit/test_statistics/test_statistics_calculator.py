@@ -45,18 +45,54 @@ def test_statistics_calculator() -> None:
         "Hx-Hx": [18.0 + 0.0j, 170.0 + 0.0j, 17.0 + 0.0j, 82.0 + 0.0j, 8.0 + 0.0j],
         "Hx-Hy": [21.0 + 33.0j, -92.0 + 74.0j, 24.0 - 40.0j, 24.0 + 52.0j, 14.0 + 6.0j],
         "Hx-Ex": [6.0 + 12.0j, 57.0 + 41.0j, 34.0 + 17.0j, 21.0 + 25.0j, 24.0 - 8.0j],
-        "Hx-Ey": [-48.0 + 24.0j, 80.0 - 20.0j, 2.0 - 26.0j, -22.0 - 34.0j, -24.0 + 0.0j],
+        "Hx-Ey": [
+            -48.0 + 24.0j,
+            80.0 - 20.0j,
+            2.0 - 26.0j,
+            -22.0 - 34.0j,
+            -24.0 + 0.0j,
+        ],
         "Hy-Hx": [21.0 - 33.0j, -92.0 - 74.0j, 24.0 + 40.0j, 24.0 - 52.0j, 14.0 - 6.0j],
         "Hy-Hy": [85.0 + 0.0j, 82.0 + 0.0j, 128.0 + 0.0j, 40.0 + 0.0j, 29.0 + 0.0j],
         "Hy-Ex": [29.0 + 3.0j, -13.0 - 47.0j, 8.0 + 104.0j, 22.0 - 6.0j, 36.0 - 32.0j],
-        "Hy-Ey": [-12.0 + 116.0j, -52.0 - 24.0j, 64.0 - 32.0j, -28.0 + 4.0j, -42.0 + 18.0j],
+        "Hy-Ey": [
+            -12.0 + 116.0j,
+            -52.0 - 24.0j,
+            64.0 - 32.0j,
+            -28.0 + 4.0j,
+            -42.0 + 18.0j,
+        ],
         "Ex-Hx": [6.0 - 12.0j, 57.0 - 41.0j, 34.0 - 17.0j, 21.0 - 25.0j, 24.0 + 8.0j],
         "Ex-Hy": [29.0 - 3.0j, -13.0 + 47.0j, 8.0 - 104.0j, 22.0 + 6.0j, 36.0 + 32.0j],
         "Ex-Ex": [10.0 + 0.0j, 29.0 + 0.0j, 85.0 + 0.0j, 13.0 + 0.0j, 80.0 + 0.0j],
-        "Ex-Ey": [0.0 + 40.0j, 22.0 - 26.0j, -22.0 - 54.0j, -16.0 - 2.0j, -72.0 - 24.0j],
-        "Ey-Hx": [-48.0 - 24.0j, 80.0 + 20.0j, 2.0 + 26.0j, -22.0 + 34.0j, -24.0 - 0.0j],
-        "Ey-Hy": [-12.0 - 116.0j, -52.0 + 24.0j, 64.0 + 32.0j, -28.0 - 4.0j, -42.0 - 18.0j],
-        "Ey-Ex": [0.0 - 40.0j, 22.0 + 26.0j, -22.0 + 54.0j, -16.0 + 2.0j, -72.0 + 24.0j],
+        "Ex-Ey": [
+            0.0 + 40.0j,
+            22.0 - 26.0j,
+            -22.0 - 54.0j,
+            -16.0 - 2.0j,
+            -72.0 - 24.0j,
+        ],
+        "Ey-Hx": [
+            -48.0 - 24.0j,
+            80.0 + 20.0j,
+            2.0 + 26.0j,
+            -22.0 + 34.0j,
+            -24.0 - 0.0j,
+        ],
+        "Ey-Hy": [
+            -12.0 - 116.0j,
+            -52.0 + 24.0j,
+            64.0 + 32.0j,
+            -28.0 - 4.0j,
+            -42.0 - 18.0j,
+        ],
+        "Ey-Ex": [
+            0.0 - 40.0j,
+            22.0 + 26.0j,
+            -22.0 + 54.0j,
+            -16.0 + 2.0j,
+            -72.0 + 24.0j,
+        ],
         "Ey-Ey": [160.0 + 0.0j, 40.0 + 0.0j, 40.0 + 0.0j, 20.0 + 0.0j, 72.0 + 0.0j],
     }
     evalDict = {
@@ -79,8 +115,15 @@ def test_statistics_calculator() -> None:
     }
     # check the autopower data
     for key in powerDict:
-        np.testing.assert_almost_equal(calculator.autopowers.data[key], np.array(powerDict[key])) 
-        np.testing.assert_almost_equal(calculator.autopowersEval.data[key], evalDict[key])
+        splitkey = key.split("-")
+        chan1 = splitkey[0]
+        chan2 = splitkey[1]
+        np.testing.assert_almost_equal(
+            calculator.xpowers.getPower(chan1, chan2), np.array(powerDict[key])
+        )
+        np.testing.assert_almost_equal(
+            calculator.xpowersEval.getPower(chan1, chan2), evalDict[key]
+        )
 
 
 def test_statistics_calculator_absval():

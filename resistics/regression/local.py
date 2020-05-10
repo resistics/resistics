@@ -2,17 +2,15 @@ import os
 import random
 import numpy as np
 import scipy.interpolate as interp
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 
 from resistics.common.base import ResisticsBase
+from resistics.spectra.data import PowerData
 from resistics.window.selector import WindowSelector
 from resistics.transfunc.data import TransferFunctionData
 from resistics.transfunc.io import TransferFunctionWriter
 from resistics.common.io import checkAndMakeDir, fileFormatSampleFreq
-from resistics.regression.compute import spectralMatrices
-from resistics.regression.moments import getScale
 from resistics.regression.robust import (
-    hermitianTranspose,
     olsModel,
     chatterjeeMachler,
     mmestimateModel,
@@ -54,9 +52,9 @@ class LocalRegressor(ResisticsBase):
         Flag for including an intercept (static) term in the linear system
     method : str (options, "ols", "cm") 
         String for describing what solution method to use
-    win : str (default hann)
+    smoothFunc : str (default hann)
         Window function to use in robust solution
-    winSmooth : int (default -1)
+    smoothLen : int (default -1)
         The size of the window smoother. If -1, this will be autocalculated based on data size
     postpend : str (default "")
         String to postpend to the output filename to help file management
@@ -75,7 +73,7 @@ class LocalRegressor(ResisticsBase):
         Set the output site and channels
     process()
         Process the spectra to calculate the transfer function
-    getWindowSmooth()
+    getSmoothLen()
         Get the window smooth length
     checkForBadValues(numWindows, data)
         Check the spectral data for bad values that might cause an error   
@@ -105,29 +103,116 @@ class LocalRegressor(ResisticsBase):
         self.decParams = winSelector.decParams
         self.winParams = winSelector.winParams
         self.outpath: str = outpath
-        # default parameters for user options
+        # configuration parameters
+        self.ncores = 0
+        self.method: str = "cm"
+        # input site options
         self.inSite: str = "dummy"
         self.inChannels: List[str] = ["Hx", "Hy"]
         self.inSize: int = len(self.inChannels)
+        self.inCross: List[str] = self.defaultInCross(self.inChannels)
+        # output site options
         self.outSite: str = "dummy"
         self.outChannels: List[str] = ["Ex", "Ey"]
         self.outSize: int = len(self.outChannels)
-        self.allChannels: List[str] = self.inChannels + self.outChannels
-        self.crossChannels: List[str] = self.allChannels
+        self.outCross: List[str] = self.defaultOutCross(self.outChannels)
         # solution options
         self.intercept: bool = False
-        self.method: str = "cm"
+        self.stack: bool = False
+        self.mmOptions: Union[None, Dict] = None
+        self.cmOptions: Union[None, Dict] = None
+        self.olsOptions: Union[None, Dict] = None
         # smoothing options
-        self.win: str = "hann"
-        self.winSmooth: int = 9
+        self.smoothFunc: str = "hann"
+        self.smoothLen: Union[int, None] = None
+        # attributes to store transfer function data
+        self.evalFreq = []
+        self.parameters = []
+        self.variances = []
         # output filename
         self.postpend: str = ""
-        # evaluation frequency data
-        self.evalFreq = []
-        self.impedances = []
-        self.variances = []
 
-    def setInput(self, inSite: str, inChannels: List[str]) -> None:
+    def defaultInCross(self, inChannels: List[str]) -> List[str]:
+        """Returning the default cross channels for the input site
+        
+        Parameters
+        ----------
+        inChannels : List[str]
+            The input channels
+        
+        Returns
+        -------
+        inCross : List[str]
+            The cross channels for the input site
+        """
+        return inChannels
+
+    def defaultOutCross(self, outChannels: List[str]) -> List[str]:
+        """Returning the default cross channels for the output site
+        
+        Parameters
+        ----------
+        outChannels : List[str]
+            The output channels
+        
+        Returns
+        -------
+        outCross : List[str]
+            The cross channels for the output site
+        """
+        return outChannels
+
+    def setCores(self, ncores: int = 0) -> None:
+        """Set the number of cores to use
+        
+        Parameters
+        ----------
+        ncores : int
+            The number of cores to use. Best to leave some cores spare.
+        """
+        self.ncores = ncores
+
+    def setMethod(
+        self, method: str, intercept: bool = False, stack: bool = False, **kwargs
+    ) -> None:
+        """Set the processing method
+        
+        Parameters
+        ----------
+        method : str
+            The processing method to use
+        intercept : bool
+            Whether to add an intercept term or not. Default False.
+        stack : bool
+            Whether to stack the data or not. Default False.
+        """
+        self.method = method
+        self.intercept = intercept
+        self.stack = stack
+        # particular solver options
+        if "mm" in kwargs:
+            self.mmOptions = kwargs["mm"]
+        if "cm" in kwargs:
+            self.cmOptions = kwargs["cm"]
+        if "ols" in kwargs:
+            self.cmOptions = kwargs["ols"]
+
+    def setSmooth(self, smoothFunc: str, smoothLen: int) -> None:
+        """Set the smoothing parameters
+        
+        Parameters
+        ----------
+        smoothFunc : str
+            The smoothing function
+        smoothLen : int
+            The smoothing length. Set to 0 to automatically calculate a smoothing length from the data size
+        """
+        self.smoothFunc = smoothFunc
+        self.smoothLen = smoothLen
+
+    def setInput(
+        self, inSite: str, inChannels: List[str], inCross: Union[List[str], None] = None
+    ) -> None:
         """Set information about input site and channels
     
         Parameters
@@ -136,34 +221,76 @@ class LocalRegressor(ResisticsBase):
             Site to use for input channel data
         inChannels : List[str]
             Channels to use as the input in the linear system
+        inCross : List[str]
+            The channels from the input site to use for cross spectra
         """
         self.inSite = inSite
         self.inChannels = inChannels
         self.inSize = len(inChannels)
-        # set all and cross channels
-        self.allChannels = self.inChannels + self.outChannels
-        self.crossChannels = self.allChannels
+        self.inCross = inCross
+        if self.inCross is None:
+            self.inCross = self.defaultInCross(self.inChannels)
 
-    def setOutput(self, outSite: str, outChannels: List[str]) -> None:
+    def setOutput(
+        self,
+        outSite: str,
+        outChannels: List[str],
+        outCross: Union[List[str], None] = None,
+    ) -> None:
         """Set information about output site and channels
     
         Parameters
         ----------
-        inSite : str
+        outSite : str
             Site to use for output channel data
-        inChannels : List[str]
+        outChannels : List[str]
             Channels to use as the output in the linear system
+        outCross : List[str]
+            The channels from the output site to use for cross spectra
         """
         self.outSite = outSite
         self.outChannels = outChannels
         self.outSize = len(outChannels)
-        # set all and cross channels
-        self.allChannels = self.inChannels + self.outChannels
-        self.crossChannels = self.allChannels
+        self.outCross = outCross
+        if self.outCross is None:
+            self.outCross = self.defaultOutCross(self.outChannels)
 
-    def process(self, ncores: int = 0) -> None:
+    def process(self) -> None:
         """Process spectra data
 
+        Process each decimation level and write out the transfer function.
+
+        Parameters
+        ----------
+        ncores : int
+            The number of cores to run the cross spectra calculations on. Default 0, single core  
+        """
+        numLevels: int = self.decParams.numLevels
+        for declevel in range(0, numLevels):
+            self.printBreak()
+            self.printText("Processing decimation level {}".format(declevel))
+            self.processLevel(declevel)
+        self.printBreak()
+        # check to make sure some data was processed
+        if len(self.evalFreq) == 0:
+            self.printWarning(
+                "No data was found at any decimation level for insite {}, outsite {} and specdir {}".format(
+                    self.inSite, self.outSite, self.winSelector.specdir
+                )
+            )
+            return
+
+        self.writeResult(
+            self.winSelector.specdir,
+            self.postpend,
+            self.evalFreq,
+            self.parameters,
+            self.variances,
+        )
+
+    def processLevel(self, declevel: int) -> None:
+        """Process a decimation level
+        
         The processing sequence for each decimation level is as below:
 
         1. Get shared (unmasked) windows for all relevant sites (inSite and outSite)
@@ -177,146 +304,205 @@ class LocalRegressor(ResisticsBase):
             - Do the robust processing to calculate the transfer function at that evaluation frequency.
 
         The spectral power data is smoothed as this tends to improve results. The smoothing can be changed by setting the smoothing parameters. This method is still subject to change in the future as it is an area of active work
+
+        Parameters
+        ----------
+        declevel : int
+            The decimation level    
         """
-        numLevels: int = self.decParams.numLevels
-        for declevel in range(0, numLevels):
-            self.printText("Processing decimation level {}".format(declevel))
-            numWindows = self.winSelector.getNumSharedWindows(declevel)
-            unmaskedWindows = self.winSelector.getUnmaskedWindowsLevel(declevel)
-            numUnmasked = len(unmaskedWindows)
+        numWindows = self.winSelector.getNumSharedWindows(declevel)
+        unmaskedWindows = self.winSelector.getUnmaskedWindowsLevel(declevel)
+        numUnmasked = len(unmaskedWindows)
+        self.printText(
+            "Total shared windows for decimation level = {}".format(numWindows)
+        )
+        self.printText(
+            "Total unmasked windows for decimation level = {}".format(numUnmasked)
+        )
+        if numUnmasked == 0:
             self.printText(
-                "Total shared windows for decimation level = {}".format(numWindows)
+                "No unmasked windows found at this decimation level ({:d}), continuing to next level".format(
+                    declevel
+                )
+            )
+            return None
+
+        # process batches and collect cross spectra data
+        self.printText("{} windows will be processed".format(numUnmasked))
+        crosspowerData, global2local = self.processBatches(declevel, unmaskedWindows)
+
+        # process the individual evaluation frequencies
+        evalFreq = self.decParams.getEvalFrequenciesForLevel(declevel)
+        for eIdx in range(0, len(evalFreq)):
+            self.printText(
+                "Processing evaluation frequency = {:.6f} [Hz], period = {:.6f} [s]".format(
+                    evalFreq[eIdx], 1 / evalFreq[eIdx]
+                )
+            )
+            self.processFrequency(declevel, eIdx, crosspowerData, global2local)
+
+    def processBatches(
+        self, declevel: int, unmaskedWindows: set
+    ) -> Tuple[np.ndarray, Dict[int, int]]:
+        """Process the spectra batches
+        
+        Parameters
+        ----------
+        declevel : int
+            The decimation level
+        unmaskedWindows : set
+            The unmasked windows for the decimation level
+        
+        Returns
+        -------
+        crosspowerData : np.ndarray[PowerData]
+            A numpy array of crosspower data
+        global2local : Dict[int, int]
+            Global to local window map
+        """
+        evalFreq = self.decParams.getEvalFrequenciesForLevel(declevel)
+        numUnmasked = len(unmaskedWindows)
+        dataSize = self.winSelector.getDataSize(declevel)
+        smoothLen = self.getSmoothLen(dataSize)
+        crosspowerData: np.ndarray = np.empty(shape=(numUnmasked), dtype=PowerData)
+        # global to local map to help choose windows for each evaluation frequency
+        localWin: int = 0
+        global2local: Dict = {}
+        # process spectral batches
+        spectraBatches = self.winSelector.getSpecReaderBatches(declevel)
+        numBatches = len(spectraBatches)
+        for batchIdx, batch in enumerate(spectraBatches):
+            # find the unmasked batched windows and add the data
+            batchedWindows = unmaskedWindows.intersection(
+                set(range(batch["globalrange"][0], batch["globalrange"][1] + 1))
             )
             self.printText(
-                "Total unmasked windows for decimation level = {}".format(numUnmasked)
+                "Processing batch {:d} of {:d}: Global window range {:d} to {:d}, {:.3%} of data".format(
+                    batchIdx + 1,
+                    numBatches,
+                    batch["globalrange"][0],
+                    batch["globalrange"][1],
+                    len(batchedWindows) / numUnmasked,
+                )
             )
-            if numUnmasked == 0:
+            if len(batchedWindows) == 0:
                 self.printText(
-                    "No unmasked windows found at this decimation level ({:d}), continuing to next level".format(
-                        declevel
-                    )
+                    "Batch does not contribute any windows. Continuing to next batch."
                 )
                 continue
-            self.printText("{} windows will be processed".format(numUnmasked))
-
-            # set variables
-            evalFreq = self.decParams.getEvalFrequenciesForLevel(declevel)
-            totalSize: int = self.inSize + self.outSize
-            numEvalFreq: int = len(evalFreq)
-            dataSize: int = self.winSelector.getDataSize(declevel)
-            smoothLen: int = self.getWindowSmooth(datasize=dataSize)
-            # data array for each evaluation frequency and keep spectral power information for all windows
-            evalFreqData: np.ndarray = np.empty(
-                shape=(numEvalFreq, numWindows, totalSize, totalSize), dtype="complex"
+            # process the batch, returns the crosspowers and updated and correctly ordered batchedWindows
+            crosspowers, batchedWindows = self.processBatch(
+                batch, batchedWindows, evalFreq, smoothLen
             )
+            for batchWin, globalWin in enumerate(batchedWindows):
+                crosspowerData[localWin] = crosspowers[batchWin]
+                # local to global map and increment local window
+                global2local[globalWin] = localWin
+                localWin += 1
 
-            # global to local map to help choose windows for each evaluation frequency
-            localWin: int = 0
-            global2local: Dict = {}
-            # process spectral batches
-            spectraBatches = self.winSelector.getSpecReaderBatches(declevel)
-            numBatches = len(spectraBatches)
-            for batchIdx, batch in enumerate(spectraBatches):
-                # find the unmasked batched windows and add the data
-                batchedWindows = unmaskedWindows.intersection(
-                    set(range(batch["globalrange"][0], batch["globalrange"][1] + 1))
-                )
-                self.printText(
-                    "Processing batch {:d} of {:d}: Global window range {:d} to {:d}, {:.3%} of data".format(
-                        batchIdx + 1,
-                        numBatches,
-                        batch["globalrange"][0],
-                        batch["globalrange"][1],
-                        len(batchedWindows) / numUnmasked,
-                    )
-                )
+        # close spectra files for decimation level
+        for batch in spectraBatches:
+            for site in self.winSelector.sites:
+                batch[site].closeFile()
 
-                # collect spectrum data and compute spectral matrices
-                # set batchedWindows from return to ensure proper order
-                inReader = batch[self.inSite]
-                inData, batchedWindows = inReader.readBinaryBatchGlobal(
-                    globalIndices=batchedWindows
-                )
-                if self.outSite != self.inSite:
-                    outReader = batch[self.outSite]
-                    outData, _gIndicesOut = outReader.readBinaryBatchGlobal(
-                        globalIndices=batchedWindows
-                    )
-                else:
-                    outData = inData
+        return crosspowerData, global2local
 
-                out = spectralMatrices(
-                    ncores,
-                    inData,
-                    outData,
-                    self.inChannels,
-                    self.outChannels,
-                    smoothLen,
-                    self.win,
-                    evalFreq,
-                )
+    def processBatch(
+        self, batch: Dict, batchedWindows: set, evalFreq: np.ndarray, smoothLen: int
+    ) -> Tuple[List[PowerData], np.ndarray]:
+        """Process a single batch
+        
+        Parameters
+        ----------
+        batch : Dict
+            The batch information (about the spectra readers, the global window range etc)
+        batchedWindws : set
+            The windows in the batch. This is a set, so unsorted. A sorted version with correct order gets returned by the function
+        evalFreq : np.ndarray
+            The evaluation frequencies
+        smoothLen : int
+            The smoothing length for the crosspower data
 
-                for batchWin, globalWin in enumerate(batchedWindows):
-                    evalFreqData[:, localWin] = out[batchWin]
-                    # local to global map and increment local window
-                    global2local[globalWin] = localWin
-                    localWin = localWin + 1
+        Returns
+        -------
+        crosspowers : List[PowerData]
+            List of PowerData with the crosspowers
+        batchedWindows : np.ndarray
+            The correctly ordered windows for the batch
+        """
+        from resistics.regression.crosspowers import localCrosspowers
 
-            # close spectra files for decimation level
-            for batch in spectraBatches:
-                for site in self.winSelector.sites:
-                    batch[site].closeFile()
-
-            # data has been collected for each evaluation frequency, perform robust processing
-            for eIdx in range(0, numEvalFreq):
-                self.printText(
-                    "Processing evaluation frequency = {:.6f} [Hz], period = {:.6f} [s]".format(
-                        evalFreq[eIdx], 1 / evalFreq[eIdx]
-                    )
-                )
-                # get the constrained windows for the evaluation frequency
-                evalFreqWindows = self.winSelector.getWindowsForFreq(declevel, eIdx)
-                if len(evalFreqWindows) == 0:
-                    # no windows meet constraints
-                    self.printText("No windows found - possibly due to masking")
-                    continue
-                localWinIndices = []
-                for iW in evalFreqWindows:
-                    localWinIndices.append(global2local[iW])
-
-                self.printText(
-                    "{:d} windows will be solved for".format(len(localWinIndices))
-                )
-                # restrict processing to data that meets constraints for this evaluation frequency
-                self.evalFreq.append(evalFreq[eIdx])
-                # solution using all components
-                numSolveWindows, obs, reg = self.prepareLinearEqn(
-                    evalFreqData[eIdx, localWinIndices]
-                )
-                out, var = self.robustProcess(numSolveWindows, obs, reg)
-                # out, var = self.olsProcess(numSolveWindows, obs, reg)
-                # out, var = self.stackedProcess(evalFreqData[eIdx, localWinIndices])
-                self.impedances.append(out)
-                self.variances.append(var)
-
-        if len(self.evalFreq) == 0:
-            self.printWarning(
-                "No data was found at any decimation level for insite {}, outsite {} and specdir {}".format(
-                    self.inSite, self.outSite, self.winSelector.specdir
-                )
-            )
-            return
-
-        # write out all the data
-        self.writeTF(
-            self.winSelector.specdir,
-            self.postpend,
-            self.evalFreq,
-            self.impedances,
-            self.variances,
+        # collect spectrum data and set batchedWindows to ensure proper order
+        inReader = batch[self.inSite]
+        inData, batchedWindows = inReader.readBinaryBatchGlobal(
+            globalIndices=batchedWindows
         )
+        if self.outSite != self.inSite:
+            outReader = batch[self.outSite]
+            outData, _gIndicesOut = outReader.readBinaryBatchGlobal(
+                globalIndices=batchedWindows
+            )
+        else:
+            outData = inData
 
-    def getWindowSmooth(self, **kwargs):
+        self.printText("Calculating batch crosspowers...")
+        crosspowers: List[PowerData] = localCrosspowers(
+            self.ncores,
+            inData,
+            self.inChannels,
+            self.inCross,
+            outData,
+            self.outChannels,
+            self.outCross,
+            smoothLen,
+            self.smoothFunc,
+            evalFreq,
+        )
+        self.printText("Calculation of crosspowers for batch complete")
+        return crosspowers, batchedWindows
+
+    def processFrequency(
+        self,
+        declevel: int,
+        eIdx: int,
+        crosspowerData: np.ndarray,
+        global2local: Dict[int, int],
+    ) -> None:
+        """Process an evaluation frequency
+        
+        Parameters
+        ----------
+        declevel : int
+            The decimation level
+        eIdx : int
+            The evaluation frequency index
+        crosspowerData : np.ndarray[PowerData]
+            A numpy array of PowerData
+        global2local : Dict
+            The global to local window map        
+        """
+        # get the constrained windows for the evaluation frequency
+        evalFreqWindows = self.winSelector.getWindowsForFreq(declevel, eIdx)
+        if len(evalFreqWindows) == 0:
+            self.printText("No windows found - possibly due to masking")
+            return None
+        localWinIndices = []
+        for iWin in evalFreqWindows:
+            localWinIndices.append(global2local[iWin])
+
+        self.printText("{:d} windows will be solved for".format(len(localWinIndices)))
+        # restrict processing to data that meets constraints for this evaluation frequency
+        numSolveWindows, obs, reg = self.prepareLinearEqn(
+            crosspowerData[localWinIndices], eIdx
+        )
+        outputParams, outputVars = self.solve(numSolveWindows, obs, reg)
+        # save evaluation frequency and calculated transfer function and variances
+        evalFreq = self.decParams.getEvalFrequenciesForLevel(declevel)
+        self.evalFreq.append(evalFreq[eIdx])
+        self.parameters.append(outputParams)
+        self.variances.append(outputVars)
+
+    def getSmoothLen(self, datasize):
         """Window smoothing length
 
         Power spectra data is smoothed. This returns the size of the smoothing window.
@@ -324,60 +510,75 @@ class LocalRegressor(ResisticsBase):
         Parameters
         ----------
         datasize : int
-            The size of the data
+            The number of frequency points
 
         Returns
         -------
         smoothLen : int
             Smoothing size
         """
-        # check if window size specified by user
-        if self.winSmooth != -1 and self.winSmooth > 1:
-            return self.winSmooth
-        # if not, calculate based on datasize
-        if "datasize" in kwargs:
-            winSmooth = kwargs["datasize"] * 1.0 / 16.0
-            if winSmooth < 3:
-                return 3  # minimum smoothing
-            # otherwise round to nearest odd number
-            winSmooth = np.ceil(winSmooth) // 2  # this is floor division
-            return int(winSmooth * 2 + 1)
-        # otherwise, return a default value
-        return 15
+        if (self.smoothLen is not None) and (self.smoothLen) >= 1:
+            if self.smoothLen % 2 == 0:
+                self.printWarning(
+                    "Smoothing window should be odd, changed from {:d} to {:d}".format(
+                        self.smoothLen, self.smoothLen + 1
+                    )
+                )
+                self.smoothLen += 1
+            return self.smoothLen
 
-    def checkForBadValues(self, numWindows: int, data: np.ndarray):
+        # calculate based on datasize
+        winSmooth = datasize * 1.0 / 16.0
+        if winSmooth < 3:
+            return 3
+        # otherwise round to nearest odd number
+        winSmooth = np.ceil(winSmooth) // 2
+        return int(winSmooth * 2 + 1)
+
+    def checkForBadValues(self, crosspowerData: np.ndarray):
         """Check data for bad values and remove
         
         Parameters
         ----------
-        numWindows : int
-            The number of windows
-        data : np.ndarray 
-            Cross-spectra data
+        crosspowerData : np.ndarray[PowerData] 
+            numpy array of PowerData
 
         Returns
         -------
         numGoodWindows : int
             The number of good windows
-        goodData : np.ndarray
+        goodData : np.ndarray[PowerData]
             The cross-spectra data with bad windows removed
         """
+        numWindows = crosspowerData.size
         finiteArray = np.ones(shape=(numWindows))
-        for iW in range(0, numWindows):
-            if not np.isfinite(data[iW]).all():
-                finiteArray[iW] = 0
+        for iWin, winPower in enumerate(crosspowerData):
+            if not winPower.isFinite():
+                finiteArray[iWin] = 0
         numGoodWindows = sum(finiteArray)
         if numGoodWindows == numWindows:
-            return numWindows, data
+            return numWindows, crosspowerData
         self.printWarning(
             "Bad data found...number of windows reduced from {} to {}".format(
                 numWindows, numGoodWindows
             )
         )
         goodWindowIndices = np.where(finiteArray == 1)
-        return numGoodWindows, data[goodWindowIndices]
+        return numGoodWindows, crosspowerData[goodWindowIndices]
 
-    def prepareLinearEqn(self, data: np.ndarray):
+    def getCrossSize(self):
+        """This essentially returns the number of equations per window
+
+        The total number of cross channels that have been used in calculating crosspowers
+
+        Returns
+        -------
+        crossSize : int
+            The total number of cross channels used for crosspowers
+        """
+        return len(self.inCross) + len(self.outCross)
+
+    def prepareLinearEqn(self, crosspowerData: np.ndarray, eIdx: int):
         r"""Prepare data as a linear equation for the robust regression
 
         This prepares the data for the following type of solution,
@@ -408,8 +609,10 @@ class LocalRegressor(ResisticsBase):
 
         Parameters
         ----------
-        data : np.ndarray
+        crosspowerData : np.ndarray
             Cross-power spectral data at evaluation frequencies
+        eIdex : int
+            The evaluation frequency index (for the decimation level)
 
         Returns
         -------
@@ -420,28 +623,245 @@ class LocalRegressor(ResisticsBase):
         reg : np.ndarray 
             Regressors array
         """
-        numWindows = data.shape[0]
-        # check for bad values
-        numWindows, data = self.checkForBadValues(numWindows, data)
-        crossSize = len(self.crossChannels)
-        # for each output variable, have number of input regressor variables
+        numWindows = crosspowerData.size
+        # remove windows with bad values
+        numWindows, crosspowerData = self.checkForBadValues(crosspowerData)
+        # calculate out the number of equations per window per output variable
+        numInCross = len(self.inCross)
+        crossSize = self.getCrossSize()
+        # add In and Out to the required channels
+        inChans = [inChan + "In" for inChan in self.inChannels]
+        inCross = [inChan + "In" for inChan in self.inCross]
+        outChans = [outChan + "Out" for outChan in self.outChannels]
+        outCross = [outChan + "Out" for outChan in self.outCross]
         # construct our arrays
         obs = np.empty(shape=(self.outSize, crossSize * numWindows), dtype="complex")
         reg = np.empty(
             shape=(self.outSize, crossSize * numWindows, self.inSize), dtype="complex"
         )
-        for iW in range(0, numWindows):
-            iOffset = iW * crossSize
-            for i in range(0, self.outSize):
-                for j, crossChan in enumerate(self.crossChannels):
-                    # this is the observation row where i is the observed output
-                    crossIndex = self.allChannels.index(crossChan)
-                    obs[i, iOffset + j] = data[iW, self.inSize + i, crossIndex]
-                    for k in range(0, self.inSize):
-                        reg[i, iOffset + j, k] = data[iW, k, crossIndex]
+        for iWin, winPower in enumerate(crosspowerData):
+            iOffset = iWin * crossSize
+            for iOut, outChan in enumerate(outChans):
+                # add in all the observations and regressors for this window
+                # the cross channels from the input data
+                for iC, xC in enumerate(inCross):
+                    obs[iOut, iOffset + iC] = winPower.getPower(outChan, xC, eIdx)
+                    for iIn, inChan in enumerate(inChans):
+                        reg[iOut, iOffset + iC, iIn] = winPower.getPower(
+                            inChan, xC, eIdx
+                        )
+                # the cross channels from the output data
+                for iC, xC in enumerate(outCross):
+                    iC += numInCross
+                    obs[iOut, iOffset + iC] = winPower.getPower(outChan, xC, eIdx)
+                    for iIn, inChan in enumerate(inChans):
+                        reg[iOut, iOffset + iC, iIn] = winPower.getPower(
+                            inChan, xC, eIdx
+                        )
         return numWindows, obs, reg
 
-    def robustProcess(
+    def solve(
+        self, numWindows: int, obs: np.ndarray, reg: np.ndarray
+    ) -> Tuple[np.ndarray]:
+        """Solve the linear equation
+
+        Parameters
+        ----------
+        numWindows : int
+            The number of windows
+        obs : np.ndarray
+            The observations
+        reg : np.ndarray
+            The regressors
+
+        Returns
+        -------
+        outputParams : np.ndarray
+            The solution to the regression problem
+        outputVariances : np.ndarray
+            The variances for the solution   
+        """
+        if self.method == "ols":
+            return self.olsSolve(numWindows, obs, reg)
+        elif self.method == "mm":
+            return self.mmSolve(numWindows, obs, reg)
+        elif self.method == "cm":
+            return self.cmSolve(numWindows, obs, reg)
+        elif self.method == "exp":
+            return self.expSolve(numWindows, obs, reg)
+        else:
+            return self.cmSolve(numWindows, obs, reg)
+
+    def olsSolve(
+        self, numWindows: int, obs: np.ndarray, reg: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Ordinary least squares regression processing
+
+        Perform ordinary least regression processing using observations and regressors for a single evaluation frequency. 
+
+        Parameters
+        ----------
+        numWindows : int
+            The number of windows
+        obs : np.ndarray
+            The observations
+        reg : np.ndarray
+            The regressors
+
+        Returns
+        -------
+        outputParams : np.ndarray
+            The solution to the regression problem
+        outputVariances : np.ndarray
+            The variances for the solution       
+        """
+        # create array for parameters
+        outputParams = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
+        outputVars = np.empty(shape=(self.outSize, self.inSize), dtype="float")
+        # solve
+        for i in range(0, self.outSize):
+            observation = obs[i, :]
+            predictors = reg[i, :, :]
+            # save the output
+            soln = olsModel(predictors, observation, intercept=self.intercept)
+            params = soln.params
+            variances = soln.gaussianVariances
+            if self.intercept:
+                params = params[1:]
+                variances = variances[1:]
+            outputParams[i] = params
+            outputVars[i] = variances
+        return outputParams, outputVars
+
+    def mmSolve(
+        self, numWindows: int, obs: np.ndarray, reg: np.ndarray
+    ) -> Tuple[np.ndarray]:
+        """Robust regression processing
+
+        Perform robust regression processing using mmestimates. Initially does an mm solution, stacks the data given the weights and does another mm solution on the stacked data. 
+
+        Parameters
+        ----------
+        numWindows : int
+            The number of windows
+        obs : np.ndarray
+            The observations
+        reg : np.ndarray
+            The regressors
+
+        Returns
+        -------
+        outputParams : np.ndarray
+            The solution to the regression problem
+        outputVars : np.ndarray
+            The variances for the solution   
+        """
+        from resistics.regression.data import RegressionData
+
+        crossSize = self.getCrossSize()
+        # create array for output
+        outputParams = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
+        outputVars = np.empty(shape=(self.outSize, self.inSize), dtype="float")
+        # solve
+        for ii in range(0, self.outSize):
+            observation = obs[ii, :]
+            predictors = reg[ii, :, :]
+            # initial solution
+            soln1 = mmestimateModel(predictors, observation, intercept=self.intercept)
+            observation2 = np.zeros(shape=(crossSize), dtype="complex")
+            predictors2 = np.zeros(shape=(crossSize, self.inSize), dtype="complex")
+            for iChan in range(0, crossSize):
+                # now need to have my indexing array
+                indexArray = np.arange(iChan, numWindows * crossSize, crossSize)
+                weightsLim = soln1.weights[indexArray]
+                # stack observations
+                observation2[iChan] = (
+                    np.sum(obs[ii, indexArray] * weightsLim) / numWindows
+                )
+                # stack regressors
+                for j in range(0, self.inSize):
+                    predictors2[iChan, j] = (
+                        np.sum(reg[ii, indexArray, j] * weightsLim) / numWindows
+                    )
+            # second solution on stacked data
+            soln2 = mmestimateModel(predictors2, observation2, intercept=self.intercept)
+            params = soln2.params
+            # calulcate variances with respect to full equations, not stacked equations
+            # use soln1 A and y to make sure intecept is incorporated
+            variances = RegressionData(soln1.A, soln1.y, params).gaussianVariances
+            if self.intercept:
+                params = soln2.params[1:]
+                variances = variances[1:]
+            outputParams[ii] = params
+            outputVars[ii] = variances
+        return outputParams, outputVars
+
+    def cmSolve(
+        self, numWindows: int, obs: np.ndarray, reg: np.ndarray
+    ) -> Tuple[np.ndarray]:
+        """Robust regression processing
+
+        Perform robust regression processing using Chaterjee Machler. Initially does an Chaterjee Machler solution, stacks the data given the weights and does another Chaterjee Machler solution on the stacked data.  
+
+        Parameters
+        ----------
+        numWindows : int
+            The number of windows
+        obs : np.ndarray
+            The observations
+        reg : np.ndarray
+            The regressors
+
+        Returns
+        -------
+        outputParams : np.ndarray
+            The solution to the regression problem
+        outputVars : np.ndarray
+            The variances for the solution   
+        """
+        from resistics.regression.data import RegressionData
+
+        crossSize = self.getCrossSize()
+        # create array for output
+        outputParams = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
+        outputVars = np.empty(shape=(self.outSize, self.inSize), dtype="float")
+        # solve
+        for ii in range(0, self.outSize):
+            observation = obs[ii, :]
+            predictors = reg[ii, :, :]
+            # save the output
+            soln1 = chatterjeeMachler(predictors, observation, intercept=self.intercept)
+            observation2 = np.zeros(shape=(crossSize), dtype="complex")
+            predictors2 = np.zeros(shape=(crossSize, self.inSize), dtype="complex")
+            for iChan in range(0, crossSize):
+                # now need to have my indexing array
+                indexArray = np.arange(iChan, numWindows * crossSize, crossSize)
+                weightsLim = soln1.weights[indexArray]
+                # stack observations
+                observation2[iChan] = (
+                    np.sum(obs[ii, indexArray] * weightsLim) / numWindows
+                )
+                # stack regressors
+                for j in range(0, self.inSize):
+                    predictors2[iChan, j] = (
+                        np.sum(reg[ii, indexArray, j] * weightsLim) / numWindows
+                    )
+            # second solution on stacked data
+            soln2 = chatterjeeMachler(
+                predictors2, observation2, intercept=self.intercept
+            )
+            params = soln2.params
+            # calulcate variances with respect to full equations, not stacked equations
+            # use soln1 A and y to make sure intecept is incorporated
+            variances = RegressionData(soln1.A, soln1.y, params).gaussianVariances
+            if self.intercept:
+                params = soln2.params[1:]
+                variances = variances[1:]
+            outputParams[ii] = params
+            outputVars[ii] = variances
+        return outputParams, outputVars
+
+    def expSolve(
         self, numWindows: int, obs: np.ndarray, reg: np.ndarray
     ) -> Tuple[np.ndarray]:
         """Robust regression processing
@@ -464,182 +884,9 @@ class LocalRegressor(ResisticsBase):
         varOutput : np.ndarray
             The variance
         """
-        crossSize = len(self.crossChannels)
-        # create array for output
-        output = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
-        varOutput = np.empty(shape=(self.outSize, self.inSize), dtype="float")
-        # solve
-        for i in range(0, self.outSize):
-            observation = obs[i, :]
-            predictors = reg[i, :, :]
-            # save the output
-            out, resids, weights = chatterjeeMachler(
-                predictors, observation, intercept=self.intercept
-            )
-            # out, resids, scale, weights = mmestimateModel(predictors, observation, intercept=self.intercept)
+        raise NotImplementedError
 
-            # now take the weights, apply to the observations and predictors, stack the appropriate rows
-            observation2 = np.zeros(shape=(crossSize), dtype="complex")
-            predictors2 = np.zeros(shape=(crossSize, self.inSize), dtype="complex")
-            for iChan in range(0, crossSize):
-                # now need to have my indexing array
-                indexArray = np.arange(iChan, numWindows * crossSize, crossSize)
-                weightsLim = weights[indexArray]
-                # weightsLim = weightsLim/np.sum(weightsLim) # normalise weights to 1
-                observation2[iChan] = (
-                    np.sum(obs[i, indexArray] * weightsLim) / numWindows
-                )
-                # now for the regressors
-                for j in range(0, self.inSize):
-                    predictors2[iChan, j] = (
-                        np.sum(reg[i, indexArray, j] * weightsLim) / numWindows
-                    )
-            out, resids, weights = chatterjeeMachler(
-                predictors2, observation2, intercept=self.intercept
-            )
-            # out, resids, scale, weights = mmestimateModel(
-            #     predictors2, observation2, intercept=self.intercept)
-
-            if self.intercept:
-                out = out[1:]
-
-            # now calculate out the varainces - have the solution out, have the weights
-            # recalculate out the residuals with the final solution
-            # calculate standard deviation of residuals
-            # and then use chatterjee machler formula to estimate variances
-            # this needs work - better to use an empirical bootstrap method, but this will do for now
-            resids = np.absolute(observation - np.dot(predictors, out))
-            # some measure of standard deviation, rather than using the standard deviation
-            scale = getScale(resids, "mad0")
-            residsVar = scale * scale
-            # varPred = np.dot(hermitianTranspose(predictors), weights*predictors) # need to fix this
-            varPred = np.dot(hermitianTranspose(predictors), predictors)
-            varPred = np.linalg.inv(varPred)  # this is a pxp matrix
-            varOut = 1.91472 * residsVar * varPred
-            varOut = np.diag(varOut).real  # this should be a real number
-            # if self.intercept:
-            #     output[i] = out[1:]
-            #     varOutput[i] = varOut[1:]
-            # else:
-            #     output[i] = out
-            #     varOutput[i] = varOut
-            output[i] = out
-            varOutput[i] = varOut
-
-        return output, varOutput
-
-    def olsProcess(
-        self, numWindows: int, obs: np.ndarray, reg: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """Ordinary least squares regression processing
-
-        Perform ordinary least regression processing using observations and regressors for a single evaluation frequency. 
-
-        Parameters
-        ----------
-        numWindows : int
-            The number of windows
-        obs : np.ndarray
-            The observations
-        reg : np.ndarray
-            The regressors
-
-        Returns
-        -------
-        output : np.ndarray
-            The solution to the regression problem
-        varOutput : np.ndarray
-            The variance        
-        """
-        # create array for output
-        output = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
-        varOutput = np.empty(shape=(self.outSize, self.inSize), dtype="float")
-        # solve
-        for i in range(0, self.outSize):
-            observation = obs[i, :]
-            predictors = reg[i, :, :]
-            # save the output
-            out, resids, squareResid, rank, s = olsModel(
-                predictors, observation, intercept=self.intercept
-            )
-            if self.intercept:
-                out = out[1:]
-
-            # now calculate out the varainces - have the solution out, have the weights
-            # recalculate out the residuals with the final solution
-            # calculate standard deviation of residuals
-            # and then use chatterjee machler formula to estimate variances
-            # this needs work - better to use an empirical bootstrap method, but this will do for now
-            resids = np.absolute(observation - np.dot(predictors, out))
-            # some measure of standard deviation, rather than using the standard deviation
-            scale = getScale(resids, "mad0")
-            residsVar = scale * scale
-            # varPred = np.dot(hermitianTranspose(predictors), weights*predictors) # need to fix this
-            varPred = np.dot(hermitianTranspose(predictors), predictors)
-            varPred = np.linalg.inv(varPred)  # this is a pxp matrix
-            varOut = 1.91472 * residsVar * varPred
-            varOut = np.diag(varOut).real  # this should be a real number
-            # if self.intercept:
-            #     output[i] = out[1:]
-            #     varOutput[i] = varOut[1:]
-            # else:
-            #     output[i] = out
-            #     varOutput[i] = varOut
-            output[i] = out
-            varOutput[i] = varOut
-
-        return output, varOutput
-
-    def stackedProcess(self, data: np.ndarray) -> np.ndarray:
-        """Ordinary least squares processing after stacking
-
-        Parameters
-        ----------
-        data : np.ndarray
-            Cross-spectra data
-
-        Returns
-        -------
-        output : np.ndarray
-            The solution to the regression problem
-        varOutput : np.ndarray
-            The variance        
-        """
-        # then do various sums
-        numWindows = data.shape[0]
-        crossSize = len(self.crossChannels)
-        # unweighted sum (i.e. normal solution)
-        unWeightedSum = np.sum(data, axis=0)
-        unWeightedSum = unWeightedSum / numWindows
-
-        # for each output variable, have ninput regressor variables
-        # let's construct our arrays
-        obs = np.empty(shape=(self.outSize, crossSize), dtype="complex")
-        reg = np.empty(shape=(self.outSize, crossSize, self.inSize), dtype="complex")
-        for i in range(0, self.outSize):
-            for j, crossChan in enumerate(self.crossChannels):
-                crossIndex = self.allChannels.index(crossChan)
-                obs[i, j] = unWeightedSum[self.inSize + i, crossIndex]
-                for k in range(0, self.inSize):
-                    reg[i, j, k] = unWeightedSum[k, crossIndex]
-
-        # create array for output
-        output = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
-
-        for i in range(0, self.outSize):
-            observation = obs[i, :]
-            predictors = reg[i, :, :]
-            # save the output
-            out, resids, scale, weights = mmestimateModel(
-                predictors, observation, intercept=self.intercept
-            )
-            if self.intercept:
-                output[i] = out[1:]
-            else:
-                output[i] = out
-        return output, output * 0.1
-
-    def writeTF(
+    def writeResult(
         self,
         specdir: str,
         postpend: str,
@@ -715,9 +962,11 @@ class LocalRegressor(ResisticsBase):
             List of strings with information
         """
         textLst = []
-        textLst.append("In Site = {}".format(self.inSite))
-        textLst.append("In Channels = {}".format(self.inChannels))
-        textLst.append("Out Site = {}".format(self.outSite))
-        textLst.append("Out Channels = {}".format(self.outChannels))
+        textLst.append("Input Site = {}".format(self.inSite))
+        textLst.append("Input Site Channels = {}".format(self.inChannels))
+        textLst.append("Input Site Cross Channels = {}".format(self.inCross))
+        textLst.append("Output Site = {}".format(self.outSite))
+        textLst.append("Output Site Channels = {}".format(self.outChannels))
+        textLst.append("Output Site Cross Channels = {}".format(self.outCross))
         textLst.append("Sample frequency = {:.3f}".format(self.decParams.sampleFreq))
         return textLst

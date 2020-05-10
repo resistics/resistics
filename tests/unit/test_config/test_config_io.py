@@ -34,16 +34,22 @@ def test_loadConfig() -> None:
     assert config["Window"]["windowsizes"] == [] 
     assert config["Window"]["overlapsizes"] == []
     
+    assert config["Spectra"]["ncores"] == -1 
     assert config["Spectra"]["specdir"] == "spectra" 
     assert config["Spectra"]["applywindow"] == True 
-    assert config["Spectra"]["windowfunc"] == "hamming" 
-    assert config["Spectra"]["ncores"] == -1 
+    assert config["Spectra"]["windowfunc"] == "hann" 
     
+    assert config["Statistics"]["ncores"] == -1
     assert config["Statistics"]["stats"] == ["coherence", "transferFunction"] 
     assert config["Statistics"]["remotestats"] == ["RR_coherence", "RR_transferFunction"] 
-    assert config["Statistics"]["ncores"] == -1
     
-    assert config["Solver"]["intercept"] == False 
-    assert config["Solver"]["bootstrap"] == True 
-    assert config["Solver"]["windowfunc"] == "hamming"
     assert config["Solver"]["ncores"] == -1
+    assert config["Solver"]["method"] == "cm"
+    assert config["Solver"]["intercept"] == False
+    assert config["Solver"]["stack"] == False
+    assert config["Solver"]["smoothfunc"] == "hann" 
+    assert config["Solver"]["smoothlen"] == 9
+    assert config["Solver"]["OLS"] == {}
+    assert config["Solver"]["MM"]["weightfnc1"] == "huber"
+    assert config["Solver"]["MM"]["weightfnc2"] == "bisquare"
+    assert config["Solver"]["CM"] == {}

@@ -133,74 +133,36 @@ class SpectrumCalculator(ResisticsBase):
         return textLst
 
 
-def autopower(specData: SpectrumData):
-    """Calculate the autopower of spectrum data
-    
-    Parameters
-    ----------
-    specData: Spectrum Data
-        The SpectrumData object for which to calculate the autopower
-
-    Returns
-    -------
-    PowerData
-        Spectral power data
-    """
-    chans = specData.chans
-    autpowerData = {}
-    for chan1 in chans:
-        for chan2 in chans:
-            crossChan = "{}-{}".format(chan1, chan2)
-            conjugateChan = "{}-{}".format(chan2, chan1)
-            if (chan1 != chan2) and conjugateChan in autpowerData:
-                # can use conjugate symmetry for the autopowers
-                autpowerData[crossChan] = np.conjugate(autpowerData[conjugateChan])
-            else:
-                autpowerData[crossChan] = specData.data[chan1] * np.conjugate(
-                    specData.data[chan2]
-                )
-
-    return PowerData("auto", specData.sampleFreq, autpowerData)
-
-
-def crosspower(specData1: SpectrumData, specData2: SpectrumData):
+def crosspowers(
+    specData: SpectrumData,
+    primary: Union[List[str], None] = None,
+    secondary: Union[List[str], None] = None,
+) -> PowerData:
     """Calculate the crosspower between two spectrum data
     
     Parameters
     ----------
-    specData1: Spectrum Data
-        The first SpectrumData object in the crosspower
-    specData2: Spectrum Data
-        The second SpectrumData object in the crosspower
+    specData: Spectrum Data
+        Crosspowers will be calculated between the channels of this SpectrumData
+    primary : List[str], optional
+        The channels for SpectrumData that come first in the crosspowers (not conjugated)
+    second : List[str], optional
+        The channels for SpectrumData that come second in the crosspowers (conjugated)
 
     Returns
     -------
     PowerData
-        Spectral power data
+        Cross power data
     """
-    from resistics.common.print import errorPrint
+    if primary is None:
+        primary = specData.chans
+    if secondary is None:
+        secondary = specData.chans
 
-    chans1 = specData1.chans
-    chans2 = specData2.chans
-
-    if (
-        specData1.sampleFreq != specData2.sampleFreq
-        or specData1.windowSize != specData2.windowSize
-        or specData1.dataSize != specData2.dataSize
-    ):
-        errorPrint(
-            "crosspower",
-            "Sample frequency, window size and data size for both SpectrumData need to be matching",
-            quitrun=True,
-        )
-
-    crosspowerData = {}
-    # now need to go through the chans - unable to use conjugate symmetry here
-    for chan1 in chans1:
-        for chan2 in chans2:
-            crossChan = "{}-{}".format(chan1, chan2)
-            crosspowerData[crossChan] = specData1.data[chan1] * np.conjugate(
-                specData2.data[chan2]
-            )
-
-    return PowerData("cross", specData1.sampleFreq, crosspowerData)
+    arrayPrimary, chansPrimary = specData.toArray(primary)
+    arraySecondary, chansSecondary = specData.toArray(secondary)
+    # conjugate the secondary array
+    arraySecondary = np.conjugate(arraySecondary)
+    # broadcast to loop in C rather than Python
+    crosspowers = arrayPrimary[:, np.newaxis, :] * arraySecondary[np.newaxis, :, :]
+    return PowerData(chansPrimary, chansSecondary, crosspowers, specData.sampleFreq)

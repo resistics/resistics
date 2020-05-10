@@ -1,4 +1,4 @@
-def test_spectradata():
+def test_spectrumdata():
     """Test spectra data"""
     from resistics.spectra.data import SpectrumData
     from resistics.common.format import datetimeFormat
@@ -10,6 +10,9 @@ def test_spectradata():
     data = {}
     data["Ex"] = np.array([1 + 3j, 2 + 5j, 7 + 6j, 3 + 2j])
     data["Hy"] = np.array([2 + 9j, 9 + 1j, 8 + 8j, 6 + 2j])
+    dataArray = np.array(
+        [[1 + 3j, 2 + 5j, 7 + 6j, 3 + 2j], [2 + 9j, 9 + 1j, 8 + 8j, 6 + 2j]]
+    )
     specData = SpectrumData(8, 4, 128, startTime, stopTime, data)
     assert specData.windowSize == 8
     assert specData.dataSize == 4
@@ -23,6 +26,14 @@ def test_spectradata():
     assert specData.getComments() == ["This is a comment"]
     np.testing.assert_almost_equal(specData.data["Ex"], data["Ex"])
     np.testing.assert_almost_equal(specData.data["Hy"], data["Hy"])
+    # check toArray
+    specDataArray, specDataChans = specData.toArray()
+    np.testing.assert_almost_equal(specDataArray, dataArray)
+    assert specDataChans == ["Ex", "Hy"]
+    specDataArray, specDataChans = specData.toArray(["Hy"])
+    np.testing.assert_almost_equal(specDataArray.squeeze(), np.array(data["Hy"]))
+    assert specDataChans == ["Hy"]
+    # check nyquist and frequency array
     assert specData.nyquist == 64
     np.testing.assert_almost_equal(specData.freqArray, [0, (64 / 3), (64 / 3) * 2, 64])
 
@@ -32,19 +43,20 @@ def test_powerdata():
     from resistics.spectra.data import PowerData
     import numpy as np
 
-    data = {}
-    data["Ex-Hx"] = np.array([0 + 4j, 1 + 3j, 6 + 6j, 7 + 3j])
-    data["Ex-Hy"] = np.array([0 + 1j, 5 + 2j, 5 + 4j, 2 + 3j])
-    apower = PowerData("cross", 4096, data)
+    data = np.array(
+        [[[0 + 4j, 1 + 3j, 6 + 6j, 7 + 3j], [0 + 1j, 5 + 2j, 5 + 4j, 2 + 3j]]]
+    )
+    print(data.shape)
+    pData = PowerData(["Ex"], ["Hx", "Hy"], data, 4096)
     # make sure that it matches autopower
-    assert apower.dataSize == 4
-    assert apower.sampleFreq == 4096
-    assert apower.numPowers == 2
-    assert apower.powers == ["Ex-Hx", "Ex-Hy"]
-    assert np.array_equal(apower.data["Ex-Hx"], data["Ex-Hx"])
-    assert np.array_equal(apower.data["Ex-Hy"], data["Ex-Hy"])
-    assert apower.nyquist == 2048
-    assert np.array_equal(apower.freqArray, [0, 2048 / 3, 2048 * 2 / 3, 2048])
+    assert pData.dataSize == 4
+    assert pData.sampleFreq == 4096
+    assert pData.numPowers == 2
+    assert pData.powers == ["Ex-Hx", "Ex-Hy"]
+    assert np.array_equal(pData.getPower("Ex", "Hx"), data[0, 0])
+    assert np.array_equal(pData.getPower("Ex", "Hy"), data[0, 1])
+    assert pData.nyquist == 2048
+    assert np.array_equal(pData.freqArray, [0, 2048 / 3, 2048 * 2 / 3, 2048])
 
 
 def test_powerdata_smooth():
@@ -53,53 +65,53 @@ def test_powerdata_smooth():
     from resistics.common.smooth import smooth1d
     import numpy as np
 
-    data = {}
-    data["Ex-Hx"] = np.array(
+    data = np.array(
         [
-            0 + 4j,
-            -1 + 3j,
-            6 + 6j,
-            7 + 3j,
-            -6 - 1j,
-            5 + 5j,
-            6 + 2j,
-            1 - 3j,
-            -7 + 8j,
-            1 - 9j,
-            3 + 4j,
+            [
+                [
+                    0 + 4j,
+                    -1 + 3j,
+                    6 + 6j,
+                    7 + 3j,
+                    -6 - 1j,
+                    5 + 5j,
+                    6 + 2j,
+                    1 - 3j,
+                    -7 + 8j,
+                    1 - 9j,
+                    3 + 4j,
+                ],
+                [
+                    0 + 1j,
+                    5 + 2j,
+                    5 - 4j,
+                    2 + 3j,
+                    4 + 3j,
+                    1 - 6j,
+                    -2 + 4j,
+                    -2 + 7j,
+                    4 + 4j,
+                    3 - 2j,
+                    6 + 3j,
+                ],
+            ]
         ]
     )
-    data["Ex-Hy"] = np.array(
-        [
-            0 + 1j,
-            5 + 2j,
-            5 - 4j,
-            2 + 3j,
-            4 + 3j,
-            1 - 6j,
-            -2 + 4j,
-            -2 + 7j,
-            4 + 4j,
-            3 - 2j,
-            6 + 3j,
-        ]
-    )
-    apower = PowerData("cross", 128, data)
+    pData = PowerData(["Ex"], ["Hx", "Hy"], data, 128)
     # make sure that it matches autopower
-    assert apower.dataSize == 11
-    assert apower.sampleFreq == 128
-    assert apower.numPowers == 2
-    assert apower.powers == ["Ex-Hx", "Ex-Hy"]
-    assert np.array_equal(apower.data["Ex-Hx"], data["Ex-Hx"])
-    assert np.array_equal(apower.data["Ex-Hy"], data["Ex-Hy"])
-    assert apower.nyquist == 64
-    assert np.array_equal(apower.freqArray, np.linspace(0, 64, 11))
-    smooth = apower.smooth(3, "boxcar")
-    for power in smooth.data:
-        print(power, smooth.data[power])
-
+    assert pData.dataSize == 11
+    assert pData.sampleFreq == 128
+    assert pData.numPowers == 2
+    assert pData.powers == ["Ex-Hx", "Ex-Hy"]
+    assert np.array_equal(pData.getPower("Ex", "Hx"), data[0, 0])
+    assert np.array_equal(pData.getPower("Ex", "Hy"), data[0, 1])
+    assert pData.nyquist == 64
+    assert np.array_equal(pData.freqArray, np.linspace(0, 64, 11))
+    smooth = pData.smooth(3, "boxcar")
+    for chan1 in smooth.primaryChans:
+        for chan2 in smooth.secondaryChans:
+            print("{}-{}".format(chan1, chan2), smooth.getPower(chan1, chan2))
     assert False
-
 
 
 def test_powerdata_interpolate():
@@ -107,48 +119,50 @@ def test_powerdata_interpolate():
     from resistics.spectra.data import PowerData
     import numpy as np
 
-    data = {}
-    data["Ex-Hx"] = np.array(
+    data = np.array(
         [
-            0 + 4j,
-            -1 + 3j,
-            6 + 6j,
-            7 + 3j,
-            -6 - 1j,
-            5 + 5j,
-            6 + 2j,
-            1 - 3j,
-            -7 + 8j,
-            1 - 9j,
-            3 + 4j,
+            [
+                [
+                    0 + 4j,
+                    -1 + 3j,
+                    6 + 6j,
+                    7 + 3j,
+                    -6 - 1j,
+                    5 + 5j,
+                    6 + 2j,
+                    1 - 3j,
+                    -7 + 8j,
+                    1 - 9j,
+                    3 + 4j,
+                ],
+                [
+                    0 + 1j,
+                    5 + 2j,
+                    5 - 4j,
+                    2 + 3j,
+                    4 + 3j,
+                    1 - 6j,
+                    -2 + 4j,
+                    -2 + 7j,
+                    4 + 4j,
+                    3 - 2j,
+                    6 + 3j,
+                ],
+            ]
         ]
     )
-    data["Ex-Hy"] = np.array(
-        [
-            0 + 1j,
-            5 + 2j,
-            5 - 4j,
-            2 + 3j,
-            4 + 3j,
-            1 - 6j,
-            -2 + 4j,
-            -2 + 7j,
-            4 + 4j,
-            3 - 2j,
-            6 + 3j,
-        ]
-    )
-    apower = PowerData("cross", 128, data)
+    pData = PowerData(["Ex"], ["Hx", "Hy"], data, 128)
     # make sure that it matches autopower
-    assert apower.dataSize == 11
-    assert apower.sampleFreq == 128
-    assert apower.numPowers == 2
-    assert apower.powers == ["Ex-Hx", "Ex-Hy"]
-    assert np.array_equal(apower.data["Ex-Hx"], data["Ex-Hx"])
-    assert np.array_equal(apower.data["Ex-Hy"], data["Ex-Hy"])
-    assert apower.nyquist == 64
-    assert np.array_equal(apower.freqArray, np.linspace(0, 64, 11))
-    interpolated = apower.interpolate([5, 10, 15, 20])
-    for power in interpolated.data:
-        print(power, interpolated.data[power])
+    assert pData.dataSize == 11
+    assert pData.sampleFreq == 128
+    assert pData.numPowers == 2
+    assert pData.powers == ["Ex-Hx", "Ex-Hy"]
+    assert np.array_equal(pData.getPower("Ex", "Hx"), data[0, 0])
+    assert np.array_equal(pData.getPower("Ex", "Hy"), data[0, 1])
+    assert pData.nyquist == 64
+    assert np.array_equal(pData.freqArray, np.linspace(0, 64, 11))
+    interpolated = pData.interpolate([5, 10, 15, 20])
+    for chan1 in interpolated.primaryChans:
+        for chan2 in interpolated.secondaryChans:
+            print("{}-{}".format(chan1, chan2), interpolated.getPower(chan1, chan2))
     assert False
