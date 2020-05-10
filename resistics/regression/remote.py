@@ -15,73 +15,99 @@ from resistics.regression.robust import (
 class RemoteRegressor(LocalRegressor):
     """Perform remote reference processing of magnetotelluric data
 
-    Remote reference processing uses a different equation for spectral power than the single site processor. The equation that the processor uses is:
+    Remote reference processing uses by default channels from the remote reference site as cross spectra channels. By default, no channels from the input site or output site are used to calculate cross spectra.
+
+    Note that methods shown here are only for the RemoteRegressor child class. See the parent LocalRegressor for more information.
 
     Attributes
     ----------
     winSelector : WindowSelector
-        A window selector object which defines which windows to use in the linear model
+        A WindowSelector instance which will be used to help read in the correct data
     decParams : DecimationParameters
-        DecimationParameters object with information about the decimation scheme
+        A DecimationParameters instance defining the decimation scheme
     winParams : WindowParameters
-        WindowParameters object with information about the windowing
-    outpath : str 
-        Location to put the calculated transfer functions (Edi files)
-    inSite : str 
-        The site to use for the input channels 
-    inChannels: List[str] (["Hx", "Hy"])
-        List of hannels to use as input channels for the linear system
+        A WindowParameters instance with the windowing parameters
+    outpath : str
+        The path to write the transfer function data out to
+    ncores : int
+        The number of cores to use
+    method : str
+        The solution method
+    inSite : str
+        The input site
+    inChannels : List[str]
+        The input channels
     inSize : int 
-        Number of input channels
-    outSite : str 
-        The site to use for the output channels
-    outChannels : List[str] (["Ex", "Ey"])
-        List of channels to use as output channels for the linear system
+        The number of input channels
+    inCross : List[str] 
+        The channels to use from the input site to calculate crosspowers
+    outSite: str = "dummy"
+        The output site
+    outChannels : List[str] 
+        The output channels
     outSize : int
-        Number of output channels
+        The number of output channels
+    outCross : List[str]
+        The channels to use from the output site to calculate crosspowers 
     remoteSite : str
-        The site to use as a remote reference
+        The remote reference site
     remoteCross : List[str]
-        The channels to use as remote reference channels
+        The channels to use from the remote reference site to calculate crosspowers 
     remoteSize : int
-        Number of remote reference channels
-    intercept : bool (default False)
-        Flag for including an intercept (static) term in the linear system
-    method : str (options, "ols", "cm") 
-        String for describing what solution method to use
-    win : str (default hann)
-        Window function to use in robust solution
-    winSmooth : int (default -1)
-        The size of the window smoother. If -1, this will be autocalculated based on data size
-    postpend : str (default "")
-        String to postpend to the output filename to help file management
-    evalFreq : List[float] or np.ndarray
-        The evaluation frequencies
-    impedances : List
-
+        The number of channels from the remote reference site which will be used to calculate crosspowers
+    intercept : bool
+        Flag for adding an intercept term
+    mmOptions : Union[Dict, None]
+        Options from MM estimates
+    cmOptions : Union[Dict, None]
+        Options for Chaterjee Machler solutions
+    olsOptions : Union[Dict, None]
+        Options for ordinary least squares
+    smoothFunc : str
+        The window function to use
+    smoothLen : Union[int, None]
+        The smooth length to use. If None, will calculate automatically.
+    evalFreq : List
+        The calculated evaluation frequencies
+    parameters : List
+        The parameters calculated for each evaluation frequency
     variances : List
+        The variances calculated for each evaluation frequency
+    postpend : str
+        The postpend string to add to the transfer function output file
 
     Methods
     -------
-    __init__(winSelector, outpath)
-        Initialise the remote reference processor
+    __init__(proj, winSelector, outpath)
+        Initialise with a window selector and the path to write the result out to
+    defaultInCross()
+        The default cross channels to use from the input site
+    defaultOutCross()
+        The default cross channels to use from the output site
+    defaultRemoteCross()
+        The default cross channels to use from the remote site
     setRemote(remoteSite, remoteCross)
-        Set the remote site and channels
-    process()
-        Perform the remote reference processing
-    prepareLinearEqn(data)
-        Prepare regressors and observations for regression from cross-power data
-    robustProcess(numWindows, obs, reg)      
-        Robust regression processing   
-    olsProcess(numWindows, obs, reg)      
-        Ordinary least squares processing
-    stackedProcess(data)
-        Stacked processing                  
+        Set the remote site and the channels from the remote site for which to calculate cross spectra
+    processBatch(batch, batchedWindows, evalFreq, smoothLen)
+        Process a single batch of spectra data
+    getCrossSize()
+        Get the number of channels to calculate cross spectra for   
+    prepareLinearEqn(crosspowerData, eIdx)
+        Prepare regressors and observations for an evaluation frequency from crosspowers data
     printList()
         Class status returned as list of strings
     """
 
-    def __init__(self, winSelector, outpath: str):
+    def __init__(self, winSelector, outpath: str) -> None:
+        """Initialise the RemoteRegressor
+
+        Parameters
+        ----------
+        winSelector : WindowSelector
+            A window selector instance
+        outpath : str
+            The path to write the transfer function data to
+        """
         self.winSelector: WindowSelector = winSelector
         self.decParams = winSelector.decParams
         self.winParams = winSelector.winParams
@@ -102,7 +128,7 @@ class RemoteRegressor(LocalRegressor):
         # remote site options
         self.remoteSite: str = ""
         self.remoteCross: List[str] = ["Hx", "Hy"]
-        self.remoteSize = len(self.remoteCross)
+        self.remoteSize: int = len(self.remoteCross)
         # solution options
         self.intercept: bool = False
         self.stack: bool = False
@@ -113,9 +139,9 @@ class RemoteRegressor(LocalRegressor):
         self.smoothFunc: str = "hann"
         self.smoothLen: int = None
         # attributes to store transfer function data
-        self.evalFreq = []
-        self.parameters = []
-        self.variances = []
+        self.evalFreq: List[float] = []
+        self.parameters: List[np.ndarray] = []
+        self.variances: List[np.ndarray] = []
         # output filename
         self.postpend: str = ""
 

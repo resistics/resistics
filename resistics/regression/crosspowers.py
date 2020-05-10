@@ -1,3 +1,7 @@
+"""
+Calculate the crosspowers required for the regression solution.
+This uses the Python multiprocessing library where requested to speed up calculation.
+"""
 import numpy as np
 from typing import List, Tuple
 import scipy.interpolate as interp

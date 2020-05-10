@@ -25,72 +25,108 @@ class LocalRegressor(ResisticsBase):
     Attributes
     ----------
     winSelector : WindowSelector
-        A window selector object which defines which windows to use in the linear model
+        A WindowSelector instance which will be used to help read in the correct data
     decParams : DecimationParameters
-        DecimationParameters object with information about the decimation scheme
+        A DecimationParameters instance defining the decimation scheme
     winParams : WindowParameters
-        WindowParameters object with information about the windowing
-    outpath : str 
-        Location to put the calculated transfer functions (Edi files)
-    inSite : str 
-        The site to use for the input channels 
-    inChannels: List[str] (["Hx", "Hy"])
-        List of hannels to use as input channels for the linear system
+        A WindowParameters instance with the windowing parameters
+    outpath : str
+        The path to write the transfer function data out to
+    ncores : int
+        The number of cores to use
+    method : str
+        The solution method
+    inSite : str
+        The input site
+    inChannels : List[str]
+        The input channels
     inSize : int 
-        Number of input channels
-    outSite : str 
-        The site to use for the output channels
-    outChannels : List[str] (["Ex", "Ey"])
-        List of channels to use as output channels for the linear system
+        The number of input channels
+    inCross : List[str] 
+        The channels to use from the input site to calculate crosspowers
+    outSite: str = "dummy"
+        The output site
+    outChannels : List[str] 
+        The output channels
     outSize : int
-        Number of output channels
-    allChannels : List[str] 
-        inChannels and outChannels combined into a single list
-    crossChannels : List[str] 
-        The channels to calculate the cross spectra out for
-    intercept : bool (default False)
-        Flag for including an intercept (static) term in the linear system
-    method : str (options, "ols", "cm") 
-        String for describing what solution method to use
-    smoothFunc : str (default hann)
-        Window function to use in robust solution
-    smoothLen : int (default -1)
-        The size of the window smoother. If -1, this will be autocalculated based on data size
-    postpend : str (default "")
-        String to postpend to the output filename to help file management
-    evalFreq : List[float] or np.ndarray
-        The evaluation frequencies
-    impedances : List
+        The number of output channels
+    outCross : List[str]
+        The channels to use from the output site to calculate crosspowers 
+    intercept : bool
+        Flag for adding an intercept term
+    mmOptions : Union[Dict, None]
+        Options from MM estimates
+    cmOptions : Union[Dict, None]
+        Options for Chaterjee Machler solutions
+    olsOptions : Union[Dict, None]
+        Options for ordinary least squares
+    smoothFunc : str
+        The window function to use
+    smoothLen : Union[int, None]
+        The smooth length to use. If None, will calculate automatically.
+    evalFreq : List
+        The calculated evaluation frequencies
+    parameters : List
+        The parameters calculated for each evaluation frequency
     variances : List
+        The variances calculated for each evaluation frequency
+    postpend : str
+        The postpend string to add to the transfer function output file
 
     Methods
     -------
     __init__(proj, winSelector, outpath)
-        Initialise with a Project instance and MaskData instance
-    setInput(inSite, inChannels)
-        Set the input site and channels
-    setOutput(outSite, outChannels)
-        Set the output site and channels
+        Initialise with a window selector and the path to write the result out to
+    defaultInCross()
+        The default cross channels to use from the input site
+    defaultOutCross()
+        The default cross channels to use from the output site
+    setCores(ncores)
+        Set the number of cores to use
+    setMethod(method)
+        Set the solution method to use
+    setSmooth(smoothFunc, smoothLen)
+        The smoothing window function and length in number of samples
+    setInput(inSite, inChannels, inCross)
+        Set the input site, the input site channels and input site cross power channels
+    setOutput(outSite, outChannels, outCross)
+        Set the output site, the output site channels and output site cross power channels
     process()
         Process the spectra to calculate the transfer function
-    getSmoothLen()
-        Get the window smooth length
-    checkForBadValues(numWindows, data)
-        Check the spectral data for bad values that might cause an error   
-    prepareLinearEqn(data)
-        Prepare regressors and observations for regression from cross-power data
-    robustProcess(numWindows, obs, reg)      
-        Robust regression processing   
-    olsProcess(numWindows, obs, reg)      
-        Ordinary least squares processing
-    stackedProcess(data)
-        Stacked processing                  
+    processLevel(declevel)
+        Process a single decimation level
+    processBatches(declevel, unmaskedWindows)
+        Process the batches for a decimation level
+    processBatch(batch, batchedWindows, evalFreq, smoothLen)
+        Process a single batch of spectra data
+    processFrequency(declevel, eIdx, crosspowerData, global2local)
+        Process the crosspower data for an individual evaluation frequency
+    getSmoothLen(dataSize)
+        Get the window smooth length given a the number of frequency samples
+    checkForBadValues(crosspowerData)
+        Check the spectral data for bad values that might cause an error
+    getCrossSize()
+        Get the number of channels to calculate cross spectra for   
+    prepareLinearEqn(crosspowerData, eIdx)
+        Prepare regressors and observations for an evaluation frequency from crosspowers data
+    solve(numWindows, obs, reg)
+        Solve the linear problem
+    olsSolve(numWindows, obs, reg)
+        Solve the linear problem using ordinary least squares
+    mmSolve(numWindows, obs, reg)
+        Solve the linear problem using MM estimates
+    cmSolve(numWindows, obs, reg)
+        Solve the linear problem using the Chaterjee Machler method
+    expSolve(numWindows, obs, reg)   
+        Experimental solve for testing new methods. Not currently implemented.
+    writeResult(specdir, postpend, freq, data, variances, **kwargs)
+        Write out the transfer function
     printList()
         Class status returned as list of strings
     """
 
-    def __init__(self, winSelector: WindowSelector, outpath: str):
-        """Intialise the processor
+    def __init__(self, winSelector: WindowSelector, outpath: str) -> None:
+        """Intialise the LocalRegressor
 
         Parameters
         ----------
@@ -126,9 +162,9 @@ class LocalRegressor(ResisticsBase):
         self.smoothFunc: str = "hann"
         self.smoothLen: Union[int, None] = None
         # attributes to store transfer function data
-        self.evalFreq = []
-        self.parameters = []
-        self.variances = []
+        self.evalFreq: List[float] = []
+        self.parameters: List[np.ndarray] = []
+        self.variances: List[np.ndarray] = []
         # output filename
         self.postpend: str = ""
 
@@ -478,7 +514,7 @@ class LocalRegressor(ResisticsBase):
             The evaluation frequency index
         crosspowerData : np.ndarray[PowerData]
             A numpy array of PowerData
-        global2local : Dict
+        global2local : Dict[int, int]
             The global to local window map        
         """
         # get the constrained windows for the evaluation frequency
@@ -578,7 +614,9 @@ class LocalRegressor(ResisticsBase):
         """
         return len(self.inCross) + len(self.outCross)
 
-    def prepareLinearEqn(self, crosspowerData: np.ndarray, eIdx: int):
+    def prepareLinearEqn(
+        self, crosspowerData: np.ndarray, eIdx: int
+    ) -> Tuple[int, np.ndarray, np.ndarray]:
         r"""Prepare data as a linear equation for the robust regression
 
         This prepares the data for the following type of solution,
@@ -662,7 +700,7 @@ class LocalRegressor(ResisticsBase):
 
     def solve(
         self, numWindows: int, obs: np.ndarray, reg: np.ndarray
-    ) -> Tuple[np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Solve the linear equation
 
         Parameters
