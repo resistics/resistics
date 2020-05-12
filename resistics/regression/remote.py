@@ -356,27 +356,21 @@ class RemoteRegressor(LocalRegressor):
                 # add in all the observations and regressors for this window
                 # the cross channels from the input data
                 for iC, xC in enumerate(inCross):
-                    obs[iOut, iOffset + iC] = winPower.getPower(outChan, xC, eIdx)
+                    obs[iOut, iOffset + iC] = winPower[outChan, xC, eIdx]
                     for iIn, inChan in enumerate(inChans):
-                        reg[iOut, iOffset + iC, iIn] = winPower.getPower(
-                            inChan, xC, eIdx
-                        )
+                        reg[iOut, iOffset + iC, iIn] = winPower[inChan, xC, eIdx]
                 # the cross channels from the output data
                 for iC, xC in enumerate(outCross):
                     iC += numInCross
-                    obs[iOut, iOffset + iC] = winPower.getPower(outChan, xC, eIdx)
+                    obs[iOut, iOffset + iC] = winPower[outChan, xC, eIdx]
                     for iIn, inChan in enumerate(inChans):
-                        reg[iOut, iOffset + iC, iIn] = winPower.getPower(
-                            inChan, xC, eIdx
-                        )
+                        reg[iOut, iOffset + iC, iIn] = winPower[inChan, xC, eIdx]
                 # the cross channels from the remote data
                 for iC, xC in enumerate(remoteCross):
                     iC += numInCross + numOutCross
-                    obs[iOut, iOffset + iC] = winPower.getPower(outChan, xC, eIdx)
+                    obs[iOut, iOffset + iC] = winPower[outChan, xC, eIdx]
                     for iIn, inChan in enumerate(inChans):
-                        reg[iOut, iOffset + iC, iIn] = winPower.getPower(
-                            inChan, xC, eIdx
-                        )
+                        reg[iOut, iOffset + iC, iIn] = winPower[inChan, xC, eIdx]
         return numWindows, obs, reg
 
     def printList(self) -> List[str]:

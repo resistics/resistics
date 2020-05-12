@@ -139,22 +139,22 @@ def test_spectra_crosspowers():
     assert xpowers.numPowers == 16
     assert sorted(xpowers.powers) == sorted(
         [
-            "Ex-Ex",
-            "Ex-Ey",
-            "Ex-Hx",
-            "Ex-Hy",
-            "Ey-Ex",
-            "Ey-Ey",
-            "Ey-Hx",
-            "Ey-Hy",
-            "Hx-Ex",
-            "Hx-Ey",
-            "Hx-Hx",
-            "Hx-Hy",
-            "Hy-Ex",
-            "Hy-Ey",
-            "Hy-Hx",
-            "Hy-Hy",
+            ["Ex","Ex"],
+            ["Ex","Ey"],
+            ["Ex","Hx"],
+            ["Ex","Hy"],
+            ["Ey","Ex"],
+            ["Ey","Ey"],
+            ["Ey","Hx"],
+            ["Ey","Hy"],
+            ["Hx","Ex"],
+            ["Hx","Ey"],
+            ["Hx","Hx"],
+            ["Hx","Hy"],
+            ["Hy","Ex"],
+            ["Hy","Ey"],
+            ["Hy","Hx"],
+            ["Hy","Hy"],
         ]
     )
     # assert on the data elements

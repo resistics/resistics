@@ -24,8 +24,11 @@ def test_spectrumdata():
     assert specData.getComments() == []
     specData.addComment("This is a comment")
     assert specData.getComments() == ["This is a comment"]
-    np.testing.assert_almost_equal(specData.data["Ex"], data["Ex"])
-    np.testing.assert_almost_equal(specData.data["Hy"], data["Hy"])
+    np.testing.assert_equal(specData.data["Ex"], data["Ex"])
+    np.testing.assert_equal(specData.data["Hy"], data["Hy"])
+    # check __getitem__ accessor
+    np.testing.assert_equal(specData["Ex"], data["Ex"])
+    np.testing.assert_equal(specData["Hy"], data["Hy"])
     # check toArray
     specDataArray, specDataChans = specData.toArray()
     np.testing.assert_almost_equal(specDataArray, dataArray)
@@ -52,9 +55,12 @@ def test_powerdata():
     assert pData.dataSize == 4
     assert pData.sampleFreq == 4096
     assert pData.numPowers == 2
-    assert pData.powers == ["Ex-Hx", "Ex-Hy"]
+    assert pData.powers == [["Ex", "Hx"], ["Ex", "Hy"]]
     assert np.array_equal(pData.getPower("Ex", "Hx"), data[0, 0])
-    assert np.array_equal(pData.getPower("Ex", "Hy"), data[0, 1])
+    assert np.array_equal(pData.getPower("Ex", "Hy", fIdx=2), data[0, 1, 2])
+    # test getitem
+    assert np.array_equal(pData["Ex", "Hx"], data[0, 0])
+    assert np.array_equal(pData["Ex", "Hy", 2], data[0, 1, 2])    
     assert pData.nyquist == 2048
     assert np.array_equal(pData.freqArray, [0, 2048 / 3, 2048 * 2 / 3, 2048])
 
@@ -102,7 +108,7 @@ def test_powerdata_smooth():
     assert pData.dataSize == 11
     assert pData.sampleFreq == 128
     assert pData.numPowers == 2
-    assert pData.powers == ["Ex-Hx", "Ex-Hy"]
+    assert pData.powers == [["Ex", "Hx"], ["Ex", "Hy"]]
     assert np.array_equal(pData.getPower("Ex", "Hx"), data[0, 0])
     assert np.array_equal(pData.getPower("Ex", "Hy"), data[0, 1])
     assert pData.nyquist == 64
@@ -156,7 +162,7 @@ def test_powerdata_interpolate():
     assert pData.dataSize == 11
     assert pData.sampleFreq == 128
     assert pData.numPowers == 2
-    assert pData.powers == ["Ex-Hx", "Ex-Hy"]
+    assert pData.powers == [["Ex", "Hx"], ["Ex", "Hy"]]
     assert np.array_equal(pData.getPower("Ex", "Hx"), data[0, 0])
     assert np.array_equal(pData.getPower("Ex", "Hy"), data[0, 1])
     assert pData.nyquist == 64

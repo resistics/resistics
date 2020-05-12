@@ -1,3 +1,7 @@
+"""
+Module for calculating Fourier spectra of time data (using pyFFTW for speed) and calculation of cross spectral powers
+"""
+
 import numpy as np
 import scipy.signal as signal
 import pyfftw
@@ -146,7 +150,7 @@ def crosspowers(
         Crosspowers will be calculated between the channels of this SpectrumData
     primary : List[str], optional
         The channels for SpectrumData that come first in the crosspowers (not conjugated)
-    second : List[str], optional
+    secondary : List[str], optional
         The channels for SpectrumData that come second in the crosspowers (conjugated)
 
     Returns

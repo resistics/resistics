@@ -1,3 +1,6 @@
+"""
+Data storage classes for spectral data including raw Fourier data and cross power data. Methods for combining data classes
+"""
 from copy import deepcopy
 from datetime import datetime, timedelta
 import numpy as np
@@ -41,6 +44,8 @@ class SpectrumData(ResisticsBase):
         Initialise spectra data
     setData(windowSize, dataSize, sampleFreq, startTime, stopTime, data)
         Set data with parameters
+    __getitem__(channel)
+        The getitem accessor for getting spectral data for a channel
     getComments()
         Get a deepcopy of the comments        
     addComment(comment)
@@ -131,9 +136,23 @@ class SpectrumData(ResisticsBase):
         )
         # other properties
         self.chans: List[str] = sorted(data.keys())
-        self.numChans: int = len(self.chans)
         self.data: Dict[str, np.ndarray] = data
         self.dataSize: int = data[self.chans[0]].size
+
+    def __getitem__(self, channel: str):
+        """Get a spectra data for a channel
+        
+        Parameters
+        ----------
+        str
+            The channel
+        
+        Returns
+        -------
+        np.ndarray
+            Spectral data for a channel
+        """
+        return self.data[channel]
 
     @property
     def nyquist(self) -> float:
@@ -156,6 +175,17 @@ class SpectrumData(ResisticsBase):
             Array of frequencies
         """
         return getFrequencyArray(self.sampleFreq, self.dataSize)
+
+    @property
+    def numChans(self) -> int:
+        """Returns the number of channels
+        
+        Returns
+        -------
+        int
+            The number of channels in spectra data
+        """
+        return len(self.chans)
 
     def toArray(self, chans: Union[List[str], None] = None) -> np.ndarray:
         """Convert the dictionary into a numpy array
@@ -377,29 +407,43 @@ class PowerData(ResisticsBase):
 
     Attributes
     ----------
-    windowSize : int
-        The size of the time window in samples
-    dataSize : int
-        The data size of the 
+    primaryChans : List[str]
+        The primary chans in the cross power spectra calculations
+    secondaryChans : List[str]
+        The secondary chans in the cross power spectra calculations (conjugated)
+    data : np.ndarray
+        3-D data array with dimensions nprimary x nsecondary x datasize
     sampleFreq : float
-        The sampling frequency
+        The sampling frequency of the original time data
+    primaryMap : Dict[str, int]
+        Mapping from primary channels to integer index in data array
+    secondaryMap : Dict[str, int]
+        Mapping from secondary channels to integer index in data array
+    dataSize : int
+        Get the data size of the cross power data
     powers : List[str]
-        The auto / cross powers in the data
+        A list of cross powers
     numPowers : int
-        The number of auto / cross powers        
-    data : Dict
-        The cross power data with channels as keys and arrays as values
+        The number of cross powers
+    nyquist : float
+        The nyquist frequency
+    freqArray : np.ndarray
+        The frequency array
 
     Methods
     -------
-    __init__(kwargs)
-        Initialise power spectra data
+    __init__(primaryChans, secondaryChans, data, sampleFreq)
+        Initialise the power data
+    __getitem__(channel)
+        The getitem accessor for getting cross power data
+    isFinite()
+        Checks to see if all the crosspower data is finite
+    getPower(primary, secondary, fIdx)
+        Get the auto or cross power from the data
     smooth(smoothLen, smoothFunc, inplace)
-        Smooth the crosspower data
-    interpolate(freqs)
-        Interpolate the cross powers to a set of frequencies
-    printList()
-        Class status returned as list of strings          
+        Smooth the cross power data
+    interpolate(newfreqs)
+        Interpolate the power data to a new set of frequencies 
     """
 
     def __init__(
@@ -413,36 +457,83 @@ class PowerData(ResisticsBase):
 
         Parameters
         ----------
+        primaryChans : List[str]
+            The primary chans in the cross power spectra calculations
+        secondaryChans : List[str]
+            The secondary chans in the cross power spectra calculations (conjugated)
+        data : np.ndarray
+            3-D data array with dimensions nprimary x nsecondary x datasize
         sampleFreq : float
             The sampling frequency of the original time data
-        data : Dict
-            Data dictionary with channel pairings (ExHy) as keys and numpy data arrays as values
         """
-        self.primaryChans = primaryChans
-        self.secondaryChans = secondaryChans
-        self.data: Dict[str, np.ndarray] = data
+        self.primaryChans: List[str] = primaryChans
+        self.secondaryChans: List[str] = secondaryChans
+        self.data: np.ndarray = data
         self.sampleFreq: float = sampleFreq
-        self.primaryMap = {}
-        self.secondaryMap = {}
+        self.primaryMap: Dict[str, int] = {}
+        self.secondaryMap: Dict[str, int] = {}
         for idx, chan in enumerate(self.primaryChans):
             self.primaryMap[chan] = idx
         for idx, chan in enumerate(self.secondaryChans):
             self.secondaryMap[chan] = idx
 
+    def __getitem__(self, args):
+        """Get cross power between two channels
+        
+        Parameters
+        ----------
+        args : Tuple
+            Input arguments. Expected to be either length 2 [primary, secondary] or length 3, [primary, secondary, frequency index]
+        
+        Returns
+        -------
+        np.ndarray
+            Cross power data
+        """
+        if len(args) == 2:
+            return self.getPower(args[0], args[1])
+        elif len(args) == 3:
+            return self.getPower(args[0], args[1], fIdx=args[2])
+        else:
+            self.printError(
+                "Incorrect number of arguments. Only 2 or 3 arguments supported"
+            )
+
     @property
     def dataSize(self) -> int:
+        """Get the data size
+
+        Returns
+        -------
+        int
+            The number of elements in a single cross power
+        """
         return self.data.shape[-1]
 
     @property
-    def powers(self) -> List[str]:
+    def powers(self) -> List[List[str]]:
+        """Get a list of the cross powers
+
+        Returns
+        -------
+        List[str]
+            The available cross powers
+        """
         powers = []
         for primary in self.primaryChans:
             for secondary in self.secondaryChans:
-                powers.append("{}-{}".format(primary, secondary))
+                powers.append([primary, secondary])
         return powers
 
     @property
     def numPowers(self) -> int:
+        """Get the number of cross powers
+
+        Returns
+        -------
+        int
+            The number of cross powers
+        """
         return len(self.primaryChans) * len(self.secondaryChans)
 
     @property
@@ -490,17 +581,17 @@ class PowerData(ResisticsBase):
 
         Paramters
         ---------
-        chan1 : str
+        primary : str
             The first channel
-        chan2 : str
+        secondary : str
             The second channel
         fIdx : int, optional
             The frequency index to get
         
         Returns
         -------
-        np.ndarray, float, None
-            Will return the data array if it exists in the data, otherwise None. Where fIdx is specified, will return a float.
+        np.ndarray, float
+            Will return the data array if no frequency index is specified. Where fIdx is specified, a float is returns.
         """
         if fIdx is None:
             return self.data[
@@ -556,7 +647,7 @@ class PowerData(ResisticsBase):
         Returns
         -------
         PowerData
-            Returns PowerData with auto / cross power data interpolated to newfreqs
+            Returns PowerData with cross power data interpolated to newfreqs
         """
         import scipy.interpolate as interp
 
@@ -570,3 +661,82 @@ class PowerData(ResisticsBase):
         return PowerData(
             self.primaryChans, self.secondaryChans, newdata, self.sampleFreq
         )
+
+    def view(self, **kwargs) -> Figure:
+        """Plot spectra data
+
+        Parameters
+        ----------
+        fig : matplotlib.pyplot.figure, optional
+            A figure object
+        plotfonts : Dict, optional
+            A dictionary of plot fonts
+        powers : List[List[str]], optional
+            A list of cross powers to plot
+        xlim : List, optional
+            Limits for the x axis
+        color : str, rgba Tuple
+            The color for the line plot
+        legend : bool
+            Boolean flag for adding a legend
+
+        Returns
+        -------
+        plt.figure
+            Matplotlib figure object
+        """
+        freqArray = self.freqArray
+        fig = (
+            plt.figure(kwargs["fig"].number)
+            if "fig" in kwargs
+            else plt.figure(figsize=(20, 10))
+        )
+        plotFonts = kwargs["plotfonts"] if "plotfonts" in kwargs else getViewFonts()
+        color = kwargs["color"] if "color" in kwargs else None
+        # suptitle
+        st = fig.suptitle("Cross power data", fontsize=plotFonts["suptitle"])
+        st.set_y(0.98)
+        # plot data
+        plotPowers = kwargs["powers"] if "powers" in kwargs else self.powers
+        for power in plotPowers:
+            plt.plot(
+                freqArray, np.absolute(self.getPower(power[0], power[1])), color=color,
+            )
+            # x axis options
+            plt.xlabel("Frequency [Hz]", fontsize=plotFonts["axisLabel"])
+            xlim = kwargs["xlim"] if "xlim" in kwargs else [freqArray[0], freqArray[-1]]
+            plt.xlim(xlim)
+            # y axis options
+            plt.ylabel("Cross power amplitude", fontsize=plotFonts["axisLabel"])
+            plt.grid()
+            # set tick sizes
+            ax = plt.gca()
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_fontsize(plotFonts["axisTicks"])
+            # legend
+            if "legend" in kwargs and kwargs["legend"]:
+                plt.legend(loc=4)
+
+        # show if the figure is not in keywords
+        if "fig" not in kwargs:
+            plt.tight_layout(rect=[0, 0.02, 1, 0.96])
+            plt.show()
+
+        return fig
+
+    def printList(self) -> List[str]:
+        """Class information as a list of strings
+
+        Returns
+        -------
+        out : List[str]
+            List of strings with information
+        """
+        textLst = []
+        textLst.append("Sampling frequency [Hz] = {}".format(self.sampleFreq))
+        textLst.append("Nyquist frequency [Hz] = {}".format(self.nyquist))
+        textLst.append("Number of powers = {}".format(self.numPowers))
+        textLst.append("Primary channels = {}".format(self.primaryChans))
+        textLst.append("Secondary channels = {}".format(self.secondaryChans))
+        textLst.append("Available crosspowers = {}".format(self.powers))
+        return textLst
