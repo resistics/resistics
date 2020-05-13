@@ -1,6 +1,18 @@
 """Test resistics.common.smooth"""
 
+
+def test_getSmoothingLength() -> None:
+    """Test getting smoothing length"""
+    from resistics.common.smooth import getSmoothingLength
+
+    assert getSmoothingLength(64) == 5
+    assert getSmoothingLength(128) == 9
+    assert getSmoothingLength(1598) == 101
+    assert getSmoothingLength(1598, 21) == 77
+
+
 def test_smooth1d() -> None:
+    """Test single dimension smoothing"""
     from resistics.common.smooth import smooth1d
     import numpy as np
     import pytest

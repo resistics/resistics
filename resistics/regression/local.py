@@ -538,14 +538,14 @@ class LocalRegressor(ResisticsBase):
         self.parameters.append(outputParams)
         self.variances.append(outputVars)
 
-    def getSmoothLen(self, datasize):
+    def getSmoothLen(self, dataSize):
         """Window smoothing length
 
         Power spectra data is smoothed. This returns the size of the smoothing window.
     
         Parameters
         ----------
-        datasize : int
+        dataSize : int
             The number of frequency points
 
         Returns
@@ -553,6 +553,8 @@ class LocalRegressor(ResisticsBase):
         smoothLen : int
             Smoothing size
         """
+        from resistics.common.smooth import getSmoothingLength
+
         if (self.smoothLen is not None) and (self.smoothLen) >= 1:
             if self.smoothLen % 2 == 0:
                 self.printWarning(
@@ -562,14 +564,8 @@ class LocalRegressor(ResisticsBase):
                 )
                 self.smoothLen += 1
             return self.smoothLen
-
-        # calculate based on datasize
-        winSmooth = datasize * 1.0 / 16.0
-        if winSmooth < 3:
-            return 3
-        # otherwise round to nearest odd number
-        winSmooth = np.ceil(winSmooth) // 2
-        return int(winSmooth * 2 + 1)
+        # otherwise calculate from number of samples in the data
+        return getSmoothingLength(dataSize)
 
     def checkForBadValues(self, crosspowerData: np.ndarray):
         """Check data for bad values and remove

@@ -5,6 +5,30 @@ from typing import List
 from resistics.common.math import intdiv
 
 
+def getSmoothingLength(dataSize: int, divisor: float = 16.0) -> int:
+    """Get smoothing length given the number of samples in the data
+
+    Parameters
+    ----------
+    dataSize : int
+        The number of samples in the data
+    divisor : float
+        The proportion of the data that should be in a single smoothing window
+    
+    Returns
+    -------
+    int 
+        The smoothing window size in samples
+    """
+    # calculate based on datasize
+    winSmooth = dataSize / divisor
+    if winSmooth < 3:
+        return 3
+    # otherwise round to nearest odd number
+    winSmooth = np.ceil(winSmooth) // 2
+    return int(winSmooth * 2 + 1)
+
+
 def smooth1d(x: np.ndarray, winLen: int = 11, window: str = "hann"):
     """Smooth in 1 dimension
 
