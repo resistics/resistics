@@ -527,6 +527,8 @@ class TimeReaderPhoenix(TimeReader):
         OrderedDict
             An ordered dictionary of header table data
         """
+        from resistics.time.phoenix import getPhoenixHeaders
+
         if len(self.headerF) > 1:
             self.printWarning(
                 "More table files than expected. Using: {}".format(self.headerF[0])
@@ -534,164 +536,58 @@ class TimeReaderPhoenix(TimeReader):
         numBytes = os.path.getsize(self.headerF[0])
         tableFile = open(self.headerF[0], "rb")
         tableData = collections.OrderedDict()
+        headerDict = getPhoenixHeaders()
         # loop through file and read
-        bytesRead = 0
         headerWordSize = 4
         headerSize = 12
         dataSize = 13
         increment = headerSize + dataSize
+        bytesRead = 0
+        headerCount = 0        
+        # increment over headers in table file
         while bytesRead <= numBytes - increment:
-            # formats for reading in
-            # integers
-            ints = [
-                "SGIN",
-                "EGNC",
-                "HGNC",
-                "EGN",
-                "HGN",
-                "ACDC",
-                "ACDH",
-                "V5SR",
-                "MTSR",
-                "LCHP",
-                "L2NS",
-                "L3NS",
-                "L4NS",
-                "DDAT",
-                "TXPR",
-                "TBVO",
-                "TBVI",
-                "INIT",
-                "RQST",
-                "MODE",
-                "XDOS",
-                "ATYP",
-                "FNAM",
-                "FLEN",
-                "AQST",
-                "HSMP",
-                "CALS",
-                "CCLS",
-                "TEMP",
-                "TMAX",
-                "GFPG",
-                "FFPG",
-                "DSP",
-                "CHEX",
-                "CHEY",
-                "CHHX",
-                "CHHY",
-                "CHHZ",
-                "TCHN",
-                "POTS",
-                "NREF",
-                "CCLT",
-                "PZLT",
-                "NSAT",
-                "OCTR",
-                "CLST",
-                "TALS",
-                "TCMB",
-                "TERR",
-                "LPFR",
-                "LFRQ",
-                "SNUM",
-                "MXSC",
-                "BADR",
-                "NOBF",
-                "SATR",
-                "BAT1",
-                "BAT2",
-                "BAT3",
-                "EXR",
-                "EYR",
-                "ELEV",
-                "SRL2",
-                "SRL3",
-                "SRL4",
-                "SRL5",
-                "DISK",
-                "STDE",
-                "TOTL",
-                "STDH",
-            ]
-            # UTC
-            ints1_8 = [
-                "TDSP",
-                "LFIX",
-                "TSYN",
-                "STIM",
-                "ETIM",
-                "HTIM",
-                "ETMH",
-                "NUTC",
-                "FTIM",
-                "LTIM",
-            ]
-            # non-integer headers
-            doubles = [
-                "EXAC",
-                "EXDC",
-                "EYAC",
-                "EYDC",
-                "HXAC",
-                "HXDC",
-                "HYAC",
-                "HYDC",
-                "HZAC",
-                "HZDC",
-                "DXAC",
-                "DXDC",
-                "DYAC",
-                "DYDC",
-                "EXNR",
-                "EXPR",
-                "EYNR",
-                "EYPR",
-                "GNDR",
-                "MAXR",
-                "EAZM",
-                "HAZM",
-                "DECL",
-                "TSTV",
-                "FSCV",
-                "CCMN",
-                "CCMX",
-                "HATT",
-                "HAMP",
-                "CPHC",
-                "LFIX",
-                "EXLN",
-                "EYLN",
-                "TSTR",
-                "INPR",
-                "CFMN",
-                "CFMX",
-                "HNOM",
-            ]
-            # get the header word
             header = struct.unpack(
                 "{}s".format(headerWordSize), tableFile.read(headerWordSize)
             )
             header = self.removeControl(header[0])
+            # check if header is known
+            if header not in headerDict:
+                self.printWarning("Phoenix header num {:d}, name '{:s}' not known".format(headerCount, header))
+                tableFile.seek(headerSize - headerWordSize + dataSize, 1)
+                headerCount += 1
+                bytesRead += increment
+                continue
+            headerInfo = headerDict[header]
+            # seek to data
             tableFile.seek(headerSize - headerWordSize, 1)
-            if header == "":
-                break  # get rid of empty lines at the end
-            if header in ints:
-                value = struct.unpack("i", tableFile.read(4))[0]
-                tableFile.seek(dataSize - 4, 1)
-            elif header in ints1_8:
-                value = struct.unpack("8b", tableFile.read(8))
-                tableFile.seek(dataSize - 8, 1)
-            elif header in doubles:
-                value = struct.unpack("d", tableFile.read(8))[0]
-                tableFile.seek(dataSize - 8, 1)
+            if headerInfo["ptyp"] == "AmxPT":
+                value = struct.unpack(headerInfo["typ"], tableFile.read(headerInfo["vSize"]))
             else:
-                value = struct.unpack("{}s".format(dataSize), tableFile.read(dataSize))
-                value = self.removeControl(value[0])
+                value = struct.unpack(headerInfo["typ"], tableFile.read(headerInfo["vSize"]))[0]
+            if "s" in headerInfo["typ"]:
+                value = self.removeControl(value)
+            # set header value
             tableData[header] = value
+            # move to end of this header word
+            tableFile.seek(dataSize - headerInfo["vSize"], 1)
             # increment bytes read
-            bytesRead += increment
+            headerCount += 1
+            bytesRead += increment            
+
+            # if header == "":
+            #     break  # get rid of empty lines at the end
+            # if header in ints:
+            #     value = struct.unpack("i", tableFile.read(4))[0]
+            #     tableFile.seek(dataSize - 4, 1)
+            # elif header in ints1_8:
+            #     value = struct.unpack("8b", tableFile.read(8))
+            #     tableFile.seek(dataSize - 8, 1)
+            # elif header in doubles:
+            #     value = struct.unpack("d", tableFile.read(8))[0]
+            #     tableFile.seek(dataSize - 8, 1)
+            # else:
+            #     value = struct.unpack("{}s".format(dataSize), tableFile.read(dataSize))
+            #     value = self.removeControl(value[0])
         tableFile.close()
         return tableData
 
