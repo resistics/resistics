@@ -46,7 +46,6 @@ def test_loadConfig() -> None:
     assert config["Solver"]["ncores"] == -1
     assert config["Solver"]["method"] == "cm"
     assert config["Solver"]["intercept"] == False
-    assert config["Solver"]["stack"] == False
     assert config["Solver"]["smoothfunc"] == "hann" 
     assert config["Solver"]["smoothlen"] == 9
     assert config["Solver"]["OLS"] == {}

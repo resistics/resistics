@@ -54,6 +54,8 @@ class LocalRegressor(ResisticsBase):
         The channels to use from the output site to calculate crosspowers 
     intercept : bool
         Flag for adding an intercept term
+    interceptChannel : str
+        The name of the pseudo channel that will act as intercept        
     mmOptions : Union[Dict, None]
         Options from MM estimates
     cmOptions : Union[Dict, None]
@@ -154,7 +156,7 @@ class LocalRegressor(ResisticsBase):
         self.outCross: List[str] = self.defaultOutCross(self.outChannels)
         # solution options
         self.intercept: bool = False
-        self.stack: bool = False
+        self.interceptChannel: str = "intercept"
         self.mmOptions: Union[None, Dict] = None
         self.cmOptions: Union[None, Dict] = None
         self.olsOptions: Union[None, Dict] = None
@@ -209,7 +211,7 @@ class LocalRegressor(ResisticsBase):
         self.ncores = ncores
 
     def setMethod(
-        self, method: str, intercept: bool = False, stack: bool = False, **kwargs
+        self, method: str, intercept: bool = False, **kwargs
     ) -> None:
         """Set the processing method
         
@@ -219,12 +221,9 @@ class LocalRegressor(ResisticsBase):
             The processing method to use
         intercept : bool
             Whether to add an intercept term or not. Default False.
-        stack : bool
-            Whether to stack the data or not. Default False.
         """
         self.method = method
         self.intercept = intercept
-        self.stack = stack
         # particular solver options
         if "mm" in kwargs:
             self.mmOptions = kwargs["mm"]
@@ -301,6 +300,11 @@ class LocalRegressor(ResisticsBase):
         ncores : int
             The number of cores to run the cross spectra calculations on. Default 0, single core  
         """
+        # check for intercept and if True and an input channel
+        if self.intercept:
+            self.inChannels.append(self.interceptChannel)
+            self.inSize += 1
+        # process
         numLevels: int = self.decParams.numLevels
         for declevel in range(0, numLevels):
             self.printBreak()
@@ -480,6 +484,11 @@ class LocalRegressor(ResisticsBase):
             )
         else:
             outData = inData
+
+        # set up a unit channel to act as the intercept term in the input
+        if self.intercept:
+            for data in inData:
+                data.addUnitChannel(self.interceptChannel)
 
         self.printText("Calculating batch crosspowers...")
         crosspowers: List[PowerData] = localCrosspowers(
@@ -749,18 +758,13 @@ class LocalRegressor(ResisticsBase):
         outputParams = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
         outputVars = np.empty(shape=(self.outSize, self.inSize), dtype="float")
         # solve
-        for i in range(0, self.outSize):
-            observation = obs[i, :]
-            predictors = reg[i, :, :]
+        for iOut in range(0, self.outSize):
+            observation = obs[iOut, :]
+            predictors = reg[iOut, :, :]
             # save the output
-            soln = olsModel(predictors, observation, intercept=self.intercept)
-            params = soln.params
-            variances = soln.gaussianVariances
-            if self.intercept:
-                params = params[1:]
-                variances = variances[1:]
-            outputParams[i] = params
-            outputVars[i] = variances
+            soln = olsModel(predictors, observation)
+            outputParams[iOut] = soln.params
+            outputVars[iOut] = soln.gaussianVariances
         return outputParams, outputVars
 
     def mmSolve(
@@ -793,11 +797,11 @@ class LocalRegressor(ResisticsBase):
         outputParams = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
         outputVars = np.empty(shape=(self.outSize, self.inSize), dtype="float")
         # solve
-        for ii in range(0, self.outSize):
-            observation = obs[ii, :]
-            predictors = reg[ii, :, :]
+        for iOut in range(0, self.outSize):
+            observation = obs[iOut, :]
+            predictors = reg[iOut, :, :]
             # initial solution
-            soln1 = mmestimateModel(predictors, observation, intercept=self.intercept)
+            soln1 = mmestimateModel(predictors, observation)
             observation2 = np.zeros(shape=(crossSize), dtype="complex")
             predictors2 = np.zeros(shape=(crossSize, self.inSize), dtype="complex")
             for iChan in range(0, crossSize):
@@ -806,24 +810,21 @@ class LocalRegressor(ResisticsBase):
                 weightsLim = soln1.weights[indexArray]
                 # stack observations
                 observation2[iChan] = (
-                    np.sum(obs[ii, indexArray] * weightsLim) / numWindows
+                    np.sum(obs[iOut, indexArray] * weightsLim) / numWindows
                 )
                 # stack regressors
-                for j in range(0, self.inSize):
-                    predictors2[iChan, j] = (
-                        np.sum(reg[ii, indexArray, j] * weightsLim) / numWindows
+                for iIn in range(0, self.inSize):
+                    predictors2[iChan, iIn] = (
+                        np.sum(reg[iOut, indexArray, iIn] * weightsLim) / numWindows
                     )
             # second solution on stacked data
-            soln2 = mmestimateModel(predictors2, observation2, intercept=self.intercept)
-            params = soln2.params
+            soln2 = mmestimateModel(predictors2, observation2)
+            outputParams[iOut] = soln2.params
             # calulcate variances with respect to full equations, not stacked equations
             # use soln1 A and y to make sure intecept is incorporated
-            variances = RegressionData(soln1.A, soln1.y, params).gaussianVariances
-            if self.intercept:
-                params = soln2.params[1:]
-                variances = variances[1:]
-            outputParams[ii] = params
-            outputVars[ii] = variances
+            outputVars[iOut] = RegressionData(
+                soln1.A, soln1.y, soln2.params
+            ).gaussianVariances
         return outputParams, outputVars
 
     def cmSolve(
@@ -856,11 +857,11 @@ class LocalRegressor(ResisticsBase):
         outputParams = np.empty(shape=(self.outSize, self.inSize), dtype="complex")
         outputVars = np.empty(shape=(self.outSize, self.inSize), dtype="float")
         # solve
-        for ii in range(0, self.outSize):
-            observation = obs[ii, :]
-            predictors = reg[ii, :, :]
+        for iOut in range(0, self.outSize):
+            observation = obs[iOut, :]
+            predictors = reg[iOut, :, :]
             # save the output
-            soln1 = chatterjeeMachler(predictors, observation, intercept=self.intercept)
+            soln1 = chatterjeeMachler(predictors, observation)
             observation2 = np.zeros(shape=(crossSize), dtype="complex")
             predictors2 = np.zeros(shape=(crossSize, self.inSize), dtype="complex")
             for iChan in range(0, crossSize):
@@ -869,26 +870,21 @@ class LocalRegressor(ResisticsBase):
                 weightsLim = soln1.weights[indexArray]
                 # stack observations
                 observation2[iChan] = (
-                    np.sum(obs[ii, indexArray] * weightsLim) / numWindows
+                    np.sum(obs[iOut, indexArray] * weightsLim) / numWindows
                 )
                 # stack regressors
-                for j in range(0, self.inSize):
-                    predictors2[iChan, j] = (
-                        np.sum(reg[ii, indexArray, j] * weightsLim) / numWindows
+                for iIn in range(0, self.inSize):
+                    predictors2[iChan, iIn] = (
+                        np.sum(reg[iOut, indexArray, iIn] * weightsLim) / numWindows
                     )
             # second solution on stacked data
-            soln2 = chatterjeeMachler(
-                predictors2, observation2, intercept=self.intercept
-            )
-            params = soln2.params
+            soln2 = chatterjeeMachler(predictors2, observation2)
+            outputParams[iOut] = soln2.params
             # calulcate variances with respect to full equations, not stacked equations
             # use soln1 A and y to make sure intecept is incorporated
-            variances = RegressionData(soln1.A, soln1.y, params).gaussianVariances
-            if self.intercept:
-                params = soln2.params[1:]
-                variances = variances[1:]
-            outputParams[ii] = params
-            outputVars[ii] = variances
+            outputVars[iOut] = RegressionData(
+                soln1.A, soln1.y, soln2.params
+            ).gaussianVariances
         return outputParams, outputVars
 
     def expSolve(

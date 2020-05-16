@@ -57,6 +57,8 @@ class RemoteRegressor(LocalRegressor):
         The number of channels from the remote reference site which will be used to calculate crosspowers
     intercept : bool
         Flag for adding an intercept term
+    interceptChannel : str
+        The name of the pseudo channel that will act as intercept
     mmOptions : Union[Dict, None]
         Options from MM estimates
     cmOptions : Union[Dict, None]
@@ -131,6 +133,7 @@ class RemoteRegressor(LocalRegressor):
         self.remoteSize: int = len(self.remoteCross)
         # solution options
         self.intercept: bool = False
+        self.interceptChannel: str = "intercept"
         self.stack: bool = False
         self.mmOptions: Union[None, Dict] = None
         self.cmOptions: Union[None, Dict] = None
@@ -256,6 +259,11 @@ class RemoteRegressor(LocalRegressor):
         remoteData, _rgIndicesOut = remoteReader.readBinaryBatchGlobal(
             globalIndices=batchedWindows
         )
+
+        # set up a unit channel to act as the intercept term in the input
+        if self.intercept:
+            for data in inData:
+                data.addUnitChannel(self.interceptChannel)
 
         self.printText("Calculating batch crosspowers...")
         crosspowers = remoteCrosspowers(

@@ -1,132 +1,14 @@
-class mock_decimation_parameters:
-    """Mock decimation parameters"""
-
-    def __init__(self):
-        import numpy as np
-
-        self.numLevels = 1
-        self.evalfreq = np.array([24, 40])
-
-    def getEvalFrequenciesForLevel(self, declevel):
-        return self.evalfreq
+"""Test remote reference regression"""
 
 
-class mock_window_parameters:
-    """Mock window parameters"""
-
-    def __init__(self):
-        return
-
-
-class mock_spectra_data:
-    """Mock spectra data"""
-
-    def __init__(self, data):
-        import numpy as np
-
-        self.data = {}
-        for chan in data:
-            self.data[chan] = np.array(data[chan])
-        self.chans = list(self.data.keys())
-        self.windowSize = 8
-        self.dataSize = len(self.data[self.chans[0]])
-        self.freqArray = np.array([0, 16, 32, 48, 64])
-        self.sampleFreq = 128
-        self.startTime = "2020-01-01 00:00:00.00"
-        self.stopTime = "2020-01-01 01:00:00.00"
-
-
-class mock_spectra_io:
-    """Mock spectra io"""
-
-    def __init__(self, data, windows):
-        self.data = []
-        for d in data:
-            self.data.append(mock_spectra_data(d))
-        self.windows = windows
-
-    def readBinaryBatchGlobal(self, globalIndices):
-        return self.data, self.windows
-
-    def closeFile(self):
-        return
-
-
-class mock_window_selector:
-    """Mock window selector"""
-
-    def __init__(self):
-        self.decParams = mock_decimation_parameters()
-        self.winParams = mock_window_parameters()
-        self.sites = ["site1", "site2"]
-        self.specdir = "test"
-
-    def getDataSize(self, declevel):
-        return 5
-
-    def getNumSharedWindows(self, declevel):
-        return 3
-
-    def getUnmaskedWindowsLevel(self, declevel):
-        return set([1, 2, 3])
-
-    def getWindowsForFreq(self, declevel, eIdx):
-        return set([1, 2, 3])
-
-    def getSpecReaderBatches(self, declevel):
-        data1 = [
-            {
-                "Ex": [3, 4, 5, 6, 7],
-                "Ey": [3, 4, 5, 6, 7],
-                "Hx": [5, 4, 2, 3, 5],
-                "Hy": [5, 6, 7, 8, 6],
-            },
-            {
-                "Ex": [3, 4, 5, 6, 7],
-                "Ey": [3, 4, 5, 6, 7],
-                "Hx": [5, 4, 2, 3, 5],
-                "Hy": [5, 6, 7, 8, 6],
-            },
-            {
-                "Ex": [3, 4, 5, 6, 7],
-                "Ey": [3, 4, 5, 6, 7],
-                "Hx": [5, 4, 2, 3, 5],
-                "Hy": [5, 6, 7, 8, 6],
-            },
-        ]
-        data2 = [
-            {
-                "Ex": [3, 4, 5, 6, 7],
-                "Ey": [3, 4, 5, 6, 7],
-                "Hx": [5, 4, 2, 3, 5],
-                "Hy": [5, 6, 7, 8, 6],
-            },
-            {
-                "Ex": [3, 4, 5, 6, 7],
-                "Ey": [3, 4, 5, 6, 7],
-                "Hx": [5, 4, 2, 3, 5],
-                "Hy": [5, 6, 7, 8, 6],
-            },
-            {
-                "Ex": [3, 4, 5, 6, 7],
-                "Ey": [3, 4, 5, 6, 7],
-                "Hx": [5, 4, 2, 3, 5],
-                "Hy": [5, 6, 7, 8, 6],
-            },
-        ]
-        windows = [1, 2, 3]
-        site1_spec = mock_spectra_io(data1, windows)
-        site2_spec = mock_spectra_io(data2, windows)
-        return [{"globalrange": [1, 3], "site1": site1_spec, "site2": site2_spec}]
-
-
-def mock_local_regressor_writeResult(a, b, c, d, e, f):
+def mock_remote_regressor_writeResult(a, b, c, d, e, f):
     return
 
 
 def test_remote_regressor_setCores():
     """Test remote regressor setCores"""
     from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
 
     selector = mock_window_selector()
     regressor = RemoteRegressor(selector, "test")
@@ -140,6 +22,7 @@ def test_remote_regressor_setCores():
 def test_remote_regressor_setSmooth():
     """Test remote regressor setSmooth"""
     from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
 
     selector = mock_window_selector()
     regressor = RemoteRegressor(selector, "test")
@@ -157,29 +40,27 @@ def test_remote_regressor_setSmooth():
 def test_remote_regressor_setMethod():
     """Test remote regressor setMethod"""
     from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
 
     selector = mock_window_selector()
     regressor = RemoteRegressor(selector, "test")
     assert regressor.method == "cm"
     assert regressor.intercept == False
-    assert regressor.stack == False
-    regressor.setMethod("ols", intercept=False, stack=False)
+    regressor.setMethod("ols", intercept=False)
     assert regressor.method == "ols"
     assert regressor.intercept == False
-    assert regressor.stack == False
-    regressor.setMethod("cm", intercept=True, stack=False)
+    regressor.setMethod("cm", intercept=True)
     assert regressor.method == "cm"
     assert regressor.intercept == True
-    assert regressor.stack == False
-    regressor.setMethod("mm", intercept=False, stack=True)
+    regressor.setMethod("mm", intercept=False)
     assert regressor.method == "mm"
     assert regressor.intercept == False
-    assert regressor.stack == True
 
 
 def test_remote_regressor_setInput():
     """Test remote regressor setInput"""
     from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
 
     selector = mock_window_selector()
     regressor = RemoteRegressor(selector, "test")
@@ -198,6 +79,7 @@ def test_remote_regressor_setInput():
 def test_remote_regressor_setOutput():
     """Test remote regressor setOutput"""
     from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
 
     selector = mock_window_selector()
     regressor = RemoteRegressor(selector, "test")
@@ -216,8 +98,8 @@ def test_remote_regressor_setOutput():
 def test_remote_regressor_setRemote():
     """Test remote regressor setRemote"""
     from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
 
-    
     selector = mock_window_selector()
     regressor = RemoteRegressor(selector, "test")
     assert regressor.remoteCross == ["Hx", "Hy"]
@@ -234,6 +116,7 @@ def test_remote_regressor_setRemote():
 def test_remote_regressor_getSmoothLen(monkeypatch):
     """Test remote regressor process"""
     from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
     import numpy as np
 
     selector = mock_window_selector()
@@ -247,198 +130,547 @@ def test_remote_regressor_getSmoothLen(monkeypatch):
     assert regressor.getSmoothLen(65) == 13
 
 
-# def test_remote_regressor_ols(monkeypatch):
-#     """Test remote regressor process"""
-#     from resistics.regression.local import LocalRegressor
-#     import numpy as np
+def test_remote_regressor_ols(monkeypatch):
+    """Test remote regressor process"""
+    from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
+    import numpy as np
 
-#     # patch out the writeTF function
-#     monkeypatch.setattr(LocalRegressor, "writeResult", mock_local_regressor_writeResult)
+    # patch out the writeTF function
+    monkeypatch.setattr(
+        RemoteRegressor, "writeResult", mock_remote_regressor_writeResult
+    )
 
-#     selector = mock_window_selector()
-#     regressor = LocalRegressor(selector, "test")
-#     regressor.setInput("site1", ["Hx", "Hy"], inCross=["Hx", "Hy"])
-#     regressor.setOutput("site1", ["Ex", "Ey"], outCross=["Ex", "Ey"])
-#     regressor.setMethod("ols", intercept=False, stack=False)
-#     regressor.setSmooth("hann", 1)
-#     regressor.process()
-#     # expected
-#     expected_evalfreq = np.array([24, 40])
-#     expected_impedances = [
-#         np.array([[-0.125 + 0.0j, 0.75 + 0.0j], [-0.125 + 0.0j, 0.75 + 0.0j]]),
-#         np.array([[0.4 + 0.0j, 0.6 + 0.0j], [0.4 + 0.0j, 0.6 + 0.0j]]),
-#     ]
-#     expected_variances = [
-#         np.array([[1.25354931e-28, 2.56307567e-29], [1.25354931e-28, 2.56307567e-29]]),
-#         np.array([[2.42964025e-27, 2.76113237e-28], [2.42964025e-27, 2.76113237e-28]]),
-#     ]
-#     np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
-#     np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
-#     np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
-#     np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
-#     np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
-
-
-# def test_remote_regressor_mm(monkeypatch):
-#     """Test remote regressor process"""
-#     from resistics.regression.local import LocalRegressor
-#     import numpy as np
-
-#     # patch out the writeTF function
-#     monkeypatch.setattr(LocalRegressor, "writeResult", mock_local_regressor_writeResult)
-
-#     selector = mock_window_selector()
-#     regressor = LocalRegressor(selector, "test")
-#     regressor.setInput("site1", ["Hx", "Hy"], inCross=["Hx", "Hy"])
-#     regressor.setOutput("site1", ["Ex", "Ey"], outCross=["Ex", "Ey"])
-#     regressor.setMethod("mm", intercept=False, stack=False)
-#     regressor.setSmooth("hann", 1)
-#     regressor.process()
-#     # expected
-#     expected_evalfreq = np.array([24, 40])
-#     expected_impedances = [
-#         np.array([[-0.125 + 0.0j, 0.75 + 0.0j], [-0.125 + 0.0j, 0.75 + 0.0j]]),
-#         np.array([[0.4 + 0.0j, 0.6 + 0.0j], [0.4 + 0.0j, 0.6 + 0.0j]]),
-#     ]
-#     expected_variances = [
-#         np.array([[1.25354931e-28, 2.56307567e-29], [1.25354931e-28, 2.56307567e-29]]),
-#         np.array([[2.42964025e-27, 2.76113237e-28], [2.42964025e-27, 2.76113237e-28]]),
-#     ]
-#     np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
-#     np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
-#     np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
-#     np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
-#     np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
+    selector = mock_window_selector()
+    regressor = RemoteRegressor(selector, "test")
+    regressor.setInput("local", ["Hx", "Hy"])
+    regressor.setOutput("local", ["Ex", "Ey"])
+    regressor.setRemote("remote", ["Hx", "Hy"])
+    regressor.setMethod("ols", intercept=False)
+    regressor.setSmooth("hann", 1)
+    assert regressor.inCross == []
+    assert regressor.outCross == []
+    regressor.process()
+    # expected
+    expected_evalfreq = np.array([24, 40])
+    expected_impedances = [
+        np.array([[3.0 + 0.0j, 5.0 + 0.0j], [2.0 + 0.0j, 7.0 + 0.0j]]),
+        np.array([[3.0 + 0.0j, 5.0 + 0.0j], [2.0 + 0.0j, 7.0 + 0.0j]]),
+    ]
+    expected_variances = [
+        np.array([[2.78469341e-28, 1.79044909e-28], [1.64240080e-27, 1.05599956e-27]]),
+        np.array([[1.47463485e-29, 1.96730235e-29], [5.89853939e-29, 7.86920938e-29]]),
+    ]
+    np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
+    np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
+    np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
+    np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
+    np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
 
 
-# def test_remote_regressor_cm(monkeypatch):
-#     """Test remote regressor process"""
-#     from resistics.regression.local import LocalRegressor
-#     import numpy as np
+def test_remote_regressor_mm(monkeypatch):
+    """Test remote regressor process"""
+    from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
+    import numpy as np
 
-#     # patch out the writeTF function
-#     monkeypatch.setattr(LocalRegressor, "writeResult", mock_local_regressor_writeResult)
+    # patch out the writeTF function
+    monkeypatch.setattr(
+        RemoteRegressor, "writeResult", mock_remote_regressor_writeResult
+    )
 
-#     selector = mock_window_selector()
-#     regressor = LocalRegressor(selector, "test")
-#     regressor.setInput("site1", ["Hx", "Hy"], inCross=["Hx", "Hy"])
-#     regressor.setOutput("site1", ["Ex", "Ey"], outCross=["Ex", "Ey"])
-#     regressor.setMethod("cm", intercept=False, stack=False)
-#     regressor.setSmooth("hann", 1)
-#     regressor.process()
-#     # expected
-#     expected_evalfreq = np.array([24, 40])
-#     expected_impedances = [
-#         np.array([[-0.125 + 0.0j, 0.75 + 0.0j], [-0.125 + 0.0j, 0.75 + 0.0j]]),
-#         np.array([[0.4 + 0.0j, 0.6 + 0.0j], [0.4 + 0.0j, 0.6 + 0.0j]]),
-#     ]
-#     expected_variances = [
-#         np.array([[1.25354931e-28, 2.56307567e-29], [1.25354931e-28, 2.56307567e-29]]),
-#         np.array([[2.42964025e-27, 2.76113237e-28], [2.42964025e-27, 2.76113237e-28]]),
-#     ]
-#     np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
-#     np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
-#     np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
-#     np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
-#     np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
-
-
-# def test_remote_regressor_ols_intercept(monkeypatch):
-#     """Test remote regressor process"""
-#     from resistics.regression.local import LocalRegressor
-#     import numpy as np
-
-#     # patch out the writeTF function
-#     monkeypatch.setattr(LocalRegressor, "writeResult", mock_local_regressor_writeResult)
-
-#     selector = mock_window_selector()
-#     regressor = LocalRegressor(selector, "test")
-#     regressor.setInput("site1", ["Hx", "Hy"], inCross=["Hx", "Hy"])
-#     regressor.setOutput("site1", ["Ex", "Ey"], outCross=["Ex", "Ey"])
-#     regressor.setMethod("ols", intercept=True, stack=False)
-#     regressor.setSmooth("hann", 1)
-#     regressor.process()
-#     # expected
-#     expected_evalfreq = np.array([24, 40])
-#     expected_impedances = [
-#         np.array([[-0.125 + 0.0j, 0.75 + 0.0j], [-0.125 + 0.0j, 0.75 + 0.0j]]),
-#         np.array(
-#             [
-#                 [0.22439024 + 0.0j, 0.65853659 + 0.0j],
-#                 [0.22439024 + 0.0j, 0.65853659 + 0.0j],
-#             ]
-#         ),
-#     ]
-#     expected_variances = [
-#         np.array([[1.06708149e-28, 1.64277231e-29], [1.06708149e-28, 1.64277231e-29]]),
-#         np.array([[8.58602488e-15, 9.54002764e-16], [8.58602488e-15, 9.54002764e-16]]),
-#     ]
-#     np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
-#     np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
-#     np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
-#     np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
-#     np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
+    selector = mock_window_selector()
+    regressor = RemoteRegressor(selector, "test")
+    regressor.setInput("local", ["Hx", "Hy"])
+    regressor.setOutput("local", ["Ex", "Ey"])
+    regressor.setRemote("remote", ["Hx", "Hy"])
+    regressor.setMethod("mm", intercept=False)
+    regressor.setSmooth("hann", 1)
+    assert regressor.inCross == []
+    assert regressor.outCross == []
+    regressor.process()
+    # expected
+    expected_evalfreq = np.array([24, 40])
+    expected_impedances = [
+        np.array([[3.0 + 0.0j, 5.0 + 0.0j], [2.0 + 0.0j, 7.0 + 0.0j]]),
+        np.array([[3.0 + 0.0j, 5.0 + 0.0j], [2.0 + 0.0j, 7.0 + 0.0j]]),
+    ]
+    expected_variances = [
+        np.array([[2.78469341e-28, 1.79044909e-28], [1.64240080e-27, 1.05599956e-27]]),
+        np.array([[1.47463485e-29, 1.96730235e-29], [5.89853939e-29, 7.86920938e-29]]),
+    ]
+    np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
+    np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
+    np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
+    np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
+    np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
 
 
-# def test_remote_regressor_mm_intercept(monkeypatch):
-#     """Test remote regressor process"""
-#     from resistics.regression.local import LocalRegressor
-#     import numpy as np
+def test_remote_regressor_cm(monkeypatch):
+    """Test remote regressor process"""
+    from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
+    import numpy as np
 
-#     # patch out the writeTF function
-#     monkeypatch.setattr(LocalRegressor, "writeResult", mock_local_regressor_writeResult)
+    # patch out the writeTF function
+    monkeypatch.setattr(
+        RemoteRegressor, "writeResult", mock_remote_regressor_writeResult
+    )
 
-#     selector = mock_window_selector()
-#     regressor = LocalRegressor(selector, "test")
-#     regressor.setInput("site1", ["Hx", "Hy"], inCross=["Hx", "Hy"])
-#     regressor.setOutput("site1", ["Ex", "Ey"], outCross=["Ex", "Ey"])
-#     regressor.setMethod("mm", intercept=True, stack=False)
-#     regressor.setSmooth("hann", 1)
-#     regressor.process()
-#     # expected
-#     expected_evalfreq = np.array([24, 40])
-#     expected_impedances = [
-#         np.array([[-0.125 + 0.0j, 0.75 + 0.0j], [-0.125 + 0.0j, 0.75 + 0.0j]]),
-#         np.array([[0.4 + 0.0j, 0.6 + 0.0j], [0.4 + 0.0j, 0.6 + 0.0j],]),
-#     ]
-#     expected_variances = [
-#         np.array([[5.01419722e-28, 1.02523027e-28], [5.01419722e-28, 1.02523027e-28]]),
-#         np.array([[1.55496976e-25, 1.76712472e-26], [1.55496976e-25, 1.76712472e-26]]),
-#     ]
-#     np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
-#     np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
-#     np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
-#     np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
-#     np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
+    selector = mock_window_selector()
+    regressor = RemoteRegressor(selector, "test")
+    regressor.setInput("local", ["Hx", "Hy"])
+    regressor.setOutput("local", ["Ex", "Ey"])
+    regressor.setRemote("remote", ["Hx", "Hy"])
+    regressor.setMethod("cm", intercept=False)
+    regressor.setSmooth("hann", 1)
+    assert regressor.inCross == []
+    assert regressor.outCross == []
+    regressor.process()
+    # expected
+    expected_evalfreq = np.array([24, 40])
+    expected_impedances = [
+        np.array([[3.0 + 0.0j, 5.0 + 0.0j], [2.0 + 0.0j, 7.0 + 0.0j]]),
+        np.array([[3.0 + 0.0j, 5.0 + 0.0j], [2.0 + 0.0j, 7.0 + 0.0j]]),
+    ]
+    expected_variances = [
+        np.array([[2.78469341e-28, 1.79044909e-28], [1.64240080e-27, 1.05599956e-27]]),
+        np.array([[1.47463485e-29, 1.96730235e-29], [5.89853939e-29, 7.86920938e-29]]),
+    ]
+    np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
+    np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
+    np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
+    np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
+    np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
 
 
-# def test_remote_regressor_cm_intercept(monkeypatch):
-#     """Test remote regressor process"""
-#     from resistics.regression.local import LocalRegressor
-#     import numpy as np
+def test_local_regressor_ols_noise(monkeypatch):
+    """Test local regressor process with some noise added to the localsite"""
+    from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
+    import numpy as np
 
-#     # patch out the writeTF function
-#     monkeypatch.setattr(LocalRegressor, "writeResult", mock_local_regressor_writeResult)
+    # patch out the writeTF function
+    monkeypatch.setattr(
+        RemoteRegressor, "writeResult", mock_remote_regressor_writeResult
+    )
 
-#     selector = mock_window_selector()
-#     regressor = LocalRegressor(selector, "test")
-#     regressor.setInput("site1", ["Hx", "Hy"], inCross=["Hx", "Hy"])
-#     regressor.setOutput("site1", ["Ex", "Ey"], outCross=["Ex", "Ey"])
-#     regressor.setMethod("cm", intercept=True, stack=False)
-#     regressor.setSmooth("hann", 1)
-#     regressor.process()
-#     # expected
-#     expected_evalfreq = np.array([24, 40])
-#     expected_impedances = [
-#         np.array([[-0.125 + 0.0j, 0.75 + 0.0j], [-0.125 + 0.0j, 0.75 + 0.0j]]),
-#         np.array([[0.4 + 0.0j, 0.6 + 0.0j], [0.4 + 0.0j, 0.6 + 0.0j]]),
-#     ]
-#     expected_variances = [
-#         np.array([[5.01419722e-28, 1.02523027e-28], [5.01419722e-28, 1.02523027e-28]]),
-#         np.array([[1.55496976e-25, 1.76712472e-26], [1.55496976e-25, 1.76712472e-26]]),
-#     ]
-#     np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
-#     np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
-#     np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
-#     np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
-#     np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
+    selector = mock_window_selector(localnoise=True)
+    regressor = RemoteRegressor(selector, "test")
+    regressor.setInput("local", ["Hx", "Hy"])
+    regressor.setOutput("local", ["Ex", "Ey"])
+    regressor.setRemote("remote", ["Hx", "Hy"])
+    regressor.setMethod("ols", intercept=False)
+    regressor.setSmooth("hann", 1)
+    assert regressor.inCross == []
+    assert regressor.outCross == []
+    regressor.process()
+    # expected
+    expected_evalfreq = np.array([24, 40])
+    expected_impedances = [
+        np.array(
+            [
+                [4.17149691 + 0.0j, 3.48769594 + 0.0j],
+                [1.48229546 + 0.0j, 7.28114671 + 0.0j],
+            ]
+        ),
+        np.array(
+            [
+                [4.08086708 + 0.0j, 3.51508884 + 0.0j],
+                [-1.80159334 + 0.0j, 10.70916092 + 0.0j],
+            ]
+        ),
+    ]
+    expected_variances = [
+        np.array([[0.01284865, 0.00819992], [0.68188147, 0.43517191]]),
+        np.array([[0.03504211, 0.04651421], [18.06330838, 23.97687941]]),
+    ]
+    np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
+    np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
+    np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
+    np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
+    np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
+
+
+def test_local_regressor_mm_noise(monkeypatch):
+    """Test local regressor process with some noise added to the localsite"""
+    from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
+    import numpy as np
+
+    # patch out the writeTF function
+    monkeypatch.setattr(
+        RemoteRegressor, "writeResult", mock_remote_regressor_writeResult
+    )
+
+    selector = mock_window_selector(localnoise=True)
+    regressor = RemoteRegressor(selector, "test")
+    regressor.setInput("local", ["Hx", "Hy"])
+    regressor.setOutput("local", ["Ex", "Ey"])
+    regressor.setRemote("remote", ["Hx", "Hy"])
+    regressor.setMethod("mm", intercept=False)
+    regressor.setSmooth("hann", 1)
+    assert regressor.inCross == []
+    assert regressor.outCross == []
+    regressor.process()
+    # expected
+    expected_evalfreq = np.array([24, 40])
+    expected_impedances = [
+        np.array(
+            [
+                [4.28467732 + 0.0j, 3.39812143 + 0.0j],
+                [2.33069538 + 0.0j, 6.59175726 + 0.0j],
+            ]
+        ),
+        np.array(
+            [
+                [3.77407493 + 0.0j, 3.86441015 + 0.0j],
+                [1.21575149 + 0.0j, 7.35576611 + 0.0j],
+            ]
+        ),
+    ]
+    expected_variances = [
+        np.array([[5.31246449e-04, 3.39037709e-04], [3.13860843e00, 2.00303760e00]]),
+        np.array([[0.11543121, 0.15322112], [47.59264394, 63.17353725]]),
+    ]
+    np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
+    np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
+    np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
+    np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
+    np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
+
+
+def test_local_regressor_cm_noise(monkeypatch):
+    """Test local regressor process with some noise added to the localsite"""
+    from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
+    import numpy as np
+
+    # patch out the writeTF function
+    monkeypatch.setattr(
+        RemoteRegressor, "writeResult", mock_remote_regressor_writeResult
+    )
+
+    selector = mock_window_selector(localnoise=True)
+    regressor = RemoteRegressor(selector, "test")
+    regressor.setInput("local", ["Hx", "Hy"])
+    regressor.setOutput("local", ["Ex", "Ey"])
+    regressor.setRemote("remote", ["Hx", "Hy"])
+    regressor.setMethod("cm", intercept=False)
+    regressor.setSmooth("hann", 1)
+    assert regressor.inCross == []
+    assert regressor.outCross == []
+    regressor.process()
+    # expected
+    expected_evalfreq = np.array([24, 40])
+    expected_impedances = [
+        np.array(
+            [
+                [4.32416997 + 0.0j, 3.36294245 + 0.0j],
+                [1.06908193 + 0.0j, 7.60932995 + 0.0j],
+            ]
+        ),
+        np.array(
+            [
+                [4.10868381 + 0.0j, 3.465675 + 0.0j],
+                [1.78789942 + 0.0j, 7.24148737 + 0.0j],
+            ]
+        ),
+    ]
+    expected_variances = [
+        np.array([[7.01571556e-04, 4.47737982e-04], [4.71858833e-01, 3.01136955e-01]]),
+        np.array([[0.03930329, 0.05217041], [0.02580595, 0.03425431]]),
+    ]
+    np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
+    np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
+    np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
+    np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
+    np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
+
+
+def test_remote_regressor_ols_intersite(monkeypatch):
+    """Test remote regressor process with a different site for the ouput"""
+    from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
+    import numpy as np
+
+    # patch out the writeTF function
+    monkeypatch.setattr(
+        RemoteRegressor, "writeResult", mock_remote_regressor_writeResult
+    )
+
+    selector = mock_window_selector()
+    regressor = RemoteRegressor(selector, "test")
+    regressor.setInput("local", ["Hx", "Hy"])
+    regressor.setOutput("inter", ["Ex", "Ey"])
+    regressor.setRemote("remote", ["Hx", "Hy"])
+    regressor.setMethod("ols", intercept=False)
+    regressor.setSmooth("hann", 1)
+    assert regressor.inCross == []
+    assert regressor.outCross == []
+    regressor.process()
+    # expected
+    expected_evalfreq = np.array([24, 40])
+    expected_impedances = [
+        np.array([[6.0 + 0.0j, 8.0 + 0.0j], [4.0 + 0.0j, 1.0 + 0.0j]]),
+        np.array([[6.0 + 0.0j, 8.0 + 0.0j], [4.0 + 0.0j, 1.0 + 0.0j]]),
+    ]
+    expected_variances = [
+        np.array([[9.14649740e-29, 5.89343794e-29], [1.42914022e-30, 9.20849678e-31]]),
+        np.array([[1.38145310e-28, 1.84606779e-28], [3.45363276e-29, 4.61516947e-29]]),
+    ]
+    np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
+    np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
+    np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
+    np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
+    np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
+
+
+def test_remote_regressor_mm_intersite(monkeypatch):
+    """Test remote regressor process with a different site for the ouput"""
+    from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
+    import numpy as np
+
+    # patch out the writeTF function
+    monkeypatch.setattr(
+        RemoteRegressor, "writeResult", mock_remote_regressor_writeResult
+    )
+
+    selector = mock_window_selector()
+    regressor = RemoteRegressor(selector, "test")
+    regressor.setInput("local", ["Hx", "Hy"])
+    regressor.setOutput("inter", ["Ex", "Ey"])
+    regressor.setRemote("remote", ["Hx", "Hy"])
+    regressor.setMethod("mm", intercept=False)
+    regressor.setSmooth("hann", 1)
+    assert regressor.inCross == []
+    assert regressor.outCross == []
+    regressor.process()
+    # expected
+    expected_evalfreq = np.array([24, 40])
+    expected_impedances = [
+        np.array([[6.0 + 0.0j, 8.0 + 0.0j], [4.0 + 0.0j, 1.0 + 0.0j]]),
+        np.array([[6.0 + 0.0j, 8.0 + 0.0j], [4.0 + 0.0j, 1.0 + 0.0j]]),
+    ]
+    expected_variances = [
+        np.array([[9.14649740e-29, 5.89343794e-29], [1.42914022e-30, 9.20849678e-31]]),
+        np.array([[1.38145310e-28, 1.84606779e-28], [3.45363276e-29, 4.61516947e-29]]),
+    ]
+    np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
+    np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
+    np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
+    np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
+    np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
+
+
+def test_remote_regressor_cm_intersite(monkeypatch):
+    """Test remote regressor process with a different site for the ouput"""
+    from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
+    import numpy as np
+
+    # patch out the writeTF function
+    monkeypatch.setattr(
+        RemoteRegressor, "writeResult", mock_remote_regressor_writeResult
+    )
+
+    selector = mock_window_selector()
+    regressor = RemoteRegressor(selector, "test")
+    regressor.setInput("local", ["Hx", "Hy"])
+    regressor.setOutput("inter", ["Ex", "Ey"])
+    regressor.setRemote("remote", ["Hx", "Hy"])
+    regressor.setMethod("cm", intercept=False)
+    regressor.setSmooth("hann", 1)
+    assert regressor.inCross == []
+    assert regressor.outCross == []
+    regressor.process()
+    # expected
+    expected_evalfreq = np.array([24, 40])
+    expected_impedances = [
+        np.array([[6.0 + 0.0j, 8.0 + 0.0j], [4.0 + 0.0j, 1.0 + 0.0j]]),
+        np.array([[6.0 + 0.0j, 8.0 + 0.0j], [4.0 + 0.0j, 1.0 + 0.0j]]),
+    ]
+    expected_variances = [
+        np.array([[9.14649740e-29, 5.89343794e-29], [1.42914022e-30, 9.20849678e-31]]),
+        np.array([[1.38145310e-28, 1.84606779e-28], [3.45363276e-29, 4.61516947e-29]]),
+    ]
+    np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
+    np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
+    np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
+    np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
+    np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
+
+
+def test_remote_regressor_ols_intercept(monkeypatch):
+    """Test remote regressor process with an intercept term"""
+    from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
+    import numpy as np
+
+    # patch out the writeTF function
+    monkeypatch.setattr(
+        RemoteRegressor, "writeResult", mock_remote_regressor_writeResult
+    )
+
+    selector = mock_window_selector(intercept=True)
+    regressor = RemoteRegressor(selector, "test")
+    regressor.setInput("local", ["Hx", "Hy"])
+    regressor.setOutput("local", ["Ex", "Ey"])
+    regressor.setRemote("remote", ["Hx", "Hy"])
+    regressor.setMethod("ols", intercept=True)
+    regressor.setSmooth("hann", 1)
+    assert regressor.inCross == []
+    assert regressor.outCross == []
+    assert regressor.remoteCross == ["Hx", "Hy"]
+    regressor.process()
+    # expected
+    expected_evalfreq = np.array([24, 40])
+    expected_impedances = [
+        np.array(
+            [
+                [3.0 + 0.0j, 5.0 + 0.0j, 5.0 + 0.0j],
+                [2.0 + 0.0j, 7.0 + 0.0j, -9.0 + 0.0j],
+            ]
+        ),
+        np.array(
+            [
+                [3.0 + 0.0j, 5.0 + 0.0j, 5.0 + 0.0j],
+                [2.0 + 0.0j, 7.0 + 0.0j, -9.0 + 0.0j],
+            ]
+        ),
+    ]
+    expected_variances = [
+        np.array(
+            [
+                [1.21088688e-23, 7.25740911e-24, 3.34802360e-23],
+                [3.95687739e-23, 2.37154094e-23, 1.09405091e-22],
+            ]
+        ),
+        np.array(
+            [
+                [2.48945809e-27, 3.32569517e-27, 2.95106525e-26],
+                [1.00812766e-27, 1.34676912e-27, 1.19505948e-26],
+            ]
+        ),
+    ]
+    np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
+    np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
+    np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
+    np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
+    np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
+
+
+def test_remote_regressor_mm_intercept(monkeypatch):
+    """Test remote regressor process with an intercept term"""
+    from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
+    import numpy as np
+
+    # patch out the writeTF function
+    monkeypatch.setattr(
+        RemoteRegressor, "writeResult", mock_remote_regressor_writeResult
+    )
+
+    selector = mock_window_selector(intercept=True)
+    regressor = RemoteRegressor(selector, "test")
+    regressor.setInput("local", ["Hx", "Hy"])
+    regressor.setOutput("local", ["Ex", "Ey"])
+    regressor.setRemote("remote", ["Hx", "Hy"])
+    regressor.setMethod("mm", intercept=True)
+    regressor.setSmooth("hann", 1)
+    assert regressor.inCross == []
+    assert regressor.outCross == []
+    assert regressor.remoteCross == ["Hx", "Hy"]
+    regressor.process()
+    # expected
+    expected_evalfreq = np.array([24, 40])
+    expected_impedances = [
+        np.array(
+            [
+                [5.1887448 + 0.0j, 3.23769067 + 0.0j, 1.72606573 + 0.0j],
+                [-0.50578302 + 0.0j, 9.02951015 + 0.0j, -5.3106386 + 0.0j],
+            ]
+        ),
+        np.array(
+            [
+                [4.16876826 + 0.0j, 3.93359941 + 0.0j, 0.1393923 + 0.0j],
+                [2.56283624 + 0.0j, 5.80703278 + 0.0j, 0.57298163 + 0.0j],
+            ]
+        ),
+    ]
+    expected_variances = [
+        np.array(
+            [[0.13001168, 0.07693714, 0.4976025], [0.2015383, 0.11926451, 0.77136119],]
+        ),
+        np.array(
+            [
+                [4.28780289, 6.03441972, 48.5332116],
+                [8.09793129, 11.39658644, 91.65967348],
+            ]
+        ),
+    ]
+    np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
+    np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
+    np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
+    np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
+    np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])
+
+
+def test_remote_regressor_cm_intercept(monkeypatch):
+    """Test remote regressor process with an intercept term"""
+    from resistics.regression.remote import RemoteRegressor
+    from mocks import mock_window_selector
+    import numpy as np
+
+    # patch out the writeTF function
+    monkeypatch.setattr(
+        RemoteRegressor, "writeResult", mock_remote_regressor_writeResult
+    )
+
+    selector = mock_window_selector(intercept=True)
+    regressor = RemoteRegressor(selector, "test")
+    regressor.setInput("local", ["Hx", "Hy"])
+    regressor.setOutput("local", ["Ex", "Ey"])
+    regressor.setRemote("remote", ["Hx", "Hy"])
+    regressor.setMethod("cm", intercept=True)
+    regressor.setSmooth("hann", 1)
+    assert regressor.inCross == []
+    assert regressor.outCross == []
+    assert regressor.remoteCross == ["Hx", "Hy"]
+    regressor.process()
+    # expected
+    expected_evalfreq = np.array([24, 40])
+    expected_impedances = [
+        np.array(
+            [
+                [4.5708818 + 0.0j, 3.83094409 + 0.0j, 0.61631404 + 0.0j],
+                [-0.34507489 + 0.0j, 8.7452132 + 0.0j, -2.45585909 + 0.0j],
+            ]
+        ),
+        np.array(
+            [
+                [3.78599245 + 0.0j, 4.36870089 + 0.0j, 0.04394717 + 0.0j],
+                [0.71686719 + 0.0j, 8.0305959 + 0.0j, -0.9092429 + 0.0j],
+            ]
+        ),
+    ]
+    expected_variances = [
+        np.array(
+            [
+                [7.10053809, 4.20189219, 27.17637004],
+                [15.82405112, 9.36421381, 60.56446191],
+            ]
+        ),
+        np.array(
+            [
+                [3.28799791, 4.62734876, 37.21651907],
+                [8.76270122, 12.33214734, 99.1841377],
+            ]
+        ),
+    ]
+    np.testing.assert_equal(regressor.evalFreq, expected_evalfreq)
+    np.testing.assert_almost_equal(regressor.parameters[0], expected_impedances[0])
+    np.testing.assert_almost_equal(regressor.parameters[1], expected_impedances[1])
+    np.testing.assert_almost_equal(regressor.variances[0], expected_variances[0])
+    np.testing.assert_almost_equal(regressor.variances[1], expected_variances[1])

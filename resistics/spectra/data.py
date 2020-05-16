@@ -122,18 +122,9 @@ class SpectrumData(ResisticsBase):
         """
         self.windowSize: int = windowSize
         self.sampleFreq: float = sampleFreq
-        # start time
-        self.startTime: datetime = (
-            datetime.strptime(startTime, "%Y-%m-%d %H:%M:%S.%f")
-            if isinstance(startTime, str)
-            else startTime
-        )
-        # stop time
-        self.stopTime: datetime = (
-            datetime.strptime(stopTime, "%Y-%m-%d %H:%M:%S.%f")
-            if isinstance(stopTime, str)
-            else stopTime
-        )
+        # times
+        self.start = startTime
+        self.stop = stopTime
         # other properties
         self.chans: List[str] = sorted(data.keys())
         self.data: Dict[str, np.ndarray] = data
@@ -153,6 +144,43 @@ class SpectrumData(ResisticsBase):
             Spectral data for a channel
         """
         return self.data[channel]
+
+    @property
+    def startTime(self) -> datetime:
+        """Returns the number of channels
+        
+        Returns
+        -------
+        datetime
+            The start time of the spectra data window
+        """
+        if isinstance(self.start, str):
+            return datetime.strptime(self.start, "%Y-%m-%d %H:%M:%S.%f")
+        return self.start
+
+    @property
+    def stopTime(self) -> datetime:
+        """Returns the number of channels
+        
+        Returns
+        -------
+        datetime
+            The stop time of the spectra data window
+        """
+        if isinstance(self.stop, str):
+            return datetime.strptime(self.stop, "%Y-%m-%d %H:%M:%S.%f")
+        return self.stop
+
+    @property
+    def numChans(self) -> int:
+        """Returns the number of channels
+        
+        Returns
+        -------
+        int
+            The number of channels in spectra data
+        """
+        return len(self.chans)
 
     @property
     def nyquist(self) -> float:
@@ -175,17 +203,6 @@ class SpectrumData(ResisticsBase):
             Array of frequencies
         """
         return getFrequencyArray(self.sampleFreq, self.dataSize)
-
-    @property
-    def numChans(self) -> int:
-        """Returns the number of channels
-        
-        Returns
-        -------
-        int
-            The number of channels in spectra data
-        """
-        return len(self.chans)
 
     def toArray(self, chans: Union[List[str], None] = None) -> np.ndarray:
         """Convert the dictionary into a numpy array
@@ -230,6 +247,19 @@ class SpectrumData(ResisticsBase):
             A new comment
         """
         self.comments.append(comment)
+
+    def addUnitChannel(self, chan: str) -> None:
+        """Add a unit channel, useful for adding intercept when processing
+        
+        Parameters
+        ----------
+        chan : str
+            The name of the channel. Should not match an existing channel.
+        """
+        self.data[chan] = np.ones(
+            shape=self.data[self.chans[0]].shape, dtype="complex"
+        )
+        self.chans.append(chan)
 
     def copy(self):
         """Get a copy of the time data object

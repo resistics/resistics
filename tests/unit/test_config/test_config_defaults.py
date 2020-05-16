@@ -35,7 +35,6 @@ def test_getDefaultParameter() -> None:
         "smoothfunc": "hann",
         "smoothlen": 9,
         "intercept": False,
-        "stack": False,
         "method": "cm",
         "OLS": {},
         "MM": {"weightfnc1": "huber", "weightfnc2": "bisquare"},
