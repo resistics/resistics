@@ -76,6 +76,21 @@ class TransferFunctionData(ResisticsBase):
         self.polarisations: List[str] = sorted(self.data.keys())
         self.variances: Dict = variances
 
+    def __getitem__(self, component: str) -> np.ndarray:
+        """Get data for a polarisation
+
+        Parameters
+        ----------
+        component : str
+            The polarisation to return the data for
+        
+        Returns
+        -------
+        np.ndarray
+            The data for the polarisation component
+        """
+        return self.getComponent(component)
+
     def getComponent(self, component: str) -> np.ndarray:
         """Get data for a polarisation
 
@@ -90,6 +105,16 @@ class TransferFunctionData(ResisticsBase):
             The data for the polarisation component
         """
         return self.data[component]
+
+    def __iter__(self):
+        """Return the component iterator
+        
+        Returns
+        -------
+        list_iterator
+            An iterator for the components
+        """
+        return iter(self.components)
 
     def getVariance(self, component: str) -> np.ndarray:
         """Get the variance for a component

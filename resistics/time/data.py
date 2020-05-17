@@ -41,12 +41,18 @@ class TimeData(ResisticsBase):
 
     Methods
     -------
-    __init__(kwargs)
+    __init__(sampleFreq, startTime, stopTime, data)
         Initialise the time data
     setData(windowSize, dataSize, sampleFreq, startTime, stopTime, data)
         Set data with parameters
-    getDateArray() : np.ndarray
-        A datetime array of the sample times
+    __getitem__(chan)
+        Get time data for channel
+    getChannel(chan)
+        Get time data for a channel
+    __setitem__(chan)
+        Set time data for a channel
+    setChannel(chan, chanData)
+        Set time data for a channel
     getComments()
         Get a deepcopy of the comments
     addComment(comment)
@@ -131,6 +137,21 @@ class TimeData(ResisticsBase):
         np.ndarray
             The channel data
         """
+        return self.getChannel(chan)
+
+    def getChannel(self, chan: str) -> np.ndarray:
+        """Get the time data for a channel
+
+        Parameters
+        ----------
+        chan : str
+            The channel for which to get the time data
+        
+        Returns
+        -------
+        np.ndarray
+            The time data for the channel
+        """
         return self.data[chan]
 
     def __setitem__(self, chan: str, chanData: np.ndarray) -> None:
@@ -143,7 +164,29 @@ class TimeData(ResisticsBase):
         chanData : np.ndarray
             The new channel data
         """
+        self.setChannel(chan, chanData)
+
+    def setChannel(self, chan: str, chanData: np.ndarray) -> None:
+        """Set channel time data
+        
+        Parameters
+        ----------
+        chan : str
+            The channel to set the data for
+        chanData : np.ndarray
+            The new channel data
+        """
         self.data[chan] = chanData
+    
+    def __iter__(self):
+        """Return the channel iterator
+        
+        Returns
+        -------
+        list_iterator
+            An iterator for the channels
+        """
+        return iter(self.chans)
 
     @property
     def startTime(self) -> datetime:

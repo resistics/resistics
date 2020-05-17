@@ -44,12 +44,18 @@ class SpectrumData(ResisticsBase):
 
     Methods
     -------
-    __init__(kwargs)
+    __init__(windowSize, dataSize, sampleFreq, startTime, stopTime, data)
         Initialise spectra data
     setData(windowSize, dataSize, sampleFreq, startTime, stopTime, data)
         Set data with parameters
     __getitem__(channel)
-        The getitem accessor for getting spectral data for a channel
+        Get spectra data for a channel
+    getChannel(chan)
+        Get spectra data for a channel
+    __setitem__(chan, chanData)
+        Set spectra data for a channel
+    setChannel(chan, chanData)
+        Set spectra data for a channel        
     getComments()
         Get a deepcopy of the comments        
     addComment(comment)
@@ -139,8 +145,23 @@ class SpectrumData(ResisticsBase):
         
         Parameters
         ----------
-        str
-            The chan
+        chan : str
+            The channel to get spectra data for
+        
+        Returns
+        -------
+        np.ndarray
+            Spectral data for a chan
+        """
+        return self.getChannel(chan)
+
+    def getChannel(self, chan: str):
+        """Get channel spectra data
+        
+        Parameters
+        ----------
+        chan : str
+            The channel to get spectra data for
         
         Returns
         -------
@@ -159,7 +180,29 @@ class SpectrumData(ResisticsBase):
         chanData : np.ndarray
             The new channel data
         """
+        self.setChannel(chan, chanData)
+
+    def setChannel(self, chan: str, chanData: np.ndarray) -> None:
+        """Set channel spectra data
+        
+        Parameters
+        ----------
+        chan : str
+            The channel to set the data for
+        chanData : np.ndarray
+            The new channel data
+        """
         self.data[chan] = chanData
+
+    def __iter__(self):
+        """Return the channel iterator
+        
+        Returns
+        -------
+        list_iterator
+            An iterator for the channels
+        """
+        return iter(self.chans)
 
     @property
     def startTime(self) -> datetime:

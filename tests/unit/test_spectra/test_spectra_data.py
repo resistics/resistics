@@ -59,6 +59,30 @@ def test_spectrumdata_getset():
     newEx = np.array([7 + 2j, 4 + 5j, 5 + 1j, 9 + 9j])
     specData["Ex"] = newEx
     np.testing.assert_equal(specData["Ex"], newEx)
+    # set back to the old Ex using setChannel method
+    specData.setChannel("Ex", data["Ex"])
+    np.testing.assert_equal(specData.getChannel("Ex"), data["Ex"])
+
+
+def test_spectrumdata_iter():
+    """Test iteration of spectrum data"""
+    from resistics.spectra.data import SpectrumData
+    import numpy as np
+    from datetime import datetime
+
+    startTime = "2020-01-01 00:00:00.000000"
+    stopTime = "2020-01-01 00:00:00.062500"
+    data = {}
+    data["Ex"] = np.array([1 + 3j, 2 + 5j, 7 + 6j, 3 + 2j])
+    data["Hy"] = np.array([2 + 9j, 9 + 1j, 8 + 8j, 6 + 2j])
+    data["Xy"] = np.array([7 + 2j, 4 + 5j, 5 + 1j, 9 + 9j])
+    specData = SpectrumData(8, 4, 128, startTime, stopTime, data)
+    specIter = iter(specData)
+    assert next(specIter) == "Ex"
+    assert next(specIter) == "Hy"
+    assert next(specIter) == "Xy"
+    for idx, chan in enumerate(specData):
+        assert chan == specData.chans[idx]
 
 
 def test_powerdata():
@@ -69,7 +93,6 @@ def test_powerdata():
     data = np.array(
         [[[0 + 4j, 1 + 3j, 6 + 6j, 7 + 3j], [0 + 1j, 5 + 2j, 5 + 4j, 2 + 3j]]]
     )
-    print(data.shape)
     pData = PowerData(["Ex"], ["Hx", "Hy"], data, 4096)
     # make sure that it matches autopower
     assert pData.dataSize == 4
