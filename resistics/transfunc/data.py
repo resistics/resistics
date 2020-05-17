@@ -114,7 +114,7 @@ class TransferFunctionData(ResisticsBase):
         list_iterator
             An iterator for the components
         """
-        return iter(self.components)
+        return iter(self.polarisations)
 
     def getVariance(self, component: str) -> np.ndarray:
         """Get the variance for a component
