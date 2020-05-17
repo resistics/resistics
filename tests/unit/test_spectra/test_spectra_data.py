@@ -24,6 +24,11 @@ def test_spectrumdata():
     assert specData.getComments() == []
     specData.addComment("This is a comment")
     assert specData.getComments() == ["This is a comment"]
+    # check nyquist and frequency array
+    assert specData.period == 1 / 128
+    assert specData.nyquist == 64
+    np.testing.assert_almost_equal(specData.freqArray, [0, (64 / 3), (64 / 3) * 2, 64])
+    # check data
     np.testing.assert_equal(specData.data["Ex"], data["Ex"])
     np.testing.assert_equal(specData.data["Hy"], data["Hy"])
     # check __getitem__ accessor
@@ -36,9 +41,24 @@ def test_spectrumdata():
     specDataArray, specDataChans = specData.toArray(["Hy"])
     np.testing.assert_almost_equal(specDataArray.squeeze(), np.array(data["Hy"]))
     assert specDataChans == ["Hy"]
-    # check nyquist and frequency array
-    assert specData.nyquist == 64
-    np.testing.assert_almost_equal(specData.freqArray, [0, (64 / 3), (64 / 3) * 2, 64])
+
+
+def test_spectrumdata_getset():
+    """Test the get set methods of spectrum data"""
+    from resistics.spectra.data import SpectrumData
+    import numpy as np
+    from datetime import datetime
+
+    startTime = "2020-01-01 00:00:00.000000"
+    stopTime = "2020-01-01 00:00:00.062500"
+    data = {}
+    data["Ex"] = np.array([1 + 3j, 2 + 5j, 7 + 6j, 3 + 2j])
+    data["Hy"] = np.array([2 + 9j, 9 + 1j, 8 + 8j, 6 + 2j])
+    specData = SpectrumData(8, 4, 128, startTime, stopTime, data)
+    np.testing.assert_equal(specData["Ex"], data["Ex"])
+    newEx = np.array([7 + 2j, 4 + 5j, 5 + 1j, 9 + 9j])
+    specData["Ex"] = newEx
+    np.testing.assert_equal(specData["Ex"], newEx)
 
 
 def test_powerdata():
@@ -60,7 +80,7 @@ def test_powerdata():
     assert np.array_equal(pData.getPower("Ex", "Hy", fIdx=2), data[0, 1, 2])
     # test getitem
     assert np.array_equal(pData["Ex", "Hx"], data[0, 0])
-    assert np.array_equal(pData["Ex", "Hy", 2], data[0, 1, 2])    
+    assert np.array_equal(pData["Ex", "Hy", 2], data[0, 1, 2])
     assert pData.nyquist == 2048
     assert np.array_equal(pData.freqArray, [0, 2048 / 3, 2048 * 2 / 3, 2048])
 

@@ -1,4 +1,6 @@
-import os
+"""
+Classes for storing time data
+"""
 from datetime import datetime, timedelta
 from copy import deepcopy
 import numpy as np
@@ -20,6 +22,10 @@ class TimeData(ResisticsBase):
         The number of samples in the data
     sampleFreq : float
         The sampling frequency
+    period : float
+        The sampling period
+    nyquist : float
+        The nyquist frequency
     startTime : datetime.datetime
         The time of the first sample
     stopTime : datetime.datetime
@@ -79,7 +85,7 @@ class TimeData(ResisticsBase):
         self.setData(sampleFreq, startTime, stopTime, data)
         self.comments = comments
         if self.comments is None:
-            self.comments  = []
+            self.comments = []
         if isinstance(self.comments, str):
             self.comments = [self.comments]
 
@@ -104,35 +110,112 @@ class TimeData(ResisticsBase):
             The data dictionary with keys as channels and values as spectra data
         """
         self.sampleFreq = sampleFreq
-        # start time
-        self.startTime = (
-            datetime.strptime(startTime, "%Y-%m-%d %H:%M:%S.%f")
-            if isinstance(startTime, str)
-            else startTime
-        )
-        # stop time
-        self.stopTime = (
-            datetime.strptime(stopTime, "%Y-%m-%d %H:%M:%S.%f")
-            if isinstance(stopTime, str)
-            else stopTime
-        )
+        # times
+        self.start = startTime
+        self.stop = stopTime
         # other properties
         self.chans = sorted(data.keys())
-        self.numChans = len(self.chans)
         self.data = data
         self.numSamples = data[self.chans[0]].size
 
-    def getDateArray(self) -> np.ndarray:
-        """Get the date array
+    def __getitem__(self, chan: str) -> np.ndarray:
+        """Get channel time data
+
+        Parameters
+        ----------
+        chan : str
+            The channel to get data for
+        
+        Returns
+        -------
+        np.ndarray
+            The channel data
+        """
+        return self.data[chan]
+
+    def __setitem__(self, chan: str, chanData: np.ndarray) -> None:
+        """Set channel time data
+        
+        Parameters
+        ----------
+        chan : str
+            The channel to set the data for
+        chanData : np.ndarray
+            The new channel data
+        """
+        self.data[chan] = chanData
+
+    @property
+    def startTime(self) -> datetime:
+        """Returns the number of channels
+        
+        Returns
+        -------
+        datetime
+            The start time of the spectra data window
+        """
+        if isinstance(self.start, str):
+            return datetime.strptime(self.start, "%Y-%m-%d %H:%M:%S.%f")
+        return self.start
+
+    @property
+    def stopTime(self) -> datetime:
+        """Returns the number of channels
+        
+        Returns
+        -------
+        datetime
+            The stop time of the spectra data window
+        """
+        if isinstance(self.stop, str):
+            return datetime.strptime(self.stop, "%Y-%m-%d %H:%M:%S.%f")
+        return self.stop
+
+    @property
+    def numChans(self) -> int:
+        """Returns the number of channels
+        
+        Returns
+        -------
+        int
+            The number of channels in spectra data
+        """
+        return len(self.chans)
+
+    @property
+    def period(self) -> float:
+        """The sampling period in seconds
+
+        Returns
+        -------
+        period : float
+            The sampling period in seconds
+        """
+        return 1.0 / self.sampleFreq
+
+    @property
+    def nyquist(self) -> float:
+        """Get the nyquist frequency of the spectra data
+
+        Returns
+        -------
+        nyquist : float
+            The nyquist frequency in Hz
+        """
+        return self.sampleFreq / 2.0
+
+    @property
+    def timeArray(self) -> np.ndarray:
+        """Get the datetime array
 
         Returns
         -------
         np.ndarray
-            The date array of the time samples
+            The datetime array of the time samples
         """
         x = np.empty(shape=(self.numSamples), dtype=datetime)
-        for i in range(0, self.numSamples):
-            x[i] = self.startTime + timedelta(seconds=1.0 * i / self.sampleFreq)
+        for ii in range(0, self.numSamples):
+            x[ii] = self.startTime + timedelta(seconds=1.0 * ii / self.sampleFreq)
         return x
 
     def getComments(self) -> List[str]:
@@ -208,7 +291,7 @@ class TimeData(ResisticsBase):
         if sampleStop >= self.numSamples:
             sampleStop = self.numSamples - 1
         # get the x axis ready
-        x = self.getDateArray()
+        x = self.timeArray
         start = x[sampleStart]
         stop = x[sampleStop]
 

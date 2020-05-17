@@ -25,6 +25,10 @@ class SpectrumData(ResisticsBase):
         The number of samples in the frequency spectra
     sampleFreq : float
         The sampling frequency
+    period : float
+        The sampling period
+    nyquist : float
+        The nyquist frequency
     startTime : datetime.datetime
         The time of the first sample of the time data which was fourier transformed
     stopTime : datetime.time
@@ -130,20 +134,32 @@ class SpectrumData(ResisticsBase):
         self.data: Dict[str, np.ndarray] = data
         self.dataSize: int = data[self.chans[0]].size
 
-    def __getitem__(self, channel: str):
-        """Get a spectra data for a channel
+    def __getitem__(self, chan: str):
+        """Get channel spectra data
         
         Parameters
         ----------
         str
-            The channel
+            The chan
         
         Returns
         -------
         np.ndarray
-            Spectral data for a channel
+            Spectral data for a chan
         """
-        return self.data[channel]
+        return self.data[chan]
+
+    def __setitem__(self, chan: str, chanData: np.ndarray) -> None:
+        """Set channel spectra data
+        
+        Parameters
+        ----------
+        chan : str
+            The channel to set the data for
+        chanData : np.ndarray
+            The new channel data
+        """
+        self.data[chan] = chanData
 
     @property
     def startTime(self) -> datetime:
@@ -181,6 +197,17 @@ class SpectrumData(ResisticsBase):
             The number of channels in spectra data
         """
         return len(self.chans)
+
+    @property
+    def period(self) -> float:
+        """The sampling period in seconds
+
+        Returns
+        -------
+        period : float
+            The sampling period in seconds
+        """
+        return 1.0 / self.sampleFreq
 
     @property
     def nyquist(self) -> float:
@@ -256,9 +283,7 @@ class SpectrumData(ResisticsBase):
         chan : str
             The name of the channel. Should not match an existing channel.
         """
-        self.data[chan] = np.ones(
-            shape=self.data[self.chans[0]].shape, dtype="complex"
-        )
+        self.data[chan] = np.ones(shape=self.data[self.chans[0]].shape, dtype="complex")
         self.chans.append(chan)
 
     def copy(self):
