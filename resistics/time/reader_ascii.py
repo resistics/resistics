@@ -6,7 +6,7 @@ from typing import List, Tuple
 
 from resistics.time.data import TimeData
 from resistics.time.reader_internal import TimeReaderInternal
-from resistics.time.clean import removeZerosSingle, removeNansSingle
+from resistics.time.clean import removeZerosChan, removeNansChan
 
 
 class TimeReaderAscii(TimeReaderInternal):
@@ -143,15 +143,15 @@ class TimeReaderAscii(TimeReaderInternal):
         for chan in options["chans"]:
             # if remove zeros - False by default
             if options["remzeros"]:
-                timeData.data[chan] = removeZerosSingle(timeData.data[chan])
+                timeData[chan] = removeZerosChan(timeData[chan])
             # if remove nans - False by default
             if options["remnans"]:
-                timeData.data[chan] = removeNansSingle(timeData.data[chan])
+                timeData[chan] = removeNansChan(timeData[chan])
             # remove the average from the data - True by default
             # do this after all scaling and removing nans and zeros
             if options["remaverage"]:
-                timeData.data[chan] = timeData.data[chan] - np.average(
-                    timeData.data[chan]
+                timeData[chan] = timeData[chan] - np.average(
+                    timeData[chan]
                 )
 
         timeData.addComment(

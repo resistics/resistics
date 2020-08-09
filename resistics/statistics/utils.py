@@ -162,7 +162,7 @@ def getStatElements(stat: str) -> List[str]:
 def calcSNR(specData):
     output = {}
     for c in specData.data:
-        tmp = np.absolute(specData.data[c])
+        tmp = np.absolute(specData[c])
         output[c] = np.average(tmp) / np.std(tmp)
     return output
 

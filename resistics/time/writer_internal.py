@@ -32,5 +32,5 @@ class TimeWriterInternal(TimeWriter):
                 self.getOutPath(), "chan_{:02d}{}".format(idx, self.extension)
             )
             dataF = open(writePath, "wb")
-            dataF.write(timeData.data[c].astype(self.dtype).tobytes())
+            dataF.write(timeData[c].astype(self.dtype).tobytes())
             dataF.close()

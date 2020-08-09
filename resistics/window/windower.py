@@ -147,7 +147,7 @@ class Windower(ResisticsBase):
         winSamples = self.winSamples[iWindow]
         winData = {}
         for c in self.chans:
-            winData[c] = self.timeData.data[c][
+            winData[c] = self.timeData[c][
                 winSamples[0] : winSamples[1] + 1
             ]  # add 1 because numpy indexing like this is not inclusive
         globalWindow = self.winTimes[iWindow][0]

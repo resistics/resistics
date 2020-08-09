@@ -41,7 +41,7 @@ class TimeWriterAscii(TimeWriter):
             )
             # this could probably be made quicker - numpy savetxt maybe
             dataF = open(writePath, "w")
-            size = timeData.data[c].size
+            size = timeData[c].size
             for i in range(0, size):
-                dataF.write("{:9f}\n".format(timeData.data[c][i]))
+                dataF.write("{:9f}\n".format(timeData[c][i]))
             dataF.close()

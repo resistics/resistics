@@ -740,7 +740,7 @@ class SpectrumWriter(ResisticsBase):
         """
         for c in self.channels:
             # save as complex64 instead of 128 - otherwise too big
-            self.file.write(specData.data[c].astype("complex64").tobytes())
+            self.file.write(specData[c].astype("complex64").tobytes())
 
     def openAsciiForWriting(
         self,
@@ -804,7 +804,7 @@ class SpectrumWriter(ResisticsBase):
             Spectrum data
         """
         for c in self.channels:
-            outStr = arrayToStringSci(specData.data[c])
+            outStr = arrayToStringSci(specData[c])
             outStr = outStr + "\n"
             self.file.write(outStr)
 

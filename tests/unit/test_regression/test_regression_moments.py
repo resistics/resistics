@@ -3,11 +3,11 @@ def test_regression_moments_mad() -> None:
     from resistics.regression.moments import mad, getScale
     import numpy as np
     import scipy.stats as stats
-    import statsmodels.api as sm
+    from statsmodels.robust.scale import mad as sm_mad
 
     np.random.seed(12345)
     fat_tails = stats.t(6).rvs(40)
-    smout = sm.robust.scale.mad(np.absolute(fat_tails))
+    smout = sm_mad(np.absolute(fat_tails))
     madout = mad(fat_tails)
     scaleout = getScale(fat_tails, "mad")
     np.testing.assert_almost_equal(smout, madout)

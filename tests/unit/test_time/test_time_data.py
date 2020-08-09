@@ -2,7 +2,8 @@
 Tests for time data objects
 """
 
-def test_time_data() -> None:
+
+def test_timedata() -> None:
     """Test the time data object"""
     from resistics.time.data import TimeData
     from datetime import datetime
@@ -12,17 +13,17 @@ def test_time_data() -> None:
     startTime = "2020-01-01 12:00:00.000"
     stopTime = "2020-01-01 12:01:00.000"
     data = {
-        "Ex": np.random.randint(0, 100, size=128*60),
-        "Ey": np.random.randint(0, 100, size=128*60),
-        "Hx": np.random.randint(0, 100, size=128*60),
-        "Hy": np.random.randint(0, 100, size=128*60),
-        "Hz": np.random.randint(0, 100, size=128*60),
+        "Ex": np.random.randint(0, 100, size=(128 * 60) + 1),
+        "Ey": np.random.randint(0, 100, size=(128 * 60) + 1),
+        "Hx": np.random.randint(0, 100, size=(128 * 60) + 1),
+        "Hy": np.random.randint(0, 100, size=(128 * 60) + 1),
+        "Hz": np.random.randint(0, 100, size=(128 * 60) + 1),
     }
     comments = ["This is a test"]
     timeData = TimeData(sampleFreq, startTime, stopTime, data, comments)
     assert timeData.sampleFreq == sampleFreq
-    assert timeData.period == 1/128
-    assert timeData.numSamples == 128*60
+    assert timeData.period == 1 / 128
+    assert timeData.numSamples == 128 * 60 + 1
     assert timeData.numChans == 5
     assert timeData.startTime == datetime.strptime(startTime, "%Y-%m-%d %H:%M:%S.%f")
     assert timeData.stopTime == datetime.strptime(stopTime, "%Y-%m-%d %H:%M:%S.%f")
@@ -45,11 +46,11 @@ def test_timedata_getset():
     startTime = "2020-01-01 12:00:00.000"
     stopTime = "2020-01-01 12:01:00.000"
     data = {
-        "Ex": np.random.randint(0, 100, size=128*60),
-        "Ey": np.random.randint(0, 100, size=128*60),
-        "Hx": np.random.randint(0, 100, size=128*60),
-        "Hy": np.random.randint(0, 100, size=128*60),
-        "Hz": np.random.randint(0, 100, size=128*60),
+        "Ex": np.random.randint(0, 100, size=(128 * 60) + 1),
+        "Ey": np.random.randint(0, 100, size=(128 * 60) + 1),
+        "Hx": np.random.randint(0, 100, size=(128 * 60) + 1),
+        "Hy": np.random.randint(0, 100, size=(128 * 60) + 1),
+        "Hz": np.random.randint(0, 100, size=(128 * 60) + 1),
     }
     comments = ["This is a test"]
     timeData = TimeData(sampleFreq, startTime, stopTime, data, comments)
@@ -83,11 +84,11 @@ def test_timedata_iter():
     startTime = "2020-01-01 12:00:00.000"
     stopTime = "2020-01-01 12:01:00.000"
     data = {
-        "Ex": np.random.randint(0, 100, size=128*60),
-        "Ey": np.random.randint(0, 100, size=128*60),
-        "Hx": np.random.randint(0, 100, size=128*60),
-        "Hy": np.random.randint(0, 100, size=128*60),
-        "Hz": np.random.randint(0, 100, size=128*60),
+        "Ex": np.random.randint(0, 100, size=(128 * 60) + 1),
+        "Ey": np.random.randint(0, 100, size=(128 * 60) + 1),
+        "Hx": np.random.randint(0, 100, size=(128 * 60) + 1),
+        "Hy": np.random.randint(0, 100, size=(128 * 60) + 1),
+        "Hz": np.random.randint(0, 100, size=(128 * 60) + 1),
     }
     comments = ["This is a test"]
     timeData = TimeData(sampleFreq, startTime, stopTime, data, comments)
@@ -98,5 +99,4 @@ def test_timedata_iter():
     assert next(timeIter) == "Hy"
     assert next(timeIter) == "Hz"
     for idx, chan in enumerate(timeData):
-        print(idx, chan)
         assert chan == timeData.chans[idx]

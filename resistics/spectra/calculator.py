@@ -91,7 +91,7 @@ class SpectrumCalculator(ResisticsBase):
         fftData: Dict = {}
         for c in timeData.chans:
             # copy data into dataArray
-            self.dataArray[:] = timeData.data[c][:]
+            self.dataArray[:] = timeData[c][:]
             # no need to pad, these are usually multiples of two
             # detrend and apply window function if set
             if self.detrend:

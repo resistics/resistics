@@ -149,8 +149,8 @@ class Calibrator(ResisticsBase):
                 if self.useTheoretical and isMagnetic(chan):
                     # use theoretical
                     calData = self.getTheoreticalCalData(sensor[chan])
-                    timeData.data[chan] = self.calibrateChan(
-                        timeData.data[chan], timeData.sampleFreq, calData
+                    timeData[chan] = self.calibrateChan(
+                        timeData[chan], timeData.sampleFreq, calData
                     )
                     timeData.addComment(
                         "Channel {} calibrated with theoretical calibration function".format(
@@ -169,9 +169,10 @@ class Calibrator(ResisticsBase):
             # no need to separately apply static gain, already included in cal data
             calIO.refresh(calFile, calFormat, chopper=chopper[chan], extend=self.extend)
             calData = calIO.read()
+            sensorText = "--" if sensor[chan] == "" else sensor[chan]
             self.printText(
                 "Calibration file found for sensor {}, serial number {}, chopper {}: {}".format(
-                    sensor[chan], serial[chan], chopper[chan], calFile
+                    sensorText, serial[chan], chopper[chan], calFile
                 )
             )
             self.printText("Format: {}".format(calFormat))
@@ -181,8 +182,8 @@ class Calibrator(ResisticsBase):
                 )
             )
             # calibrate time data
-            timeData.data[chan] = self.calibrateChan(
-                timeData.data[chan], timeData.sampleFreq, calData
+            timeData[chan] = self.calibrateChan(
+                timeData[chan], timeData.sampleFreq, calData
             )
             timeData.addComment(
                 "Channel {} calibrated with calibration data from file {}".format(

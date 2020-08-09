@@ -255,7 +255,9 @@ class TimeWriter(ResisticsBase):
         chans : List[str]
             List of chans (e.g. Ex, Ey, Hx, Hy, Hz)
         chanFileMap : Dict[str, str]
-            Map from channel to file 
+            Map from channel to file
+        sampleFreq : float
+            The sampling frequency in Hz
         numsamples : int
             Number of samples of data
         startdate : str
@@ -415,7 +417,7 @@ class TimeWriter(ResisticsBase):
         chans = sorted(list(timeData.chans))
         dataSizes = []
         for c in chans:
-            dataSizes.append(timeData.data[c].size)
+            dataSizes.append(timeData[c].size)
         if min(dataSizes) != max(dataSizes):
             self.printWarning(
                 "Channels do not have the same number of samples: {} - {}".format(
@@ -494,7 +496,7 @@ class TimeWriter(ResisticsBase):
 
         # now update all the chan headers and limit data to numSamples
         for c in chans:
-            timeData.data[c] = timeData.data[c][:numSamples]
+            timeData[c] = timeData[c][:numSamples]
             cIndex = chanMap[c]
             chanHeaders[cIndex]["num_samples"] = headers["num_samples"]
             chanHeaders[cIndex]["sample_freq"] = headers["sample_freq"]

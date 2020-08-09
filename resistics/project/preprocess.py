@@ -177,7 +177,7 @@ def applyNormaliseOptions(options: Dict, timeData: TimeData) -> TimeData:
     TimeData
         Normalised time data
     """
-    from resistics.time.filter import normalise
+    from resistics.time.math import normalise
 
     if options["normalise"]:
         timeData = normalise(timeData)

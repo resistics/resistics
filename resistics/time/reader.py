@@ -9,7 +9,7 @@ from resistics.common.base import ResisticsBase
 from resistics.common.print import blockPrint
 from resistics.common.checks import isElectric, isMagnetic
 from resistics.time.data import TimeData
-from resistics.time.clean import removeNansSingle, removeZerosSingle
+from resistics.time.clean import removeNansChan, removeZerosChan
 
 
 class TimeReader(ResisticsBase):
@@ -754,7 +754,7 @@ class TimeReader(ResisticsBase):
         for chan in options["chans"]:
             if not self.getChanScalingApplied(chan):
                 # apply LSB to give data in mV
-                timeData.data[chan] = timeData.data[chan] * self.getChanLSB(chan)
+                timeData[chan] = timeData[chan] * self.getChanLSB(chan)
                 timeData.addComment(
                     "Scaling channel {} with scalar {} to give mV".format(
                         chan, self.getChanLSB(chan)
@@ -765,8 +765,8 @@ class TimeReader(ResisticsBase):
                 # again, this might already be applied
                 if chan == "Ex":
                     # multiply by 1000/self.getChanDx same as dividing by dist in km
-                    timeData.data[chan] = (
-                        1000 * timeData.data[chan] / self.getChanDx(chan)
+                    timeData[chan] = (
+                        1000 * timeData[chan] / self.getChanDx(chan)
                     )
                     timeData.addComment(
                         "Dividing channel {} by electrode distance {} km to give mV/km".format(
@@ -775,8 +775,8 @@ class TimeReader(ResisticsBase):
                     )
                 if chan == "Ey":
                     # multiply by 1000/self.getChanDy same as dividing by dist in km
-                    timeData.data[chan] = (
-                        1000 * timeData.data[chan] / self.getChanDy(chan)
+                    timeData[chan] = (
+                        1000 * timeData[chan] / self.getChanDy(chan)
                     )
                     timeData.addComment(
                         "Dividing channel {} by electrode distance {} km to give mV/km".format(
@@ -786,15 +786,15 @@ class TimeReader(ResisticsBase):
 
             # if remove zeros - False by default
             if options["remzeros"]:
-                timeData.data[chan] = removeZerosSingle(timeData.data[chan])
+                timeData[chan] = removeZerosChan(timeData[chan])
             # if remove nans - False by default
             if options["remnans"]:
-                timeData.data[chan] = removeNansSingle(timeData.data[chan])
+                timeData[chan] = removeNansChan(timeData[chan])
             # remove the average from the data - True by default
             # do this after all scaling and removing nans and zeros
             if options["remaverage"]:
-                timeData.data[chan] = timeData.data[chan] - np.average(
-                    timeData.data[chan]
+                timeData[chan] = timeData[chan] - np.average(
+                    timeData[chan]
                 )
 
         timeData.addComment(

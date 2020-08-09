@@ -14,7 +14,7 @@ from resistics.common.print import (
 from resistics.config.io import loadConfig
 from resistics.decimate.parameters import DecimationParameters
 from resistics.time.data import TimeData
-from resistics.time.filter import downsampleData
+from resistics.time.filter import downsample
 
 
 class Decimator(ResisticsBase):
@@ -110,11 +110,9 @@ class Decimator(ResisticsBase):
 
         for iDS in range(0, numDownsamples):
             check = self.downsample(downsampleList[iDS])
-            if not check:  # check outcome of decimation
+            # check outcome of decimation
+            if not check:
                 return False
-            # otherwise, everything ok, update class vars and return True
-            self.sampleFreq = self.timeData.sampleFreq
-            self.numSamples = self.timeData.numSamples
         return True
 
     def downsample(self, downsampleFactor: int) -> bool:
@@ -127,12 +125,12 @@ class Decimator(ResisticsBase):
 
         Returns
         -------
-        out : bool
+        bool
             True if downsampling completed successfully. False otherwise
 
         Notes
         -----
-        When the downsampling causes number of simples to fall below minSamples, downsampling is not performed. The function returns False in this situation      
+        When the downsampling causes number of samples to fall below minSamples, downsampling is not performed. The function returns False in this situation      
         """
         # check to see not at max level
         if self.level >= self.decParams.numLevels:
@@ -154,23 +152,10 @@ class Decimator(ResisticsBase):
             )
             return False
 
-        # do the resampling
-        self.timeData.data = downsampleData(self.timeData.data, downsampleFactor)
-        # update the rest of the timeData object
-        self.timeData.sampleFreq = self.timeData.sampleFreq / downsampleFactor
-        self.timeData.numSamples = self.timeData.data[self.chans[0]].size
-        # start time stays the same, but end time needs to change
-        self.timeData.stopTime = self.timeData.startTime + timedelta(
-            seconds=(1.0 / self.timeData.sampleFreq) * (self.timeData.numSamples - 1)
-        )
-        self.timeData.addComment(
-            "Time data decimated from {} Hz to {} Hz, new start time {}, new end time {}".format(
-                self.sampleFreq,
-                self.timeData.sampleFreq,
-                self.timeData.startTime,
-                self.timeData.stopTime,
-            )
-        )
+        # do the downsampling and update class vars
+        self.timeData = downsample(self.timeData, downsampleFactor)
+        self.sampleFreq = self.timeData.sampleFreq
+        self.numSamples = self.timeData.numSamples
         return True
 
     def printList(self) -> List[str]:

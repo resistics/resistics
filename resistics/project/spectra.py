@@ -592,7 +592,7 @@ def viewSpectraSection(
     for idx, iW in enumerate(windows):
         winData = specReader.readBinaryWindowLocal(iW)
         for cIdx, chan in enumerate(dataChans):
-            specData[idx, cIdx, :] = winData.data[chan]
+            specData[idx, cIdx, :] = winData[chan]
         dates.append(winData.startTime)
 
     ampLim = options["plotoptions"]["amplim"]
@@ -771,13 +771,13 @@ def viewSpectraStack(
         for iW in range(stackStart, stackStop):
             winData = specReader.readBinaryWindowLocal(iW)
             for c in dataChans:
-                stackedData[c] += winData.data[c]
-                ampData[c] += np.absolute(winData.data[c])
-                phaseData[c] += np.angle(winData.data[c]) * (180.0 / np.pi)
+                stackedData[c] += winData[c]
+                ampData[c] += np.absolute(winData[c])
+                phaseData[c] += np.angle(winData[c]) * (180.0 / np.pi)
                 # get coherency data
                 for c2 in dataChans:
-                    powerData[c + c2] += winData.data[c] * np.conjugate(
-                        winData.data[c2]
+                    powerData[c + c2] += winData[c] * np.conjugate(
+                        winData[c2]
                     )
             if iW == stackStart:
                 startTime = winData.startTime

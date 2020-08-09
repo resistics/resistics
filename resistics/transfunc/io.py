@@ -445,7 +445,7 @@ class TransferFunctionWriter(ResisticsBase):
         # now need to write out the other data
         for pol in self.polarisations:
             outF.write("Z-{}\n".format(pol))
-            outF.write("{}\n".format(arrayToString(self.tfData.data[pol])))
+            outF.write("{}\n".format(arrayToString(self.tfData[pol])))
 
         # variances
         for pol in self.polarisations:
@@ -486,9 +486,9 @@ class TransferFunctionWriter(ResisticsBase):
             d = d.upper()
             # need to do a real and imaginary part
             outF.write("\n>Z{}R ROT=0.0 // {:d}\n".format(d, numFreq))
-            self.writeNumericBlock(outF, self.tfData.data[pol].real)
+            self.writeNumericBlock(outF, self.tfData[pol].real)
             outF.write("\n>Z{}I ROT=0.0 // {:d}\n".format(d, numFreq))
-            self.writeNumericBlock(outF, self.tfData.data[pol].imag)
+            self.writeNumericBlock(outF, self.tfData[pol].imag)
             outF.write("\n>Z{}.VAR ROT=0.0 // {:d}\n".format(d, numFreq))
             self.writeNumericBlock(outF, self.tfData.variances[pol].real)
         # write end of file

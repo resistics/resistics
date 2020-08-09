@@ -9,7 +9,7 @@ from resistics.time.reader_internal import TimeReaderInternal
 from resistics.time.data import TimeData
 from resistics.common.checks import isMagnetic, isElectric, consistentChans
 from resistics.common.print import blockPrint
-from resistics.time.clean import removeZeros, removeZerosSingle, removeNansSingle
+from resistics.time.clean import removeZerosChan, removeNansChan
 
 
 def folderB423Headers(
@@ -592,15 +592,15 @@ class TimeReaderLemiB423(TimeReaderInternal):
         # convert to field units and divide by dipole lengths
         for chan in options["chans"]:
             if isElectric(chan):
-                timeData.data[chan] = timeData.data[chan] / 1000.0
+                timeData[chan] = timeData[chan] / 1000.0
                 timeData.addComment("Dividing channel {} by 1000 to convert microvolt to millivolt".format(chan))
             if isMagnetic(chan):
-                timeData.data[chan] = timeData.data[chan] / self.getChanGain1(chan)
+                timeData[chan] = timeData[chan] / self.getChanGain1(chan)
                 timeData.addComment("Removing gain of {} from channel {}".format(self.getChanGain1(chan), chan))                
             if chan == "Ex":
                 # multiply by 1000/self.getChanDx same as dividing by dist in km
-                timeData.data[chan] = (
-                    1000.0 * timeData.data[chan] / self.getChanDx(chan)
+                timeData[chan] = (
+                    1000.0 * timeData[chan] / self.getChanDx(chan)
                 )
                 timeData.addComment(
                     "Dividing channel {} by electrode distance {} km to give mV/km".format(
@@ -609,7 +609,7 @@ class TimeReaderLemiB423(TimeReaderInternal):
                 )
             if chan == "Ey":
                 # multiply by 1000/self.getChanDy same as dividing by dist in km
-                timeData.data[chan] = 1000 * timeData.data[chan] / self.getChanDy(chan)
+                timeData[chan] = 1000 * timeData[chan] / self.getChanDy(chan)
                 timeData.addComment(
                     "Dividing channel {} by electrode distance {:.6f} km to give mV/km".format(
                         chan, self.getChanDy(chan) / 1000.0
@@ -618,14 +618,14 @@ class TimeReaderLemiB423(TimeReaderInternal):
 
             # if remove zeros - False by default
             if options["remzeros"]:
-                timeData.data[chan] = removeZerosSingle(timeData.data[chan])
+                timeData[chan] = removeZerosChan(timeData[chan])
             # if remove nans - False by default
             if options["remnans"]:
-                timeData.data[chan] = removeNansSingle(timeData.data[chan])
+                timeData[chan] = removeNansChan(timeData[chan])
             # remove the average from the data - True by default
             if options["remaverage"]:
-                timeData.data[chan] = timeData.data[chan] - np.average(
-                    timeData.data[chan]
+                timeData[chan] = timeData[chan] - np.average(
+                    timeData[chan]
                 )
 
         # add comments

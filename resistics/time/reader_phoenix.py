@@ -13,7 +13,7 @@ from resistics.common.print import blockPrint
 from resistics.time.data import TimeData
 from resistics.time.reader import TimeReader
 from resistics.time.writer_internal import TimeWriterInternal
-from resistics.time.clean import removeZeros, removeZerosSingle, removeNansSingle
+from resistics.time.clean import removeZerosChan, removeNansChan
 
 
 class TimeReaderPhoenix(TimeReader):
@@ -422,7 +422,7 @@ class TimeReaderPhoenix(TimeReader):
         # need to remove the gain
         for chan in options["chans"]:
             # remove the gain
-            timeData.data[chan] = 1.0 * timeData.data[chan] / self.getChanGain1(chan)
+            timeData[chan] = 1.0 * timeData[chan] / self.getChanGain1(chan)
             timeData.addComment(
                 "Scaling channel {} with scalar {} to give mV".format(
                     chan, 1.0 / self.getChanGain1(chan)
@@ -432,7 +432,7 @@ class TimeReaderPhoenix(TimeReader):
             # divide by distance in km
             if chan == "Ex":
                 # multiply by 1000/self.getChanDx same as dividing by dist in km
-                timeData.data[chan] = 1000 * timeData.data[chan] / self.getChanDx(chan)
+                timeData[chan] = 1000 * timeData[chan] / self.getChanDx(chan)
                 timeData.addComment(
                     "Dividing channel {} by electrode distance {} km to give mV/km".format(
                         chan, self.getChanDx(chan) / 1000.0
@@ -440,7 +440,7 @@ class TimeReaderPhoenix(TimeReader):
                 )
             if chan == "Ey":
                 # multiply by 1000/self.getChanDy same as dividing by dist in km
-                timeData.data[chan] = 1000 * timeData.data[chan] / self.getChanDy(chan)
+                timeData[chan] = 1000 * timeData[chan] / self.getChanDy(chan)
                 timeData.addComment(
                     "Dividing channel {} by electrode distance {} km to give mV/km".format(
                         chan, self.getChanDy(chan) / 1000.0
@@ -449,14 +449,14 @@ class TimeReaderPhoenix(TimeReader):
 
             # if remove zeros - False by default
             if options["remzeros"]:
-                timeData.data[chan] = removeZerosSingle(timeData.data[chan])
+                timeData[chan] = removeZerosChan(timeData[chan])
             # if remove nans - False by default
             if options["remnans"]:
-                timeData.data[chan] = removeNansSingle(timeData.data[chan])
+                timeData[chan] = removeNansChan(timeData[chan])
             # remove the average from the data - True by default
             if options["remaverage"]:
-                timeData.data[chan] = timeData.data[chan] - np.average(
-                    timeData.data[chan]
+                timeData[chan] = timeData[chan] - np.average(
+                    timeData[chan]
                 )
 
         # add comments

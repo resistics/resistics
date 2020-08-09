@@ -8,41 +8,52 @@ from resistics.common.math import intdiv
 from resistics.common.print import errorPrint
 
 
-def interpolateToSecond(timeData: TimeData, inplace: bool = True) -> TimeData:
+def interpolateToSecond(timeData: TimeData) -> TimeData:
     """Interpolate data to be on the second
 
-    Some formats of time data (e.g. SPAM) do not start on the second with their sampling. This method interpolates so that sampling starts on the second and improves interoperability with other recording formats. 
+    Some formats of time data (e.g. SPAM) do not start on the second with their sampling. This method interpolates so that sampling starts on the second and improves interoperability with other recording formats. As an example, consider recording at 10 Hz, with the first sample at 0.05 seconds. Then the sample times will be:
+
+    .. code-block::text
+
+        0.05 0.15 0.25 0.35 0.45 0.55 0.65 0.75 0.85 0.95 1.05 1.15 1.25 ...
+
+    Interpolating to the second will change the sample times to:
+
+    .. code-block::text 
+
+        0.10 0.20 0.30 0.40 0.50 0.60 0.70 0.80 0.90 1.00 1.10 1.20 ...
+
+    .. warning::
+        
+        Do not use this method on data recording with a sampling frequency of less than 1Hz
 
     Parameters
     ----------
     timeData : TimeData
         Time data to interpolate onto the second
-    inplace :  bool, optional
-        Whether to do the interpolation inplace or not. Default is True.
     
     Returns
     -------
     TimeData
-        Time data interpolated to start on the second
+        A new TimeData object interpolated to start on the second
     """
     startTimeInterp, numSamplesInterp, dataInterp = interpolateToSecondData(
         timeData.data, timeData.sampleFreq, timeData.startTime
     )
-    if not inplace:
-        timeData = timeData.copy()
-    timeData.numSamples = numSamplesInterp
-    timeData.startTime = startTimeInterp
-    # calculate end timeEnd
-    timeData.stopTime = timeData.startTime + timedelta(
-        seconds=(1.0 / timeData.sampleFreq) * (timeData.numSamples - 1)
+    # calculate the stop time
+    sampleFreqInterp = timeData.sampleFreq
+    stopTimeInterp = startTimeInterp + timedelta(
+        seconds=(1.0 / sampleFreqInterp) * (numSamplesInterp - 1)
     )
-    timeData.data = dataInterp
-    timeData.addComment(
-        "Time data interpolated to nearest second. New start time {}, new end time {}, new number of samples {} ".format(
-            timeData.startTime, timeData.stopTime, timeData.numSamples
-        )
+    # the comments
+    newcomment = "Time data interpolated to nearest second. New start time {}, new end time {}, new number of samples {}".format(
+        startTimeInterp, stopTimeInterp, numSamplesInterp
     )
-    return timeData
+    commentsInterp = timeData.comments + [newcomment]
+    # create a new time data object
+    return TimeData(
+        sampleFreqInterp, startTimeInterp, stopTimeInterp, dataInterp, commentsInterp
+    )
 
 
 def interpolateToSecondData(
@@ -50,8 +61,11 @@ def interpolateToSecondData(
 ) -> Dict[str, np.ndarray]:
     """Interpolate data to be on the second
 
-    Interpolates the sampling so that it coincides with full seconds. The function also shifts the start point to the next full second
-    WARNING: Do not use this method on data recording with a sampling frequency of less than 1Hz
+    Interpolates the sampling so that it coincides with full seconds. The function also shifts the start point to the next full second. This function will truncate the data to the previous full second.
+    
+    .. warning::
+        
+        Do not use this method on data recording with a sampling frequency of less than 1Hz
     
     Parameters
     ----------
@@ -66,10 +80,6 @@ def interpolateToSecondData(
     -------
     data : Dict
         Dictionary with channel as keys and data as values
-
-    Notes
-    -----
-    This function will truncate the data to the next second.
 
     todo:
     This function needs to be more robust for low (< 1Hz) sample frequencies as the use of microseconds and seconds makes no sense for this    
@@ -126,22 +136,19 @@ def interpolateToSecondData(
         + timedelta(seconds=shift)
     )
 
-    # do the interpolation
+    # interpolation
     dataInterp = {}
     for chan in chans:
-        # interpFunc = interp.InterpolatedUnivariateSpline(x, data[chan])
-        # dataInterp[chan] = interpFunc(xInterp)
         tck = interp.splrep(x, data[chan], s=0)
         dataInterp[chan] = interp.splev(xInterp, tck, der=0)
 
-    # need to calculate how much the
     return startTimeInterp, numSamplesInterp, dataInterp
 
 
-def fillGap(timeData1, timeData2):
+def fillGap(timeData1: TimeData, timeData2: TimeData) -> TimeData:
     """Fill gap between time series
     
-    Fill gaps between two different recordings. The intent is to fill the gap when recording has been interrupted and there are two data files. Both times series must have the same sampling frequency.
+    Fill gaps between two different recordings. The intent is to fill the gap when recording has been interrupted and there are two data files. Both times series must have the same sampling frequency. The missing timestamps and samples will be added to the timeseries and filled in using interpolation.
 
     Parameters
     ----------
@@ -155,6 +162,8 @@ def fillGap(timeData1, timeData2):
     TimeData
         Time series data with gap filled
     """
+    from resistics.time.clean import removeNansChan
+
     if timeData1.sampleFreq != timeData2.sampleFreq:
         errorPrint(
             "fillGap",
@@ -169,29 +178,18 @@ def fillGap(timeData1, timeData2):
     if timeData1.startTime > timeData2.stopTime:
         timeDataFirst = timeData2
         timeDataSecond = timeData1
-    # now want to do a simple interpolation between timeDataFirst and timeDataSecond
-    # recall, these times are inclusive, so want to do the samples in between
-    # this is mostly for clarity of programming
+    # time data start and end times are inclusive
     gapStart = timeDataFirst.stopTime + timedelta(seconds=sampleRate)
     gapEnd = timeDataSecond.startTime - timedelta(seconds=sampleRate)
-    # calculate number of samples in the gap
-    numSamplesGap = (
-        int(round((gapEnd - gapStart).total_seconds() * sampleFreq)) + 1
-    )  # add 1 because inclusive
-    # now want to interpolate
+    # number of samples in the gap - add 1 because inclusive
+    numSamplesGap = int(round((gapEnd - gapStart).total_seconds() * sampleFreq)) + 1
+    # interpolate
     newData = {}
     for chan in timeDataFirst.chans:
-        startVal = timeDataFirst.data[chan][-1]
-        endVal = timeDataSecond.data[chan][0]
-        increment = 1.0 * (endVal - startVal) / (numSamplesGap + 2)
-        fillData = np.zeros(shape=(numSamplesGap), dtype=timeDataFirst.data[chan].dtype)
-        for i in range(0, numSamplesGap):
-            fillData[i] = startVal + (i + 1) * increment
-        newData[chan] = np.concatenate(
-            [timeDataFirst.data[chan], fillData, timeDataSecond.data[chan]]
-        )
-    # return a new time data object
-    # deal with the comment
+        missing = np.empty(shape=(numSamplesGap))
+        missing[:] = np.nan
+        combined = np.concatenate([timeDataFirst[chan], missing, timeDataSecond[chan]])
+        newData[chan] = removeNansChan(combined)
     comment = (
         ["-----------------------------", "TimeData1 comments"]
         + timeDataFirst.comments
@@ -202,9 +200,6 @@ def fillGap(timeData1, timeData2):
         "Gap filled from {} to {}".format(gapStart, gapEnd)
     ]
     return TimeData(
-        sampleFreq=sampleFreq,
-        startTime=timeDataFirst.startTime,
-        stopTime=timeDataSecond.stopTime,
-        data=newData,
-        comments=comment,
+        sampleFreq, timeDataFirst.startTime, timeDataSecond.stopTime, newData, comment,
     )
+
