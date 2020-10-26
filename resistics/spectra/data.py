@@ -231,6 +231,17 @@ class SpectrumData(ResisticsBase):
         return self.stop
 
     @property
+    def duration(self) -> float:
+        """Duration of the time window in seconds
+        
+        Returns
+        -------
+        float
+            The duration in seconds
+        """
+        return (self.stopTime - self.startTime).total_seconds() 
+
+    @property
     def numChans(self) -> int:
         """Returns the number of channels
         
