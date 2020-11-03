@@ -1,0 +1,8 @@
+[run]
+omit =
+    # omit __init__ files
+    *__init__.py*
+    setup.py
+
+[html]
+directory = test_reports/coverage
