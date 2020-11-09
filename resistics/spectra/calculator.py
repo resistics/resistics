@@ -1,7 +1,6 @@
 """
 Module for calculating Fourier spectra of time data (using pyFFTW for speed) and calculation of cross spectral powers
 """
-
 import numpy as np
 import scipy.signal as signal
 import pyfftw
@@ -44,20 +43,20 @@ class SpectrumCalculator(ResisticsBase):
     calcFourierTransform(timeData)
         Perform fourier transform for timeData and return specData object
     printList()
-        Class status returned as list of strings        
+        Class status returned as list of strings
     """
 
     def __init__(
         self, sampleFreq: float, winSamples: int, config: Union[Dict, None] = None
     ) -> None:
-        """Initialise 
-    
+        """Initialise
+
         Parameters
         ----------
         sampleFreq : float
             Sampling frequency of time data
         winSamples : int
-            Number of samples in a window 
+            Number of samples in a window
         """
         self.sampleFreq: float = sampleFreq
         self.numSamples: int = winSamples
@@ -143,7 +142,7 @@ def crosspowers(
     secondary: Union[List[str], None] = None,
 ) -> PowerData:
     """Calculate the crosspower between two spectrum data
-    
+
     Parameters
     ----------
     specData: Spectrum Data

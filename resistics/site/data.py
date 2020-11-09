@@ -18,6 +18,8 @@ class SiteData(ResisticsBase):
 
     Attributes
     ----------
+    siteName : str
+        The site name
     timePath : int
         Path to site time data
     specPath : float

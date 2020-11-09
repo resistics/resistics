@@ -1,6 +1,8 @@
 """
 Data storage classes for spectral data including raw Fourier data and cross power data. Methods for combining data classes
 """
+from __future__ import annotations
+from functools import cached_property
 from copy import deepcopy
 from datetime import datetime, timedelta
 import numpy as np
@@ -55,17 +57,17 @@ class SpectrumData(ResisticsBase):
     __setitem__(chan, chanData)
         Set spectra data for a channel
     setChannel(chan, chanData)
-        Set spectra data for a channel        
+        Set spectra data for a channel
     getComments()
-        Get a deepcopy of the comments        
+        Get a deepcopy of the comments
     addComment(comment)
         Add a comment to the dataset
     copy()
         Get a copy of the spectrum data
     view(kwargs)
-        View the spectra data 
+        View the spectra data
     printList()
-        Class status returned as list of strings          
+        Class status returned as list of strings
     """
 
     def __init__(
@@ -91,7 +93,7 @@ class SpectrumData(ResisticsBase):
         startTime : datetime, str
             The startTime of the window
         stopTime : datetime, str
-            The stopTime of the window 
+            The stopTime of the window
         data : Dict
             The data dictionary with keys as channels and values as spectra data
         comments : List[str]
@@ -124,7 +126,7 @@ class SpectrumData(ResisticsBase):
         startTime : datetime, str
             The startTime of the window
         stopTime : datetime, str
-            The stopTime of the window 
+            The stopTime of the window
         data : Dict
             The data dictionary with keys as channels and values as spectra data
         comments : List[str]
@@ -142,12 +144,12 @@ class SpectrumData(ResisticsBase):
 
     def __getitem__(self, chan: str):
         """Get channel spectra data
-        
+
         Parameters
         ----------
         chan : str
             The channel to get spectra data for
-        
+
         Returns
         -------
         np.ndarray
@@ -157,12 +159,12 @@ class SpectrumData(ResisticsBase):
 
     def getChannel(self, chan: str):
         """Get channel spectra data
-        
+
         Parameters
         ----------
         chan : str
             The channel to get spectra data for
-        
+
         Returns
         -------
         np.ndarray
@@ -172,7 +174,7 @@ class SpectrumData(ResisticsBase):
 
     def __setitem__(self, chan: str, chanData: np.ndarray) -> None:
         """Set channel spectra data
-        
+
         Parameters
         ----------
         chan : str
@@ -184,7 +186,7 @@ class SpectrumData(ResisticsBase):
 
     def setChannel(self, chan: str, chanData: np.ndarray) -> None:
         """Set channel spectra data
-        
+
         Parameters
         ----------
         chan : str
@@ -196,7 +198,7 @@ class SpectrumData(ResisticsBase):
 
     def __iter__(self):
         """Return the channel iterator
-        
+
         Returns
         -------
         list_iterator
@@ -207,7 +209,7 @@ class SpectrumData(ResisticsBase):
     @property
     def startTime(self) -> datetime:
         """Returns the number of channels
-        
+
         Returns
         -------
         datetime
@@ -220,7 +222,7 @@ class SpectrumData(ResisticsBase):
     @property
     def stopTime(self) -> datetime:
         """Returns the number of channels
-        
+
         Returns
         -------
         datetime
@@ -233,18 +235,18 @@ class SpectrumData(ResisticsBase):
     @property
     def duration(self) -> float:
         """Duration of the time window in seconds
-        
+
         Returns
         -------
         float
             The duration in seconds
         """
-        return (self.stopTime - self.startTime).total_seconds() 
+        return (self.stopTime - self.startTime).total_seconds()
 
     @property
     def numChans(self) -> int:
         """Returns the number of channels
-        
+
         Returns
         -------
         int
@@ -287,14 +289,14 @@ class SpectrumData(ResisticsBase):
 
     def toArray(self, chans: Union[List[str], None] = None) -> np.ndarray:
         """Convert the dictionary into a numpy array
-        
+
         Each row is a channel, with the order the same as chans order
 
         Parameters
         ----------
         chans : List[str], optional
             The channels to put in the array. Defaults to all.
-        
+
         Returns
         -------
         dataArray : np.ndarray
@@ -309,9 +311,78 @@ class SpectrumData(ResisticsBase):
             dataArray[idx, :] = self.data[chan]
         return dataArray, chans
 
+    def subspectra(self, chans: List[str]) -> SpectrumData:
+        """Get a SpectrumData object with a subset of channels
+
+        .. note::
+
+            This is not a copy of the SpectrumData and points to the same underlying data
+
+        Parameters
+        ----------
+        chans : List[str]
+            The subset of channels
+
+        Returns
+        -------
+        SpectrumData
+            A SpectrumData object which points to the same underlying data
+        """
+        newdata = {}
+        for chan in chans:
+            newdata[chan] = self.data[chan]
+        return SpectrumData(
+            self.windowSize,
+            self.dataSize,
+            self.sampleFreq,
+            self.startTime,
+            self.stopTime,
+            newdata,
+            self.getComments(),
+        )
+
+    def copy(self, chans: Union[List[str], None] = None) -> SpectrumData:
+        """Get a copy of the spectrum data object
+
+        Parameters
+        ----------
+        chans : Union[List[str], None], optional
+            A list of channels to copy
+
+        Returns
+        -------
+        SpectrumData
+            A copy of the time data object
+        """
+        chans = self.chans if chans is None else chans
+        newdata = {}
+        for chan in chans:
+            newdata[chan] = np.array(self.data[chan])
+
+        return SpectrumData(
+            self.windowSize,
+            self.dataSize,
+            self.sampleFreq,
+            self.startTime,
+            self.stopTime,
+            newdata,
+            self.getComments(),
+        )
+
+    def addUnitChannel(self, chan: str) -> None:
+        """Add a unit channel, useful for adding intercept when processing
+
+        Parameters
+        ----------
+        chan : str
+            The name of the channel. Should not match an existing channel.
+        """
+        self.data[chan] = np.ones(shape=self.data[self.chans[0]].shape, dtype="complex")
+        self.chans.append(chan)
+
     def getComments(self) -> List[str]:
         """Get a deepcopy of the comments
-        
+
         Returns
         -------
         List[str]
@@ -328,35 +399,6 @@ class SpectrumData(ResisticsBase):
             A new comment
         """
         self.comments.append(comment)
-
-    def addUnitChannel(self, chan: str) -> None:
-        """Add a unit channel, useful for adding intercept when processing
-        
-        Parameters
-        ----------
-        chan : str
-            The name of the channel. Should not match an existing channel.
-        """
-        self.data[chan] = np.ones(shape=self.data[self.chans[0]].shape, dtype="complex")
-        self.chans.append(chan)
-
-    def copy(self):
-        """Get a copy of the time data object
-
-        Returns
-        -------
-        TimeData
-            A copy of the time data object
-        """
-        return SpectrumData(
-            self.windowSize,
-            self.dataSize,
-            self.sampleFreq,
-            self.startTime,
-            self.stopTime,
-            deepcopy(self.data),
-            self.getComments(),
-        )
 
     def view(self, **kwargs) -> Figure:
         """Plot spectra data
@@ -481,7 +523,7 @@ def mergeSpectra(
         The list of channels to take from each spectrum data. Defaults to all.
     postpend : Tuple[str], List[str], optional
         A string to add to the end of the channels from the different SpectrumData. Default is simply the number in Tuple.
-    
+
     Returns
     -------
     SpectrumData
@@ -552,7 +594,7 @@ class PowerData(ResisticsBase):
     smooth(smoothLen, smoothFunc, inplace)
         Smooth the cross power data
     interpolate(newfreqs)
-        Interpolate the power data to a new set of frequencies 
+        Interpolate the power data to a new set of frequencies
     """
 
     def __init__(
@@ -585,15 +627,16 @@ class PowerData(ResisticsBase):
             self.primaryMap[chan] = idx
         for idx, chan in enumerate(self.secondaryChans):
             self.secondaryMap[chan] = idx
+        self.coherence = {}
 
     def __getitem__(self, args):
         """Get cross power between two channels
-        
+
         Parameters
         ----------
         args : Tuple
             Input arguments. Expected to be either length 2 [primary, secondary] or length 3, [primary, secondary, frequency index]
-        
+
         Returns
         -------
         np.ndarray
@@ -608,7 +651,7 @@ class PowerData(ResisticsBase):
                 "Incorrect number of arguments. Only 2 or 3 arguments supported"
             )
 
-    @property
+    @cached_property
     def dataSize(self) -> int:
         """Get the data size
 
@@ -619,7 +662,7 @@ class PowerData(ResisticsBase):
         """
         return self.data.shape[-1]
 
-    @property
+    @cached_property
     def powers(self) -> List[List[str]]:
         """Get a list of the cross powers
 
@@ -634,7 +677,7 @@ class PowerData(ResisticsBase):
                 powers.append([primary, secondary])
         return powers
 
-    @property
+    @cached_property
     def numPowers(self) -> int:
         """Get the number of cross powers
 
@@ -645,7 +688,7 @@ class PowerData(ResisticsBase):
         """
         return len(self.primaryChans) * len(self.secondaryChans)
 
-    @property
+    @cached_property
     def nyquist(self) -> float:
         """Get the nyquist frequency of the spectra data
 
@@ -656,7 +699,7 @@ class PowerData(ResisticsBase):
         """
         return self.sampleFreq / 2.0
 
-    @property
+    @cached_property
     def freqArray(self) -> np.ndarray:
         """Get the frequency array of the spectra data
 
@@ -696,7 +739,7 @@ class PowerData(ResisticsBase):
             The second channel
         fIdx : int, optional
             The frequency index to get
-        
+
         Returns
         -------
         np.ndarray, float
@@ -711,9 +754,44 @@ class PowerData(ResisticsBase):
                 self.primaryMap[primary], self.secondaryMap[secondary], fIdx
             ]
 
+    def getCoherence(
+        self, primary: str, secondary: str, fIdx: Union[int, None] = None
+    ) -> Union[np.ndarray, float]:
+        """Get coherence between two channels
+
+        Parameters
+        ----------
+        primary : str
+            The primary channel
+        secondary : str
+            The secondary channel
+        fIdx : Union[int, None], optional
+            The frequency index, by default None
+
+        Returns
+        -------
+        Union[np.ndarray, float]
+            An array if no frequency index is supplied, else coherence as a float for a single frequency
+        """
+        key1 = f"{primary}{secondary}"
+        key2 = f"{secondary}{primary}"
+        if key1 in self.coherence:
+            coherence = self.coherence[key1]
+        elif key2 in self.coherence:
+            coherence = self.coherence[key2]
+        else:
+            crosspowers = np.power(np.absolute(self[primary, secondary]), 2).real
+            autopowers = (self[primary, primary] * self[secondary, secondary]).real
+            coherence = crosspowers / autopowers
+            self.coherence[key1] = coherence
+
+        if fIdx is None:
+            return coherence
+        return coherence[fIdx]
+
     def smooth(
         self, smoothLen: int, smoothFunc: str, inplace: bool = False
-    ) -> Union[None, ResisticsBase]:
+    ) -> Union[None, PowerData]:
         """Smooth the power data
 
         Parameters
@@ -745,7 +823,7 @@ class PowerData(ResisticsBase):
             self.primaryChans, self.secondaryChans, newdata, self.sampleFreq
         )
 
-    def interpolate(self, newfreqs: np.ndarray) -> ResisticsBase:
+    def interpolate(self, newfreqs: np.ndarray) -> PowerData:
         """Interpolate the power data
 
         Parameters
@@ -809,7 +887,9 @@ class PowerData(ResisticsBase):
         plotPowers = kwargs["powers"] if "powers" in kwargs else self.powers
         for power in plotPowers:
             plt.plot(
-                freqArray, np.absolute(self.getPower(power[0], power[1])), color=color,
+                freqArray,
+                np.absolute(self.getPower(power[0], power[1])),
+                color=color,
             )
             # x axis options
             plt.xlabel("Frequency [Hz]", fontsize=plotFonts["axisLabel"])

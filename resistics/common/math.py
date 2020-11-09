@@ -4,7 +4,7 @@ import numpy as np
 
 def eps() -> float:
     """Small number
-    
+
     Returns
     -------
     float
@@ -18,43 +18,40 @@ def intdiv(nom: Union[int, float], div: Union[int, float]) -> int:
 
     The division is expected to be exact and ensures an integer return rather than float.
     Code execution will exit if division is not exact
-    
+
     Parameters
     ----------
-    nom : int, float
+    nom : Union[int, float]
         Nominator
-    div : int, float
-        Divisor    
+    div : Union[int, float]
+        Divisor
 
     Returns
     -------
-    out : int
+    int
         Result of division
-    """
-    from resistics.common.print import errorPrint
 
+    Raises
+    ------
+    ValueError
+        Raises a value error if division leaves a remainder
+    """
     if nom % div == 0:
         return nom // div
-    else:
-        errorPrint(
-            "common::math::intdiv",
-            "intdiv assumes exact division and exits upon having a remainder to make sure errors are not propagated through the code",
-            quitrun=True,
-        )
-        return 0
+    raise ValueError(f"{nom} divided by {div} leaves a remainder")
 
 
-def getFrequencyArray(fs: float, samples: int) -> np.ndarray:
+def frequency_array(fs: float, nsamples: int) -> np.ndarray:
     """Calculate the frequency array for a real fourier transform
 
     Frequency array goes from 0Hz to Nyquist. Nyquist = fs/2
-    
+
     Parameters
     ----------
     fs : float
         Sampling frequency
-    samples : int
-        Number of samples    
+    nsamples : int
+        Number of samples
 
     Returns
     -------
@@ -62,22 +59,42 @@ def getFrequencyArray(fs: float, samples: int) -> np.ndarray:
         Array of rfft frequencies
     """
     nyquist: float = 1.0 * fs / 2.0
-    return np.linspace(0, nyquist, samples)
+    return np.linspace(0, nyquist, nsamples)
 
 
-def forwardFFT(data: np.ndarray, norm: bool = True):
+def pad_to_power2(nsamples: int) -> int:
+    """Calculate the amount of padding to next power of 2
+
+    Parameters
+    ----------
+    nsamples : int
+        Size of array to be padded
+
+    Returns
+    -------
+    int
+        Amout of padding samples required to increase to next power of 2
+    """
+    import math
+
+    next_power = math.ceil(math.log(nsamples, 2))
+    next_size = math.pow(2, int(next_power))
+    return int(next_size) - nsamples
+
+
+def fft(data: np.ndarray, norm: bool = True):
     """Forward real fourier transform
-    
+
     Parameters
     ----------
     data : np.ndarray
-        Time array to be transformed   
+        Time array to be transformed
     norm : bool, optional
         Normalization mode. Default is None, meaning no normalization on the forward transforms and scaling by 1/n on the ifft. For norm="ortho", both directions are scaled by 1/sqrt(n).
 
     Returns
     -------
-    fourierData : np.ndarray
+    np.ndarray
         Fourier transformed data
     """
     import numpy.fft as fft
@@ -87,45 +104,25 @@ def forwardFFT(data: np.ndarray, norm: bool = True):
     return fft.rfft(data, norm="ortho", axis=0)
 
 
-def inverseFFT(data: np.ndarray, length: int, norm: bool = True):
+def ifft(data: np.ndarray, nsamples: int, norm: bool = True):
     """Inverse real fourier transform
-    
+
     Parameters
     ----------
     data : np.ndarray
         Time array to be transformed
-    length : int
+    nsamples : int
         Length of output time data (to remove padding)
     norm : bool, optional
         Normalization mode. Default is None, meaning no normalization on the forward transforms and scaling by 1/n on the ifft. For norm="ortho", both directions are scaled by 1/sqrt(n).
 
     Returns
     -------
-    timeData : np.ndarray
+    np.ndarray
         Inverse fourier transformed data
     """
     import numpy.fft as fft
 
     if not norm:
-        return fft.irfft(data, n=length)
-    return fft.irfft(data, n=length, norm="ortho")
-
-
-def padNextPower2(size: int) -> int:
-    """Calculate the amount of padding to next power of 2
-    
-    Parameters
-    ----------
-    size : float
-        Size of array to be padded   
-
-    Returns
-    -------
-    padSize : int
-        Amout of extra padding required to increase to next power of 2
-    """
-    import math
-
-    next2Power = math.ceil(math.log(size, 2))
-    next2Size = math.pow(2, int(next2Power))
-    return int(next2Size) - size
+        return fft.irfft(data, n=nsamples)
+    return fft.irfft(data, n=nsamples, norm="ortho")

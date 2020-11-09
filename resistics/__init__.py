@@ -12,3 +12,12 @@ xyversion = "0.0.7"
 release = ".dev1"
 # combined version
 __version__ = "{}{}".format(xyversion, release)
+
+
+from resistics.common.log import (
+    configure_default_logging,
+    configure_warning_logging,
+    configure_debug_logging,
+)
+
+# from resistics.project.io import loadProject, newProject

@@ -1,103 +1,94 @@
 """Test resistics.common.math module"""
+import pytest
+from typing import List
 
 
 def test_eps() -> None:
     """Test epsilon is a small number"""
     from resistics.common.math import eps
 
-    assert eps() < 0.001
+    assert eps() == 0.0001
 
 
 def test_intdiv() -> None:
+    """Test integer division that raise an error if not exact"""
     from resistics.common.math import intdiv
-    import pytest
 
     assert intdiv(6, 3) == 2
     assert intdiv(5.0, 2.5) == 2
-    with pytest.raises(SystemExit):
+    with pytest.raises(Exception):
         intdiv(6, 4)
 
 
-def test_getFrequencyArray() -> None:
-    from resistics.common.math import getFrequencyArray
+@pytest.mark.parametrize("fs, nsamples", [(480, 40)])
+def test_getFrequencyArray(fs: float, nsamples: int) -> None:
+    """Test getting of frequency array"""
+    from resistics.common.math import frequency_array
     import numpy as np
 
-    fs = 480
-    nyquist = 240
-    samples = 40
-
-    assert np.array_equal(np.linspace(0, nyquist, samples), getFrequencyArray(fs, 40))
+    nyquist = fs / 2
+    assert np.array_equal(np.linspace(0, nyquist, nsamples), frequency_array(fs, 40))
 
 
-def test_forwardFFT_norm() -> None:
-    from resistics.common.math import forwardFFT
+@pytest.mark.parametrize("nsamples, expected", [(8, 0), (9, 7), (100, 28)])
+def test_pad_to_power2(nsamples: int, expected: int) -> None:
+    """Testing padding to next power of 2"""
+    from resistics.common.math import pad_to_power2
+
+    assert pad_to_power2(nsamples) == expected
+
+
+@pytest.mark.parametrize(
+    "data, expected",
+    [
+        (
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [1.0 + 0.0j, 1.0 + 0.0j, 1.0 + 0.0j, 1.0 + 0.0j, 1.0 + 0.0j],
+        ),
+        (
+            [0, 1, 0, 0, 0, 0, 0, 0],
+            [1 + 0j, 0.707107 - 0.707107j, 0 - 1j, -0.707107 - 0.707107j, -1 + 0j],
+        ),
+    ],
+)
+def test_fft(data: List, expected: List) -> None:
+    from resistics.common.math import fft
     import numpy as np
 
-    x = np.array([1, 0, 0, 0, 0, 0, 0, 0])
-    y = np.array([0, 1, 0, 0, 0, 0, 0, 0])
-    xfft = forwardFFT(x)
-    yfft = forwardFFT(y)
-    # using norm divides the output by sqrt(n) for both fft and ifft
-    np.testing.assert_array_almost_equal(
-        xfft, [1.0 + 0.0j, 1.0 + 0.0j, 1.0 + 0.0j, 1.0 + 0.0j, 1.0 + 0.0j] / np.sqrt(8),
-    )
-    np.testing.assert_array_almost_equal(
-        yfft,
-        [1 + 0j, 0.707107 - 0.707107j, 0 - 1j, -0.707107 - 0.707107j, -1 + 0j,]
-        / np.sqrt(8),
-    )
+    data = np.array(data)
+    expected = np.array(expected)
+    # default norm
+    data_fft = fft(data)
+    np.testing.assert_array_almost_equal(data_fft, expected / np.sqrt(data.size))
+    # norm
+    data_fft = fft(data, norm=True)
+    np.testing.assert_array_almost_equal(data_fft, expected / np.sqrt(data.size))
+    # no norm
+    data_fft = fft(data, norm=False)
+    np.testing.assert_array_almost_equal(data_fft, expected)
 
 
-def test_forwardFFT_nonorm() -> None:
-    from resistics.common.math import forwardFFT
+@pytest.mark.parametrize(
+    "data",
+    [
+        ([1, 0, 0, 0, 0, 0, 0, 0]),
+        ([0, 1, 0, 0, 0, 0, 0, 0]),
+    ],
+)
+def test_ifft(data: List) -> None:
+    from resistics.common.math import fft, ifft
     import numpy as np
 
-    x = np.array([1, 0, 0, 0, 0, 0, 0, 0])
-    y = np.array([0, 1, 0, 0, 0, 0, 0, 0])
-    xfft = forwardFFT(x, norm=False)
-    yfft = forwardFFT(y, norm=False)
-    # using norm = False means no scaling on the fft, but scaling 1/n on ifft
-    np.testing.assert_array_almost_equal(
-        xfft, [1.0 + 0.0j, 1.0 + 0.0j, 1.0 + 0.0j, 1.0 + 0.0j, 1.0 + 0.0j],
-    )
-    np.testing.assert_array_almost_equal(
-        yfft, [1 + 0j, 0.707107 - 0.707107j, 0 - 1j, -0.707107 - 0.707107j, -1 + 0j,],
-    )
-
-
-def test_inverseFFT_norm() -> None:
-    from resistics.common.math import forwardFFT, inverseFFT
-    import numpy as np
-
-    x = np.array([1, 0, 0, 0, 0, 0, 0, 0])
-    y = np.array([0, 1, 0, 0, 0, 0, 0, 0])
-    # using norm divides the output by sqrt(n) for both fft and ifft
-    xfft = forwardFFT(x)
-    yfft = forwardFFT(y)
-    x_test = inverseFFT(xfft, 8)
-    y_test = inverseFFT(yfft, 8)
-    np.testing.assert_array_almost_equal(x, x_test)
-    np.testing.assert_array_almost_equal(y, y_test)
-
-
-def test_inverseFFT_nonorm() -> None:
-    from resistics.common.math import forwardFFT, inverseFFT
-    import numpy as np
-
-    x = np.array([1, 0, 0, 0, 0, 0, 0, 0])
-    y = np.array([0, 1, 0, 0, 0, 0, 0, 0])
-    # using norm = False means no scaling on the fft, but scaling 1/n on ifft
-    xfft = forwardFFT(x, norm=False)
-    yfft = forwardFFT(y, norm=False)
-    x_test = inverseFFT(xfft, 8, norm=False)
-    y_test = inverseFFT(yfft, 8, norm=False)
-    np.testing.assert_array_almost_equal(x, x_test)
-    np.testing.assert_array_almost_equal(y, y_test)
-
-
-def test_padNextPower2() -> None:
-    from resistics.common.math import padNextPower2
-
-    assert padNextPower2(8) == 0
-    assert padNextPower2(9) == 7
-    assert padNextPower2(100) == 28
+    data = np.array(data)
+    # norm default
+    data_fft = fft(data)
+    data_inv = ifft(data_fft, data.size)
+    np.testing.assert_array_almost_equal(data, data_inv)
+    # norm
+    data_fft = fft(data, norm=True)
+    data_inv = ifft(data_fft, data.size, norm=True)
+    np.testing.assert_array_almost_equal(data, data_inv)
+    # no norm
+    data_fft = fft(data, norm=False)
+    data_inv = ifft(data_fft, data.size, norm=False)
+    np.testing.assert_array_almost_equal(data, data_inv)

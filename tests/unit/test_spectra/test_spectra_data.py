@@ -108,6 +108,52 @@ def test_powerdata():
     assert np.array_equal(pData.freqArray, [0, 2048 / 3, 2048 * 2 / 3, 2048])
 
 
+def test_powerdata_coherence():
+    """Test powerdata coherence"""
+    from resistics.spectra.data import SpectrumData, PowerData
+    from resistics.spectra.calculator import crosspowers
+    import numpy as np
+
+    # add some data
+    evalfreqs = np.array([24, 40])
+    startTime = "2020-01-01 00:00:00.000000"
+    stopTime = "2020-01-01 00:00:00.062500"
+    data = {}
+    data["Ex"] = np.array([1 + 3j, -2 + 5j, 7 - 6j, 3 + 2j, 4 + 8j])
+    data["Ey"] = np.array([12 - 4j, -6 + 2j, 2 + 6j, -4 - 2j, -6 - 6j])
+    data["Hx"] = np.array([-3 + 3j, -11 + 7j, 4 - 1j, 1 + 9j, 2 + 2j])
+    data["Hy"] = np.array([2 + 9j, 9 + 1j, 8 + 8j, 6 + 2j, 5 + 2j])
+    specdata = SpectrumData(8, 5, 128, startTime, stopTime, data)
+    pData = crosspowers(specdata)
+    pData = pData.interpolate(evalfreqs)
+
+    cohPairs = [["Ex", "Hx"], ["Ex", "Hy"], ["Ey", "Hx"], ["Ey", "Hy"]]
+    cohData = {}
+    for idx, evalfreq in enumerate(evalfreqs):
+        cohData[evalfreq] = {}
+        for pair in cohPairs:
+            key = f"{pair[0]}{pair[1]}"
+            cohData[evalfreq][key] = pData.getCoherence(pair[0], pair[1], idx)
+    # validate
+    testData = {
+        24: {
+            "ExHx": 0.5462519936204147,
+            "ExHy": 0.13675856307435255,
+            "EyHx": 0.590909090909091,
+            "EyHy": 0.19523809523809524,
+        },
+        40: {
+            "ExHx": 0.49360956503813647,
+            "ExHy": 0.6379980563654033,
+            "EyHx": 0.6734006734006734,
+            "EyHy": 0.20634920634920634,
+        },
+    }
+    for evalfreq in evalfreqs:
+        for key, val in testData[evalfreq].items():
+            np.testing.assert_almost_equal(val, cohData[evalfreq][key])
+
+
 def test_powerdata_smooth():
     """Test PowerData smooth"""
     from resistics.spectra.data import PowerData

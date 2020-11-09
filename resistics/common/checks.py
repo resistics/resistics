@@ -1,10 +1,13 @@
+"""Functions for doing common checks used in resistics"""
+from logging import getLogger
+from resistics.common.log import configure_debug_logging, configure_default_logging, configure_warning_logging
 import inspect
 from typing import List, Dict, Any
 
-from resistics.common.print import generalPrint
+logger = getLogger("resistics")
 
 
-def parseKeywords(
+def parse_keywords(
     default: Dict[str, Any], keywords: Dict[str, Any], printkw: bool = True
 ):
     """General print to terminal
@@ -23,30 +26,28 @@ def parseKeywords(
     Dict[str, Any]
         The dictionary with the appropriate defaults overwritten by keyword arguments
     """
-    for w in default:
-        if w in keywords:
-            default[w] = keywords[w]
+    for kw in default:
+        if kw in keywords:
+            default[kw] = keywords[kw]
     if printkw:
-        generalPrint(
-            "{}::utilsCheck::parseKeywords".format(inspect.stack()[1][3]), str(default)
-        )
+        logger.debug(f"{default}")
     return default
 
 
-def elecChannelsList() -> List:
+def electric_chans() -> List[str]:
     """List of acceptable electric channels
 
     Returns
     -------
-    out : List
-        List of acceptable electric channels 
+    List[str]
+        List of acceptable electric channels
     """
     return ["Ex", "Ey", "E1", "E2", "E3", "E4"]
 
 
-def isElectric(chan: str) -> bool:
-    """Check if channel is electric
-    
+def is_electric(chan: str) -> bool:
+    """Check if a channel is electric
+
     Parameters
     ----------
     chan : str
@@ -54,26 +55,26 @@ def isElectric(chan: str) -> bool:
 
     Returns
     -------
-    out : bool
-        True if channel is electric 
+    bool
+        True if channel is electric
     """
-    if chan in elecChannelsList():
+    if chan in electric_chans():
         return True
     return False
 
 
-def magChannelsList() -> List:
+def magnetic_chans() -> List[str]:
     """List of acceptable magnetic channels
 
     Returns
     -------
-    out : List
-        List of acceptable magnetic channels 
+    List[str]
+        List of acceptable magnetic channels
     """
     return ["Hx", "Hy", "Hz", "Bx", "By", "Bz"]
 
 
-def isMagnetic(chan: str) -> bool:
+def is_magnetic(chan: str) -> bool:
     """Check if channel is magnetic
 
     Parameters
@@ -83,15 +84,15 @@ def isMagnetic(chan: str) -> bool:
 
     Returns
     -------
-    out : bool
-        True if channel is magnetic 
+    bool
+        True if channel is magnetic
     """
-    if chan in magChannelsList():
+    if chan in magnetic_chans():
         return True
     return False
 
 
-def consistentChans(chan: str) -> str:
+def to_resistics_chan(chan: str) -> str:
     """Convert channels to ensure consistency
 
     Parameters
@@ -101,11 +102,11 @@ def consistentChans(chan: str) -> str:
 
     Returns
     -------
-    out : str
-        Converted channel name 
+    str
+        Converted channel name
     """
-    standardChans = ["Hx", "Hy", "Hz", "Ex", "Ey"]
-    if chan in standardChans:
+    standard_chans = ["Hx", "Hy", "Hz", "Ex", "Ey"]
+    if chan in standard_chans:
         return chan
     if chan == "Bx":
         return "Hx"

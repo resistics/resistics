@@ -1,17 +1,10 @@
-from typing import List
-
-from resistics.common.print import (
-    generalPrint,
-    breakPrint,
-    warningPrint,
-    errorPrint,
-    blockPrint,
-)
+"""Base resistics classes used throughout the package"""
+from typing import List, Dict, Any
 
 
 class ResisticsBase(object):
     """Resistics base class
-    
+
     Parent class to ensure consistency of print methods
 
     Methods
@@ -19,75 +12,58 @@ class ResisticsBase(object):
     __repr__()
         Print status information
     __str__()
-        Print status information
-    printInfo()
-        Print status information
-    printList()
-        Return a list of strings with useful information
-    printText(infoStr)
-        Print information to console
-    printWarning(warnStr)
-        Print a warning to the console
-    printError(errorStr, quitrun=False)
-        Print an error to the console and optionally quit execution  
+        Convert object to a string
+    info()
+        Return a list of information to print out
     """
 
     def __repr__(self) -> str:
         """Print class information"""
-        return "\n".join(self.printList())
+        return "\n".join(self.to_string())
 
     def __str__(self) -> str:
         """Print class information"""
         return self.__repr__()
 
-    def printInfo(self) -> None:
-        """Print class information"""
-        blockPrint(self.__class__.__name__, self.printList())
+    def to_string(self) -> List[str]:
+        raise NotImplementedError("This should be implemented in child classes")
 
-    def printList(self) -> List:
-        """Class information as a list of strings
+
+class ProcessRecord(ResisticsBase):
+    def __init__(
+        self, process_name: str, parameters: Dict[str, Any], comment: str = None
+    ) -> None:
+        self._name = process_name
+        self._parameters = parameters
+        self._comment = comment
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the record as a dictionary
 
         Returns
         -------
-        out : list
-            List of strings with information
+        Dict[str, Any]
+            Record of process as a dictionary
         """
-        return [""]
+        return {
+            "name": self._name,
+            "parameters": self._parameters,
+            "comment": self._comment,
+        }
+    
+    def to_string(self) -> str:
+        """Represent the process record as a string
 
-    def printBreak(self) -> None:
-        """Print a break to the terminal to make things easier to read"""
-        breakPrint(self.__class__.__name__)
-
-    def printText(self, infoStr: str) -> None:
-        """General print to terminal
-
-        Parameters
-        ----------
-        infoStr : str
-            The string to print to the console
+        Returns
+        -------
+        str
+            Process record as a string
         """
-        generalPrint("{} Info".format(self.__class__.__name__), infoStr)
+        return str(self.to_dict())
 
-    def printWarning(self, warnStr: str) -> None:
-        """Warning print to terminal
-        
-        Parameters
-        ----------
-        warnStr : str
-            The string to print to the console
-        """
-        warningPrint("{} Warning".format(self.__class__.__name__), warnStr)
 
-    def printError(self, errorStr: str, quitrun: bool = False) -> None:
-        """Error print to terminal and possibly quit
+class History(ResisticsBase):
+    """Class for storing processing history"""
 
-        Parameters
-        ----------
-        errorStr : str
-            The string to print to the console
-        quitrun : bool, optional (False)
-            If True, the code will exit
-        """
-        errorPrint(
-            "{} Error".format(self.__class__.__name__), errorStr, quitrun=quitrun
-        )
+    def __init__(self, json_str):
+        self._records: List[ProcessRecord] = []

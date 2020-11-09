@@ -1,4 +1,4 @@
-def test_getTimeData() -> None:
+def test_reader_getTimeData() -> None:
     """Test getting time data"""
     from datapaths import path_integrated_singlesite
     from resistics.project.io import loadProject
@@ -13,3 +13,12 @@ def test_getTimeData() -> None:
     assert reader.getNumSamples() == 7372800
     assert reader.getSampleFreq() == 4096
     assert reader.getChannels() == ["Ex", "Ey", "Hx", "Hy", "Hz"]
+
+def test_reader_headers():
+    """Test getting various headers"""
+    assert False
+
+
+def test_reader_chanHeaders():
+    """Test getting various channel headers"""
+    assert False

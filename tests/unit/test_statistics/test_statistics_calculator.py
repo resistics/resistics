@@ -126,71 +126,72 @@ def test_statistics_calculator() -> None:
         )
 
 
-def test_statistics_calculator_absval():
-    """Test absolute value calculator"""
-    from resistics.statistics.calculator import StatisticCalculator
+def test_statistics_calculator_crosspower_absolute():
+    """Test crosspower absolute value calculator"""
+    from resistics.statistics.features import UniWindowSpectrum, CrosspowerAbsolute
     import numpy as np
 
     specData, evalfreq = get_spectrum_data()
-    calculator = StatisticCalculator()
-    calculator.winLen = 1
-    assert calculator.winLen == 1
-    calculator.setSpectra(specData.freqArray, specData, evalfreq)
-    statData = calculator.getDataForStatName("absvalEqn")
+    uniwindow = UniWindowSpectrum(specData, evalfreq, winLen=1)
+    assert uniwindow.winLen == 1
+    calculator = CrosspowerAbsolute()
+    assert calculator.name == "crosspower_absolute"
+    output = calculator.evaluate(uniwindow)
     testData = {
         24: {
-            "absExHx": 53.956000593075835,
-            "absEyHx": 47.01063709417264,
-            "absHxHx": 93.5,
-            "absHyHx": 38.01315561749642,
-            "absExHy": 28.609439001839934,
-            "absEyHy": 28.635642126552707,
-            "absHxHy": 38.01315561749642,
-            "absHyHy": 105.0,
-            "absExEx": 57.0,
-            "absEyEx": 40.0,
-            "absHxEx": 53.956000593075835,
-            "absHyEx": 28.609439001839934,
-            "absExEy": 40.0,
-            "absEyEy": 40.0,
-            "absHxEy": 47.01063709417264,
-            "absHyEy": 28.635642126552707,
+            "xabsExHx": 53.956000593075835,
+            "xabsEyHx": 47.01063709417264,
+            "xabsHxHx": 93.5,
+            "xabsHyHx": 38.01315561749642,
+            "xabsExHy": 28.609439001839934,
+            "xabsEyHy": 28.635642126552707,
+            "xabsHxHy": 38.01315561749642,
+            "xabsHyHy": 105.0,
+            "xabsExEx": 57.0,
+            "xabsEyEx": 40.0,
+            "xabsHxEx": 53.956000593075835,
+            "xabsHyEx": 28.609439001839934,
+            "xabsExEy": 40.0,
+            "xabsEyEy": 40.0,
+            "xabsHxEy": 47.01063709417264,
+            "xabsHyEy": 28.635642126552707,
         },
         40: {
-            "absExHx": 34.60130055359191,
-            "absEyHx": 31.622776601683793,
-            "absHxHx": 49.5,
-            "absHyHx": 24.73863375370596,
-            "absExHy": 51.24451190127583,
-            "absEyHy": 22.80350850198276,
-            "absHxHy": 24.73863375370596,
-            "absHyHy": 84.0,
-            "absExEx": 49.0,
-            "absEyEx": 33.83784863137726,
-            "absHxEx": 34.60130055359191,
-            "absHyEx": 51.24451190127583,
-            "absExEy": 33.83784863137726,
-            "absEyEy": 30.0,
-            "absHxEy": 31.622776601683793,
-            "absHyEy": 22.80350850198276,
+            "xabsExHx": 34.60130055359191,
+            "xabsEyHx": 31.622776601683793,
+            "xabsHxHx": 49.5,
+            "xabsHyHx": 24.73863375370596,
+            "xabsExHy": 51.24451190127583,
+            "xabsEyHy": 22.80350850198276,
+            "xabsHxHy": 24.73863375370596,
+            "xabsHyHy": 84.0,
+            "xabsExEx": 49.0,
+            "xabsEyEx": 33.83784863137726,
+            "xabsHxEx": 34.60130055359191,
+            "xabsHyEx": 51.24451190127583,
+            "xabsExEy": 33.83784863137726,
+            "xabsEyEy": 30.0,
+            "xabsHxEy": 31.622776601683793,
+            "xabsHyEy": 22.80350850198276,
         },
     }
     for efreq in evalfreq:
-        for key, val in statData[efreq].items():
-            np.testing.assert_almost_equal(val, testData[efreq][key])
+        for key, val in testData[efreq].items():
+            np.testing.assert_almost_equal(val, output[efreq][key])
 
 
 def test_statistics_calculator_coherence():
-    """Test absolute value calculator"""
-    from resistics.statistics.calculator import StatisticCalculator
+    """Test coherece value calculator"""
+    from resistics.statistics.features import UniWindowSpectrum, Coherence
     import numpy as np
 
     specData, evalfreq = get_spectrum_data()
-    calculator = StatisticCalculator()
-    calculator.winLen = 1
-    assert calculator.winLen == 1
-    calculator.setSpectra(specData.freqArray, specData, evalfreq)
-    statData = calculator.getDataForStatName("coherence")
+    uniwindow = UniWindowSpectrum(specData, evalfreq, winLen=1)
+    assert uniwindow.winLen == 1
+    features = [["Ex", "Hx"], ["Ex", "Hy"], ["Ey", "Hx"], ["Ey", "Hy"]]
+    calculator = Coherence(coh_pairs=features)
+    assert calculator.name == "coherence"
+    output = calculator.evaluate(uniwindow)
     testData = {
         24: {
             "cohExHx": 0.5462519936204147,
@@ -206,27 +207,155 @@ def test_statistics_calculator_coherence():
         },
     }
     for efreq in evalfreq:
-        for key, val in statData[efreq].items():
-            np.testing.assert_almost_equal(val, testData[efreq][key])
+        for key, val in testData[efreq].items():
+            np.testing.assert_almost_equal(val, output[efreq][key])
 
 
-def test_statistics_calculator_partial_coherence():
-    """Test absolute value calculator"""
-    from resistics.statistics.calculator import StatisticCalculator
+def test_statistics_calculator_power_spectral_density():
+    """Test power spectral density features"""
+    from resistics.statistics.features import UniWindowSpectrum, PowerSpectralDensity
     import numpy as np
 
     specData, evalfreq = get_spectrum_data()
-    calculator = StatisticCalculator()
-    calculator.winLen = 1
-    assert calculator.winLen == 1
-    calculator.setSpectra(specData.freqArray, specData, evalfreq)
-    statData = calculator.getDataForStatName("partialCoherence")
+    uniwindow = UniWindowSpectrum(specData, evalfreq, winLen=1)
+    assert uniwindow.winLen == 1
+    calculator = PowerSpectralDensity()
+    assert calculator.name == "power_spectral_density"
+    output = calculator.evaluate(uniwindow)
+    testData = {
+        24: {"psdEx": 912.0, "psdEy": 640.0, "psdHx": 1496.0, "psdHy": 1680.0},
+        40: {"psdEx": 784.0, "psdEy": 480.0, "psdHx": 792.0, "psdHy": 1344.0},
+    }
+    for efreq in evalfreq:
+        for key, val in testData[efreq].items():
+            np.testing.assert_almost_equal(val, output[efreq][key])
+
+
+def test_statistics_calculator_polarisation_direction():
+    """Test polarisation direction features"""
+    from resistics.statistics.features import UniWindowSpectrum, PolarisationDirection
+    import numpy as np
+
+    specData, evalfreq = get_spectrum_data()
+    uniwindow = UniWindowSpectrum(specData, evalfreq, winLen=1)
+    assert uniwindow.winLen == 1
+    calculator = PolarisationDirection()
+    assert calculator.name == "polarisation_direction"
+    output = calculator.evaluate(uniwindow)
+    testData = {
+        24: {"polExEy": 0.0, "polHxHy": 80.4010969314582},
+        40: {"polExEy": -63.43494882292201, "polHxHy": -54.293308599397115},
+    }
+    for efreq in evalfreq:
+        for key, val in testData[efreq].items():
+            np.testing.assert_almost_equal(val, output[efreq][key])
+
+
+def test_statistics_calculator_transfer_function():
+    """Test transfer function features"""
+    from resistics.statistics.features import UniWindowSpectrum, TransferFunction
+    import numpy as np
+
+    specData, evalfreq = get_spectrum_data()
+    uniwindow = UniWindowSpectrum(specData, evalfreq, winLen=1)
+    assert uniwindow.winLen == 1
+    calculator = TransferFunction()
+    assert calculator.name == "transfer_function"
+    output = calculator.evaluate(uniwindow)
     testData = {
         24: {
-            "cohExHx": 0.5462519936204147,
-            "cohExHy": 0.13675856307435255,
-            "cohEyHx": 0.590909090909091,
-            "cohEyHy": 0.19523809523809524,
+            "tfExHxReal": 0.6183338309943266,
+            "tfExHxImag": -0.484502836667662,
+            "tfExHyReal": 0.09796954314720807,
+            "tfExHyImag": -0.5284263959390865,
+            "tfEyHxReal": 0.48169602866527317,
+            "tfEyHxImag": 0.4143326366079426,
+            "tfEyHyReal": 0.2802030456852794,
+            "tfEyHyImag": 0.3228426395939085,
+        },
+        40: {
+            "tfExHxReal": 0.6328257191201355,
+            "tfExHxImag": -0.14043993231810512,
+            "tfExHyReal": -0.012267343485617588,
+            "tfExHyImag": -0.5884094754653127,
+            "tfEyHxReal": -0.3824027072758038,
+            "tfEyHxImag": 0.6463620981387479,
+            "tfEyHyReal": 0.36971235194585467,
+            "tfEyHyImag": 0.009306260575296085,
+        },
+    }
+    for efreq in evalfreq:
+        for key, val in testData[efreq].items():
+            np.testing.assert_almost_equal(val, output[efreq][key])
+
+
+def test_statistics_calculator_res_phase():
+    """Test resistivity phase calculator"""
+    from resistics.statistics.features import UniWindowSpectrum, TransferFunctionMT
+    import numpy as np
+
+    specData, evalfreq = get_spectrum_data()
+    uniwindow = UniWindowSpectrum(specData, evalfreq, winLen=1)
+    assert uniwindow.winLen == 1
+    calculator = TransferFunctionMT()
+    assert calculator.name == "transfer_function_mt"
+    output = calculator.evaluate(uniwindow)
+    testData = {
+        24: {
+            "resExHx": 0.0051423310440927615,
+            "phsExHx": -38.08089717250079,
+            "tfExHxReal": 0.6183338309943266,
+            "tfExHxImag": -0.484502836667662,
+            "resExHy": 0.002406937394247041,
+            "phsExHy": -79.49669804710025,
+            "tfExHyReal": 0.09796954314720807,
+            "tfExHyImag": -0.5284263959390865,
+            "resEyHx": 0.003364188314919875,
+            "phsEyHx": 40.70059399014801,
+            "tfEyHxReal": 0.48169602866527317,
+            "tfEyHxImag": 0.4143326366079426,
+            "resEyHy": 0.001522842639593909,
+            "phsEyHy": 49.044485574181074,
+            "tfEyHyReal": 0.2802030456852794,
+            "tfEyHyImag": 0.3228426395939085,
+        },
+        40: {
+            "resExHx": 0.0021009588268471532,
+            "phsExHx": -12.512585801455565,
+            "tfExHxReal": 0.6328257191201355,
+            "tfExHxImag": -0.14043993231810512,
+            "resExHy": 0.0017318809926677931,
+            "phsExHy": -91.1943471837543,
+            "tfExHyReal": -0.012267343485617588,
+            "tfExHyImag": -0.5884094754653127,
+            "resEyHx": 0.002820078962210943,
+            "phsEyHx": 120.6095367512591,
+            "tfEyHxReal": -0.3824027072758038,
+            "tfEyHxImag": 0.6463620981387479,
+            "resEyHy": 0.0006838691483361542,
+            "phsEyHy": 1.4419233716812918,
+            "tfEyHyReal": 0.36971235194585467,
+            "tfEyHyImag": 0.009306260575296085,
+        },
+    }
+    for efreq in evalfreq:
+        for key, val in testData[efreq].items():
+            np.testing.assert_almost_equal(val, output[efreq][key])
+
+
+def test_statistics_calculator_partial_coherence():
+    """Test partial coherence calculator"""
+    from resistics.statistics.features import UniWindowSpectrum, TransferFunctionMT
+    import numpy as np
+
+    specData, evalfreq = get_spectrum_data()
+    uniwindow = UniWindowSpectrum(specData, evalfreq, winLen=1)
+    assert uniwindow.winLen == 1
+    calculator = TransferFunctionMT()
+    assert calculator.name == "transfer_function_mt"
+    output = calculator.evaluate(uniwindow)
+    testData = {
+        24: {
             "bivarEx": (1 + 0j),
             "parExHx": (1 + 0j),
             "parExHy": (1 + 0j),
@@ -235,10 +364,6 @@ def test_statistics_calculator_partial_coherence():
             "parEyHy": (0.9999999999999999 + 1.085551401855709e-16j),
         },
         40: {
-            "cohExHx": 0.49360956503813647,
-            "cohExHy": 0.6379980563654033,
-            "cohEyHx": 0.6734006734006734,
-            "cohEyHy": 0.20634920634920634,
             "bivarEx": (1 + 0j),
             "parExHx": (1 + 0j),
             "parExHy": (1 + 0j),
@@ -248,153 +373,5 @@ def test_statistics_calculator_partial_coherence():
         },
     }
     for efreq in evalfreq:
-        for key, val in statData[efreq].items():
-            np.testing.assert_almost_equal(val, testData[efreq][key])
-
-
-def test_statistics_calculator_power_spectral_density():
-    """Test absolute value calculator"""
-    from resistics.statistics.calculator import StatisticCalculator
-    import numpy as np
-
-    specData, evalfreq = get_spectrum_data()
-    calculator = StatisticCalculator()
-    calculator.winLen = 1
-    assert calculator.winLen == 1
-    calculator.setSpectra(specData.freqArray, specData, evalfreq)
-    statData = calculator.getDataForStatName("powerSpectralDensity")
-    testData = {
-        24: {"psdEx": 912.0, "psdEy": 640.0, "psdHx": 1496.0, "psdHy": 1680.0},
-        40: {"psdEx": 784.0, "psdEy": 480.0, "psdHx": 792.0, "psdHy": 1344.0},
-    }
-    for efreq in evalfreq:
-        for key, val in statData[efreq].items():
-            np.testing.assert_almost_equal(val, testData[efreq][key])
-
-
-def test_statistics_calculator_polarisation_direction():
-    """Test absolute value calculator"""
-    from resistics.statistics.calculator import StatisticCalculator
-    import numpy as np
-
-    specData, evalfreq = get_spectrum_data()
-    calculator = StatisticCalculator()
-    calculator.winLen = 1
-    assert calculator.winLen == 1
-    calculator.setSpectra(specData.freqArray, specData, evalfreq)
-    statData = calculator.getDataForStatName("polarisationDirection")
-    testData = {
-        24: {"polExEy": 0.0, "polHxHy": 80.4010969314582},
-        40: {"polExEy": -63.43494882292201, "polHxHy": -54.293308599397115},
-    }
-    for efreq in evalfreq:
-        for key, val in statData[efreq].items():
-            np.testing.assert_almost_equal(val, testData[efreq][key])
-
-
-def test_statistics_calculator_res_phase():
-    """Test absolute value calculator"""
-    from resistics.statistics.calculator import StatisticCalculator
-    import numpy as np
-
-    specData, evalfreq = get_spectrum_data()
-    calculator = StatisticCalculator()
-    calculator.winLen = 1
-    assert calculator.winLen == 1
-    calculator.setSpectra(specData.freqArray, specData, evalfreq)
-    statData = calculator.getDataForStatName("resPhase")
-    testData = {
-        24: {
-            "ExHxRes": 0.0051423310440927615,
-            "ExHxPhase": -38.08089717250079,
-            "ExHxReal": 0.6183338309943266,
-            "ExHxImag": -0.484502836667662,
-            "ExHyRes": 0.002406937394247041,
-            "ExHyPhase": -79.49669804710025,
-            "ExHyReal": 0.09796954314720807,
-            "ExHyImag": -0.5284263959390865,
-            "EyHxRes": 0.003364188314919875,
-            "EyHxPhase": 40.70059399014801,
-            "EyHxReal": 0.48169602866527317,
-            "EyHxImag": 0.4143326366079426,
-            "EyHyRes": 0.001522842639593909,
-            "EyHyPhase": 49.044485574181074,
-            "EyHyReal": 0.2802030456852794,
-            "EyHyImag": 0.3228426395939085,
-        },
-        40: {
-            "ExHxRes": 0.0021009588268471532,
-            "ExHxPhase": -12.512585801455565,
-            "ExHxReal": 0.6328257191201355,
-            "ExHxImag": -0.14043993231810512,
-            "ExHyRes": 0.0017318809926677931,
-            "ExHyPhase": -91.1943471837543,
-            "ExHyReal": -0.012267343485617588,
-            "ExHyImag": -0.5884094754653127,
-            "EyHxRes": 0.002820078962210943,
-            "EyHxPhase": 120.6095367512591,
-            "EyHxReal": -0.3824027072758038,
-            "EyHxImag": 0.6463620981387479,
-            "EyHyRes": 0.0006838691483361542,
-            "EyHyPhase": 1.4419233716812918,
-            "EyHyReal": 0.36971235194585467,
-            "EyHyImag": 0.009306260575296085,
-        },
-    }
-    for efreq in evalfreq:
-        for key, val in statData[efreq].items():
-            np.testing.assert_almost_equal(val, testData[efreq][key])
-
-
-def test_statistics_calculator_transfer_function():
-    """Test absolute value calculator"""
-    from resistics.statistics.calculator import StatisticCalculator
-    import numpy as np
-
-    specData, evalfreq = get_spectrum_data()
-    calculator = StatisticCalculator()
-    calculator.winLen = 1
-    assert calculator.winLen == 1
-    calculator.setSpectra(specData.freqArray, specData, evalfreq)
-    statData = calculator.getDataForStatName("transferFunction")
-    testData = {
-        24: {
-            "ExHxRes": 0.0051423310440927615,
-            "ExHxPhase": -38.08089717250079,
-            "ExHxReal": 0.6183338309943266,
-            "ExHxImag": -0.484502836667662,
-            "ExHyRes": 0.002406937394247041,
-            "ExHyPhase": -79.49669804710025,
-            "ExHyReal": 0.09796954314720807,
-            "ExHyImag": -0.5284263959390865,
-            "EyHxRes": 0.003364188314919875,
-            "EyHxPhase": 40.70059399014801,
-            "EyHxReal": 0.48169602866527317,
-            "EyHxImag": 0.4143326366079426,
-            "EyHyRes": 0.001522842639593909,
-            "EyHyPhase": 49.044485574181074,
-            "EyHyReal": 0.2802030456852794,
-            "EyHyImag": 0.3228426395939085,
-        },
-        40: {
-            "ExHxRes": 0.0021009588268471532,
-            "ExHxPhase": -12.512585801455565,
-            "ExHxReal": 0.6328257191201355,
-            "ExHxImag": -0.14043993231810512,
-            "ExHyRes": 0.0017318809926677931,
-            "ExHyPhase": -91.1943471837543,
-            "ExHyReal": -0.012267343485617588,
-            "ExHyImag": -0.5884094754653127,
-            "EyHxRes": 0.002820078962210943,
-            "EyHxPhase": 120.6095367512591,
-            "EyHxReal": -0.3824027072758038,
-            "EyHxImag": 0.6463620981387479,
-            "EyHyRes": 0.0006838691483361542,
-            "EyHyPhase": 1.4419233716812918,
-            "EyHyReal": 0.36971235194585467,
-            "EyHyImag": 0.009306260575296085,
-        },
-    }
-    for efreq in evalfreq:
-        for key, val in statData[efreq].items():
-            np.testing.assert_almost_equal(val, testData[efreq][key])
+        for key, val in testData[efreq].items():
+            np.testing.assert_almost_equal(val, output[efreq][key])

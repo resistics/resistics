@@ -5,15 +5,19 @@ import math
 from datetime import datetime, timedelta
 import copy
 import matplotlib.pyplot as plt
+
 # import readers
 from magpy.ioHandlers.dataReaderSpam import DataReaderSPAM
 from magpy.ioHandlers.dataReaderATS import DataReaderATS
 from magpy.ioHandlers.dataReaderInternal import DataReaderInternal
 from magpy.ioHandlers.dataReaderPhoenix import DataReaderPhoenix
+
 # import writers
 from magpy.ioHandlers.dataWriterInternal import DataWriterInternal
+
 # import signal processors
 from magpy.calculators.signalProcessor import SignalProcessor
+
 # import utils
 from magpy.utilities.utilsProcess import *
 from magpy.utilities.utilsIO import *
@@ -44,11 +48,13 @@ def plotTest():
     timeData1.view(
         sampleStop=timeData1.numSamples - 1,
         fig=fig,
-        xlim=[timeData1.startTime, timeData2.stopTime])
+        xlim=[timeData1.startTime, timeData2.stopTime],
+    )
     timeData2.view(
         sampleStop=timeData2.numSamples - 1,
         fig=fig,
-        xlim=[timeData1.startTime, timeData2.stopTime])
+        xlim=[timeData1.startTime, timeData2.stopTime],
+    )
     fig.tight_layout(rect=[0, 0.02, 1, 0.96])
     addLegends(fig)
     plt.show()
@@ -128,8 +134,7 @@ def bpFilterTest():
 
 def notchFilterTest():
     breakPrint()
-    generalPrint("testsSignalProcess",
-                 "Running test function: notchFilterTest")
+    generalPrint("testsSignalProcess", "Running test function: notchFilterTest")
     # read in data
     atsReader = DataReaderATS(atsPath)
     # now get some data
@@ -154,8 +159,7 @@ def notchFilterTest():
 
 def testInterpolate():
     breakPrint()
-    generalPrint("testsSignalProcess",
-                 "Running test function: testInterpolate")
+    generalPrint("testsSignalProcess", "Running test function: testInterpolate")
     # read in data
     spamReader = DataReaderSPAM(spamPath)
     # now get some data
@@ -175,8 +179,7 @@ def testInterpolate():
     x = timeData.getDateArray()
     xlim = [timeDataSave.startTime, x[100]]
     timeDataSave.view(sampleStop=100, fig=fig, xlim=xlim, label="Raw data")
-    timeData.view(
-        sampleStop=100, fig=fig, xlim=xlim, label="Interpolated to second")
+    timeData.view(sampleStop=100, fig=fig, xlim=xlim, label="Interpolated to second")
     fig.tight_layout(rect=[0, 0.02, 1, 0.96])
     addLegends(fig)
     plt.show()
@@ -204,20 +207,14 @@ def testFillGap():
     x = timeData.getDateArray()
     xlim = [timeData1.startTime, timeData2.stopTime]
     timeData.view(
-        sampleStop=timeData.numSamples - 1,
-        fig=fig,
-        xlim=xlim,
-        label="Gap filled")
+        sampleStop=timeData.numSamples - 1, fig=fig, xlim=xlim, label="Gap filled"
+    )
     timeData1.view(
-        sampleStop=timeData1.numSamples - 1,
-        fig=fig,
-        xlim=xlim,
-        label="Section1")
+        sampleStop=timeData1.numSamples - 1, fig=fig, xlim=xlim, label="Section1"
+    )
     timeData2.view(
-        sampleStop=timeData2.numSamples - 1,
-        fig=fig,
-        xlim=xlim,
-        label="Section2")
+        sampleStop=timeData2.numSamples - 1, fig=fig, xlim=xlim, label="Section2"
+    )
     fig.tight_layout(rect=[0, 0.02, 1, 0.96])
     addLegends(fig)
     plt.show()
@@ -241,20 +238,14 @@ def testFillGap():
     x = timeData.getDateArray()
     xlim = [timeData1.startTime, timeData2.stopTime]
     timeData.view(
-        sampleStop=timeData.numSamples - 1,
-        fig=fig,
-        xlim=xlim,
-        label="Gap filled")
+        sampleStop=timeData.numSamples - 1, fig=fig, xlim=xlim, label="Gap filled"
+    )
     timeData1.view(
-        sampleStop=timeData1.numSamples - 1,
-        fig=fig,
-        xlim=xlim,
-        label="Section1")
+        sampleStop=timeData1.numSamples - 1, fig=fig, xlim=xlim, label="Section1"
+    )
     timeData2.view(
-        sampleStop=timeData2.numSamples - 1,
-        fig=fig,
-        xlim=xlim,
-        label="Section2")
+        sampleStop=timeData2.numSamples - 1, fig=fig, xlim=xlim, label="Section2"
+    )
     fig.tight_layout(rect=[0, 0.02, 1, 0.96])
     addLegends(fig)
     plt.show()
@@ -290,8 +281,7 @@ def testResample():
 
 def testRemoveZeros():
     breakPrint()
-    generalPrint("testsSignalProcess",
-                 "Running test function: testRemoveZeros")
+    generalPrint("testsSignalProcess", "Running test function: testRemoveZeros")
     # read in data
     spamReader = DataReaderSPAM(spamPath)
     spamReader.printInfo()
@@ -312,7 +302,8 @@ def testRemoveZeros():
     fig = plt.figure(figsize=(20, 10))
     timeData.view(sampleStop=timeData.numSamples, fig=fig, label="With zeros")
     timeDataProcessed.view(
-        sampleStop=timeData.numSamples, fig=fig, label="Without zeros")
+        sampleStop=timeData.numSamples, fig=fig, label="Without zeros"
+    )
     fig.tight_layout(rect=[0, 0.02, 1, 0.96])
     addLegends(fig)
     plt.show()
@@ -341,7 +332,8 @@ def testRemoveNans():
     fig = plt.figure(figsize=(20, 10))
     timeData.view(sampleStop=timeData.numSamples, fig=fig, label="With nans")
     timeDataProcessed.view(
-        sampleStop=timeData.numSamples, fig=fig, label="Without nans")
+        sampleStop=timeData.numSamples, fig=fig, label="Without nans"
+    )
     fig.tight_layout(rect=[0, 0.02, 1, 0.96])
     addLegends(fig)
     plt.show()
