@@ -1,6 +1,8 @@
 from typing import Dict, Union
 import numpy as np
 
+from resistics.common.base import ResisticsBase
+
 
 def eps() -> float:
     """Small number
@@ -126,3 +128,78 @@ def ifft(data: np.ndarray, nsamples: int, norm: bool = True):
     if not norm:
         return fft.irfft(data, n=nsamples)
     return fft.irfft(data, n=nsamples, norm="ortho")
+
+
+def smooth_length(nsamples: int, proportion: float = 16.0) -> int:
+    """Get smoothing length as a proportion of the number of samples in the data
+
+    Parameters
+    ----------
+    nsamples : int
+        The number of samples in the data
+    proportion : float, optional
+        The proportion of the data that should be in a single smoothing window
+
+    Returns
+    -------
+    int
+        The smoothing window size in samples
+    """
+    length = int(nsamples // proportion)
+    if length <= 3:
+        return 3
+    # ensure odd number
+    if length % 2 == 0:
+        return length + 1
+    return length
+
+
+class Smoother(ResisticsBase):
+    def __init__(self, length: int, window: str = "hann"):
+        """Initialise the smoother with a length and window
+
+        Parameters
+        ----------
+        smooth_lenght : int
+            Smoothing length
+        window : str, optional
+            Smoothing window, by default "hann"
+        """
+        import scipy.signal as signal
+
+        if length % 2 == 0:
+            raise ValueError("Smoothing length needs to be odd")
+        self._length: int = length
+        self._window: str = window
+        # get the window weights
+        if self._window == "flat":
+            self._window_weights = np.ones(self._length, "d")
+        else:
+            self._window_weights = eval("signal." + window + f"({self._length})")
+        self._convolve_weights = self._window_weights / self._window_weights.sum()
+        # calculate offset for recovering data
+        self._smoothed_offset = self._length + intdiv((self._length - 1), 2)
+
+    def smooth(self, data: np.ndarray) -> np.ndarray:
+        """Smooth a 1-D array
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Array to smooth
+
+        Returns
+        -------
+        np.ndarray
+            Smoothed array
+        """
+        if data.ndim != 1:
+            raise ValueError("smooth only accepts 1 dimension arrays.")
+        if data.size < self._length:
+            raise ValueError("Input vector needs to be bigger than window size.")
+        if self._length < 3:
+            return data
+
+        padded = np.pad(data, (self._length, self._length), mode="edge")
+        smoothed = np.convolve(padded, self._convolve_weights, mode="full")
+        return smoothed[self._smoothed_offset : self._smoothed_offset + data.size]

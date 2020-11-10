@@ -92,3 +92,40 @@ def test_ifft(data: List) -> None:
     data_fft = fft(data, norm=False)
     data_inv = ifft(data_fft, data.size, norm=False)
     np.testing.assert_array_almost_equal(data, data_inv)
+
+
+@pytest.mark.parametrize(
+    "nsamples, proportion, expected", [(64, 16, 5), (128, 16, 9), (1598, 16, 99), (1598, 21, 77)]
+)
+def test_smooth_length(nsamples: int, proportion: float, expected: int) -> None:
+    """Test calculating the smoothing length"""
+    from resistics.common.math import smooth_length
+
+    assert smooth_length(nsamples, proportion) == expected
+
+
+def test_smoother() -> None:
+    """Test single dimension smoothing"""
+    from resistics.common.math import Smoother
+    import numpy as np
+
+    with pytest.raises(ValueError):
+        sm = Smoother(11)
+        data = np.array([10])
+        sm.smooth(data)
+
+    with pytest.raises(ValueError):
+        sm = Smoother(7)
+        data = np.array([10, 5, 7])
+        sm.smooth(data)
+
+    # window length < 3
+    sm = Smoother(1)
+    data = np.array([10, 5, 7, 9, 7, 8])
+    assert np.array_equal(data, sm.smooth(data))
+
+    # do a smooth
+    sm = Smoother(5)
+    data = np.array([10, 5, 7, 9, 7, 8, 6, 7, 4, 2, 4, 6])
+    expected = np.array([8.75, 6.75, 7, 8, 7.75, 7.25, 6.75, 6, 4.25, 3, 4, 5.5])
+    assert np.array_equal(sm.smooth(data), expected)
