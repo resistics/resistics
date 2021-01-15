@@ -1,10 +1,11 @@
-"""Functions for doing common checks used in resistics"""
+"""
+Functions for doing common checks used in resistics
+"""
 from logging import getLogger
-from resistics.common.log import configure_debug_logging, configure_default_logging, configure_warning_logging
 import inspect
 from typing import List, Dict, Any
 
-logger = getLogger("resistics")
+logger = getLogger(__name__)
 
 
 def parse_keywords(
@@ -57,6 +58,14 @@ def is_electric(chan: str) -> bool:
     -------
     bool
         True if channel is electric
+
+    Examples
+    --------
+    >>> from resistics.common.checks import is_electric
+    >>> is_electric("Ex")
+    True
+    >>> is_electric("Hx")
+    False
     """
     if chan in electric_chans():
         return True
@@ -86,6 +95,14 @@ def is_magnetic(chan: str) -> bool:
     -------
     bool
         True if channel is magnetic
+
+    Examples
+    --------
+    >>> from resistics.common.checks import is_electric
+    >>> is_electric("Ex")
+    False
+    >>> is_electric("Hx")
+    True
     """
     if chan in magnetic_chans():
         return True
@@ -104,6 +121,14 @@ def to_resistics_chan(chan: str) -> str:
     -------
     str
         Converted channel name
+
+    Examples
+    --------
+    >>> from resistics.common.checks import to_resistics_chan
+    >>> to_resistics_chan("Bx")
+    'Hx'
+    >>> to_resistics_chan("Ex")
+    'Ex'
     """
     standard_chans = ["Hx", "Hy", "Hz", "Ex", "Ey"]
     if chan in standard_chans:

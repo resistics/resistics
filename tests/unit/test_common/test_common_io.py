@@ -1,32 +1,23 @@
 """Test resistics.common.io"""
 
-def test_getDataDirectoryFormats() -> None:
-    from resistics.common.io import getDataDirectoryFormats
 
-    assert getDataDirectoryFormats() == ["meas", "run", "phnx", "lemi"]
+def test_dir_formats() -> None:
+    from resistics.common.io import data_dir_formats
+
+    assert data_dir_formats() == ["meas", "run", "phnx", "lemi"]
 
 
-# def test_getDirectoryContents() -> None:
-#     from resistics.common.io import getDirectoryContents
-#     if not checkDirExistence(path):
-#         # return empty lists if directory does not exist
-#         return [], []
-#     dirList = os.listdir(path)
-#     dirs = []
-#     files = []
-#     for d in dirList:
-#         if os.path.isdir(os.path.join(path, d)):
-#             dirs.append(d)
-#         else:
-#             files.append(d)
-#     return dirs, removeHiddenFiles(files)
+def test_dir_contents() -> None:
+    from resistics.common.io import dir_contents
+    
+    assert False
 
 
 # def getFilesInDirectory(path: str) -> List:
 #     """Get files in directory
 
 #     Excludes hidden files
-    
+
 #     Parameters
 #     ----------
 #     path : str
@@ -45,7 +36,7 @@ def test_getDataDirectoryFormats() -> None:
 #     """Get subdirectories in directory
 
 #     Excludes hidden files
-    
+
 #     Parameters
 #     ----------
 #     path : str
@@ -71,7 +62,7 @@ def test_removeHiddenFiles() -> None:
 #     """Get subdirectories in directory
 
 #     This uses known data formats as defined in getDataDirectoryFormats
-    
+
 #     Parameters
 #     ----------
 #     path : str
@@ -95,10 +86,10 @@ def test_removeHiddenFiles() -> None:
 # def checkDirExistence(path: str) -> bool:
 #     """Check if directory exists
 
-#     ..todo:: 
-        
+#     ..todo::
+
 #         Should check that it is actually a directory
-    
+
 #     Parameters
 #     ----------
 #     path : str
@@ -116,7 +107,7 @@ def test_removeHiddenFiles() -> None:
 
 # def makeDir(path: str) -> None:
 #     """Make directory
-    
+
 #     Parameters
 #     ----------
 #     path : str
@@ -127,7 +118,7 @@ def test_removeHiddenFiles() -> None:
 
 # def checkAndMakeDir(path: str) -> None:
 #     """Check if directory exists and make if not
-    
+
 #     Parameters
 #     ----------
 #     path : str
@@ -139,7 +130,7 @@ def test_removeHiddenFiles() -> None:
 
 # def checkFilepath(path: str) -> bool:
 #     """Check if file exists
-    
+
 #     TODO: Should check that it is actually a file
 
 #     Parameters

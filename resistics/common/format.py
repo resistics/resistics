@@ -1,5 +1,7 @@
-from typing import Union, List, Set, Dict
-from logging import getLogger
+"""
+Frequent formatting functions used across the resistics source code
+"""
+from typing import Union, List, Set, Dict, Any
 from datetime import datetime
 import numpy as np
 
@@ -15,6 +17,28 @@ def datetime_format(ns: bool = False) -> str:
     if ns:
         return "%Y-%m-%d %H:%M:%S.%f"
     return "%Y-%m-%d %H:%M:%S"
+
+
+def strformat_fs(fs: float) -> str:
+    """Convert sampling frequency into a string for filenames
+
+    Parameters
+    ----------
+    fs : float
+        The sampling frequency
+
+    Returns
+    -------
+    str
+        Sample frequency converted to string for the purposes of a filename
+
+    Examples
+    --------
+    >>> from resistics.common.format import strformat_fs
+    >>> strformat_fs(512.0)
+    '512_000000'
+    """
+    return (f"{fs:.6f}").replace(".", "_")
 
 
 def array_to_string(
@@ -37,6 +61,19 @@ def array_to_string(
     -------
     str
         String representation of array
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from resistics.common.format import array_to_string
+    >>> data = np.array([1,2,3,4,5])
+    >>> array_to_string(data)
+    '1, 2, 3, 4, 5'
+    >>> data = np.array([1,2,3,4,5], dtype=np.float32)
+    >>> array_to_string(data)
+    '1.00000000, 2.00000000, 3.00000000, 4.00000000, 5.00000000'
+    >>> array_to_string(data, precision=3, scientific=True)
+    '1.000e+00, 2.000e+00, 3.000e+00, 4.000e+00, 5.000e+00'
     """
     style: str = "e" if scientific else "f"
     float_formatter = lambda x: f"{x:.{precision}{style}}"
@@ -46,18 +83,26 @@ def array_to_string(
     return output_str.lstrip("[").rstrip("]")
 
 
-def list_to_string(lst: List) -> str:
+def list_to_string(lst: List[Any]) -> str:
     """Convert a list to a comma separated string
 
     Parameters
     ----------
-    lst : List
+    lst : List[Any]
         Input list to convert to a string
 
     Returns
     -------
     str
         Output string
+
+    Examples
+    --------
+    >>> from resistics.common.format import list_to_string
+    >>> list_to_string(["a", "b", "c"])
+    'a, b, c'
+    >>> list_to_string([1,2,3])
+    '1, 2, 3'
     """
     output_str = ""
     for val in lst:
@@ -68,9 +113,6 @@ def list_to_string(lst: List) -> str:
 def list_to_ranges(data: Union[List, Set]) -> str:
     """Convert a list of numbers to a list of ranges
 
-    For example, the list [1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 26, 35, 40, 45]
-    becomes "1-4:1,6-12:2,15-24:3,26,35-45:5"
-
     Parameters
     ----------
     data : Union[List, Set]
@@ -80,6 +122,13 @@ def list_to_ranges(data: Union[List, Set]) -> str:
     -------
     str
         Formatted output string
+
+    Examples
+    --------
+    >>> from resistics.common.format import list_to_ranges
+    >>> data = [1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 26, 35, 40, 45]
+    >>> list_to_ranges(data)
+    '1-4:1,6-12:2,15-24:3,26,35-45:5'
     """
     lst = list(data) if isinstance(data, set) else data
     lst = sorted(lst)

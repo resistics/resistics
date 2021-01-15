@@ -13,6 +13,14 @@ def test_datetime_format(ns: bool, expected: str) -> None:
     assert datetime_format(ns) == expected
 
 
+@pytest.mark.parametrize("fs, expected", [(0.0005, "0_000500"), (128.0, "128_000000")])
+def test_strformat_fs(fs: float, expected: str) -> None:
+    """Test formatting sampling frequency for output"""
+    from resistics.common.format import strformat_fs
+
+    assert strformat_fs(fs) == expected
+
+
 @pytest.mark.parametrize(
     "data, sep, precision, scientific, expected",
     [
