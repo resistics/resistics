@@ -1,0 +1,9 @@
+[flake8]
+select = B,B9,BLK,C,E,F,I,S,W
+# ignore line too long errors B950 and E501 as these flag on docstrings
+# rely instead on black to flag when a file requires formatting
+ignore = B950,E203,E501,W503
+max-line-length = 88
+per-file-ignores = tests/*:S101
+# complexity
+max_complexity = 12
