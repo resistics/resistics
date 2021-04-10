@@ -43,7 +43,7 @@ release = resistics.__version__
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
-    "numpydoc",
+    "sphinx.ext.napoleon",
     "sphinx.ext.doctest",
     "sphinx.ext.todo",
     "sphinx.ext.coverage",
@@ -51,6 +51,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
     "sphinx.ext.autosectionlabel",
+    "matplotlib.sphinxext.plot_directive",
 ]
 # autosection labels
 autosectionlabel_prefix_document = True
@@ -77,7 +78,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = ["setup.rst"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "monokai"
@@ -88,14 +89,11 @@ pygments_style = "monokai"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-# html_theme = "sphinx_rtd_theme"
-# html_theme = 'sphinx_redactor_theme'
-# import sphinx_redactor_theme
-# html_theme_path = [sphinx_redactor_theme.get_html_theme_path()]
-html_theme = 'sphinx_ustack_theme'
+# html_theme = 'sphinx_ustack_theme'
+# html_theme_path = ["_themes", ]
+html_theme = "furo"
 html_logo = os.path.join("_static", "images", "logo.png")
 html_favicon = os.path.join("_static", "images", "favicon.png")
-
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -195,19 +193,14 @@ epub_exclude_files = ["search.html"]
 
 # -- Extension configuration -------------------------------------------------
 
+# order by position in file
+autodoc_member_order = "bysource"
+
+# plotting options
+plot_include_source = True
+
+
 # -- Options for todo extension ----------------------------------------------
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
-
-# Temporary work-around for spacing problem between parameter and parameter
-# type in the doc, see https://github.com/numpy/numpydoc/issues/215. The bug
-# has been fixed in sphinx (https://github.com/sphinx-doc/sphinx/pull/5976) but
-# through a change in sphinx basic.css except rtd_theme does not use basic.css.
-# In an ideal world, this would get fixed in this PR:
-# https://github.com/readthedocs/sphinx_rtd_theme/pull/747/files
-# html4_writer = True
-
-
-def setup(app):
-    app.add_stylesheet("css/custom.css")
