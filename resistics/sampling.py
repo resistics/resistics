@@ -1,11 +1,11 @@
-"""
-Module for dealing with sampling and dates including:
-Converting from samples to datetimes
-Converting from datetimes to samples
-All datetime, timedelta types are aliased as rsdatetime and rstimedelta
-This is to ease type hinting if the underlying datetime and timedelta classes are changed
-Currently, resistics uses attodatetime and attotimedelta from attotime
-attotime is a high precision datetime library
+"""Module for dealing with sampling and dates including:
+
+- Converting from samples to datetimes
+- Converting from datetimes to samples
+- All datetime, timedelta types are aliased as RSDateTime and RSTimeDelta
+- This is to ease type hinting if the base datetime and timedelta classes change
+- Currently, resistics uses attodatetime and attotimedelta from attotime
+- attotime is a high precision datetime library
 """
 from typing import Union, Tuple, Optional
 from datetime import datetime, timedelta
@@ -17,11 +17,64 @@ RSDateTime = attodatetime
 RSTimeDelta = attotimedelta
 
 
-def to_datetime(time: Union[str, pd.Timestamp, datetime]) -> RSDateTime:
-    """
-    Convert a string, pd.Timestamp or datetime object to a RSDateTime
+def datetime_to_string(time: RSDateTime) -> str:
+    """Convert a datetime to a string.
 
-    RSDateTime uses attodatetime which is a high precision datetime format 
+    Parameters
+    ----------
+    time : RSDateTime
+        Resistics datetime
+
+    Returns
+    -------
+    str
+        String representation
+
+    Examples
+    --------
+    .. doctest::
+
+        >>> from resistics.sampling import to_datetime, to_timedelta, datetime_to_string
+        >>> time = to_datetime("2021-01-01") + to_timedelta(1/16384)
+        >>> datetime_to_string(time)
+        '2021-01-01 00:00:00.000061_035156_250000_000000'
+    """
+    return time.strftime("%Y-%m-%d %H:%M:%S.%f_%o_%q_%v")
+
+
+def datetime_from_string(time: str) -> RSDateTime:
+    """Convert a string back to a datetime.
+
+    Only a fixed format is allowed %Y-%m-%d %H:%M:%S.%f_%o_%q_%v
+
+    Parameters
+    ----------
+    time : str
+        time as a string
+
+    Returns
+    -------
+    RSDateTime
+        The resistics datetime
+
+    .. doctest::
+
+        >>> from resistics.sampling import to_datetime, to_timedelta
+        >>> from resistics.sampling import datetime_to_string, datetime_from_string
+        >>> time = to_datetime("2021-01-01") + to_timedelta(1/16384)
+        >>> time_str = datetime_to_string(time)
+        >>> time_str
+        '2021-01-01 00:00:00.000061_035156_250000_000000'
+        >>> datetime_from_string(time_str)
+        attotime.objects.attodatetime(2021, 1, 1, 0, 0, 0, 61, 35.15625)
+    """
+    return RSDateTime.strptime(time, "%Y-%m-%d %H:%M:%S.%f_%o_%q_%v")
+
+
+def to_datetime(time: Union[str, pd.Timestamp, datetime]) -> RSDateTime:
+    """Convert a string, pd.Timestamp or datetime object to a RSDateTime.
+
+    RSDateTime uses attodatetime which is a high precision datetime format
     helpful for high sampling frequencies.
 
     Parameters
@@ -73,19 +126,17 @@ def to_datetime(time: Union[str, pd.Timestamp, datetime]) -> RSDateTime:
     )
 
 
-def to_timedelta(
-    delta: Union[float, timedelta, pd.Timedelta]
-) -> RSTimeDelta:
-    """
-    Get a RSTimeDelta object by providing seconds as a float or a pd.Timedelta
+def to_timedelta(delta: Union[float, timedelta, pd.Timedelta]) -> RSTimeDelta:
+    """Get a RSTimeDelta object by providing seconds as a float or a
+    pd.Timedelta.
 
-    RSTimeDelta uses attotimedelta, a high precision timedelta object 
-    This can be useful for high sampling frequencies.
+    RSTimeDelta uses attotimedelta, a high precision timedelta object. This can
+    be useful for high sampling frequencies.
 
     Parameters
     ----------
     delta : Union[float, timedelta, pd.Timedelta]
-        Timedelta as a float (assumed to be seconds), timedelta or pd.Timedelta 
+        Timedelta as a float (assumed to be seconds), timedelta or pd.Timedelta
 
     Returns
     -------
@@ -111,11 +162,13 @@ def to_timedelta(
 
     if isinstance(delta, (int, float)):
         seconds = int(floor(delta))
-        delta = (delta - seconds)*1_000_000
+        delta = (delta - seconds) * 1_000_000
         microseconds = int(floor(delta))
         delta = delta - microseconds
-        nanoseconds = delta*1_000
-        return RSTimeDelta(seconds=seconds, microseconds=microseconds, nanoseconds=nanoseconds)
+        nanoseconds = delta * 1_000
+        return RSTimeDelta(
+            seconds=seconds, microseconds=microseconds, nanoseconds=nanoseconds
+        )
     if not isinstance(delta, pd.Timedelta):
         delta = pd.Timedelta(delta)
     return RSTimeDelta(
@@ -127,11 +180,11 @@ def to_timedelta(
 
 
 def to_seconds(delta: RSTimeDelta) -> Tuple[float, float]:
-    """
-    Convert a timedelta to seconds as a float
+    """Convert a timedelta to seconds as a float.
 
-    Returns a Tuple, the first value being all the days in the delta converted to seconds
-    The second entry in the Tuple is the remaining amount of time converted to seconds
+    Returns a Tuple, the first value being the days in the delta converted to
+    seconds, the second entry in the Tuple is the remaining amount of time
+    converted to seconds.
 
     Parameters
     ----------
@@ -160,7 +213,7 @@ def to_seconds(delta: RSTimeDelta) -> Tuple[float, float]:
         0
         >>> remaining_in_seconds
         0.000244140625
-    
+
     Example with a larger timedelta
 
         >>> from resistics.sampling import to_datetime, to_seconds
@@ -172,16 +225,17 @@ def to_seconds(delta: RSTimeDelta) -> Tuple[float, float]:
         >>> remaining_in_seconds
         30270.0
     """
-    days_in_seconds = delta.days *(3600*24)
-    microseconds_in_seconds = (delta.microseconds/1_000_000)
-    nanoseconds_in_seconds = (float(delta.nanoseconds)/1_000_000_000)
-    remaining_in_seconds = delta.seconds + microseconds_in_seconds + nanoseconds_in_seconds
+    days_in_seconds = delta.days * (3600 * 24)
+    microseconds_in_seconds = delta.microseconds / 1_000_000
+    nanoseconds_in_seconds = float(delta.nanoseconds) / 1_000_000_000
+    remaining_in_seconds = (
+        delta.seconds + microseconds_in_seconds + nanoseconds_in_seconds
+    )
     return days_in_seconds, remaining_in_seconds
 
 
 def to_n_samples(delta: RSTimeDelta, fs: float, method="round") -> int:
-    """
-    Convert a timedelta to number of samples
+    """Convert a timedelta to number of samples.
 
     Parameters
     ----------
@@ -222,8 +276,9 @@ def to_n_samples(delta: RSTimeDelta, fs: float, method="round") -> int:
         471900154
     """
     from math import floor, ceil
+
     days_in_seconds, remaining_in_seconds = to_seconds(delta)
-    n_samples = (days_in_seconds + remaining_in_seconds)*fs
+    n_samples = (days_in_seconds + remaining_in_seconds) * fs
     if method == "floor":
         return int(floor(n_samples))
     elif method == "ceil":
@@ -234,8 +289,7 @@ def to_n_samples(delta: RSTimeDelta, fs: float, method="round") -> int:
 def sample_to_datetime(
     fs: float, first_time: RSDateTime, sample: int, n_samples: Optional[int] = None
 ) -> RSDateTime:
-    """
-    Convert a sample to a pandas Timestamp
+    """Convert a sample to a pandas Timestamp.
 
     Parameters
     ----------
@@ -273,7 +327,9 @@ def sample_to_datetime(
         '2021-01-02 00:00:01'
     """
     if n_samples is not None and (sample < 0 or sample >= n_samples):
-        raise ValueError(f"Sample {sample} not between 0 and number of samples {n_samples}")
+        raise ValueError(
+            f"Sample {sample} not between 0 and number of samples {n_samples}"
+        )
     return first_time + sample * to_timedelta(1 / fs)
 
 
@@ -283,10 +339,9 @@ def samples_to_datetimes(
     from_sample: int,
     to_sample: int,
 ) -> Tuple[RSDateTime, RSDateTime]:
-    """
-    Convert from and to samples to datetimes
+    """Convert from and to samples to datetimes.
 
-    The first sample is 0
+    The first sample is assumed to be 0.
 
     Parameters
     ----------
@@ -340,10 +395,11 @@ def check_from_time(
     last_time: RSDateTime,
     from_time: RSDateTime,
 ) -> RSDateTime:
-    """
-    Check a from time
+    """Check a from time.
 
-    If from time is between first and last times, it will be returned unchanged. If it is before first time, then first time will be returned. If it is after last time, it will raise a ValueError.
+    - If first time <= from_time <= last_time, it will be returned unchanged.
+    - If from_time < first time, then first time will be returned.
+    - If from_time > last time, it will raise a ValueError.
 
     Parameters
     ----------
@@ -366,7 +422,8 @@ def check_from_time(
 
     Examples
     --------
-    With a from time between first and last time. This should be the normal use case.
+    With a from time between first and last time. This should be the normal use
+    case.
 
     .. testcode::
 
@@ -378,7 +435,8 @@ def check_from_time(
         >>> str(from_time)
         '2021-01-02 03:00:00'
 
-    An alternative scenario when from time is before the time of the first sample
+    An alternative scenario when from time is before the time of the first
+    sample
 
     .. testcode::
 
@@ -411,10 +469,11 @@ def check_from_time(
 def check_to_time(
     first_time: RSDateTime, last_time: RSDateTime, to_time: RSDateTime
 ) -> RSDateTime:
-    """
-    Check a to time
+    """Check a to time.
 
-    If to time is between first and last times, it will be returned unchanged. If it is after last time, then last time will be returned. If it is before first time, it will raise a ValueError.
+    - If  first time <= to time <= last time, it will be returned unchanged.
+    - If to time > last time, then last time will be returned.
+    - If to time < first time, it will raise a ValueError.
 
     Parameters
     ----------
@@ -437,7 +496,8 @@ def check_to_time(
 
     Examples
     --------
-    With a to time between first and last time. This should be the normal use case.
+    With a to time between first and last time. This should be the normal use
+    case.
 
     .. testcode::
 
@@ -485,8 +545,7 @@ def from_time_to_sample(
     last_time: RSDateTime,
     from_time: RSDateTime,
 ) -> int:
-    """
-    Get the sample for the from time
+    """Get the sample for the from time.
 
     Parameters
     ----------
@@ -532,12 +591,12 @@ def to_time_to_sample(
     last_time: RSDateTime,
     to_time: RSDateTime,
 ) -> int:
-    """
-    Get the to time sample
+    """Get the to time sample.
 
     .. warning::
 
-        This will return the sample of the to time. In cases where this will be used for a range, 1 should be added to it to ensure it is included.
+        This will return the sample of the to time. In cases where this will
+        be used for a range, 1 should be added to it to ensure it is included.
 
     Parameters
     ----------
@@ -586,17 +645,17 @@ def datetimes_to_samples(
     from_time: RSDateTime,
     to_time: RSDateTime,
 ) -> Tuple[int, int]:
-    """
-    Convert from and to time to samples
+    """Convert from and to time to samples.
 
     .. warning::
 
-        If using these samples in ranging, the from sample can be left unchanged but one should be added to the to sample to ensure it is included.
+        If using these samples in ranging, the from sample can be left unchanged
+        but one should be added to the to sample to ensure it is included.
 
     .. note::
 
-        If from_time does not fall on a sample timestamp, the next sample is taken
-        If to_time does not fall on a sample timestamp, the previous sample is taken
+        If from_time is not a sample timestamp, the next sample is taken
+        If to_time is not a sample timestamp, the previous sample is taken
 
     Parameters
     ----------
@@ -643,80 +702,18 @@ def datetimes_to_samples(
     return from_sample, to_sample
 
 
-# def round_down_time(time: RSDateTime, delta: RSTimeDelta) -> pd.Timestamp:
-#     """
-#     Round down time
-
-#     Parameters
-#     ----------
-#     time : pd.Timestamp
-#         Time to round down
-#     dt : pd.Timedelta
-#         Effective sample rate to round to
-
-#     Returns
-#     -------
-#     pd.Timestamp
-#         Rounded timestamp
-
-#     Examples
-#     --------
-#     .. doctest::
-
-#         >>> import pandas as pd
-#         >>> from resistics.math import round_down_time
-#         >>> time = pd.Timestamp("2020-01-01 00:07:00")
-#         >>> dt = pd.Timedelta(10, "m")
-#         >>> round_down_time(time, dt)
-#         Timestamp('2020-01-01 00:00:00')
-#     """
-#     rounded = time.round(dt)
-#     if rounded > time:
-#         rounded -= dt
-#     return rounded
-
-
-# def round_up_time(time: pd.Timestamp, dt: pd.Timedelta) -> pd.Timestamp:
-#     """
-#     Round up time
-
-#     Parameters
-#     ----------
-#     time : pd.Timestamp
-#         Time to round up
-#     dt : pd.Timedelta
-#         Effective sample rate to round to
-
-#     Returns
-#     -------
-#     pd.Timestamp
-#         Rounded timestamp
-
-#     .. doctest::
-
-#         >>> import pandas as pd
-#         >>> from resistics.math import round_up_time
-#         >>> time = pd.Timestamp("2020-01-01 00:07:00")
-#         >>> dt = pd.Timedelta(10, "m")
-#         >>> round_up_time(time, dt)
-#         Timestamp('2020-01-01 00:10:00')
-#     """
-#     rounded = time.round(dt)
-#     if rounded < time:
-#         rounded += dt
-#     return rounded
-
-
 def datetime_array(
     first_time: RSDateTime,
     fs: float,
     n_samples: Optional[int] = None,
     samples: Optional[np.ndarray] = None,
 ) -> np.ndarray:
-    """
-    Get a datetime array in high resolution
+    """Get a datetime array in high resolution.
 
-    This will return a high resolution datetime array. This method is more computationally demanding than a pandas date_range. As a result, in cases where exact datetimes are not required, it is suggested to use datetime_array_estimate instead.
+    This will return a high resolution datetime array. This method is more
+    computationally demanding than a pandas date_range. As a result, in cases
+    where exact datetimes are not required, it is suggested to use
+    datetime_array_estimate instead.
 
     Parameters
     ----------
@@ -741,7 +738,8 @@ def datetime_array(
 
     Examples
     --------
-    This examples shows the value of using higher resolution datetimes, however this is computationally more expensive.
+    This examples shows the value of using higher resolution datetimes, however
+    this is computationally more expensive.
 
     .. doctest::
 
@@ -770,8 +768,8 @@ def datetime_array_estimate(
     n_samples: Optional[int] = None,
     samples: Optional[np.ndarray] = None,
 ) -> pd.DatetimeIndex:
-    """
-    Estimate datetime array with lower precision but much faster performance
+    """Estimate datetime array with lower precision but much faster
+    performance.
 
     Parameters
     ----------
@@ -787,7 +785,7 @@ def datetime_array_estimate(
     Returns
     -------
     pd.DatetimeIndex
-        A pandas DatetimeIndex 
+        A pandas DatetimeIndex
 
     Raises
     ------
