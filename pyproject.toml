@@ -25,6 +25,7 @@ flake8="3.9.0"
 flakehell="0.9.0"
 black="20.8b1"
 safety="1.10.3"
+pre-commit="2.12.0"
 Sphinx="3.5.3"
 furo=">=2021.3.20b30"
 
@@ -72,4 +73,4 @@ flake8-bandit = ["-S101"]
 
 [tool.black]
 line-length = 88
-target-version = ["py39"]
+target-version = ["py38"]
