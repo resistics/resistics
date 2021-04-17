@@ -961,7 +961,6 @@ class TimeReaderNumpy(TimeReaderJSON):
         if not chk_files:
             return False
         logger.info(f"Passed checks and successfully read headers from {metadata_path}")
-        print(metadata)
         return True
 
     def read_data(self, read_from: int, read_to: int) -> TimeData:
