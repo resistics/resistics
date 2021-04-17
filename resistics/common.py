@@ -8,7 +8,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from resistics.sampling import RSDateTime
+from resistics.sampling import datetime_to_string, to_datetime
+
 logger = getLogger(__name__)
+
+
+# alias a metadata specification
+Spec = Dict[str, Dict[str, Any]]
 
 
 serialize_fncs: Dict[Type[Any], Callable] = {
@@ -16,9 +23,22 @@ serialize_fncs: Dict[Type[Any], Callable] = {
     float: (lambda x: x),
     int: (lambda x: x),
     bool: (lambda x: str(x)),
+    RSDateTime: (lambda x: datetime_to_string(x)),
     pd.Timestamp: (lambda x: x.isoformat()),
     pd.Timedelta: (lambda x: x.total_seconds()),
     list: (lambda x: ", ".join(x)),
+}
+
+
+deserialize_fncs: Dict[Type[Any], Callable] = {
+    str: (lambda x: str(x)),
+    float: (lambda x: float(x)),
+    int: (lambda x: int(x)),
+    bool: (lambda x: x.lower() == "true"),
+    RSDateTime: (lambda x: to_datetime(x)),
+    pd.Timestamp: (lambda x: pd.Timestamp(x)),
+    pd.Timedelta: (lambda x: pd.Timedelta(x, "s")),
+    list: (lambda x: [y.strip() for y in x.split(",")]),
 }
 
 
@@ -35,10 +55,46 @@ def serialize(x: Any) -> Any:
     -------
     Any
         Serialized
+
+    Raises
+    ------
+    SerializationError
+        If type not supported
     """
+    from resistics.errors import SerializationError
+
     if type(x) not in serialize_fncs:
-        raise ValueError(f"Unable to serialize x with type {type(x)}")
+        raise SerializationError(x)
     fnc = serialize_fncs[type(x)]
+    return fnc(x)
+
+
+def deserialize(x: Any, expected_type: Type[Any]) -> Any:
+    """
+    Derialize a variable
+
+    Parameters
+    ----------
+    x : Any
+        Variable
+    expected_type : Type[Any]
+        The expected type for the variable
+
+    Returns
+    -------
+    Any
+        The derialized variable
+
+    Raises
+    ------
+    DeserializationError
+        If expected type not supported
+    """
+    from resistics.errors import DeserializationError
+
+    if expected_type not in deserialize_fncs:
+        raise DeserializationError(x, expected_type)
+    fnc = deserialize_fncs[expected_type]
     return fnc(x)
 
 
@@ -60,7 +116,7 @@ def is_file(file_path: Path) -> bool:
         logger.warning(f"File path {file_path} does not exist")
         return False
     if not file_path.is_file():
-        logger.warning(f"File path is not a file")
+        logger.warning(f"File path {file_path} is not a file")
         return False
     return True
 
@@ -107,7 +163,7 @@ def is_dir(dir_path: Path) -> bool:
         logger.warning(f"Directory path {dir_path} does not exist")
         return False
     if not dir_path.is_dir():
-        logger.warning(f"Directory path is not a file")
+        logger.warning(f"Directory path {dir_path} is not a directory")
         return False
     return True
 
@@ -144,7 +200,7 @@ def dir_contents(dir_path: Path) -> Tuple[List[Path], List[Path]]:
 
     Parameters
     ----------
-    path : Path
+    dir_path : Path
         Parent directory path
 
     Returns
@@ -187,7 +243,7 @@ def dir_files(dir_path: Path) -> List[Path]:
 
     Parameters
     ----------
-    path : str
+    dir_path : Path
         Parent directory path
 
     Returns
@@ -207,7 +263,7 @@ def dir_subdirs(dir_path: Path) -> List[Path]:
 
     Parameters
     ----------
-    path : str
+    dir_path : Path
         Parent directory path
 
     Returns
@@ -259,13 +315,11 @@ def is_electric(chan: str) -> bool:
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.common import is_electric
-        >>> is_electric("Ex")
-        True
-        >>> is_electric("Hx")
-        False
+    >>> from resistics.common import is_electric
+    >>> is_electric("Ex")
+    True
+    >>> is_electric("Hx")
+    False
     """
     if chan in electric_chans():
         return True
@@ -300,13 +354,11 @@ def is_magnetic(chan: str) -> bool:
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.common import is_magnetic
-        >>> is_magnetic("Ex")
-        False
-        >>> is_magnetic("Hx")
-        True
+    >>> from resistics.common import is_magnetic
+    >>> is_magnetic("Ex")
+    False
+    >>> is_magnetic("Hx")
+    True
     """
     if chan in magnetic_chans():
         return True
@@ -422,13 +474,11 @@ def lines_to_array(lines: List[str]) -> np.ndarray:
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.common import lines_to_array
-        >>> lines_to_array(["3 4", "4 5", "5 4"]) # doctest: +NORMALIZE_WHITESPACE
-        array([[3., 4.],
-               [4., 5.],
-               [5., 4.]])
+    >>> from resistics.common import lines_to_array
+    >>> lines_to_array(["3 4", "4 5", "5 4"]) # doctest: +NORMALIZE_WHITESPACE
+    array([[3., 4.],
+            [4., 5.],
+            [5., 4.]])
     """
     return np.array([x.split() for x in lines], dtype=float)
 
@@ -457,23 +507,22 @@ def array_to_string(
 
     Examples
     --------
-    .. doctest::
-
-        >>> import numpy as np
-        >>> from resistics.common import array_to_string
-        >>> data = np.array([1,2,3,4,5])
-        >>> array_to_string(data)
-        '1, 2, 3, 4, 5'
-        >>> data = np.array([1,2,3,4,5], dtype=np.float32)
-        >>> array_to_string(data)
-        '1.00000000, 2.00000000, 3.00000000, 4.00000000, 5.00000000'
-        >>> array_to_string(data, precision=3, scientific=True)
-        '1.000e+00, 2.000e+00, 3.000e+00, 4.000e+00, 5.000e+00'
+    >>> import numpy as np
+    >>> from resistics.common import array_to_string
+    >>> data = np.array([1,2,3,4,5])
+    >>> array_to_string(data)
+    '1, 2, 3, 4, 5'
+    >>> data = np.array([1,2,3,4,5], dtype=np.float32)
+    >>> array_to_string(data)
+    '1.00000000, 2.00000000, 3.00000000, 4.00000000, 5.00000000'
+    >>> array_to_string(data, precision=3, scientific=True)
+    '1.000e+00, 2.000e+00, 3.000e+00, 4.000e+00, 5.000e+00'
     """
     style: str = "e" if scientific else "f"
-    float_formatter = lambda x: f"{x:.{precision}{style}}"
     output_str = np.array2string(
-        data, separator=sep, formatter={"float_kind": float_formatter}
+        data,
+        separator=sep,
+        formatter={"float_kind": lambda x: f"{x:.{precision}{style}}"},
     )
     return output_str.lstrip("[").rstrip("]")
 
@@ -503,8 +552,8 @@ def list_to_string(lst: List[Any]) -> str:
         '1, 2, 3'
     """
     output_str = ""
-    for val in lst:
-        output_str += f"{val}, "
+    for value in lst:
+        output_str += f"{value}, "
     return output_str.strip().rstrip(",")
 
 
@@ -524,17 +573,16 @@ def list_to_ranges(data: Union[List, Set]) -> str:
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.common import list_to_ranges
-        >>> data = [1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 26, 35, 40, 45]
-        >>> list_to_ranges(data)
-        '1-4:1,6-12:2,15-24:3,26,35-45:5'
+    >>> from resistics.common import list_to_ranges
+    >>> data = [1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 26, 40, 45, 48, 49]
+    >>> list_to_ranges(data)
+    '1-4:1,6-12:2,15-24:3,26,40,45,48,49'
     """
-    lst = list(data) if isinstance(data, set) else data
-    lst = sorted(lst)
+    lst = sorted(list(data))
     n = len(lst)
-    formatter = lambda start, stop, step: f"{start}-{stop}:{step}"
+
+    def formatter(start, stop, step):
+        return f"{start}-{stop}:{step}"
 
     result = []
     scan = 0
@@ -554,21 +602,19 @@ def list_to_ranges(data: Union[List, Set]) -> str:
             result.append(formatter(lst[scan], lst[-1], step))
             return ",".join(result)
 
-    if n - scan == 1:
-        result.append(str(lst[scan]))
-    elif n - scan == 2:
-        result.append(",".join(map(str, lst[scan:])))
+    for jj in range(scan, n):
+        result.append(str(lst[jj]))
 
     return ",".join(result)
 
 
-def format_value(val: Any, format_type: Type) -> Any:
+def format_value(value: Any, format_type: Type[Any]) -> Any:
     """
     Format a value
 
     Parameters
     ----------
-    val : Any
+    value : Any
         The value to format
     format_type : Type
         The type to format to
@@ -585,36 +631,33 @@ def format_value(val: Any, format_type: Type) -> Any:
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.common import format_value
-        >>> format_value("5", int)
-        5
+    >>> from resistics.common import format_value
+    >>> format_value("5", int)
+    5
     """
-    if isinstance(val, format_type):
-        return val
+    if isinstance(value, format_type):
+        return value
     try:
-        val = format_type(val)
-    except:
-        raise TypeError(f"Unable to convert {val} to type {format_type}")
-    return val
+        value = deserialize(value, format_type)
+    except Exception:
+        raise TypeError(f"Unable to convert {value} to type {format_type}")
+    return value
 
 
-def format_dict(
-    in_dict: Dict[str, Any], specs: Dict[str, Dict[str, Any]]
-) -> Dict[str, Any]:
+def format_dict(in_dict: Dict[str, Any], specs: Spec) -> Dict[str, Any]:
     """
     Format the values in a dictionary
 
     .. warning::
 
-        If a key is not present in in_dict and is present in the specifications but without a default, a KeyError will be raised.
+        If a key is not present in in_dict and is present in the specifications
+        but without a default, a KeyError will be raised.
 
     Parameters
     ----------
     in_dict : Dict[str, Any]
         The dictionary to format
-    specs : Dict[str, Dict[str, Any]]
+    specs : Spec
         Dictionary mapping key to key specifications type and default value
 
     Returns
@@ -625,19 +668,18 @@ def format_dict(
     Raises
     ------
     KeyError
-        If a key in the specifications has no default and does not exist in the in_dict
+        If a key in the specifications has no default and does not exist in the
+        in_dict
 
     Examples
     --------
     An example where a default is provided for a missing header
 
-    .. doctest::
-
-        >>> from resistics.common import format_dict
-        >>> in_dict = {"a": "12", "b": "something"}
-        >>> specs = {"a": {"type": int, "default": 1}, "c": {"type": float, "default": -2.3}}
-        >>> format_dict(in_dict, specs)
-        {'a': 12, 'b': 'something', 'c': -2.3}
+    >>> from resistics.common import format_dict
+    >>> in_dict = {"a": "12", "b": "something"}
+    >>> specs = {"a": {"type": int, "default": 1}, "c": {"type": float, "default": -2.3}}
+    >>> format_dict(in_dict, specs)
+    {'a': 12, 'b': 'something', 'c': -2.3}
     """
     for key, spec in specs.items():
         if key in in_dict:
@@ -701,7 +743,7 @@ class ResisticsBase(object):
         """
         return self.type_to_string()
 
-    def summary(self, symbol_start: str = "*", symbol_end = "-") -> None:
+    def summary(self, symbol: str = "-") -> None:
         """
         Print a summary of the class
 
@@ -712,10 +754,9 @@ class ResisticsBase(object):
         """
         name = str(self.__class__)
         length = len(name) + 10
-        print(5 * symbol_start + "Start summary" + ((length - 18) * symbol_start))
-        print(5 * symbol_start + name + 5 * symbol_start)
+        print("##" + 3 * symbol + "Begin Summary" + ((length - 18) * symbol))
         print(self.to_string())
-        print(5 * symbol_end + "End summary" + (length - 16) * symbol_end)
+        print("##" + 3 * symbol + "End summary" + (length - 16) * symbol)
 
 
 class ResisticsData(ResisticsBase):
@@ -819,7 +860,7 @@ def get_process_record(
         messages = [messages]
     return ProcessRecord(
         {
-            "run_on_local": pd.Timestamp.now(None).isoformat(),
+            "run_on_local": pd.Timestamp.now(tz=None).isoformat(),
             "run_on_utc": pd.Timestamp.utcnow().isoformat(),
             "process": name,
             "parameters": parameters,
@@ -869,12 +910,6 @@ class ProcessHistory(ResisticsBase):
             A copy of the ProcessHistory
         """
         return ProcessHistory([x.copy() for x in self._records])
-
-    def to_record(self, record) -> ProcessRecord:
-        """
-        Convert the process history to a record, useful for when merging histories
-        """
-        raise NotImplementedError("Still to be implemented")
 
     def to_dict(self) -> Dict[str, ProcessRecord]:
         """
@@ -930,8 +965,9 @@ class ResisticsProcess(ResisticsBase):
     """
     Base class for resistics processes
 
-    Resistics processes perform operations on data (including read and write operations)
-    Each time a ResisticsProcess child class is run, it will add a process record to the dataset
+    Resistics processes perform operations on data (including read and write
+    operations). Each time a ResisticsProcess child class is run, it should add
+    a process record to the dataset
 
     The execution loop for a reistics process is:
 
@@ -958,7 +994,9 @@ class ResisticsProcess(ResisticsBase):
         """
         Return any process parameters
 
-        These parameters are expected to be primatives and should be sufficient to reinitialise the process and re-run the data. The base class assumes all class variables meet this description. This Shoul
+        These parameters are expected to be primatives and should be sufficient
+        to reinitialise the process and re-run the data. The base class assumes
+        all class variables meet this description.
 
         Returns
         -------
@@ -984,9 +1022,11 @@ class ResisticsProcess(ResisticsBase):
 
     def prepare(self):
         """
-        Any preparation logic should be placed in the prepare method of a child class
+        Any preparation logic should be placed in the prepare method of a child
+        class
 
-        Where no prepare logic is required, this method does not have to be implemented in child classes
+        Where no prepare logic is required, this method does not have to be
+        implemented in child classes
         """
         pass
 
@@ -1018,88 +1058,116 @@ class ResisticsProcess(ResisticsBase):
         return get_process_record(self.name, self.parameters(), messages)
 
 
-class Headers(ResisticsBase):
+class Metadata(ResisticsBase):
     """
-    A class for header data
+    A class for holding metadata for various data types
+
+    Internally, metadata is essentially a dictionary and has keys and values.
+    Given an appropriate set of specifications, it can ensure metadata values
+    have the appropriate type and will raise an error if they do not.
 
     Examples
     --------
-    .. doctest::
+    Initialising metadata
 
-        >>> from resistics.common import Headers
-        >>> headers_dict = {"a": "12", "b": "something"}
-        >>> headers = Headers(headers_dict)
-        >>> headers.to_dict()
-        {'a': '12', 'b': 'something'}
-        >>> headers.summary()
-        -----------Summary---------------
-        <class 'resistics.common.Headers'>
-        {'a': '12', 'b': 'something'}
-        ---------------------------------
-        >>> headers["a"]
-        '12'
-        >>> headers["a"] = 15
-        >>> headers.summary()
-        -----------Summary---------------
-        <class 'resistics.common.Headers'>
-        {'a': 15, 'b': 'something'}
-        ---------------------------------
+    >>> from resistics.common import Metadata
+    >>> metadata_dict = {"a": "12", "b": "something"}
+    >>> metadata = Metadata(metadata_dict)
+    >>> metadata.to_dict()
+    {'a': '12', 'b': 'something', 'describes': 'unknown'}
+    >>> metadata["a"]
+    '12'
+    >>> metadata["a"] = 15
+    >>> metadata.to_dict()
+    {'a': 15, 'b': 'something', 'describes': 'unknown'}
 
-    If specifications are provided, updating a header value will be checked against the specifications
+    If specifications are provided, updating a metadata value will be checked
+    against the specifications
 
-    .. doctest::
-
-        >>> from resistics.common import Headers
-        >>> headers_dict = {"a": "12", "b": "something"}
-        >>> spec = {"a": {"type": int, "default": 0}}
-        >>> headers = Headers(headers_dict, spec)
-        >>> headers.summary()
-        -----------Summary---------------
-        <class 'resistics.common.Headers'>
-        {'a': 12, 'b': 'something'}
-        ---------------------------------
-        >>> headers["a"] = "try to set to string"
-        Traceback (most recent call last):
-        ...
-        TypeError: Unable to convert try to set to string to type <class 'int'>
-        >>> headers["b"] = 12
-        >>> headers.summary()
-        -----------Summary---------------
-        <class 'resistics.common.Headers'>
-        {'a': 12, 'b': 12}
-        ---------------------------------
+    >>> from resistics.common import Metadata
+    >>> metadata_dict = {"a": "12", "b": "something"}
+    >>> spec = {"a": {"type": int, "default": 0}}
+    >>> metadata = Metadata(metadata_dict, spec)
+    >>> metadata.to_dict()
+    {'a': 12, 'b': 'something', 'describes': 'unknown'}
+    >>> metadata["a"] = "try to set to string"
+    Traceback (most recent call last):
+    ...
+    TypeError: Unable to convert try to set to string to type <class 'int'>
+    >>> metadata["b"] = 12
+    >>> metadata.to_dict()
+    {'a': 12, 'b': 12, 'describes': 'unknown'}
     """
 
     def __init__(
         self,
-        headers: Dict[str, Any],
-        specs: Optional[Dict[str, Dict[str, Any]]] = None,
+        metadata: Dict[str, Any],
+        specs: Optional[Spec] = None,
     ) -> None:
         """
-        Initialise headers
+        Initialise metadata
 
-        Providing a specifications dictionary will automatically format header values and insert default values for missing header keys.
+        Providing a specifications dictionary will automatically format metadata
+        values and insert default values for missing metadata keys.
+
+        Metadata makes a copy of the metadata to ensure changing it somewhere
+        else will leave it unaltered here. However, specifications are not
+        copied as these are assumed to remain constant in a run.
+
+        It is suggested to pass describes as a key with a single word value to
+        make it clear what the metadata describes. If no 'describes' key is
+        passed, one will be added with the value 'unknown'
 
         Parameters
         ----------
-        headers : Dict[str, Any]
-            Header dictionary
-        specs : Optional[Dict[str, Dict[str, Any]]], optional
-            Mapping of header value to a dictionary with type and default information, by default None. If no specifications are provided, no checking is done of header value type and no defaults are added for missing headers.
+        metadata : Dict[str, Any]
+            Metadata dictionary
+        specs : Optional[Specification], optional
+            Mapping of metadata key to a dictionary with type and default
+            information, by default None. If no specifications are provided, no
+            checking is done of header value type and no defaults are added for
+            missing metadata.
         """
-        self._headers = dict(headers)
+        import copy
+
+        self._metadata = copy.deepcopy(metadata)
         self._specs = specs
         if self._specs is not None:
-            self._headers = format_dict(self._headers, self._specs)
+            self._metadata = format_dict(self._metadata, self._specs)
+        # add a tag if one doesn't exist
+        if "describes" not in self._metadata:
+            self._metadata["describes"] = "unknown"
 
-    def __getitem__(self, header: str) -> Any:
+    def __iter__(self) -> Iterator:
         """
-        Get a header value
+        Get an iterator over the metadata keys
+
+        Returns
+        -------
+        Iterator
+            Iterator over keys
+        """
+        return self._metadata.__iter__()
+
+    def keys(self) -> List[str]:
+        """
+        Get the keys in the metadata
+
+        Returns
+        -------
+        List[str]
+            List of keys
+        """
+        return list(self._metadata.keys())
+
+    def __getitem__(self, key: str) -> Any:
+        """
+        Get a metadata value
 
         Parameters
         ----------
-        header : str
-            The header
+        key : str
+            The metadata key
 
         Returns
         -------
@@ -1108,51 +1176,48 @@ class Headers(ResisticsBase):
 
         Raises
         ------
-        HeaderNotFoundError
+        MetadataKeyNotFound
             If key does not exist
         """
-        from resistics.errors import HeaderNotFoundError
+        from resistics.errors import MetadataKeyNotFound
 
-        if header not in self._headers:
-            logger.error(f"{header} does not exist in headers")
-            raise HeaderNotFoundError(header, self.keys())
-        return self._headers[header]
+        if key not in self._metadata:
+            raise MetadataKeyNotFound(key, self.keys())
+        return self._metadata[key]
 
-    def __setitem__(self, header: str, val: Any) -> None:
+    def __setitem__(self, key: str, value: Any) -> None:
         """
-        Set a header value
+        Set the value of a metadata key
 
-        Type checking will be performed against a specification if available for the header. If no specification available for the header, the value will be added without checking
+        Type checking will be performed against a specification if available for
+        the key. If no specification is available for the key, the value will be
+        added without checking.
 
         Parameters
         ----------
-        header : str
-            The header
-        val : Any
-            The value to set the header to
+        key : str
+            The key
+        value : Any
+            The value
         """
-        if header not in self._headers:
-            logger.info(f"Adding new header {header} with value {val}")
-        if self._specs is not None and header in self._specs:
-            spec_type = self._specs[header]["type"]
-            logger.info(f"Specifications for this header, required type {spec_type}")
-            val = format_value(val, spec_type)
-        self._headers[header] = val
+        if key not in self._metadata:
+            logger.info(f"Adding new key {key} with value {value}")
+        if self._specs is not None and key in self._specs:
+            spec_type = self._specs[key]["type"]
+            logger.info(f"Specifications for this header, require type {spec_type}")
+            value = format_value(value, spec_type)
+        self._metadata[key] = value
 
-    def __iter__(self) -> Iterator:
-        """Get an iterator over the headers"""
-        return self._headers.__iter__()
-
-    def keys(self) -> List[str]:
+    def copy(self) -> "Metadata":
         """
-        Get a list of headers
+        Copy the metadata
 
         Returns
         -------
-        List[str]
-            A list of headers
+        Metadata
+            A copy of the metadata
         """
-        return list(self._headers.keys())
+        return Metadata(self.to_dict(), self._specs)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -1163,7 +1228,9 @@ class Headers(ResisticsBase):
         Dict
             Get a dictonary of the header key to header value
         """
-        return dict(self._headers)
+        import copy
+
+        return copy.deepcopy(self._metadata)
 
     def to_series(self) -> pd.Series:
         """
@@ -1172,9 +1239,10 @@ class Headers(ResisticsBase):
         Returns
         -------
         pd.Series
-            The headers as a pandas Series with headers as indices and values as the values
+            The headers as a pandas Series with headers as indices and values as
+            the values
         """
-        return pd.Series(self._headers)
+        return pd.Series(self._metadata)
 
     def to_string(self) -> str:
         """
@@ -1186,330 +1254,358 @@ class Headers(ResisticsBase):
             String representation of headers
         """
         outstr = f"{self.type_to_string()}\n"
-        return outstr + str(self._headers)
+        return outstr + str(self._metadata)
 
     def serialize(self) -> Dict[str, Any]:
         """
-        Serialize some of header entries to allow writing out as a json file
+        Serialize metadata values to allow writing out as a json file
+
+        .. warning::
+
+            This does not perform a full serialization but simply enough to
+            allow writing out with json
 
         Returns
         -------
         Dict[str, Any]
             Serialized dictionary
         """
-        output = {}
-        for header, val in self._headers.items():
-            header_type = type(val)
-            if header_type in serialize_fncs:
-                output[header] = serialize_fncs[header_type](val)
-            else:
-                output[header] = val
-        return output
+        return {key: serialize(value) for key, value in self._metadata.items()}
 
 
-def template_headers(
-    specs: Dict[str, Dict[str, Any]], vals: Optional[Dict[str, Any]] = None
-) -> Headers:
+def metadata_from_specs(
+    specs: Spec, overwrite: Optional[Dict[str, Any]] = None
+) -> Metadata:
     """
-    Get a template Headers instance given a set of header specifications (e.g. time, calibration) and optional override values.
+    Get a new Metadata instance given a set of key specifications
+    (e.g. time, calibration) and optional override values.
 
     Parameters
     ----------
-    specs : Dict[str, Dict[str, Any]]
-        Header specifications
-    vals : Optional[Dict[str, Any]], optional
-        Values for particular headers which will be used instead of defaults in the specification, by default None
+    specs : Spec
+        Key specifications
+    overwrite : Optional[Dict[str, Any]], optional
+        Override values for particular keys which will be used instead of
+        defaults in the specification, by default None
 
     Returns
     -------
-    Headers
-        A headers instance
+    Metadata
+        A metadata instance
     """
-    headers_dict = {}
-    for key, spec in specs.items():
-        headers_dict[key] = spec["default"]
-        if vals is not None and key in vals:
-            headers_dict[key] = vals[key]
-    return Headers(headers_dict, specs)
+    metadata_dict = {key: spec["default"] for key, spec in specs.items()}
+    if overwrite is not None:
+        for key, value in overwrite.items():
+            metadata_dict[key] = value
+    return Metadata(metadata_dict, specs)
 
 
-class DatasetHeaders(ResisticsBase):
-    """
-    Object for holding dataset headers, with some global dataset headers that apply to all channels and then some channel specific headers
+class MetadataGroup(ResisticsBase):
+    """Object for holding a group of metadata
+
+    This can be used for time data or other types of datasets which have
+    multiple Metadata. For example, time data has metadata which is
+    common to all channels (e.g. latitude, longitude) and then channel specific
+    metadata.
+
+    Each Metadata instance in the group is called an entry.
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.common import DatasetHeaders
-        >>> dataset = {"fs":512, "n_samples": 512000}
-        >>> channel = {"Ex": {"sensor": "MFS", "serial": 100}, "Ey": {"sensor": "Phnx", "serial": 20}}
-        >>> headers = DatasetHeaders(dataset, channel)
-        >>> headers.summary() # doctest: +NORMALIZE_WHITESPACE
-        -----------Summary---------------
-        <class 'resistics.common.DatasetHeaders'>
-        Dataset headers
-                <class 'resistics.common.Headers'>
-                {'fs': 512, 'n_samples': 512000}
-        Channel Ex headers
-                <class 'resistics.common.Headers'>
-                {'sensor': 'MFS', 'serial': 100}
-        Channel Ey headers
-                <class 'resistics.common.Headers'>
-                {'sensor': 'Phnx', 'serial': 20}
-        ---------------------------------
-        >>> headers["fs"]
-        512
-        >>> headers["Ex", "sensor"]
-        'MFS'
-        >>> headers["fs"] = 128
-        >>> headers["Ex", "sensor"] = "this is a test"
-        >>> headers.summary() # doctest: +NORMALIZE_WHITESPACE
-        -----------Summary---------------
-        <class 'resistics.common.DatasetHeaders'>
-        Dataset headers
-                <class 'resistics.common.Headers'>
-                {'fs': 128, 'n_samples': 512000}
-        Channel Ex headers
-                <class 'resistics.common.Headers'>
-                {'sensor': 'this is a test', 'serial': 100}
-        Channel Ey headers
-                <class 'resistics.common.Headers'>
-                {'sensor': 'Phnx', 'serial': 20}
-        ---------------------------------
+    >>> from resistics.common import MetadataGroup
+    >>> group = {}
+    >>> group["common"] = {"fs":512, "n_samples": 512000}
+    >>> group["Ex"] = {"sensor": "MFS", "serial": 100}
+    >>> group["Ey"] = {"sensor": "Phnx", "serial": 20}
+    >>> metadata_grp = MetadataGroup(group)
+    >>> metadata_grp.summary()
+    ##---Begin Summary--------------------------------
+    <class 'resistics.common.MetadataGroup'>
+    Entry 'common' metadata
+            <class 'resistics.common.Metadata'>
+            {'fs': 512, 'n_samples': 512000, 'describes': 'unknown'}
+    Entry 'Ex' metadata
+            <class 'resistics.common.Metadata'>
+            {'sensor': 'MFS', 'serial': 100, 'describes': 'unknown'}
+    Entry 'Ey' metadata
+            <class 'resistics.common.Metadata'>
+            {'sensor': 'Phnx', 'serial': 20, 'describes': 'unknown'}
+    ##---End summary----------------------------------
+    >>> metadata_grp["common", "fs"]
+    512
+    >>> metadata_grp["Ex", "sensor"]
+    'MFS'
+    >>> metadata_grp["common", "fs"] = 128
+    >>> metadata_grp["Ex", "sensor"] = "this is a test"
+    >>> metadata_grp.summary()
+    ##---Begin Summary--------------------------------
+    <class 'resistics.common.MetadataGroup'>
+    Entry 'common' metadata
+            <class 'resistics.common.Metadata'>
+            {'fs': 128, 'n_samples': 512000, 'describes': 'unknown'}
+    Entry 'Ex' metadata
+            <class 'resistics.common.Metadata'>
+            {'sensor': 'this is a test', 'serial': 100, 'describes': 'unknown'}
+    Entry 'Ey' metadata
+            <class 'resistics.common.Metadata'>
+            {'sensor': 'Phnx', 'serial': 20, 'describes': 'unknown'}
+    ##---End summary----------------------------------
     """
 
     def __init__(
         self,
-        dataset_headers: Dict[str, Any],
-        chan_headers: Dict[str, Dict[str, Any]],
-        dataset_specs: Optional[Dict[str, Dict[str, Any]]] = None,
-        chan_specs: Optional[Dict[str, Dict[str, Any]]] = None,
+        group: Union[Dict[str, Metadata], Dict[str, Dict[str, Any]]],
+        specs: Optional[Spec] = None,
     ) -> None:
         """
-        Initialise dataset headers
+        Initialise with a group and a single specification
+
+        The same specification will be used for all entries in the group. Where
+        different specifications are required, more can be added using the
+        add_entry method
 
         Parameters
         ----------
-        dataset_headers : Dict[str, Any]
-            The overall dataset headers as a dictionary
-        chan_headers : Dict[str, Dict[str, Any]]
-            The individual channel headers as a dictionary of dictionaries
-        dataset_specs : Optional[Dict[str, Dict[str, Any]]], optional
-            Specifications for the dataset headers, by default None
-        chan_specs : Optional[Dict[str, Dict[str, Any]]], optional
-            Specifications mapping for channel headers, by default None
+        group : Union[Dict[str, Metadata], Dict[str, Dict[str, Any]]]
+            Dictionary mapping to Metadata or to dictionaries to be converted to
+            Metadata
+        specs : Optional[Spec], optional
+            The specifications, by default None
         """
-        self._dataset_headers = Headers(dataset_headers, dataset_specs)
-        self._chan_headers = dict()
-        for chan, chan_header in chan_headers.items():
-            self._chan_headers[chan] = Headers(chan_header, chan_specs)
-        self.chans = list(self._chan_headers.keys())
+        self._group: Dict[str, Metadata] = {}
+        self.add_entries(group, specs)
 
-    def dataset_keys(self) -> List[str]:
+    def __iter__(self) -> Iterator:
         """
-        Get dataset header keys
+        Iterator over the entries
+
+        Returns
+        -------
+        Iterator
+            An iterator over the entries
+        """
+        return self._group.__iter__()
+
+    def entries(
+        self, describes: Optional[Union[str, Collection[str]]] = None
+    ) -> List[str]:
+        """
+        Get a list of entries in the group
+
+        Parameters
+        ----------
+        describes : Optional[Union[str, Collection[str]]], optional
+            Restrict to entries which describe the same thing, by default None.
+            For example, pull out entries that describe channels.
 
         Returns
         -------
         List[str]
-            Dataset header keys
+            List of entries
         """
-        return self._dataset_headers.keys()
-
-    def chan_keys(self, chan: str) -> List[str]:
-        """
-        Get the header keys for a channel
-
-        Parameters
-        ----------
-        chan : str
-            The channel
-
-        Returns
-        -------
-        List[str]
-            A list of header keys
-        """
-        return self._chan_headers[chan].keys()
+        entries = self._group.keys()
+        if describes is None:
+            return list(entries)
+        if isinstance(describes, str):
+            return [x for x in entries if self._group[x]["describes"] == describes]
+        return [x for x in entries if self._group[x]["describes"] in describes]
 
     def __getitem__(self, args: Union[str, Tuple[str, str]]) -> Any:
         """
-        Get a dataset or channel header
-
-        If one argument is provided, this is considred to be a dataset header.
-        If two arguments are provided, this is considered to be the channel in argument 0 and the header in argument 1.
+        Get a either a Metadata or a key value from a Metadata
 
         Parameters
         ----------
-        args : Union[Tuple[str], Tuple[str, str]]
-            Single header for a dataset header, i.e. [header_name] or [chan, header_name] for a channel header
+        args : Union[str, Tuple[str, str]]
+            The arguments. Argument one must be the name of an entry. Argument
+            two is optional and a key in the entry Metadata
 
         Returns
         -------
         Any
-            Header value
+            Metadata if only an entry is passed, other the value of a metadata
+            entry key
 
         Raises
         ------
         ValueError
-            If the number of arguments is greater than two
+            If the arguments have been incorrectly specified
         """
         if isinstance(args, str):
-            return self.dataset(args)
+            return self.get_entry(args)
         elif isinstance(args, tuple) and len(args) == 2:
-            return self.chan(args[0], args[1])
-        if len(args) > 2:
-            raise ValueError("Arguments are have been incorrectly specified")
+            return self.get_entry(args[0])[args[1]]
+        else:
+            raise ValueError(f"Arguments {args} have been incorrectly specified")
 
-    def __setitem__(self, key: Union[str, Tuple[str, str]], val: Any) -> None:
+    def get_entry(self, entry: str) -> Metadata:
         """
-        Set a header for datasets or specific channels
-
-        If two arguments are provided, this will attempt to set the value of a dataset header.
-        If three arguments are provided, this will attempt to set the value of a channel (argument 0) header (argument 1).
+        Get a metadata entry
 
         Parameters
         ----------
-        key : Union[str, Tuple[str, str]]
-            The header for a dataset header or a Tuple [str, str] for channel headers, the first string specifying the channel and the second specifyig the channel header
-        val : Any
-            The value to set the header to
+        entry : str
+            Entry name
+
+        Returns
+        -------
+        Metadata
+            A metdata
+
+        Raises
+        ------
+        MetadataEntryNotFound
+            If the entry is not part of the MetadataGroup
+        """
+        from resistics.errors import MetadataEntryNotFound
+
+        if entry not in self._group:
+            raise MetadataEntryNotFound(entry, self.entries())
+        return self._group[entry]
+
+    def __setitem__(
+        self, args: Union[str, Tuple[str, str]], value: Union[Metadata, Any]
+    ) -> None:
+        """
+        Set either an entry or the value of a key in an entry
+
+        Parameters
+        ----------
+        args : Union[str, Tuple[str, str]]
+            The arguments. One argument must be the name of an entry. The second
+            is optional and should be the name of a key in Metadata.
+        value : Union[Metadata, Any]
+            If only an entry is passed, this should be a Metadata. Otherwise,
+            when setting the value of a Metadata key, this should be a value.
 
         Raises
         ------
         ValueError
-            If less than two or more than three arguments are received
+            If the arguments have been incorrectly specified
         """
-        if isinstance(key, str):
-            return self.set_dataset(key, val)
-        elif isinstance(key, tuple) and len(key) == 2:
-            chan, header = key
-            return self.set_chan(chan, header, val)
+        if isinstance(args, str):
+            self.set_entry(args, value)
+        elif len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], str):
+            self.get_entry(args[0])[args[1]] = value
         else:
-            raise ValueError("Arguments are have been incorrectly specified")
+            raise ValueError(f"Arguments {args} have been incorrectly specified")
 
-    def dataset(self, header: str) -> Any:
+    def set_entry(self, entry: str, metadata: Metadata) -> None:
         """
-        Get a dataset header
+        Set an entry to a new metadata
+
+        Note that setting entry Metadata makes a copy so if it is changed
+        elsewhere, those changes will not be reflected in the MetadataGroup
 
         Parameters
         ----------
-        header : str
-            The header name
+        entry : str
+            The entry
+        metadata : Metadata
+            The metdata to set the entry to
+
+        Raises
+        ------
+        MetadataEntryNotFound
+            If the entry is not found. This method cannot be used for adding new
+            entries. The add_entry method should be used to add new entries.
+        """
+        from resistics.errors import MetadataEntryNotFound
+
+        if entry not in self._group:
+            raise MetadataEntryNotFound(
+                entry,
+                self.entries(),
+                "Entry does not exist. Use add_entry to add a new entry",
+            )
+        self._group[entry] = metadata.copy()
+
+    def add_entries(
+        self,
+        group: Union[Dict[str, Metadata], Dict[str, Dict[str, Any]]],
+        specs: Optional[Spec] = None,
+    ) -> None:
+        """
+        Add entries to the MetadataGroup
+
+        If an entry is provided as Metadata, it is added without modification.
+        If an entry is provided as a dictionary, the specification will be
+        applied if it is passed.
+
+        Parameters
+        ----------
+        group : Union[Dict[str, Metadata], Dict[str, Dict[str, Any]]]
+            Group of metadata
+        specs : Optional[Spec], optional
+            Specifications which will be applied to any entry passed as a
+            dictionary, by default None
+        """
+        for entry, entry_metadata in group.items():
+            if isinstance(entry_metadata, Metadata):
+                self.add_entry(entry, entry_metadata)
+            elif isinstance(entry, dict) and specs is not None:
+                self.add_entry(entry, Metadata(entry_metadata, specs))
+            else:
+                self.add_entry(entry, Metadata(entry_metadata))
+
+    def add_entry(self, entry: str, entry_metadata: Metadata) -> None:
+        """
+        Add an entry to the MetadataGroup
+
+        Parameters
+        ----------
+        entry : str
+            The name of the entry
+        entry_metadata : Metadata
+            The entry metadata
+
+        Raises
+        ------
+        MetadataEntryAlreadyExists
+            If the entry already exists. In this case, set entry should be used
+            instead
+        """
+        from resistics.errors import MetadataEntryAlreadyExists
+
+        if entry in self._group:
+            raise MetadataEntryAlreadyExists(
+                entry, self.entries(), "Use set_entry to change an existing entry"
+            )
+        self._group[entry] = entry_metadata.copy()
+
+    def copy(self) -> "MetadataGroup":
+        """
+        Get a copy of the MetadataGroup
 
         Returns
         -------
-        Any
-            The header value
-
-        Raises
-        ------
-        KeyError
-            If header does not exist
+        MetadataGroup
+            A copy
         """
-        if header not in self._dataset_headers:
-            raise KeyError(f"Unknown header {header}")
-        return self._dataset_headers[header]
-
-    def set_dataset(self, header: str, val: Any) -> None:
-        """
-        Set a dataset header value
-
-        Parameters
-        ----------
-        header : str
-            The header name
-        val : Any
-            The new value
-
-        Raises
-        ------
-        KeyError
-            If header does not exist
-        """
-        if header not in self._dataset_headers:
-            raise KeyError(f"Unknown header {header}")
-        self._dataset_headers[header] = val
-
-    def chan(self, chan: str, header: str) -> Any:
-        """
-        Get a channel header
-
-        Parameters
-        ----------
-        chan : str
-            The channel
-        header : str
-            The header name
-
-        Returns
-        -------
-        Any
-            The header value
-
-        Raises
-        ------
-        KeyError
-            If the channel header does not exist
-        """
-        check_chan(chan, self.chans)
-        if header not in self._chan_headers[chan]:
-            raise KeyError(f"Header {header} not found for channel {chan}")
-        return self._chan_headers[chan][header]
-
-    def set_chan(self, chan: str, header: str, val: Any) -> None:
-        """
-        Set a channel header value
-
-        Parameters
-        ----------
-        chan : str
-            The channel
-        header : str
-            The header name
-        val : Any
-            The header value
-        Raises
-        ------
-        KeyError
-            If the channel header does not exist
-        """
-        check_chan(chan, self.chans)
-        if header not in self._chan_headers[chan]:
-            raise KeyError(f"Header {header} not found for channel {chan}")
-        self._chan_headers[chan][header] = val
-
-    def copy(self) -> "DatasetHeaders":
-        """
-        Get a copy of the dataset headers
-
-        Returns
-        -------
-        DatasetHeaders
-            A copy of the dataset headers
-        """
-        headers_dict = self.to_dict()
-        return DatasetHeaders(headers_dict["dataset"], headers_dict["channel"])
+        return MetadataGroup(
+            {
+                entry: entry_metadata.copy()
+                for entry, entry_metadata in self._group.items()
+            }
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Get the dataset headers as a dictionary
+        Get the MetadataGroup as a dictionary
 
         Returns
         -------
         Dict[str, Any]
-            Dataset headers as dictionary
+            MetadataGroup as dictionary
         """
-        header_dict = {"dataset": self._dataset_headers.to_dict()}
-        header_dict["channel"] = {}
-        for chan, chan_header in self._chan_headers.items():
-            header_dict["channel"][chan] = chan_header.to_dict()
-        return header_dict
+        return {
+            entry: entry_metadata.to_dict()
+            for entry, entry_metadata in self._group.items()
+        }
 
     def to_string(self) -> str:
         """
-        Get string representation of dataset headers
+        Get string representation of MetadataGroup
 
         Returns
         -------
@@ -1517,80 +1613,68 @@ class DatasetHeaders(ResisticsBase):
             Class information as a string
         """
         outstr = f"{self.type_to_string()}\n"
-        outstr += "Dataset headers\n"
-        header_string = self._dataset_headers.to_string()
-        header_string = header_string.replace("\n", "\n\t")
-        outstr += f"\t{header_string}\n"
-        for chan in self._chan_headers:
-            outstr += f"Channel {chan} headers\n"
-            header_string = self._chan_headers[chan].to_string()
-            header_string = header_string.replace("\n", "\n\t")
-            outstr += f"\t{header_string}\n"
-        outstr = outstr.rstrip("\n")
-        return outstr
+        for entry, entry_metadata in self._group.items():
+            outstr += f"Entry '{entry}' metadata\n"
+            outstr += "\t" + entry_metadata.to_string().replace("\n", "\n\t")
+            outstr += "\n"
+        return outstr.rstrip("\n")
 
     def serialize(self) -> Dict[str, Any]:
         """
-        Get the dataset headers as a serialized dictionary
+        Get the MetadataGroup as a serialized dictionary
+
+        .. warning::
+
+            This does not perform a full serialization but simply enough to
+            allow writing out with json
 
         Returns
         -------
         Dict[str, Any]
-            Dataset headers as dictionary
+            MetadataGroup converted to a serialized dictionary that can be saved
         """
-        header_dict = {"dataset": self._dataset_headers.serialize()}
-        header_dict["channel"] = {}
-        for chan, chan_header in self._chan_headers.items():
-            header_dict["channel"][chan] = chan_header.serialize()
-        return header_dict
+        return {
+            entry: entry_metadata.serialize()
+            for entry, entry_metadata in self._group.items()
+        }
 
 
-def template_dataset_headers(
-    chans: List[str],
-    dataset_specs: Dict[str, Dict[str, Any]],
-    chan_specs: Dict[str, Dict[str, Any]],
-    dataset_vals: Optional[Dict[str, Any]] = None,
-    chan_vals: Optional[Dict[str, Dict[str, Any]]] = None,
-) -> DatasetHeaders:
+def metadata_group_from_specs(
+    specs_grp: Dict[str, Spec],
+    overwrite: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> MetadataGroup:
     """
-    Get a template DatasetHeaders
+    Create a new MetadataGroup from a group of specifications
 
     Parameters
     ----------
-    chans : List[str]
-        Channels in the dataset
-    dataset_specs : Dict[str, Dict[str, Any]]
-        Specifications for the dataset header
-    chan_specs : Dict[str, Dict[str, Any]]
-        Specifications for the channel headers
-    dataset_vals : Optional[Dict[str, Any]], optional
-        Any known values for the dataset headers, by default None
-    chan_vals : Optional[Dict[str, Dict[str, Any]]], optional
-        Any known values for the channel headers, by default None
+    specs_grp : Dict[str, Spec]
+        Group of specifications
+    overwrite : Optional[Dict[str, Dict[str, Any]]], optional
+        Any override values, by default None
 
     Returns
     -------
-    DatasetHeaders
-        The DatasetHeader
+    MetadataGroup
+        The new MetadataGroup
     """
-    dataset_headers = template_headers(dataset_specs, dataset_vals).to_dict()
-    chan_headers = {}
-    for chan in chans:
-        vals = None
-        if chan_vals is not None and chan in chan_vals:
-            vals = chan_vals[chan]
-        chan_headers[chan] = template_headers(chan_specs, vals).to_dict()
-    return DatasetHeaders(dataset_headers, chan_headers, dataset_specs, chan_specs)
+    metadata = {}
+    for entry, specs in specs_grp.items():
+        if overwrite is not None and entry in overwrite:
+            metadata[entry] = metadata_from_specs(specs, overwrite[entry])
+        else:
+            metadata[entry] = metadata_from_specs(specs)
+    return MetadataGroup(metadata)
 
 
-def headers_to_json(headers: Union[Headers, DatasetHeaders], json_path: Path) -> None:
+def metadata_to_json(metadata: Union[Metadata, MetadataGroup], json_path: Path) -> None:
     """
-    Write a header to a file
+    Write a metadata to a file
 
     Parameters
     ----------
-    headers : Union[Header, DatasetHeader]
-        A header or dataset header
+    metadata : Union[Metadata, MetadataGroup]
+        A Metadata or MetadataGroup instance
     json_path : Path
         The path to write to
     """
@@ -1600,19 +1684,19 @@ def headers_to_json(headers: Union[Headers, DatasetHeaders], json_path: Path) ->
 
     out_dict = {
         "created_by": "resistics",
-        "created_on_local": serialize_fncs[pd.Timestamp](pd.Timestamp.now(tz=None)),
-        "created_on_utc": serialize_fncs[pd.Timestamp](pd.Timestamp.utcnow()),
+        "created_on_local": serialize(pd.Timestamp.now(tz=None)),
+        "created_on_utc": serialize(pd.Timestamp.utcnow()),
         "version": resistics.__version__,
-        "type": headers.type_to_string(),
-        "content": headers.serialize(),
+        "type": metadata.type_to_string(),
+        "content": metadata.serialize(),
     }
     with json_path.open("w") as f:
         json.dump(out_dict, f)
 
 
-def json_to_headers(json_path: Path) -> Union[Headers, DatasetHeaders]:
+def json_to_metadata(json_path: Path) -> Union[Metadata, MetadataGroup]:
     """
-    Read headers from a json file
+    Read metadata from a json file
 
     Parameters
     ----------
@@ -1621,30 +1705,30 @@ def json_to_headers(json_path: Path) -> Union[Headers, DatasetHeaders]:
 
     Returns
     -------
-    Union[Headers, DatasetHeaders]
-        Returns Headers or DatasetHeaders depending on type of headers in the file
+    Union[Metadata, MetadataGroup]
+        Returns Metadata or MetadataGroup depending on contents of file
 
     Raises
     ------
-    ValueError
+    MetadataReadError
         If JSON file is unrecognised header type
     """
     import json
+    from resistics.errors import MetadataReadError
 
     with json_path.open("r") as f:
         json_data = json.load(f)
-    header_type = json_data["type"]
+    metadata_type = json_data["type"]
     content = json_data["content"]
-    if "DatasetHeaders" in header_type:
-        logger.info(f"Found DatasetHeaders in file {json_path}")
-        dataset = content["dataset"]
-        channel = content["channel"]
-        return DatasetHeaders(dataset, channel)
-    elif "Headers" in header_type:
-        return Headers(content)
+    if "MetadataGroup" in metadata_type:
+        logger.info(f"Found MetadataGroup in file {json_path}")
+        return MetadataGroup(content)
+    elif "Metadata" in metadata_type:
+        logger.info(f"Found Metadata in file {json_path}")
+        return Metadata(content)
     else:
-        logger.error(f"Unrecognised type of headers in {json_path}")
-        raise ValueError(f"Unable to read headers in {json_path}")
+        logger.error(f"Unrecognised type of metadata in {json_path}")
+        raise MetadataReadError(json_path)
 
 
 def history_to_json(history: ProcessHistory, json_path: Path) -> None:
@@ -1664,8 +1748,8 @@ def history_to_json(history: ProcessHistory, json_path: Path) -> None:
 
     out_dict = {
         "created_by": "resistics",
-        "created_on_local": serialize_fncs[pd.Timestamp](pd.Timestamp.now(tz=None)),
-        "created_on_utc": serialize_fncs[pd.Timestamp](pd.Timestamp.utcnow()),
+        "created_on_local": serialize(pd.Timestamp.now(tz=None)),
+        "created_on_utc": serialize(pd.Timestamp.utcnow()),
         "version": resistics.__version__,
         "type": history.type_to_string(),
         "content": history.to_dict(),
