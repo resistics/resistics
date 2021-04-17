@@ -26,7 +26,7 @@ serialize_fncs: Dict[Type[Any], Callable] = {
     RSDateTime: (lambda x: datetime_to_string(x)),
     pd.Timestamp: (lambda x: x.isoformat()),
     pd.Timedelta: (lambda x: x.total_seconds()),
-    list: (lambda x: ", ".join(x)),
+    list: (lambda x: list_to_string(x)),
 }
 
 

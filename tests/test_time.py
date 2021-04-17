@@ -1,5 +1,4 @@
 import pytest
-import pandas as pd
 import numpy as np
 
 from resistics.time import TimeData
@@ -19,9 +18,11 @@ from resistics.testing import time_data_simple, time_data_random
 )
 def test_time_data(fs: float, n_samples: int, first_time: str, time_data: TimeData):
     """Test time data"""
+    from resistics.sampling import to_datetime, to_timedelta
+
     chans = ["Ex", "Ey", "Hx", "Hy"]
-    first_time = pd.Timestamp(first_time)
-    last_time = first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1)
+    first_rstime = to_datetime(first_time)
+    last_rstime = first_rstime + to_timedelta(1 / fs) * (n_samples - 1)
 
     assert time_data.chans == chans
     assert time_data.n_samples == n_samples
@@ -29,9 +30,9 @@ def test_time_data(fs: float, n_samples: int, first_time: str, time_data: TimeDa
     assert time_data.fs == fs
     assert time_data.dt == 1 / fs
     assert time_data.nyquist == fs / 2
-    assert time_data.first_time == first_time
-    assert time_data.last_time == last_time
-    assert time_data.duration == last_time - first_time
+    assert time_data.first_time == first_rstime
+    assert time_data.last_time == last_rstime
+    assert time_data.duration == last_rstime - first_rstime
     # data frame
     for idx, chan in enumerate(time_data.chans):
         np.testing.assert_equal(

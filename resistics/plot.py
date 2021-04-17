@@ -9,23 +9,31 @@ def lttb_downsample(
     x: np.ndarray, y: np.ndarray, max_pts: int = 5000
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Downsample a pandas Series using the Largest-Triangle-Three-Buckets algorithm
+    Downsample x, y for visualisation
 
     Parameters
     ----------
-    series : pd.Series
-        A pandas Series with a datetime index
+    x : np.ndarray
+        x array
+    y : np.ndarray
+        y array
     max_pts : int, optional
-        The maximum number of points to return, by default 5000
+        Maximum number of points after downsampling, by default 5000
 
     Returns
     -------
-    pd.Series
-        A downsampled pandas Series
+    Tuple[np.ndarray, np.ndarray]
+        (new_x, new_y), the downsampled x and y arrays
+
+    Raises
+    ------
+    ValueError
+        If the size of x does not match the size of y
     """
     import lttbc
 
-    assert x.size == y.size
+    if x.size != y.size:
+        raise ValueError(f"x size {x.size} must equal y size {y.size}")
 
     if max_pts >= x.size:
         return x, y
@@ -56,7 +64,8 @@ def figure_columns_as_lines(
     y_labels : Dict[str, str]
         y labels for each subplot, with subplot as key and label as value
     x_label : str
-        The x label, assumed to be the same for all subplots as this is for columnar data
+        The x label, assumed to be the same for all subplots as this is for
+        columnar data
     title : Union[str, None], optional
         Title of the figure, by default None
 
@@ -64,10 +73,16 @@ def figure_columns_as_lines(
     -------
     go.Figure
         A plotly figure
+
+    Raises
+    ------
+    ValueError
+        If the ylabels specification does not match the subplot specification
     """
     from plotly.subplots import make_subplots
 
-    assert set(subplots) == set(y_labels.keys())
+    if set(subplots) == set(y_labels.keys()):
+        raise ValueError(f"Mismatch between ylabels {y_labels} and subplots {subplots}")
     if title is None:
         title = "Data plot"
 
