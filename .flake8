@@ -6,4 +6,5 @@ ignore = B950,E203,E501,W503
 per-file-ignores = tests/*:S101
 # others
 max-line-length = 88
-max-complexity = 12
+max-complexity = 10
+max-cognitive-complexity = 10
