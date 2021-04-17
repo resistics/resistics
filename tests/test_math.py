@@ -119,7 +119,7 @@ def test_smoother() -> None:
     assert np.array_equal(data, sm.smooth(data))
 
     # do a smooth
-    sm = Smoother(5)
+    sm = Smoother(5, window="boxcar")
     data = np.array([10, 5, 7, 9, 7, 8, 6, 7, 4, 2, 4, 6])
-    expected = np.array([8.75, 6.75, 7, 8, 7.75, 7.25, 6.75, 6, 4.25, 3, 4, 5.5])
-    assert np.array_equal(sm.smooth(data), expected)
+    expected = np.array([8.4, 8.2, 7.6, 7.2, 7.4, 7.4, 6.4, 5.4, 4.6, 4.6, 4.4, 4.8])
+    np.testing.assert_array_almost_equal(sm.smooth(data), expected)

@@ -1,5 +1,4 @@
-from typing import Union, Tuple, List
-import pandas as pd
+from typing import Union, List
 import numpy as np
 
 from resistics.common import ResisticsProcess
@@ -30,11 +29,9 @@ def intdiv(nom: Union[int, float], div: Union[int, float]) -> int:
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.math import intdiv
-        >>> intdiv(12, 3)
-        4
+    >>> from resistics.math import intdiv
+    >>> intdiv(12, 3)
+    4
     """
     if nom % div == 0:
         return nom // div
@@ -89,11 +86,9 @@ def pad_to_power2(nsamples: int) -> int:
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.math import pad_to_power2
-        >>> pad_to_power2(14)
-        2
+    >>> from resistics.math import pad_to_power2
+    >>> pad_to_power2(14)
+    2
     """
     import math
 
@@ -110,7 +105,9 @@ def fft(data: np.ndarray, norm: bool = True):
     data : np.ndarray
         Time array to be transformed
     norm : bool, optional
-        Normalization mode. Default is None, meaning no normalization on the forward transforms and scaling by 1/n on the ifft. For norm="ortho", both directions are scaled by 1/sqrt(n).
+        Normalization mode. Default is None, meaning no normalization on the
+        forward transforms and scaling by 1/n on the ifft. For norm="ortho",
+        both directions are scaled by 1/sqrt(n).
 
     Returns
     -------
@@ -134,7 +131,9 @@ def ifft(data: np.ndarray, nsamples: int, norm: bool = True):
     nsamples : int
         Length of output time data (to remove padding)
     norm : bool, optional
-        Normalization mode. Default is None, meaning no normalization on the forward transforms and scaling by 1/n on the ifft. For norm="ortho", both directions are scaled by 1/sqrt(n).
+        Normalization mode. Default is None, meaning no normalization on the
+        forward transforms and scaling by 1/n on the ifft. For norm="ortho",
+        both directions are scaled by 1/sqrt(n).
 
     Returns
     -------
@@ -185,11 +184,9 @@ def smooth_length(nsamples: int, proportion: float = 16.0) -> int:
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.math import smooth_length
-        >>> smooth_length(128, 16)
-        9
+    >>> from resistics.math import smooth_length
+    >>> smooth_length(128, 16)
+    9
     """
     length = int(nsamples // proportion)
     if length <= 3:
@@ -202,14 +199,20 @@ def smooth_length(nsamples: int, proportion: float = 16.0) -> int:
 
 class Smoother(ResisticsProcess):
     def __init__(self, length: int, window: str = "hann"):
-        """Initialise the smoother with a length and window
+        """
+        Smooth data
 
         Parameters
         ----------
-        smooth_lenght : int
+        length : int
             Smoothing length
         window : str, optional
-            Smoothing window, by default "hann"
+            Smoothing window to use, by default "hann"
+
+        Raises
+        ------
+        ValueError
+            If the length is even
         """
         import scipy.signal as signal
 
@@ -218,16 +221,14 @@ class Smoother(ResisticsProcess):
         self._length: int = length
         self._window: str = window
         # get the window weights
-        if self._window == "flat":
-            self._window_weights = np.ones(self._length, "d")
-        else:
-            self._window_weights = eval("signal." + window + f"({self._length})")
+        self._window_weights = signal.get_window(window, self._length)
         self._convolve_weights = self._window_weights / self._window_weights.sum()
         # calculate offset for recovering data
         self._smoothed_offset = self._length + intdiv((self._length - 1), 2)
 
     def smooth(self, data: np.ndarray) -> np.ndarray:
-        """Smooth a 1-D array
+        """
+        Smooth a 1-D array
 
         Parameters
         ----------
@@ -238,6 +239,13 @@ class Smoother(ResisticsProcess):
         -------
         np.ndarray
             Smoothed array
+
+        Raises
+        ------
+        ValueError
+            If not a 1-D array
+        ValueError
+            If window size > array size
         """
         if data.ndim != 1:
             raise ValueError("smooth only accepts 1 dimension arrays.")
