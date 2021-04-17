@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 from attotime import attodatetime, attotimedelta
 
+DateTimeLike = Union[str, pd.Timestamp, datetime]
+TimeDeltaLike = Union[float, timedelta, pd.Timedelta]
 RSDateTime = attodatetime
 RSTimeDelta = attotimedelta
 
@@ -32,12 +34,10 @@ def datetime_to_string(time: RSDateTime) -> str:
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.sampling import to_datetime, to_timedelta, datetime_to_string
-        >>> time = to_datetime("2021-01-01") + to_timedelta(1/16384)
-        >>> datetime_to_string(time)
-        '2021-01-01 00:00:00.000061_035156_250000_000000'
+    >>> from resistics.sampling import to_datetime, to_timedelta, datetime_to_string
+    >>> time = to_datetime("2021-01-01") + to_timedelta(1/16384)
+    >>> datetime_to_string(time)
+    '2021-01-01 00:00:00.000061_035156_250000_000000'
     """
     return time.strftime("%Y-%m-%d %H:%M:%S.%f_%o_%q_%v")
 
@@ -57,21 +57,21 @@ def datetime_from_string(time: str) -> RSDateTime:
     RSDateTime
         The resistics datetime
 
-    .. doctest::
-
-        >>> from resistics.sampling import to_datetime, to_timedelta
-        >>> from resistics.sampling import datetime_to_string, datetime_from_string
-        >>> time = to_datetime("2021-01-01") + to_timedelta(1/16384)
-        >>> time_str = datetime_to_string(time)
-        >>> time_str
-        '2021-01-01 00:00:00.000061_035156_250000_000000'
-        >>> datetime_from_string(time_str)
-        attotime.objects.attodatetime(2021, 1, 1, 0, 0, 0, 61, 35.15625)
+    Examples
+    --------
+    >>> from resistics.sampling import to_datetime, to_timedelta
+    >>> from resistics.sampling import datetime_to_string, datetime_from_string
+    >>> time = to_datetime("2021-01-01") + to_timedelta(1/16384)
+    >>> time_str = datetime_to_string(time)
+    >>> time_str
+    '2021-01-01 00:00:00.000061_035156_250000_000000'
+    >>> datetime_from_string(time_str)
+    attotime.objects.attodatetime(2021, 1, 1, 0, 0, 0, 61, 35.15625)
     """
     return RSDateTime.strptime(time, "%Y-%m-%d %H:%M:%S.%f_%o_%q_%v")
 
 
-def to_datetime(time: Union[str, pd.Timestamp, datetime]) -> RSDateTime:
+def to_datetime(time: DateTimeLike) -> RSDateTime:
     """Convert a string, pd.Timestamp or datetime object to a RSDateTime.
 
     RSDateTime uses attodatetime which is a high precision datetime format
@@ -79,7 +79,7 @@ def to_datetime(time: Union[str, pd.Timestamp, datetime]) -> RSDateTime:
 
     Parameters
     ----------
-    time : Union[str, pd.Timestamp, datetime]
+    time : DateTimeLike
         Input time as either a string, pd.Timestamp or native python datetime
 
     Returns
@@ -87,33 +87,31 @@ def to_datetime(time: Union[str, pd.Timestamp, datetime]) -> RSDateTime:
     RSDateTime
         High precision datetime object
 
-    Raises
-    ------
-    TypeError
-        If the input does not match any of string, pd.Timestamp or datetime
-
     Examples
     --------
-    .. doctest::
-
-        >>> import pandas as pd
-        >>> from resistics.sampling import to_datetime
-        >>> a = "2021-01-01 00:00:00"
-        >>> to_datetime(a)
-        attotime.objects.attodatetime(2021, 1, 1, 0, 0, 0, 0, 0)
-        >>> str(to_datetime(a))
-        '2021-01-01 00:00:00'
-        >>> b = pd.Timestamp(a)
-        >>> str(to_datetime(b))
-        '2021-01-01 00:00:00'
-        >>> c = pd.Timestamp(a).to_pydatetime()
-        >>> str(to_datetime(c))
-        '2021-01-01 00:00:00'
+    >>> import pandas as pd
+    >>> from resistics.sampling import to_datetime
+    >>> a = "2021-01-01 00:00:00"
+    >>> to_datetime(a)
+    attotime.objects.attodatetime(2021, 1, 1, 0, 0, 0, 0, 0)
+    >>> str(to_datetime(a))
+    '2021-01-01 00:00:00'
+    >>> b = pd.Timestamp(a)
+    >>> str(to_datetime(b))
+    '2021-01-01 00:00:00'
+    >>> c = pd.Timestamp(a).to_pydatetime()
+    >>> str(to_datetime(c))
+    '2021-01-01 00:00:00'
     """
-    if not isinstance(time, pd.Timestamp):
-        time = pd.to_datetime(time)
-    if not isinstance(time, pd.Timestamp):
-        raise TypeError(f"Failed to convert type {type(time)} to pd.Timestamp")
+    if isinstance(time, str):
+        try:
+            return datetime_from_string(time)
+        except ValueError:
+            time = pd.Timestamp(time)
+    elif isinstance(time, datetime):
+        time = pd.Timestamp(time)
+    else:
+        pass
     return RSDateTime(
         time.year,
         time.month,
@@ -126,7 +124,7 @@ def to_datetime(time: Union[str, pd.Timestamp, datetime]) -> RSDateTime:
     )
 
 
-def to_timedelta(delta: Union[float, timedelta, pd.Timedelta]) -> RSTimeDelta:
+def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
     """Get a RSTimeDelta object by providing seconds as a float or a
     pd.Timedelta.
 
@@ -135,7 +133,7 @@ def to_timedelta(delta: Union[float, timedelta, pd.Timedelta]) -> RSTimeDelta:
 
     Parameters
     ----------
-    delta : Union[float, timedelta, pd.Timedelta]
+    delta : TimeDeltaLike
         Timedelta as a float (assumed to be seconds), timedelta or pd.Timedelta
 
     Returns
@@ -145,18 +143,16 @@ def to_timedelta(delta: Union[float, timedelta, pd.Timedelta]) -> RSTimeDelta:
 
     Examples
     --------
-    .. doctest::
-
-        >>> import pandas as pd
-        >>> from resistics.sampling import to_timedelta
-        >>> to_timedelta(1/4_096)
-        attotime.objects.attotimedelta(0, 0, 244, 140.625)
-        >>> str(to_timedelta(1/4_096))
-        '0:00:00.000244140625'
-        >>> str(to_timedelta(1/65_536))
-        '0:00:00.0000152587890625'
-        >>> str(to_timedelta(pd.Timedelta(1, "s")))
-        '0:00:01'
+    >>> import pandas as pd
+    >>> from resistics.sampling import to_timedelta
+    >>> to_timedelta(1/4_096)
+    attotime.objects.attotimedelta(0, 0, 244, 140.625)
+    >>> str(to_timedelta(1/4_096))
+    '0:00:00.000244140625'
+    >>> str(to_timedelta(1/65_536))
+    '0:00:00.0000152587890625'
+    >>> str(to_timedelta(pd.Timedelta(1, "s")))
+    '0:00:01'
     """
     from math import floor
 
@@ -202,28 +198,26 @@ def to_seconds(delta: RSTimeDelta) -> Tuple[float, float]:
     --------
     Example with a small timedelta
 
-    .. doctest::
-
-        >>> from resistics.sampling import to_timedelta, to_seconds
-        >>> a = to_timedelta(1/4_096)
-        >>> str(a)
-        '0:00:00.000244140625'
-        >>> days_in_seconds, remaining_in_seconds = to_seconds(a)
-        >>> days_in_seconds
-        0
-        >>> remaining_in_seconds
-        0.000244140625
+    >>> from resistics.sampling import to_timedelta, to_seconds
+    >>> a = to_timedelta(1/4_096)
+    >>> str(a)
+    '0:00:00.000244140625'
+    >>> days_in_seconds, remaining_in_seconds = to_seconds(a)
+    >>> days_in_seconds
+    0
+    >>> remaining_in_seconds
+    0.000244140625
 
     Example with a larger timedelta
 
-        >>> from resistics.sampling import to_datetime, to_seconds
-        >>> a = to_datetime("2021-01-01 00:00:00")
-        >>> b = to_datetime("2021-02-01 08:24:30")
-        >>> days_in_seconds, remaining_in_seconds = to_seconds(b-a)
-        >>> days_in_seconds
-        2678400
-        >>> remaining_in_seconds
-        30270.0
+    >>> from resistics.sampling import to_datetime, to_seconds
+    >>> a = to_datetime("2021-01-01 00:00:00")
+    >>> b = to_datetime("2021-02-01 08:24:30")
+    >>> days_in_seconds, remaining_in_seconds = to_seconds(b-a)
+    >>> days_in_seconds
+    2678400
+    >>> remaining_in_seconds
+    30270.0
     """
     days_in_seconds = delta.days * (3600 * 24)
     microseconds_in_seconds = delta.microseconds / 1_000_000
@@ -234,8 +228,10 @@ def to_seconds(delta: RSTimeDelta) -> Tuple[float, float]:
     return days_in_seconds, remaining_in_seconds
 
 
-def to_n_samples(delta: RSTimeDelta, fs: float, method="round") -> int:
-    """Convert a timedelta to number of samples.
+def to_n_samples(delta: RSTimeDelta, fs: float, method: str = "round") -> int:
+    """Convert a timedelta to number of samples
+
+    This method is inclusive of start and end sample.
 
     Parameters
     ----------
@@ -243,6 +239,9 @@ def to_n_samples(delta: RSTimeDelta, fs: float, method="round") -> int:
         The timedelta
     fs : float
         The sampling frequency
+    method : str
+        Method to deal with floats, default is 'round'. Other options include
+        'ceil' and 'floor'
 
     Returns
     -------
@@ -253,37 +252,82 @@ def to_n_samples(delta: RSTimeDelta, fs: float, method="round") -> int:
     --------
     With sampling frequency of 4096 Hz
 
-    .. doctest::
-
-        >>> from resistics.sampling import to_timedelta, to_n_samples
-        >>> fs = 4096
-        >>> delta = to_timedelta(8*3600 + (21/fs))
-        >>> str(delta)
-        '8:00:00.005126953125'
-        >>> to_n_samples(delta, fs=fs)
-        117964821
+    >>> from resistics.sampling import to_timedelta, to_n_samples
+    >>> fs = 4096
+    >>> delta = to_timedelta(8*3600 + (21/fs))
+    >>> str(delta)
+    '8:00:00.005126953125'
+    >>> to_n_samples(delta, fs=fs)
+    117964822
 
     With a sampling frequency of 65536 Hz
 
-    .. doctest::
-
-        >>> from resistics.sampling import to_timedelta, to_n_samples
-        >>> fs = 65_536
-        >>> delta = to_timedelta(2*3600 + (40954/fs))
-        >>> str(delta)
-        '2:00:00.624908447265625'
-        >>> to_n_samples(delta, fs=fs)
-        471900154
+    >>> from resistics.sampling import to_timedelta, to_n_samples
+    >>> fs = 65_536
+    >>> delta = to_timedelta(2*3600 + (40954/fs))
+    >>> str(delta)
+    '2:00:00.624908447265625'
+    >>> to_n_samples(delta, fs=fs)
+    471900155
     """
     from math import floor, ceil
 
     days_in_seconds, remaining_in_seconds = to_seconds(delta)
     n_samples = (days_in_seconds + remaining_in_seconds) * fs
+    # add 1 to be inclusive of start and end
+    n_samples += 1
+    if n_samples.is_integer():
+        return int(n_samples)
+
     if method == "floor":
         return int(floor(n_samples))
     elif method == "ceil":
         return int(ceil(n_samples))
     return int(round(n_samples))
+
+
+def check_sample(n_samples: int, sample: int) -> bool:
+    """
+    Check sample is between 0 <= from_sample < n_samples
+
+    Parameters
+    ----------
+    n_samples : int
+        Number of samples
+    sample : int
+        Sample to check
+
+    Returns
+    -------
+    bool
+        Return True if no errors
+
+    Raises
+    ------
+    ValueError
+        If sample < 0
+    ValueError
+        If sample > n_samples
+
+    Examples
+    --------
+    >>> from resistics.sampling import check_sample
+    >>> check_sample(100, 45)
+    True
+    >>> check_sample(100, 100)
+    Traceback (most recent call last):
+    ...
+    ValueError: Sample 100 must be < 100
+    >>> check_sample(100, -1)
+    Traceback (most recent call last):
+    ...
+    ValueError: Sample -1 must be >= 0
+    """
+    if sample < 0:
+        raise ValueError(f"Sample {sample} must be >= 0")
+    if sample >= n_samples:
+        raise ValueError(f"Sample {sample} must be < {n_samples}")
+    return True
 
 
 def sample_to_datetime(
@@ -295,7 +339,7 @@ def sample_to_datetime(
     ----------
     fs : float
         The sampling frequency
-    first_time : pd.Timestamp
+    first_time : RSDateTime
         The first time
     sample : int
         The sample
@@ -305,7 +349,7 @@ def sample_to_datetime(
 
     Returns
     -------
-    pd.Timestamp
+    RSDateTime
         The timestamp of the sample
 
     Raises
@@ -315,16 +359,14 @@ def sample_to_datetime(
 
     Examples
     --------
-    .. doctest::
-
-        >>> import pandas as pd
-        >>> from resistics.sampling import to_datetime, sample_to_datetime
-        >>> fs = 512
-        >>> first_time = to_datetime("2021-01-02 00:00:00")
-        >>> sample = 512
-        >>> sample_datetime = sample_to_datetime(fs, first_time, sample)
-        >>> str(sample_datetime)
-        '2021-01-02 00:00:01'
+    >>> import pandas as pd
+    >>> from resistics.sampling import to_datetime, sample_to_datetime
+    >>> fs = 512
+    >>> first_time = to_datetime("2021-01-02 00:00:00")
+    >>> sample = 512
+    >>> sample_datetime = sample_to_datetime(fs, first_time, sample)
+    >>> str(sample_datetime)
+    '2021-01-02 00:00:01'
     """
     if n_samples is not None and (sample < 0 or sample >= n_samples):
         raise ValueError(
@@ -347,7 +389,7 @@ def samples_to_datetimes(
     ----------
     fs : float
         The sampling frequency in seconds
-    first_time : pd.Timestamp
+    first_time : RSDateTime
         The time of the first sample
     from_sample : int
         The sample to read data from
@@ -356,9 +398,9 @@ def samples_to_datetimes(
 
     Returns
     -------
-    from_time : pd.Timestamp
+    from_time : RSDateTime
         The timestamp to read data from
-    to_time : pd.Timestamp
+    to_time : RSDateTime
         The timestamp to read data to
 
     Raises
@@ -368,19 +410,17 @@ def samples_to_datetimes(
 
     Examples
     --------
-    .. doctest::
-
-        >>> import pandas as pd
-        >>> from resistics.sampling import to_datetime, samples_to_datetimes
-        >>> fs = 512
-        >>> first_time = to_datetime("2021-01-02 00:00:00")
-        >>> from_sample = 512
-        >>> to_sample = 1024
-        >>> from_time, to_time = samples_to_datetimes(fs, first_time, from_sample, to_sample)
-        >>> str(from_time)
-        '2021-01-02 00:00:01'
-        >>> str(to_time)
-        '2021-01-02 00:00:02'
+    >>> import pandas as pd
+    >>> from resistics.sampling import to_datetime, samples_to_datetimes
+    >>> fs = 512
+    >>> first_time = to_datetime("2021-01-02 00:00:00")
+    >>> from_sample = 512
+    >>> to_sample = 1024
+    >>> from_time, to_time = samples_to_datetimes(fs, first_time, from_sample, to_sample)
+    >>> str(from_time)
+    '2021-01-02 00:00:01'
+    >>> str(to_time)
+    '2021-01-02 00:00:02'
     """
     if from_sample >= to_sample:
         raise ValueError(f"From sample {from_sample} >= to sample {to_sample}")
@@ -425,35 +465,29 @@ def check_from_time(
     With a from time between first and last time. This should be the normal use
     case.
 
-    .. testcode::
-
-        >>> from resistics.sampling import to_datetime, check_from_time
-        >>> first_time = to_datetime("2021-01-02 00:00:00")
-        >>> last_time = to_datetime("2021-01-02 23:00:00")
-        >>> from_time = to_datetime("2021-01-02 03:00:00")
-        >>> from_time = check_from_time(first_time, last_time, from_time)
-        >>> str(from_time)
-        '2021-01-02 03:00:00'
+    >>> from resistics.sampling import to_datetime, check_from_time
+    >>> first_time = to_datetime("2021-01-02 00:00:00")
+    >>> last_time = to_datetime("2021-01-02 23:00:00")
+    >>> from_time = to_datetime("2021-01-02 03:00:00")
+    >>> from_time = check_from_time(first_time, last_time, from_time)
+    >>> str(from_time)
+    '2021-01-02 03:00:00'
 
     An alternative scenario when from time is before the time of the first
     sample
 
-    .. testcode::
-
-        >>> from_time = to_datetime("2021-01-01 23:00:00")
-        >>> from_time = check_from_time(first_time, last_time, from_time)
-        >>> str(from_time)
-        '2021-01-02 00:00:00'
+    >>> from_time = to_datetime("2021-01-01 23:00:00")
+    >>> from_time = check_from_time(first_time, last_time, from_time)
+    >>> str(from_time)
+    '2021-01-02 00:00:00'
 
     An error will be raised when from time is after the time of the last sample
 
-    .. testcode::
-
-        >>> from_time = to_datetime("2021-01-02 23:30:00")
-        >>> from_time = check_from_time(first_time, last_time, from_time)
-        Traceback (most recent call last):
-        ...
-        ValueError: From time 2021-01-02 23:30:00 greater than time of last sample 2021-01-02 23:00:00
+    >>> from_time = to_datetime("2021-01-02 23:30:00")
+    >>> from_time = check_from_time(first_time, last_time, from_time)
+    Traceback (most recent call last):
+    ...
+    ValueError: From time 2021-01-02 23:30:00 greater than time of last sample 2021-01-02 23:00:00
     """
     if from_time > last_time:
         raise ValueError(
@@ -499,34 +533,28 @@ def check_to_time(
     With a to time between first and last time. This should be the normal use
     case.
 
-    .. testcode::
-
-        >>> from resistics.sampling import to_datetime, check_to_time
-        >>> first_time = to_datetime("2021-01-02 00:00:00")
-        >>> last_time = to_datetime("2021-01-02 23:00:00")
-        >>> to_time = to_datetime("2021-01-02 20:00:00")
-        >>> to_time = check_to_time(to_time, last_time, to_time)
-        >>> str(to_time)
-        '2021-01-02 20:00:00'
+    >>> from resistics.sampling import to_datetime, check_to_time
+    >>> first_time = to_datetime("2021-01-02 00:00:00")
+    >>> last_time = to_datetime("2021-01-02 23:00:00")
+    >>> to_time = to_datetime("2021-01-02 20:00:00")
+    >>> to_time = check_to_time(to_time, last_time, to_time)
+    >>> str(to_time)
+    '2021-01-02 20:00:00'
 
     An alternative scenario when to time is after the time of the last sample
 
-    .. testcode::
-
-        >>> to_time = to_datetime("2021-01-02 23:30:00")
-        >>> to_time = check_to_time(first_time, last_time, to_time)
-        >>> str(to_time)
-        '2021-01-02 23:00:00'
+    >>> to_time = to_datetime("2021-01-02 23:30:00")
+    >>> to_time = check_to_time(first_time, last_time, to_time)
+    >>> str(to_time)
+    '2021-01-02 23:00:00'
 
     An error will be raised when to time is before the time of the first sample
 
-    .. testcode::
-
-        >>> to_time = to_datetime("2021-01-01 23:30:00")
-        >>> to_time = check_to_time(first_time, last_time, to_time)
-        Traceback (most recent call last):
-        ...
-        ValueError: To time 2021-01-01 23:30:00 less than time of first sample 2021-01-02 00:00:00
+    >>> to_time = to_datetime("2021-01-01 23:30:00")
+    >>> to_time = check_to_time(first_time, last_time, to_time)
+    Traceback (most recent call last):
+    ...
+    ValueError: To time 2021-01-01 23:30:00 less than time of first sample 2021-01-02 00:00:00
     """
     if to_time < first_time:
         raise ValueError(
@@ -565,24 +593,23 @@ def from_time_to_sample(
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.sampling import to_datetime, from_time_to_sample
-        >>> first_time = to_datetime("2021-01-01 00:00:00")
-        >>> last_time = to_datetime("2021-01-02 00:00:00")
-        >>> fs = 128
-        >>> fs * 60 * 60
-        460800
-        >>> from_time = to_datetime("2021-01-01 01:00:00")
-        >>> from_time_to_sample(fs, first_time, last_time, from_time)
-        460800
-        >>> from_time = to_datetime("2021-01-01 01:00:00.0078125")
-        >>> from_time_to_sample(fs, first_time, last_time, from_time)
-        460801
+    >>> from resistics.sampling import to_datetime, from_time_to_sample
+    >>> first_time = to_datetime("2021-01-01 00:00:00")
+    >>> last_time = to_datetime("2021-01-02 00:00:00")
+    >>> fs = 128
+    >>> fs * 60 * 60
+    460800
+    >>> from_time = to_datetime("2021-01-01 01:00:00")
+    >>> from_time_to_sample(fs, first_time, last_time, from_time)
+    460800
+    >>> from_time = to_datetime("2021-01-01 01:00:00.0078125")
+    >>> from_time_to_sample(fs, first_time, last_time, from_time)
+    460801
     """
     from_time = check_from_time(first_time, last_time, from_time)
     delta_first = from_time - first_time
-    return to_n_samples(delta_first, fs, method="ceil")
+    # n_samples returns the number of samples. Need to -1 to get the sample index
+    return to_n_samples(delta_first, fs, method="ceil") - 1
 
 
 def to_time_to_sample(
@@ -616,26 +643,25 @@ def to_time_to_sample(
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.sampling import to_time_to_sample
-        >>> first_time = to_datetime("2021-01-01 04:00:00")
-        >>> last_time = to_datetime("2021-01-01 13:00:00")
-        >>> fs = 4096
-        >>> fs * 60 * 60
-        14745600
-        >>> to_time = to_datetime("2021-01-01 05:00:00")
-        >>> to_time_to_sample(fs, first_time, last_time, to_time)
-        14745600
-        >>> fs * 70 * 60
-        17203200
-        >>> to_time = to_datetime("2021-01-01 05:10:00")
-        >>> to_time_to_sample(fs, first_time, last_time, to_time)
-        17203200
+    >>> from resistics.sampling import to_time_to_sample
+    >>> first_time = to_datetime("2021-01-01 04:00:00")
+    >>> last_time = to_datetime("2021-01-01 13:00:00")
+    >>> fs = 4096
+    >>> fs * 60 * 60
+    14745600
+    >>> to_time = to_datetime("2021-01-01 05:00:00")
+    >>> to_time_to_sample(fs, first_time, last_time, to_time)
+    14745600
+    >>> fs * 70 * 60
+    17203200
+    >>> to_time = to_datetime("2021-01-01 05:10:00")
+    >>> to_time_to_sample(fs, first_time, last_time, to_time)
+    17203200
     """
     to_time = check_to_time(first_time, last_time, to_time)
     delta_first = to_time - first_time
-    return to_n_samples(delta_first, fs, method="floor")
+    # n_samples returns the number of samples. Need to -1 to get the sample index
+    return to_n_samples(delta_first, fs, method="floor") - 1
 
 
 def datetimes_to_samples(
@@ -679,23 +705,21 @@ def datetimes_to_samples(
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.sampling import to_datetime, datetimes_to_samples
-        >>> first_time = to_datetime("2021-01-01 04:00:00")
-        >>> last_time = to_datetime("2021-01-01 05:30:00")
-        >>> from_time = to_datetime("2021-01-01 05:00:00")
-        >>> to_time = to_datetime("2021-01-01 05:10:00")
-        >>> fs = 16_384
-        >>> fs * 60 * 60
-        58982400
-        >>> fs * 70 * 60
-        68812800
-        >>> from_sample, to_sample = datetimes_to_samples(fs, first_time, last_time, from_time, to_time)
-        >>> from_sample
-        58982400
-        >>> to_sample
-        68812800
+    >>> from resistics.sampling import to_datetime, datetimes_to_samples
+    >>> first_time = to_datetime("2021-01-01 04:00:00")
+    >>> last_time = to_datetime("2021-01-01 05:30:00")
+    >>> from_time = to_datetime("2021-01-01 05:00:00")
+    >>> to_time = to_datetime("2021-01-01 05:10:00")
+    >>> fs = 16_384
+    >>> fs * 60 * 60
+    58982400
+    >>> fs * 70 * 60
+    68812800
+    >>> from_sample, to_sample = datetimes_to_samples(fs, first_time, last_time, from_time, to_time)
+    >>> from_sample
+    58982400
+    >>> to_sample
+    68812800
     """
     from_sample = from_time_to_sample(fs, first_time, last_time, from_time)
     to_sample = to_time_to_sample(fs, first_time, last_time, to_time)
@@ -741,19 +765,17 @@ def datetime_array(
     This examples shows the value of using higher resolution datetimes, however
     this is computationally more expensive.
 
-    .. doctest::
-
-        >>> import pandas as pd
-        >>> from resistics.sampling import to_datetime, datetime_array
-        >>> first_time = to_datetime("2021-01-01 00:00:00")
-        >>> fs = 4096
-        >>> n_samples = 100
-        >>> arr = datetime_array(first_time, fs, n_samples=n_samples)
-        >>> str(arr[-1])
-        '2021-01-01 00:00:00.024169921875'
-        >>> pdarr = pd.date_range(start="2021-01-01 00:00:00", freq=pd.Timedelta(1/4096, "s"), periods=n_samples)
-        >>> pdarr[-1]
-        Timestamp('2021-01-01 00:00:00.024169959', freq='244141N')
+    >>> import pandas as pd
+    >>> from resistics.sampling import to_datetime, datetime_array
+    >>> first_time = to_datetime("2021-01-01 00:00:00")
+    >>> fs = 4096
+    >>> n_samples = 100
+    >>> arr = datetime_array(first_time, fs, n_samples=n_samples)
+    >>> str(arr[-1])
+    '2021-01-01 00:00:00.024169921875'
+    >>> pdarr = pd.date_range(start="2021-01-01 00:00:00", freq=pd.Timedelta(1/4096, "s"), periods=n_samples)
+    >>> pdarr[-1]
+    Timestamp('2021-01-01 00:00:00.024169959', freq='244141N')
     """
     if n_samples is not None:
         return first_time + np.arange(n_samples) * to_timedelta(1 / fs)
@@ -794,23 +816,21 @@ def datetime_array_estimate(
 
     Examples
     --------
-    .. doctest::
-
-        >>> import pandas as pd
-        >>> from resistics.sampling import to_datetime, datetime_array_estimate
-        >>> first_time = to_datetime("2021-01-01 00:00:00")
-        >>> fs = 128
-        >>> n_samples = 1_000
-        >>> arr = datetime_array_estimate(first_time, fs, n_samples=n_samples)
-        >>> print(f"{arr[0]} - {arr[-1]}")
-        2021-01-01 00:00:00 - 2021-01-01 00:00:07.804687500
+    >>> import pandas as pd
+    >>> from resistics.sampling import to_datetime, datetime_array_estimate
+    >>> first_time = to_datetime("2021-01-01 00:00:00")
+    >>> fs = 128
+    >>> n_samples = 1_000
+    >>> arr = datetime_array_estimate(first_time, fs, n_samples=n_samples)
+    >>> print(f"{arr[0]} - {arr[-1]}")
+    2021-01-01 00:00:00 - 2021-01-01 00:00:07.804687500
     """
     if isinstance(first_time, RSDateTime):
         first_time = pd.to_datetime(first_time.isoformat())
+
+    dt = pd.Timedelta(1 / fs, "s")
     if n_samples is not None:
-        return pd.date_range(
-            start=first_time, freq=pd.Timedelta(1 / fs, "s"), periods=n_samples
-        )
+        return pd.date_range(start=first_time, freq=dt, periods=n_samples)
     if samples is None:
         raise ValueError("One of n_samples or samples must be provided")
-    return pd.to_datetime(pd.to_datetime(first_time) + samples * pd.Timedelta(1 / fs))
+    return pd.to_datetime(pd.to_datetime(first_time) + samples * dt)

@@ -1,8 +1,10 @@
+"""Testing of sampling code"""
 import pytest
 from typing import Tuple, Union
 from datetime import datetime, timedelta
-from resistics.sampling import RSDateTime, RSTimeDelta, to_datetime, to_timedelta 
 import pandas as pd
+
+from resistics.sampling import RSDateTime, RSTimeDelta, to_datetime, to_timedelta
 
 
 @pytest.mark.parametrize(
@@ -10,7 +12,7 @@ import pandas as pd
     [
         ("2021-01-02 00:00:00", RSDateTime(2021, 1, 2)),
         (pd.Timestamp("2021-01-02 00:00:00"), RSDateTime(2021, 1, 2)),
-        (datetime(2021, 1, 2), RSDateTime(2021, 1, 2))
+        (datetime(2021, 1, 2), RSDateTime(2021, 1, 2)),
     ],
 )
 def test_to_datetime(time: Union[str, pd.Timestamp, datetime], expected):
@@ -21,14 +23,37 @@ def test_to_datetime(time: Union[str, pd.Timestamp, datetime], expected):
 @pytest.mark.parametrize(
     "delta, expected",
     [
-        (1/4096, RSTimeDelta(seconds=1/4096)),
+        (1 / 4096, RSTimeDelta(seconds=1 / 4096)),
         (pd.Timedelta(0.1, "s"), RSTimeDelta(microseconds=100_000)),
-        (timedelta(milliseconds=100), RSTimeDelta(microseconds=100_000))
+        (timedelta(milliseconds=100), RSTimeDelta(microseconds=100_000)),
     ],
 )
-def test_to_timedelta(delta: Union[float, timedelta, pd.Timedelta], expected: RSTimeDelta):
+def test_to_timedelta(
+    delta: Union[float, timedelta, pd.Timedelta], expected: RSTimeDelta
+):
     """Test converting to timedelta"""
     assert to_timedelta(delta) == expected
+
+
+@pytest.mark.parametrize(
+    "delta, fs, method, expected",
+    [
+        (to_timedelta(100 * (1 / 64)), 64, "round", 101),
+        (to_timedelta(354 * (1 / 16_384)), 16_384, "round", 355),
+        (to_timedelta(354.2 * (1 / 16_384)), 16_384, "round", 355),
+        (to_timedelta(354.2 * (1 / 16_384)), 16_384, "floor", 355),
+        (to_timedelta(354.2 * (1 / 16_384)), 16_384, "ceil", 356),
+        (to_timedelta(354.8 * (1 / 16_384)), 16_384, "round", 356),
+        (to_timedelta(354.8 * (1 / 16_384)), 16_384, "floor", 355),
+        (to_timedelta(354.8 * (1 / 16_384)), 16_384, "ceil", 356),
+    ],
+)
+def test_to_n_samples(delta: RSTimeDelta, fs: float, method: str, expected: int):
+    """Test to n_samples"""
+    from resistics.sampling import to_n_samples
+
+    n_samples = to_n_samples(delta, fs, method)
+    assert n_samples == expected
 
 
 @pytest.mark.parametrize(
@@ -45,7 +70,7 @@ def test_to_timedelta(delta: Union[float, timedelta, pd.Timedelta], expected: RS
             to_datetime("2021-01-01 00:00:00"),
             20_000,
             RSDateTime(2021, 1, 1, 0, 0, 1, 220703, 125),
-        ),        
+        ),
     ],
 )
 def test_sample_to_datetimes(
@@ -211,8 +236,8 @@ def test_check_to_time(
         (
             16_384,
             to_datetime("2021-01-02 00:00:00"),
-            to_datetime("2021-01-02 00:00:00") + 400_000*to_timedelta(1/16_384),            
-            to_datetime("2021-01-02 00:00:00") + 193_435*to_timedelta(1/16_384),
+            to_datetime("2021-01-02 00:00:00") + 400_000 * to_timedelta(1 / 16_384),
+            to_datetime("2021-01-02 00:00:00") + 193_435 * to_timedelta(1 / 16_384),
             193_435,
         ),
     ],
@@ -264,8 +289,8 @@ def test_from_time_to_sample(
         (
             16_384,
             to_datetime("2021-01-02 00:00:00"),
-            to_datetime("2021-01-02 00:00:00") + 400_000*to_timedelta(1/16_384),            
-            to_datetime("2021-01-02 00:00:00") + 374_653*to_timedelta(1/16_384),
+            to_datetime("2021-01-02 00:00:00") + 400_000 * to_timedelta(1 / 16_384),
+            to_datetime("2021-01-02 00:00:00") + 374_653 * to_timedelta(1 / 16_384),
             374_653,
         ),
     ],
