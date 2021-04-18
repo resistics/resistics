@@ -32,10 +32,15 @@ def intdiv(nom: Union[int, float], div: Union[int, float]) -> int:
     >>> from resistics.math import intdiv
     >>> intdiv(12, 3)
     4
+    >>> intdiv(13, 3)
+    Traceback (most recent call last):
+    ...
+    ValueError: 13 divided by 3 leaves a remainder
     """
-    if nom % div == 0:
-        return nom // div
-    raise ValueError(f"{nom} divided by {div} leaves a remainder")
+    result = nom / div
+    if not result.is_integer():
+        raise ValueError(f"{nom} divided by {div} leaves a remainder")
+    return int(result)
 
 
 def prime_factorisation(n: int) -> List[int]:
