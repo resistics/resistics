@@ -1910,8 +1910,8 @@ class Decimate(ResisticsProcess):
         from scipy.signal import decimate
 
         factors = self._get_downsample_factors(self.factor)
-        logger.info(f"Decimating by {self.factor} in {len(factors)} steps")
-        messages = [f"Decimating by {self.factor} in {len(factors)} steps"]
+        logger.info(f"Decimating by {self.factor} in {len(factors)} step(s)")
+        messages = [f"Decimating by {self.factor} in {len(factors)} step(s)"]
         data = time_data.data
         for factor in factors:
             if factor == 1:
