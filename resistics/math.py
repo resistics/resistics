@@ -173,7 +173,7 @@ def get_freqs(fs: float, n_samples: int) -> np.ndarray:
     return np.linspace(0, fs / 2, n_samples)
 
 
-def get_evaluation_freqs_min(fs: float, f_min: float) -> np.ndarray:
+def get_eval_freqs_min(fs: float, f_min: float) -> np.ndarray:
     """
     Calculate evaluation frequencies with mimum allowable frequency
 
@@ -199,11 +199,11 @@ def get_evaluation_freqs_min(fs: float, f_min: float) -> np.ndarray:
     Examples
     --------
 
-    >>> from resistics.math import get_evaluation_freqs_min
+    >>> from resistics.math import get_eval_freqs_min
     >>> fs = 256
-    >>> get_evaluation_freqs_min(fs, 30)
+    >>> get_eval_freqs_min(fs, 30)
     array([64.      , 45.254834, 32.      ])
-    >>> get_evaluation_freqs_min(fs, 128)
+    >>> get_eval_freqs_min(fs, 128)
     Traceback (most recent call last):
     ...
     ValueError: Minimum frequency 128 must be > 64.0
@@ -226,7 +226,7 @@ def get_evaluation_freqs_min(fs: float, f_min: float) -> np.ndarray:
     return np.array(evaluation_freqs)
 
 
-def get_evaluation_freqs_size(fs: float, n_freq: int) -> np.ndarray:
+def get_eval_freqs_size(fs: float, n_freq: int) -> np.ndarray:
     """
     Calculate evaluation frequencies with maximum size
 
@@ -246,17 +246,17 @@ def get_evaluation_freqs_size(fs: float, n_freq: int) -> np.ndarray:
 
     Examples
     --------
-    >>> from resistics.math import get_evaluation_freqs_size
+    >>> from resistics.math import get_eval_freqs_size
     >>> fs = 256
     >>> n_freq = 3
-    >>> get_evaluation_freqs_size(fs, n_freq)
+    >>> get_eval_freqs_size(fs, n_freq)
     array([64.      , 45.254834, 32.      ])
     """
     f0 = fs / 4
     return f0 / np.power(2, (np.arange(1, n_freq + 1) - 1) / 2)
 
 
-def get_evaluation_freqs(
+def get_eval_freqs(
     fs: float, f_min: Optional[float] = None, n_freq: Optional[int] = None
 ) -> np.ndarray:
     """
@@ -283,18 +283,18 @@ def get_evaluation_freqs(
 
     Examples
     --------
-    >>> from resistics.math import get_evaluation_freqs
-    >>> get_evaluation_freqs(256, f_min=30)
+    >>> from resistics.math import get_eval_freqs
+    >>> get_eval_freqs(256, f_min=30)
     array([64.      , 45.254834, 32.      ])
-    >>> get_evaluation_freqs(256, n_freq=3)
+    >>> get_eval_freqs(256, n_freq=3)
     array([64.      , 45.254834, 32.      ])
     """
     if f_min is None and n_freq is None:
-        raise ValueError("One of min_freq and n_freq must be passed")
+        raise ValueError("One of f_min and n_freq must be passed")
     elif f_min is not None:
-        return get_evaluation_freqs_min(fs, f_min)
+        return get_eval_freqs_min(fs, f_min)
     else:
-        return get_evaluation_freqs_size(fs, n_freq)
+        return get_eval_freqs_size(fs, n_freq)
 
 
 def smooth_length(nsamples: int, proportion: float = 16.0) -> int:
