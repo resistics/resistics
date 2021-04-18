@@ -25,8 +25,8 @@ class DecimationParameters(ResisticsData):
     --------
     >>> from resistics.decimate import DecimationSetup
     >>> from resistics.decimate import DecimationSetup
-    >>> decimation = DecimationSetup(n_levels=3, per_level=2)
-    >>> params = decimation.run(128)
+    >>> dec_setup = DecimationSetup(n_levels=3, per_level=2)
+    >>> params = dec_setup.run(128)
     >>> type(params)
     <class 'resistics.decimate.DecimationParameters'>
     >>> params
@@ -216,8 +216,8 @@ class DecimationSetup(ResisticsProcess):
     Examples
     --------
     >>> from resistics.decimate import DecimationSetup
-    >>> decimation = DecimationSetup(n_levels=3, per_level=2)
-    >>> params = decimation.run(128)
+    >>> dec_setup = DecimationSetup(n_levels=3, per_level=2)
+    >>> params = dec_setup.run(128)
     >>> print(params)
     <class 'resistics.decimate.DecimationParameters'>
                          0          1     fs  total_factors  incremental_factors
