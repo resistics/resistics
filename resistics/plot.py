@@ -81,7 +81,7 @@ def figure_columns_as_lines(
     """
     from plotly.subplots import make_subplots
 
-    if set(subplots) == set(y_labels.keys()):
+    if set(subplots) != set(y_labels.keys()):
         raise ValueError(f"Mismatch between ylabels {y_labels} and subplots {subplots}")
     if title is None:
         title = "Data plot"
