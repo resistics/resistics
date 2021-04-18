@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union, List, Optional
 import numpy as np
 
 from resistics.common import ResisticsProcess
@@ -62,21 +62,21 @@ def prime_factorisation(n: int) -> List[int]:
     if n == 1:
         return prime_list
     # odd divisors
-    for i in range(3, int(math.sqrt(n)) + 1, 2):
-        while (n % i) == 0:
-            prime_list.append(i)
-            n = n // i
+    for ii in range(3, int(math.sqrt(n)) + 1, 2):
+        while (n % ii) == 0:
+            prime_list.append(ii)
+            n = n // ii
     if n > 2:
         prime_list.append(n)
     return prime_list
 
 
-def pad_to_power2(nsamples: int) -> int:
+def pad2(n_samples: int) -> int:
     """Calculate the amount of padding to next power of 2
 
     Parameters
     ----------
-    nsamples : int
+    n_samples : int
         Size of array to be padded
 
     Returns
@@ -86,15 +86,15 @@ def pad_to_power2(nsamples: int) -> int:
 
     Examples
     --------
-    >>> from resistics.math import pad_to_power2
-    >>> pad_to_power2(14)
+    >>> from resistics.math import pad2
+    >>> pad2(14)
     2
     """
     import math
 
-    next_power = math.ceil(math.log(nsamples, 2))
+    next_power = math.ceil(math.log(n_samples, 2))
     next_size = math.pow(2, int(next_power))
-    return int(next_size) - nsamples
+    return int(next_size) - n_samples
 
 
 def fft(data: np.ndarray, norm: bool = True):
@@ -147,7 +147,7 @@ def ifft(data: np.ndarray, nsamples: int, norm: bool = True):
     return fft.irfft(data, n=nsamples, norm="ortho")
 
 
-def frequency_array(fs: float, n_samples: int) -> np.ndarray:
+def get_freqs(fs: float, n_samples: int) -> np.ndarray:
     """Calculate the frequency array for a real fourier transform
 
     Frequency array goes from 0Hz to Nyquist. Nyquist = fs/2
@@ -163,8 +163,138 @@ def frequency_array(fs: float, n_samples: int) -> np.ndarray:
     -------
     np.ndarray
         Array of rfft frequencies
+
+    Examples
+    --------
+    >>> from resistics.math import get_freqs
+    >>> get_freqs(10, 6)
+    array([0., 1., 2., 3., 4., 5.])
     """
     return np.linspace(0, fs / 2, n_samples)
+
+
+def get_evaluation_freqs_min(fs: float, f_min: float) -> np.ndarray:
+    """
+    Calculate evaluation frequencies with mimum allowable frequency
+
+    Highest frequency is nyquist / 4
+
+    Parameters
+    ----------
+    fs : float
+        Sampling frequency
+    f_min : float
+        Minimum allowable frequency
+
+    Returns
+    -------
+    np.ndarray
+        Array of evaluation frequencies
+
+    Raises
+    ------
+    ValueError
+        If f_min <= 0
+
+    Examples
+    --------
+
+    >>> from resistics.math import get_evaluation_freqs_min
+    >>> fs = 256
+    >>> get_evaluation_freqs_min(fs, 30)
+    array([64.      , 45.254834, 32.      ])
+    >>> get_evaluation_freqs_min(fs, 128)
+    Traceback (most recent call last):
+    ...
+    ValueError: Minimum frequency 128 must be > 64.0
+    """
+    f0 = fs / 4
+
+    if f_min <= 0:
+        raise ValueError(f"Minimimum frequency {f_min} not > 0")
+    if f_min > f0:
+        raise ValueError(f"Minimum frequency {f_min} must be > {f0}")
+
+    ii = 1
+    evaluation_freqs = []
+    while True:
+        freq = f0 / np.power(2, (ii - 1.0) / 2.0)
+        if freq < f_min:
+            break
+        evaluation_freqs.append(freq)
+        ii += 1
+    return np.array(evaluation_freqs)
+
+
+def get_evaluation_freqs_size(fs: float, n_freq: int) -> np.ndarray:
+    """
+    Calculate evaluation frequencies with maximum size
+
+    Highest frequency is nyquist/4
+
+    Parameters
+    ----------
+    fs : float
+        Sampling frequency
+    n_freq : int
+        Number of evaluation frequencies
+
+    Returns
+    -------
+    np.ndarray
+        Array of evaluation frequencies
+
+    Examples
+    --------
+    >>> from resistics.math import get_evaluation_freqs_size
+    >>> fs = 256
+    >>> n_freq = 3
+    >>> get_evaluation_freqs_size(fs, n_freq)
+    array([64.      , 45.254834, 32.      ])
+    """
+    f0 = fs / 4
+    return f0 / np.power(2, (np.arange(1, n_freq + 1) - 1) / 2)
+
+
+def get_evaluation_freqs(
+    fs: float, f_min: Optional[float] = None, n_freq: Optional[int] = None
+) -> np.ndarray:
+    """
+    Get evaluation frequencies either based on size or a minimum frequency
+
+    Parameters
+    ----------
+    fs : float
+        Sampling frequency Hz
+    f_min : Optional[float], optional
+        Minimum cutoff for evaluation frequencies, by default None
+    n_freq : Optional[int], optional
+        Number of evaluation frequencies, by default None
+
+    Returns
+    -------
+    np.ndarray
+        Evaluation frequencies array
+
+    Raises
+    ------
+    ValueError
+        ValueError if both f_min and n_freq are None
+
+    Examples
+    --------
+    >>> from resistics.math import get_evaluation_freqs
+    >>> get_evaluation_freqs(256, f_min=30)
+    array([64.      , 45.254834, 32.      ])
+    >>> get_evaluation_freqs(256, n_freq=3)
+    array([64.      , 45.254834, 32.      ])
+    """
+    if f_min is None and n_freq is None:
+        raise ValueError("One of min_freq and n_freq must be passed")
+    elif f_min is not None:
+        return get_evaluation_freqs_min(fs, f_min)
+    else:
+        return get_evaluation_freqs_size(fs, n_freq)
 
 
 def smooth_length(nsamples: int, proportion: float = 16.0) -> int:

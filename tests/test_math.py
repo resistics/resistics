@@ -16,9 +16,9 @@ def test_intdiv() -> None:
 @pytest.mark.parametrize("nsamples, expected", [(8, 0), (9, 7), (100, 28)])
 def test_pad_to_power2(nsamples: int, expected: int) -> None:
     """Testing padding to next power of 2"""
-    from resistics.math import pad_to_power2
+    from resistics.math import pad2
 
-    assert pad_to_power2(nsamples) == expected
+    assert pad2(nsamples) == expected
 
 
 @pytest.mark.parametrize(
@@ -80,11 +80,11 @@ def test_ifft(data: List) -> None:
 @pytest.mark.parametrize("fs, nsamples", [(480, 40)])
 def test_frequency_array(fs: float, nsamples: int) -> None:
     """Test getting of frequency array"""
-    from resistics.math import frequency_array
+    from resistics.math import get_freqs
     import numpy as np
 
     nyquist = fs / 2
-    assert np.array_equal(np.linspace(0, nyquist, nsamples), frequency_array(fs, 40))
+    assert np.array_equal(np.linspace(0, nyquist, nsamples), get_freqs(fs, 40))
 
 
 @pytest.mark.parametrize(
