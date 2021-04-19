@@ -1,142 +1,371 @@
 """
-Module for calculating window related data. This includes
+Module for calculating window related data. This includes:
 
 - Windowing utility functions such as converting from global indices to datetime
 - Converting a global index array to datetime
 """
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from logging import getLogger
 import pandas as pd
 
 from resistics.common import ResisticsData, ResisticsProcess
-from resistics.sampling import RSTimeDelta
+from resistics.sampling import RSDateTime, RSTimeDelta
+from resistics.time import TimeData
 from resistics.decimate import DecimationParameters
 
 logger = getLogger(__name__)
 
 
-def duration(size: int, fs: float) -> RSTimeDelta:
+def window_duration(window_size: int, fs: float) -> RSTimeDelta:
+    """
+    Get the window duration
+
+    Parameters
+    ----------
+    window_size : int
+        Window size in samples
+    fs : float
+        Sampling frequency Hz
+
+    Returns
+    -------
+    RSTimeDelta
+        Duration
+
+    Examples
+    --------
+    A few examples with different sampling frequencies and window sizes
+
+    >>> from resistics.window import window_duration
+    >>> duration = window_duration(512, 512)
+    >>> print(duration)
+    0:00:01
+    >>> duration = window_duration(520, 512)
+    >>> print(duration)
+    0:00:01.015625
+    >>> duration = window_duration(4096, 16_384)
+    >>> print(duration)
+    0:00:00.25
+    >>> duration = window_duration(200, 0.05)
+    >>> print(duration)
+    1:06:40
+    >>> (200 * 20) - (3600 + 6 * 60 + 40)
+    0
+    """
     from resistics.sampling import to_timedelta
 
-    return to_timedelta(1 / fs) * size
+    return to_timedelta(1 / fs) * window_size
 
 
-# def global_index_to_datetime(
-#     gIndex: int, refTime: datetime, fs: float, windowSize: int, windowOverlap: int
-# ):
-#     """Global index to datetime convertor
+def increment_duration(window_size: int, overlap_size: int, fs: float) -> RSTimeDelta:
+    """
+    Get the increment between window start times
 
-#     Global index 0 corresponds to reference time
+    If the overlap_size = 0, then the time increment between windows is simply
+    the window_duration. However, when there is an overlap, the increment
+    between window start times has to be adjusted by the overlap size
 
-#     Parameters
-#     ----------
-#     gIndex : int
-#         Globel index
-#     refTime : datetime.datetime
-#         Reference time
-#     fs : float
-#         Sampling frequency in Hz
-#     windowSize : int
-#         Size of windows
-#     windowOverlap : int
-#         Size of window overlaps
+    Parameters
+    ----------
+    window_size : int
+        The window size in samples
+    overlap_size : int
+        The overlap size in samples
+    fs : float
+        The sample frequency Hz
 
-#     Returns
-#     -------
-#     startTime : datetime.datetime
-#         Start time of global window gIndex
-#     endTime : datetime.datetime
-#         End time of global window gIndex
-#     """
-#     # global index 0 starts at refTime
-#     timeOffset = 1.0 * (windowSize - windowOverlap) / fs
-#     totalOffset = gIndex * timeOffset
-#     startTime = refTime + timedelta(seconds=totalOffset)
-#     # windowSize - 1 because inclusive of start sample
-#     endTime = startTime + timedelta(seconds=1.0 * (windowSize - 1) / fs)
-#     return startTime, endTime
+    Returns
+    -------
+    RSTimeDelta
+        The duration of the window
 
+    Examples
+    --------
+    >>> from resistics.window import increment_duration
+    >>> increment = increment_duration(128, 32, 128)
+    >>> print(increment)
+    0:00:00.75
+    >>> increment = increment_duration(128*3600, 128*60, 128)
+    >>> print(increment)
+    0:59:00
+    """
+    from resistics.sampling import to_timedelta
 
-# def gArray2datetime(
-#     gArray: np.ndarray,
-#     refTime: datetime,
-#     fs: float,
-#     windowSize: int,
-#     windowOverlap: int,
-# ):
-#     """Global index array to datetime convertor
-
-#     Global index 0 corresponds to reference time
-
-#     Parameters
-#     ----------
-#     gArray : np.ndarray
-#         Globel indices array
-#     refTime : datetime.datetime
-#         Reference time
-#     fs : float
-#         Sampling frequency in Hz
-#     windowSize : int
-#         Size of windows
-#     windowOverlap : int
-#         Size of window overlaps
-
-#     Returns
-#     -------
-#     startTime : np.ndarray of datetime.datetime
-#         Start times of global windows
-#     endTime : np.ndarray of datetime.datetime
-#         End times of global windows
-#     """
-#     arrSize = gArray.size
-#     startTime = np.zeros(shape=(arrSize), dtype=datetime)
-#     endTime = np.zeros(shape=(arrSize), dtype=datetime)
-#     for i in range(0, arrSize):
-#         startTime[i], endTime[i] = gIndex2datetime(
-#             gArray[i], refTime, fs, windowSize, windowOverlap
-#         )
-#     return startTime, endTime
+    return to_timedelta(1 / fs) * (window_size - overlap_size)
 
 
-# def datetime2gIndex(
-#     refTime: datetime, inTime: datetime, fs: float, windowSize: int, windowOverlap: int
-# ):
-#     """Datetime to global index convertor
+def window_to_datetime(
+    ref_time: RSDateTime, n_increments: int, increment: RSTimeDelta
+) -> RSDateTime:
+    """
+    Convert window index to start time of window
 
-#     Global index 0 corresponds to reference time. This returns the global index of the time window nearest to inTime
+    Parameters
+    ----------
+    ref_time : RSDateTime
+        Reference time
+    n_increments : int
+        window index
+    increment : RSTimeDelta
+        The increment duration
 
-#     Parameters
-#     ----------
-#     refTime : datetime.datetime
-#         Reference time
-#     inTime : datetime.datetime
-#         Time for which you want closest global index
-#     fs : float
-#         Sampling frequency in Hz
-#     windowSize : int
-#         Size of windows
-#     windowOverlap : int
-#         Size of window overlaps
+    Returns
+    -------
+    RSDateTime
+        Start time of window
+    """
+    return ref_time + (n_increments * increment)
 
-#     Returns
-#     -------
-#     gIndex : int
-#         Global window index closest to inTime
-#     firstWindowTime : datetime.datetime
-#         Datetime of the global window
-#     """
-#     # need to return the next one close
-#     # calculate
-#     deltaRefStart = inTime - refTime
-#     winStartIncrement = (windowSize - windowOverlap) / fs
-#     # calculate number of windows started before reference time
-#     # and then by taking the ceiling, find the global index of the first window in the data
-#     gIndex = int(math.ceil(deltaRefStart.total_seconds() / winStartIncrement))
-#     # calculate start time of first global window
-#     offsetSeconds = gIndex * winStartIncrement
-#     # calculate the first window time
-#     firstWindowTime = refTime + timedelta(seconds=offsetSeconds)
-#     return gIndex, firstWindowTime
+
+def datetime_to_window(
+    ref_time: RSDateTime,
+    time: RSDateTime,
+    increment: RSTimeDelta,
+    method: str = "round",
+) -> int:
+    """
+    Convert a datetime to a window index and start time of the window
+
+    Parameters
+    ----------
+    ref_time : RSDateTime
+        Reference time
+    time : RSDateTime
+        Datetime to convert
+    increment : RSTimeDelta
+        The increment duration
+    method : str, optional
+        Method for dealing with float results, by default "round"
+
+    Returns
+    -------
+    int
+        The window index relative to the reference time
+
+    Raises
+    ------
+    ValueError
+        If time < ref_time
+
+    Examples
+    --------
+    A simple example to show the logic
+
+    >>> from resistics.sampling import to_datetime, to_timedelta
+    >>> from resistics.window import datetime_to_window, window_to_datetime
+    >>> ref_time = to_datetime("2021-01-01 00:00:00")
+    >>> time = to_datetime("2021-01-01 00:01:00")
+    >>> increment = to_timedelta(60)
+    >>> window_index = datetime_to_window(ref_time, time, increment)
+    >>> window_index
+    1
+    >>> print(window_to_datetime(ref_time, window_index, increment))
+    2021-01-01 00:01:00
+
+    A more complex logic with window sizes, overlap sizes and sampling
+    frequencies
+
+    >>> fs = 128
+    >>> window_size = 256
+    >>> overlap_size = 64
+    >>> ref_time = to_datetime("2021-03-15 00:00:00")
+    >>> time = to_datetime("2021-04-17 18:00:00")
+    >>> increment = increment_duration(window_size, overlap_size, fs)
+    >>> print(increment)
+    0:00:01.5
+    >>> window_index = datetime_to_window(ref_time, time, increment)
+    >>> window_index
+    1944000
+    >>> print(window_to_datetime(ref_time, window_index, increment))
+    2021-04-17 18:00:00
+
+    In this scenario, explore the use of rounding
+
+    >>> time = to_datetime("2021-04-17 18:00:00.50")
+    >>> window_index = datetime_to_window(ref_time, time, increment, method = "floor")
+    >>> window_index
+    1944000
+    >>> print(window_to_datetime(ref_time, window_index, increment))
+    2021-04-17 18:00:00
+    >>> window_index = datetime_to_window(ref_time, time, increment, method = "ceil")
+    >>> window_index
+    1944001
+    >>> print(window_to_datetime(ref_time, window_index, increment))
+    2021-04-17 18:00:01.5
+    >>> window_index = datetime_to_window(ref_time, time, increment, method = "round")
+    >>> window_index
+    1944000
+    >>> print(window_to_datetime(ref_time, window_index, increment))
+    2021-04-17 18:00:00
+    """
+    from math import floor, ceil
+    from resistics.sampling import to_seconds
+
+    if time < ref_time:
+        raise ValueError(f"Time {time} < reference time {ref_time}")
+
+    increment_days_in_seconds, increment_remaining_in_seconds = to_seconds(increment)
+    increment_seconds = increment_days_in_seconds + increment_remaining_in_seconds
+
+    delta_days_in_seconds, delta_remaining_in_seconds = to_seconds(time - ref_time)
+    n_increments = delta_days_in_seconds / increment_seconds
+    n_increments += delta_remaining_in_seconds / increment_remaining_in_seconds
+
+    if n_increments.is_integer():
+        n_increments = int(n_increments)
+    elif method == "floor":
+        n_increments = int(floor(n_increments))
+    elif method == "ceil":
+        n_increments = int(ceil(n_increments))
+    else:
+        n_increments = int(round(n_increments))
+    return n_increments
+
+
+def get_first_and_last_window(
+    ref_time: RSDateTime, time_data: TimeData, window_size: int, overlap_size: int
+) -> Tuple[int, int]:
+    """
+    Get first and last window for a TimeData
+
+    Parameters
+    ----------
+    ref_time : RSDateTime
+        The reference time
+    time_data : TimeData
+        The TimeData
+    window_size : int
+        Window size in samples
+    overlap_size : int
+        Overlap size in samples
+
+    Returns
+    -------
+    Tuple[int, int]
+        First window and last window respectively relative to the reference time
+
+    Examples
+    --------
+    >>> from resistics.testing import time_data_random
+    >>> from resistics.sampling import to_datetime
+    >>> from resistics.window import get_first_and_last_window, window_to_datetime, increment_duration
+    >>> ref_time = to_datetime("2021-01-01 00:00:00")
+    >>> time_data = time_data_random(n_samples = 1000, fs=10, first_time="2021-01-01 01:00:00")
+    >>> print(time_data.fs, time_data.first_time, time_data.last_time)
+    10.0 2021-01-01 01:00:00 2021-01-01 01:01:39.9
+    >>> window_size = 100
+    >>> overlap_size = 25
+    >>> first_window, last_window = get_first_and_last_window(ref_time, time_data, window_size, overlap_size)
+    >>> print(first_window, last_window)
+    480 492
+
+    These window indices can be converted to start times of the windows. The
+    last window is checked to make sure it does not extend past the end of the
+    time data
+
+    >>> increment = increment_duration(window_size, overlap_size, time_data.fs)
+    >>> first_window_start_time = window_to_datetime(ref_time, 480, increment)
+    >>> last_window_start_time = window_to_datetime(ref_time, 492, increment)
+    >>> print(first_window_start_time, last_window_start_time)
+    2021-01-01 01:00:00 2021-01-01 01:01:30
+    >>> print(last_window_start_time + increment)
+    2021-01-01 01:01:37.5
+    >>> print(time_data.last_time)
+    2021-01-01 01:01:39.9
+    >>> time_data.last_time > last_window_start_time + increment
+    True
+    """
+    increment = increment_duration(window_size, overlap_size, time_data.fs)
+    first_window = datetime_to_window(
+        ref_time, time_data.first_time, increment, method="ceil"
+    )
+    last_window = datetime_to_window(
+        ref_time, time_data.last_time, increment, method="floor"
+    )
+    # adjust if there is not enough date to complete the last window
+    last_window_time = window_to_datetime(ref_time, last_window, increment)
+    if time_data.last_time < last_window_time + increment:
+        last_window -= 1
+    return first_window, last_window
+
+
+def get_window_table(
+    ref_time: RSDateTime, time_data: TimeData, window_size: int, overlap_size: int
+) -> pd.DataFrame:
+    """
+    Get a DataFrame with
+
+    Parameters
+    ----------
+    ref_time : RSDateTime
+        Reference
+    time_data : TimeData
+        Time data that will be windowed
+    window_size : int
+        The window size
+    overlap_size : int
+        The overlap size
+
+    Returns
+    -------
+    pd.DataFrame
+        A pandas DataFrame with details about each window
+
+    Examples
+    --------
+    >>> from resistics.testing import time_data_random
+    >>> from resistics.sampling import to_datetime
+    >>> from resistics.window import get_window_table
+    >>> ref_time = to_datetime("2021-01-01 00:00:00")
+    >>> time_data = time_data_random(n_samples = 1000, fs=10, first_time="2021-01-01 01:00:00")
+    >>> print(time_data.fs, time_data.first_time, time_data.last_time)
+    10.0 2021-01-01 01:00:00 2021-01-01 01:01:39.9
+    >>> window_size = 100
+    >>> overlap_size = 25
+    >>> df = get_window_table(ref_time, time_data, window_size, overlap_size)
+    >>> print(df.to_string())
+        window  local  from_sample  to_sample            window_start              window_end
+    0      480      0            0         99 2021-01-01 01:00:00.000 2021-01-01 01:00:09.900
+    1      481      1           75        174 2021-01-01 01:00:07.500 2021-01-01 01:00:17.400
+    2      482      2          150        249 2021-01-01 01:00:15.000 2021-01-01 01:00:24.900
+    3      483      3          225        324 2021-01-01 01:00:22.500 2021-01-01 01:00:32.400
+    4      484      4          300        399 2021-01-01 01:00:30.000 2021-01-01 01:00:39.900
+    5      485      5          375        474 2021-01-01 01:00:37.500 2021-01-01 01:00:47.400
+    6      486      6          450        549 2021-01-01 01:00:45.000 2021-01-01 01:00:54.900
+    7      487      7          525        624 2021-01-01 01:00:52.500 2021-01-01 01:01:02.400
+    8      488      8          600        699 2021-01-01 01:01:00.000 2021-01-01 01:01:09.900
+    9      489      9          675        774 2021-01-01 01:01:07.500 2021-01-01 01:01:17.400
+    10     490     10          750        849 2021-01-01 01:01:15.000 2021-01-01 01:01:24.900
+    11     491     11          825        924 2021-01-01 01:01:22.500 2021-01-01 01:01:32.400
+    12     492     12          900        999 2021-01-01 01:01:30.000 2021-01-01 01:01:39.900
+    """
+    import numpy as np
+    from resistics.sampling import to_n_samples, datetime_array_estimate
+
+    increment_size = window_size - overlap_size
+    increment = increment_duration(window_size, overlap_size, time_data.fs)
+    fs = time_data.fs
+    first_time = time_data.first_time
+
+    first_window, last_window = get_first_and_last_window(
+        ref_time, time_data, window_size, overlap_size
+    )
+    first_window_time = window_to_datetime(ref_time, first_window, increment)
+    n_windows = last_window - first_window + 1
+    local_windows = np.arange(n_windows)
+    # samples
+    first_sample = to_n_samples(first_window_time - first_time, fs, method="round") - 1
+    starts = datetime_array_estimate(first_window_time, fs / increment_size, n_windows)
+    ends = starts + pd.Timedelta((window_size - 1) * (1 / fs), "s")
+    df_dict = {
+        "window": np.arange(first_window, last_window + 1),
+        "local": local_windows,
+        "from_sample": first_sample + (local_windows * increment_size),
+        "to_sample": first_sample + window_size - 1 + (local_windows * increment_size),
+        "window_start": starts,
+        "window_end": ends,
+    }
+    return pd.DataFrame(data=df_dict)
 
 
 class WindowParameters(ResisticsData):
@@ -418,5 +647,5 @@ class WindowedData(ResisticsData):
 
 
 class Windower(ResisticsProcess):
-    def __init__(self):
-        pass
+    def __init__(self, min_windows: int = 5):
+        self.min_windows = min_windows
