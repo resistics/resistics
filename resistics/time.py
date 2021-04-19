@@ -1358,8 +1358,6 @@ class Add(ResisticsProcess):
 
     Variable values for the channels provided as a dictionary
 
-    >>> from resistics.testing import time_data_ones
-    >>> from resistics.time import Add
     >>> time_data = time_data_ones()
     >>> adder = Add({"Ex": 3, "Hy": -7})
     >>> time_data_new = adder.run(time_data)
@@ -1438,8 +1436,6 @@ class Multiply(ResisticsProcess):
 
     Variable values for the channels provided as a dictionary
 
-    >>> from resistics.testing import time_data_ones
-    >>> from resistics.time import Multiply
     >>> time_data = time_data_ones()
     >>> multiplier = Multiply({"Ex": 3, "Hy": -7})
     >>> time_data_new = multiplier.run(time_data)
@@ -1933,6 +1929,7 @@ class Decimate(ResisticsProcess):
         """Factorise a number to avoid too large a downsample factor
 
         Logic:
+
         - Perform a prime factorisation to get prime factors
         - Now want to combine factors to reduce the number of calls
         - Each single downsample factor must be <= 13
