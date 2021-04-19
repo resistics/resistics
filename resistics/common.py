@@ -381,13 +381,11 @@ def to_resistics_chan(chan: str) -> str:
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.common import to_resistics_chan
-        >>> to_resistics_chan("Bx")
-        'Hx'
-        >>> to_resistics_chan("Ex")
-        'Ex'
+    >>> from resistics.common import to_resistics_chan
+    >>> to_resistics_chan("Bx")
+    'Hx'
+    >>> to_resistics_chan("Ex")
+    'Ex'
     """
     standard_chans = ["Hx", "Hy", "Hz", "Ex", "Ey"]
     if chan in standard_chans:
@@ -447,11 +445,9 @@ def fs_to_string(fs: float) -> str:
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.common import fs_to_string
-        >>> fs_to_string(512.0)
-        '512_000000'
+    >>> from resistics.common import fs_to_string
+    >>> fs_to_string(512.0)
+    '512_000000'
     """
     return (f"{fs:.6f}").replace(".", "_")
 
@@ -543,13 +539,11 @@ def list_to_string(lst: List[Any]) -> str:
 
     Examples
     --------
-    .. doctest::
-
-        >>> from resistics.common import list_to_string
-        >>> list_to_string(["a", "b", "c"])
-        'a, b, c'
-        >>> list_to_string([1,2,3])
-        '1, 2, 3'
+    >>> from resistics.common import list_to_string
+    >>> list_to_string(["a", "b", "c"])
+    'a, b, c'
+    >>> list_to_string([1,2,3])
+    '1, 2, 3'
     """
     output_str = ""
     for value in lst:
@@ -1084,7 +1078,6 @@ class Metadata(ResisticsBase):
     If specifications are provided, updating a metadata value will be checked
     against the specifications
 
-    >>> from resistics.common import Metadata
     >>> metadata_dict = {"a": "12", "b": "something"}
     >>> spec = {"a": {"type": int, "default": 0}}
     >>> metadata = Metadata(metadata_dict, spec)
