@@ -198,7 +198,7 @@ def to_seconds(delta: RSTimeDelta) -> Tuple[float, float]:
     --------
     Example with a small timedelta
 
-    >>> from resistics.sampling import to_timedelta, to_seconds
+    >>> from resistics.sampling import to_datetime, to_timedelta, to_seconds
     >>> a = to_timedelta(1/4_096)
     >>> str(a)
     '0:00:00.000244140625'
@@ -210,7 +210,6 @@ def to_seconds(delta: RSTimeDelta) -> Tuple[float, float]:
 
     Example with a larger timedelta
 
-    >>> from resistics.sampling import to_datetime, to_seconds
     >>> a = to_datetime("2021-01-01 00:00:00")
     >>> b = to_datetime("2021-02-01 08:24:30")
     >>> days_in_seconds, remaining_in_seconds = to_seconds(b-a)
@@ -262,7 +261,6 @@ def to_n_samples(delta: RSTimeDelta, fs: float, method: str = "round") -> int:
 
     With a sampling frequency of 65536 Hz
 
-    >>> from resistics.sampling import to_timedelta, to_n_samples
     >>> fs = 65_536
     >>> delta = to_timedelta(2*3600 + (40954/fs))
     >>> str(delta)
