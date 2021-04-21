@@ -335,31 +335,46 @@ def get_window_table(
 
     Examples
     --------
-    >>> from resistics.testing import time_data_random
-    >>> from resistics.sampling import to_datetime
-    >>> from resistics.window import get_window_table
-    >>> ref_time = to_datetime("2021-01-01 00:00:00")
-    >>> time_data = time_data_random(n_samples = 1000, fs=10, first_time="2021-01-01 01:00:00")
-    >>> print(time_data.fs, time_data.first_time, time_data.last_time)
-    10.0 2021-01-01 01:00:00 2021-01-01 01:01:39.9
-    >>> window_size = 100
-    >>> overlap_size = 25
-    >>> df = get_window_table(ref_time, time_data, window_size, overlap_size)
-    >>> print(df.to_string())
-        global  local  from_sample  to_sample            window_start              window_end
-    0      480      0            0         99 2021-01-01 01:00:00.000 2021-01-01 01:00:09.900
-    1      481      1           75        174 2021-01-01 01:00:07.500 2021-01-01 01:00:17.400
-    2      482      2          150        249 2021-01-01 01:00:15.000 2021-01-01 01:00:24.900
-    3      483      3          225        324 2021-01-01 01:00:22.500 2021-01-01 01:00:32.400
-    4      484      4          300        399 2021-01-01 01:00:30.000 2021-01-01 01:00:39.900
-    5      485      5          375        474 2021-01-01 01:00:37.500 2021-01-01 01:00:47.400
-    6      486      6          450        549 2021-01-01 01:00:45.000 2021-01-01 01:00:54.900
-    7      487      7          525        624 2021-01-01 01:00:52.500 2021-01-01 01:01:02.400
-    8      488      8          600        699 2021-01-01 01:01:00.000 2021-01-01 01:01:09.900
-    9      489      9          675        774 2021-01-01 01:01:07.500 2021-01-01 01:01:17.400
-    10     490     10          750        849 2021-01-01 01:01:15.000 2021-01-01 01:01:24.900
-    11     491     11          825        924 2021-01-01 01:01:22.500 2021-01-01 01:01:32.400
-    12     492     12          900        999 2021-01-01 01:01:30.000 2021-01-01 01:01:39.900
+    .. plot::
+        :width: 100%
+
+        >>> import matplotlib.pyplot as plt
+        >>> from resistics.testing import time_data_random
+        >>> from resistics.sampling import to_datetime
+        >>> from resistics.window import get_window_table
+        >>> ref_time = to_datetime("2021-01-01 00:00:00")
+        >>> time_data = time_data_random(n_samples = 1000, fs=10, first_time="2021-01-01 01:00:00")
+        >>> print(time_data.fs, time_data.first_time, time_data.last_time)
+        10.0 2021-01-01 01:00:00 2021-01-01 01:01:39.9
+        >>> window_size = 100
+        >>> overlap_size = 25
+        >>> df = get_window_table(ref_time, time_data, window_size, overlap_size)
+        >>> print(df.to_string())
+            global  local  from_sample  to_sample            window_start              window_end
+        0      480      0            0         99 2021-01-01 01:00:00.000 2021-01-01 01:00:09.900
+        1      481      1           75        174 2021-01-01 01:00:07.500 2021-01-01 01:00:17.400
+        2      482      2          150        249 2021-01-01 01:00:15.000 2021-01-01 01:00:24.900
+        3      483      3          225        324 2021-01-01 01:00:22.500 2021-01-01 01:00:32.400
+        4      484      4          300        399 2021-01-01 01:00:30.000 2021-01-01 01:00:39.900
+        5      485      5          375        474 2021-01-01 01:00:37.500 2021-01-01 01:00:47.400
+        6      486      6          450        549 2021-01-01 01:00:45.000 2021-01-01 01:00:54.900
+        7      487      7          525        624 2021-01-01 01:00:52.500 2021-01-01 01:01:02.400
+        8      488      8          600        699 2021-01-01 01:01:00.000 2021-01-01 01:01:09.900
+        9      489      9          675        774 2021-01-01 01:01:07.500 2021-01-01 01:01:17.400
+        10     490     10          750        849 2021-01-01 01:01:15.000 2021-01-01 01:01:24.900
+        11     491     11          825        924 2021-01-01 01:01:22.500 2021-01-01 01:01:32.400
+        12     492     12          900        999 2021-01-01 01:01:30.000 2021-01-01 01:01:39.900
+
+        Plot six windows to illustrate the overlap
+
+        >>> plt.figure(figsize=(8, 3)) # doctest: +SKIP
+        >>> for idx, row in df.iterrows():
+        ...     color = "red" if idx%2 == 0 else "blue"
+        ...     plt.axvspan(row.loc["window_start"], row.loc["window_end"], alpha=0.5, color=color) # doctest: +SKIP
+        ...     if idx > 5:
+        ...         break
+        >>> plt.tight_layout() # doctest: +SKIP
+        >>> plt.show() # doctest: +SKIP
     """
     import numpy as np
     from resistics.sampling import to_n_samples, datetime_array_estimate
