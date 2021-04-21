@@ -153,6 +153,40 @@ def time_data_with_nans(
     return TimeData(metadata, chans, data, ProcessHistory([record]))
 
 
+def time_data_linear(
+    fs: float = 10, first_time: str = "2020-01-01 00:00:00", n_samples: int = 10
+) -> TimeData:
+    """
+    Get TimeData with linear data
+
+    Parameters
+    ----------
+    fs : float, optional
+        The sampling frequency, by default 10
+    first_time : str, optional
+        Time of first sample, by default "2020-01-01 00:00:00"
+    n_samples : int, optional
+        The number of samples, by default 10
+
+    Returns
+    -------
+    TimeData
+        TimeData with linear values
+    """
+    from resistics.common import serialize, get_process_record
+
+    first_time = pd.Timestamp(first_time)
+    chans = ["Ex", "Ey", "Hx", "Hy"]
+    data = np.empty(shape=(len(chans), n_samples))
+    for idx in range(len(chans)):
+        data[idx, :] = np.arange(n_samples)
+    metadata = time_metadata(fs, first_time, n_samples)
+    parameters = {"fs": fs, "first_time": serialize(first_time), "n_samples": n_samples}
+    messages = ["Generated time data with random values"]
+    record = get_process_record("time_data_random", parameters, messages)
+    return TimeData(metadata, chans, data, ProcessHistory([record]))
+
+
 def time_data_random(
     fs: float = 10, first_time: str = "2020-01-01 00:00:00", n_samples: int = 10
 ) -> TimeData:

@@ -1,11 +1,31 @@
 """
-Module for calculating window related data. This includes:
+Module for calculating window related data. Windows can be indexed relative to
+two starting indices.
 
-- Windowing utility functions such as converting from global indices to datetime
+- Local window index
+
+    - Window index relative to the TimeData is called "local_window"
+    - Local window indices always start at 0
+
+- Global window index
+
+    - The global window index is relative to the project reference time
+    - The 0 index window here begins at the reference time
+    - This window indexing is to synchronise data for across sites
+
+The global window index is considered the default and sometimes referred to as
+the window. Local windows should be explicitly referred to as local_window in
+all cases.
+
+The window module includes functionality to do the following:
+
+- Windowing utility functions to calculate window and overlap sizes
+- Functions to map windows to samples in TimeData
 - Converting a global index array to datetime
 """
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Union
 from logging import getLogger
+import numpy as np
 import pandas as pd
 
 from resistics.common import ResisticsData, ResisticsProcess
@@ -95,17 +115,17 @@ def increment_duration(window_size: int, overlap_size: int, fs: float) -> RSTime
 
 
 def window_to_datetime(
-    ref_time: RSDateTime, n_increments: int, increment: RSTimeDelta
+    ref_time: RSDateTime, global_window: int, increment: RSTimeDelta
 ) -> RSDateTime:
     """
-    Convert window index to start time of window
+    Convert reference window index to start time of window
 
     Parameters
     ----------
     ref_time : RSDateTime
         Reference time
-    n_increments : int
-        window index
+    global_window : int
+        Window index relative to reference time
     increment : RSTimeDelta
         The increment duration
 
@@ -114,7 +134,7 @@ def window_to_datetime(
     RSDateTime
         Start time of window
     """
-    return ref_time + (n_increments * increment)
+    return ref_time + (global_window * increment)
 
 
 def datetime_to_window(
@@ -124,7 +144,7 @@ def datetime_to_window(
     method: str = "round",
 ) -> int:
     """
-    Convert a datetime to a window index and start time of the window
+    Convert a datetime to a global window index
 
     Parameters
     ----------
@@ -140,7 +160,8 @@ def datetime_to_window(
     Returns
     -------
     int
-        The window index relative to the reference time
+        The global window index i.e. the window index relative to the reference
+        time
 
     Raises
     ------
@@ -242,7 +263,8 @@ def get_first_and_last_window(
     Returns
     -------
     Tuple[int, int]
-        First window and last window respectively relative to the reference time
+        First and last global windows. This is window indices relative to the
+        reference time
 
     Examples
     --------
@@ -324,7 +346,7 @@ def get_window_table(
     >>> overlap_size = 25
     >>> df = get_window_table(ref_time, time_data, window_size, overlap_size)
     >>> print(df.to_string())
-        window  local  from_sample  to_sample            window_start              window_end
+        global  local  from_sample  to_sample            window_start              window_end
     0      480      0            0         99 2021-01-01 01:00:00.000 2021-01-01 01:00:09.900
     1      481      1           75        174 2021-01-01 01:00:07.500 2021-01-01 01:00:17.400
     2      482      2          150        249 2021-01-01 01:00:15.000 2021-01-01 01:00:24.900
@@ -352,13 +374,13 @@ def get_window_table(
     )
     first_window_time = window_to_datetime(ref_time, first_window, increment)
     n_windows = last_window - first_window + 1
-    local_windows = np.arange(n_windows)
+    local_windows = np.arange(n_windows).astype(int)
     # samples
     first_sample = to_n_samples(first_window_time - first_time, fs, method="round") - 1
     starts = datetime_array_estimate(first_window_time, fs / increment_size, n_windows)
     ends = starts + pd.Timedelta((window_size - 1) * (1 / fs), "s")
     df_dict = {
-        "window": np.arange(first_window, last_window + 1),
+        "global": np.arange(first_window, last_window + 1),
         "local": local_windows,
         "from_sample": first_sample + (local_windows * increment_size),
         "to_sample": first_sample + window_size - 1 + (local_windows * increment_size),
@@ -641,11 +663,290 @@ class WindowSetup(ResisticsProcess):
         return overlap_sizes
 
 
-class WindowedData(ResisticsData):
-    def __init__(self):
-        pass
+class WindowData(ResisticsData):
+    """
+    WindowData for a TimeData object
+
+    Note that the WindowData actually holds views to the TimeData data to avoid
+    excess memory usage.
+
+    Examples
+    --------
+    >>> from resistics.testing import time_data_linear
+    >>> from resistics.sampling import to_datetime
+    >>> from resistics.window import Windower
+    >>> time_data = time_data_linear(first_time="2021-01-01 01:01:00", n_samples=12)
+    >>> time_data.fs
+    10.0
+    >>> time_data.data
+    array([[ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
+           [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
+           [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
+           [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.]])
+    >>> window_size = 5
+    >>> overlap_size = 2
+    >>> ref_time = to_datetime("2021-01-01 01:00:00")
+    >>> windower = Windower(min_windows=2)
+    >>> windower.check(ref_time, time_data, window_size, overlap_size)
+    True
+    >>> window_data = windower.run(time_data)
+    >>> print(window_data.window_table.to_string())
+           global  from_sample  to_sample            window_start              window_end
+    local
+    0         200            0          4 2021-01-01 01:01:00.000 2021-01-01 01:01:00.400
+    1         201            3          7 2021-01-01 01:01:00.300 2021-01-01 01:01:00.700
+    2         202            6         10 2021-01-01 01:01:00.600 2021-01-01 01:01:01.000
+
+    The first window has global index 200. Why? There is a 1 minute time
+    difference between the reference time "2021-01-01 01:00:00" and the first
+    time "2021-01-01 01:01:00". There is a 3 sample increment between window
+    start samples (the window size - overlap size). This means there is a 0.3
+    seconds increment between windows. So how many windows in the 1 minute?
+
+    >>> 60 / 0.3
+    200.0
+
+    There are 200 windows in this 1 minute, and our data begins with the 201st
+    window, which when beginning with 0-index, has index 200.
+    """
+
+    def __init__(
+        self,
+        window_views: np.ndarray,
+        window_table: pd.DataFrame,
+    ):
+        """
+        WindowData which can supply data for a window in TimeData
+
+        Parameters
+        ----------
+        window_views : np.ndarray
+            The window views into the original TimeData
+        window_table : pd.DataFrame
+            Table outlining global window index relative to the reference time,
+            the local window index, the sample ranges and time range for each
+            window
+
+        Raises
+        ------
+        ValueError
+            If the window tabkle is somehow
+        """
+        self.window_views = window_views
+        self.window_table = window_table.set_index("local")
+        self.n_windows = len(window_table.index)
+        offset = (window_table["local"] - window_table["global"]).unique()
+        if len(offset) != 1:
+            raise ValueError("Malformed window table, varying local to global offset")
+        self.offset = offset[0]
+
+    def get_local(self, local_window: int) -> np.ndarray:
+        """
+        Get window using local index
+
+        Parameters
+        ----------
+        local_window : int
+            Local window index
+
+        Returns
+        -------
+        np.ndarray
+            Window data
+
+        Raises
+        ------
+        ValueError
+            If local window index is out of range
+        """
+        if local_window < 0 or local_window >= self.n_windows:
+            raise ValueError(
+                f"Local window {local_window} not 0 <= local_window < {self.n_windows}"
+            )
+        return self.window_views[local_window]
+
+    def get_global(self, global_window: int) -> np.ndarray:
+        """
+        Get window using global index
+
+        Parameters
+        ----------
+        global_window : int
+            Global window index
+
+        Returns
+        -------
+        np.ndarray
+            Window data
+        """
+        return self.get_local(global_window + self.offset)
 
 
 class Windower(ResisticsProcess):
+    """
+    The Windower creates a views to the data for each window
+
+    Rather than duplicate data for each window, the Windower creates an array of
+    views which point to the right data for the window in the original array.
+
+    Examples
+    --------
+    Window time data with a window size of 5 and overlap size of 2. For the sake
+    of simplicity, set the reference time to the start time of the time data.
+
+    >>> from resistics.testing import time_data_linear
+    >>> from resistics.window import Windower
+    >>> time_data = time_data_linear(n_samples=12)
+    >>> time_data.data
+    array([[ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
+           [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
+           [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
+           [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.]])
+    >>> window_size = 5
+    >>> overlap_size = 2
+    >>> ref_time = time_data.first_time
+    >>> str(ref_time)
+    '2020-01-01 00:00:00'
+    >>> windower = Windower()
+    >>> windower.check(ref_time, time_data, window_size, overlap_size)
+    False
+
+    The default minimum number of windows is 5. Here we have only 3. Let's
+    recreate the Windower with a different minimum. Remember, we are running
+    with a window size of 5 and overlap of 2 samples between windows.
+
+    >>> windower = Windower(min_windows=2)
+    >>> windower.check(ref_time, time_data, window_size, overlap_size)
+    True
+    >>> window_data = windower.run(time_data)
+    >>> print(window_data.window_table.to_string())
+               global  from_sample  to_sample            window_start              window_end
+    local
+    0           0            0          4 2020-01-01 00:00:00.000 2020-01-01 00:00:00.400
+    1           1            3          7 2020-01-01 00:00:00.300 2020-01-01 00:00:00.700
+    2           2            6         10 2020-01-01 00:00:00.600 2020-01-01 00:00:01.000
+    >>> window_data.window_views
+    array([[[ 0.,  1.,  2.,  3.,  4.],
+            [ 0.,  1.,  2.,  3.,  4.],
+            [ 0.,  1.,  2.,  3.,  4.],
+            [ 0.,  1.,  2.,  3.,  4.]],
+           [[ 3.,  4.,  5.,  6.,  7.],
+            [ 3.,  4.,  5.,  6.,  7.],
+            [ 3.,  4.,  5.,  6.,  7.],
+            [ 3.,  4.,  5.,  6.,  7.]],
+           [[ 6.,  7.,  8.,  9., 10.],
+            [ 6.,  7.,  8.,  9., 10.],
+            [ 6.,  7.,  8.,  9., 10.],
+            [ 6.,  7.,  8.,  9., 10.]]])
+    """
+
     def __init__(self, min_windows: int = 5):
+        """
+        Initialise Windower
+
+        Parameters
+        ----------
+        min_windows : int, optional
+            Minimum number of windows required, by default 5. The check to see
+            how many windows can be made is done at the check stage.
+        """
         self.min_windows = min_windows
+        self.ref_time: Union[RSDateTime, None] = None
+        self.window_size: Union[int, None] = None
+        self.overlap_size: Union[int, None] = None
+
+    def check(
+        self,
+        ref_time: RSDateTime,
+        time_data: TimeData,
+        window_size: int,
+        overlap_size: int,
+    ) -> bool:
+        """
+        Check to ensure number windows is greater than min windows
+
+        Parameters
+        ----------
+        ref_time : RSDateTime
+            The reference time
+        time_data : TimeData
+            The time data
+        window_size : int
+            The window size
+        overlap_size : int
+            The overlap size
+
+        Returns
+        -------
+        bool
+            True if all checks complete, False is not enough windows can be made
+        """
+        self.ref_time = ref_time
+        self.window_size = window_size
+        self.overlap_size = overlap_size
+        self.window_table = get_window_table(
+            ref_time, time_data, window_size, overlap_size
+        )
+        n_windows = len(self.window_table.index)
+        if n_windows < self.min_windows:
+            logger.error(f"Number of windows {n_windows} < minimum {self.min_windows}")
+            return False
+        logger.info(f"{n_windows} windows, size {window_size}, overlap {overlap_size}")
+        return True
+
+    def run(self, time_data: TimeData) -> WindowData:
+        """
+        Run the windowing which gets the views into the data
+
+        Parameters
+        ----------
+        time_data : TimeData
+            TimeData to window
+
+        Returns
+        -------
+        WindowData
+            Window data for accessing windows
+        """
+        window_views = self._get_window_views(time_data)
+        return WindowData(window_views, self.window_table)
+
+    def _get_window_views(self, time_data: TimeData) -> np.ndarray:
+        """
+        Get the window views
+
+        This method uses sliding_window_view functionality in numpy.
+
+        Parameters
+        ----------
+        time_data : TimeData
+            TimeData to window
+
+        Returns
+        -------
+        np.ndarray
+            Sliding window views in an array
+
+        Raises
+        ------
+        ValueError
+            If window_size or overlap_size is None, likely caused by not having
+            called check first
+        """
+        from numpy.lib.stride_tricks import sliding_window_view
+
+        if self.window_size is None or self.overlap_size is None:
+            raise ValueError("One or both of window/overlap is None. Run check first.")
+
+        n_chans = time_data.n_chans
+        from_sample = self.window_table.loc[0, "from_sample"]
+        increment_size = self.window_size - self.overlap_size
+
+        view = np.squeeze(
+            sliding_window_view(
+                time_data.data,
+                window_shape=(n_chans, self.window_size),
+                writeable=False,
+            )
+        )
+        return view[from_sample::increment_size]
