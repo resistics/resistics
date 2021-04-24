@@ -124,6 +124,32 @@ def to_datetime(time: DateTimeLike) -> RSDateTime:
     )
 
 
+def to_timestamp(time: RSDateTime) -> pd.Timestamp:
+    """
+    Convert a RSDateTime to a pandas Timestamp
+
+    Parameters
+    ----------
+    time : RSDateTime
+        An RSDateTime instance
+
+    Returns
+    -------
+    pd.Timestamp
+        RSDateTime converted to Timestamp
+
+    Examples
+    --------
+    >>> from resistics.sampling import to_datetime, to_timestamp
+    >>> time = to_datetime("2021-01-01 00:30:00.345")
+    >>> print(time)
+    2021-01-01 00:30:00.345
+    >>> to_timestamp(time)
+    Timestamp('2021-01-01 00:30:00.345000')
+    """
+    return pd.Timestamp(time.isoformat())
+
+
 def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
     """Get a RSTimeDelta object by providing seconds as a float or a
     pd.Timedelta.
