@@ -162,6 +162,35 @@ class TimeData(ResisticsData):
         """Iterator over channels"""
         return iter(self.chans)
 
+    def __getitem__(self, chan: str) -> np.ndarray:
+        """
+        Get channel time data
+
+        Parameters
+        ----------
+        chan : str
+            The channel to get data for
+
+        Returns
+        -------
+        np.ndarray
+            pandas Series with channel data and datetime index
+        """
+        return self.get_chan(chan)
+
+    def __setitem__(self, chan: str, chan_data: np.ndarray) -> None:
+        """
+        Set channel time data
+
+        Parameters
+        ----------
+        chan : str
+            The channel to set the data for
+        chan_data : np.ndarray
+            The new channel data
+        """
+        self.set_chan(chan, chan_data)
+
     @property
     def n_chans(self) -> int:
         """
@@ -317,22 +346,6 @@ class TimeData(ResisticsData):
         """
         return self.get_timestamps(samples=samples, estimate=True)
 
-    def __getitem__(self, chan: str) -> np.ndarray:
-        """
-        Get channel time data
-
-        Parameters
-        ----------
-        chan : str
-            The channel to get data for
-
-        Returns
-        -------
-        np.ndarray
-            pandas Series with channel data and datetime index
-        """
-        return self.get_chan(chan)
-
     def get_chan(self, chan: str) -> np.ndarray:
         """
         Get the time data for a channel
@@ -367,19 +380,6 @@ class TimeData(ResisticsData):
             The index
         """
         return self._chan_to_idx[chan]
-
-    def __setitem__(self, chan: str, chan_data: np.ndarray) -> None:
-        """
-        Set channel time data
-
-        Parameters
-        ----------
-        chan : str
-            The channel to set the data for
-        chan_data : np.ndarray
-            The new channel data
-        """
-        self.set_chan(chan, chan_data)
 
     def set_chan(self, chan: str, chan_data: np.ndarray) -> None:
         """
