@@ -3,7 +3,7 @@ Classes for storing and manipulating time data
 """
 from pathlib import Path
 from logging import getLogger
-from typing import Collection, List, Dict, Union, Any, Tuple
+from typing import Collection, List, Dict, Union, Any, Tuple, Iterator
 from typing import Optional, Callable
 import plotly.graph_objects as go
 import numpy as np
@@ -158,15 +158,8 @@ class TimeData(ResisticsData):
         for idx, chan in enumerate(self.chans):
             self._chan_to_idx[chan] = idx
 
-    def __iter__(self):
-        """
-        Return the channel iterator
-
-        Returns
-        -------
-        list_iterator
-            An iterator for the channels
-        """
+    def __iter__(self) -> Iterator:
+        """Iterator over channels"""
         return iter(self.chans)
 
     @property
