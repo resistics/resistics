@@ -187,7 +187,7 @@ def assert_dir(dir_path: Path) -> None:
     from resistics.errors import NotDirectoryError
 
     if not dir_path.exists():
-        raise FileNotFoundError("Path does not exist")
+        raise FileNotFoundError(f"Path {dir_path} does not exist")
     if not dir_path.is_dir():
         raise NotDirectoryError(dir_path)
 
@@ -1132,26 +1132,8 @@ class Metadata(ResisticsBase):
             self._metadata["describes"] = "unknown"
 
     def __iter__(self) -> Iterator:
-        """
-        Get an iterator over the metadata keys
-
-        Returns
-        -------
-        Iterator
-            Iterator over keys
-        """
+        """Iterator over metadata keys"""
         return self._metadata.__iter__()
-
-    def keys(self) -> List[str]:
-        """
-        Get the keys in the metadata
-
-        Returns
-        -------
-        List[str]
-            List of keys
-        """
-        return list(self._metadata.keys())
 
     def __getitem__(self, key: str) -> Any:
         """
@@ -1200,6 +1182,25 @@ class Metadata(ResisticsBase):
             logger.info(f"Specifications for this header, require type {spec_type}")
             value = format_value(value, spec_type)
         self._metadata[key] = value
+
+    def keys(self, describes: bool = True) -> List[str]:
+        """
+        Get the keys in the metadata
+
+        Parameters
+        ----------
+        describes : bool, optional
+            Flag for including the describes entry, by default True
+
+        Returns
+        -------
+        List[str]
+            List of keys
+        """
+        keys = list(self._metadata.keys())
+        if not describes:
+            keys.remove("describes")
+        return keys
 
     def copy(self) -> "Metadata":
         """
@@ -1369,14 +1370,7 @@ class MetadataGroup(ResisticsBase):
         self.add_entries(group, specs)
 
     def __iter__(self) -> Iterator:
-        """
-        Iterator over the entries
-
-        Returns
-        -------
-        Iterator
-            An iterator over the entries
-        """
+        """Iterator over MetadataGroup entries"""
         return self._group.__iter__()
 
     def entries(
