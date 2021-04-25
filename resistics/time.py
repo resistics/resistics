@@ -1,10 +1,10 @@
 """
 Classes for storing and manipulating time data
 """
-from pathlib import Path
-from logging import getLogger
+from loguru import logger
 from typing import Collection, List, Dict, Union, Any, Tuple, Iterator
 from typing import Optional, Callable
+from pathlib import Path
 import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
@@ -13,9 +13,6 @@ from resistics.common import MetadataGroup, ResisticsData, ResisticsProcess
 from resistics.common import ProcessHistory, ProcessRecord
 from resistics.sampling import RSDateTime, RSTimeDelta, DateTimeLike
 from resistics.errors import MetadataReadError
-
-
-logger = getLogger(__name__)
 
 
 common_metadata_specs = {

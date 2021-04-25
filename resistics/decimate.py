@@ -4,17 +4,14 @@ Module for time data decimation including classes and for the following
 - Definition of DecimationParameters
 - Performing decimation on time data
 """
+from loguru import logger
 from typing import Any, Optional, Tuple, Union, Dict
-from logging import getLogger
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
 from resistics.common import ResisticsData, ResisticsProcess, ProcessHistory
 from resistics.time import TimeData
-
-
-logger = getLogger(__name__)
 
 
 class DecimationParameters(ResisticsData):

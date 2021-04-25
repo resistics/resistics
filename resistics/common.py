@@ -1,7 +1,7 @@
 """
 Common resistics functions and classes used throughout the package
 """
-from logging import getLogger
+from loguru import logger
 from typing import Type, List, Tuple, Union, Dict, Set, Any
 from typing import Collection, Iterator, Callable, Optional
 from pathlib import Path
@@ -10,8 +10,6 @@ import pandas as pd
 
 from resistics.sampling import RSDateTime
 from resistics.sampling import datetime_to_string, to_datetime
-
-logger = getLogger(__name__)
 
 
 # alias a metadata specification

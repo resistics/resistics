@@ -23,8 +23,8 @@ The window module includes functionality to do the following:
 - Functions to map windows to samples in TimeData
 - Converting a global index array to datetime
 """
+from loguru import logger
 from typing import Optional, List, Tuple, Dict
-from logging import getLogger
 import numpy as np
 import pandas as pd
 
@@ -32,8 +32,6 @@ from resistics.common import ProcessHistory, ResisticsData, ResisticsProcess
 from resistics.sampling import RSDateTime, RSTimeDelta
 from resistics.time import TimeData
 from resistics.decimate import DecimationParameters, DecimatedData
-
-logger = getLogger(__name__)
 
 
 def win_duration(win_size: int, fs: float) -> RSTimeDelta:

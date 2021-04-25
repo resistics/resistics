@@ -7,6 +7,7 @@
 - Currently, resistics uses attodatetime and attotimedelta from attotime
 - attotime is a high precision datetime library
 """
+from loguru import logger
 from typing import Union, Tuple, Optional
 from datetime import datetime, timedelta
 import numpy as np
@@ -223,6 +224,7 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
         delta = delta - microseconds
         nanoseconds = delta * 1_000
         if nanoseconds < eps:
+            logger.warning("nanoseconds set to 0 as potential machine precision error")
             nanoseconds = 0
         return RSTimeDelta(
             seconds=seconds, microseconds=microseconds, nanoseconds=nanoseconds

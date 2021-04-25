@@ -36,6 +36,7 @@ pandas = "^1.2.3"
 lttbc = "^0.2.0"
 attotime = "0.2.3"
 plotly = "^4.14.3"
+loguru = "^0.5.3"
 
 [tool.poetry.dev-dependencies]
 matplotlib="^3.4.1"

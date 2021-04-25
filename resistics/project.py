@@ -7,10 +7,10 @@ part of processing data with resistics.
 Resistics projects are in directory with several sub-directories. Project
 metadata is saved in the resistics.json file at the top level directory.
 """
-from logging import getLogger
+from loguru import logger
 from typing import Iterator, Union, Optional, List, Dict, Any
-from numbers import Number
 from pathlib import Path
+from numbers import Number
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
@@ -20,7 +20,6 @@ from resistics.common import Metadata
 from resistics.sampling import RSDateTime
 from resistics.time import TimeReader
 
-logger = getLogger(__name__)
 
 PROJ_FILE = "resistics.json"
 PROJ_DIRS = {
