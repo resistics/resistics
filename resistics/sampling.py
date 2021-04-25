@@ -223,7 +223,7 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
         microseconds = int(floor(delta))
         delta = delta - microseconds
         nanoseconds = delta * 1_000
-        if nanoseconds < eps:
+        if nanoseconds != 0 and nanoseconds < eps:
             logger.warning("nanoseconds set to 0 as potential machine precision error")
             nanoseconds = 0
         return RSTimeDelta(
