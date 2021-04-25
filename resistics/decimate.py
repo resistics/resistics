@@ -24,30 +24,29 @@ class DecimationParameters(ResisticsData):
     Examples
     --------
     >>> from resistics.decimate import DecimationSetup
-    >>> from resistics.decimate import DecimationSetup
     >>> dec_setup = DecimationSetup(n_levels=3, per_level=2)
-    >>> params = dec_setup.run(128)
-    >>> type(params)
+    >>> dec_params = dec_setup.run(128)
+    >>> type(dec_params)
     <class 'resistics.decimate.DecimationParameters'>
-    >>> params
+    >>> dec_params
     <class 'resistics.decimate.DecimationParameters'>
                         0          1     fs  total_factors  incremental_factors
     Decimation level
     0                 32.0  22.627417  128.0              1                    1
     1                 16.0  11.313708   64.0              2                    2
     2                  8.0   5.656854   32.0              4                    2
-    >>> params[2]
+    >>> dec_params[2]
     0                       8.000000
     1                       5.656854
     fs                     32.000000
     total_factors           4.000000
     incremental_factors     2.000000
     Name: 2, dtype: float64
-    >>> params[2,1]
+    >>> dec_params[2,1]
     5.65685424949238
-    >>> params.get_total_factor(2)
+    >>> dec_params.get_total_factor(2)
     4
-    >>> params.get_incremental_factor(2)
+    >>> dec_params.get_incremental_factor(2)
     2
     """
 
@@ -141,25 +140,22 @@ class DecimationParameters(ResisticsData):
         self.check_level(level)
         return self.eval_df.loc[level, :]
 
-    def get_eval_freq(self, level: int, idx: int) -> float:
+    def get_fs(self, level: int) -> float:
         """
-        Get an evaluation frequency
+        Get sampling frequency for level
 
         Parameters
         ----------
         level : int
-            The level
-        idx : int
-            Evaluation frequency index
+            The decimation level
 
         Returns
         -------
         float
-            The evaluation frequency
+            Sampling frequency Hz
         """
         self.check_level(level)
-        self.check_eval_idx(idx)
-        return self.eval_df.loc[level, idx]
+        return self.eval_df.loc[level, "fs"]
 
     def get_total_factor(self, level: int) -> int:
         """
@@ -195,6 +191,26 @@ class DecimationParameters(ResisticsData):
         self.check_level(level)
         return int(self.eval_df.loc[level, "incremental_factors"])
 
+    def get_eval_freq(self, level: int, idx: int) -> float:
+        """
+        Get an evaluation frequency
+
+        Parameters
+        ----------
+        level : int
+            The level
+        idx : int
+            Evaluation frequency index
+
+        Returns
+        -------
+        float
+            The evaluation frequency
+        """
+        self.check_level(level)
+        self.check_eval_idx(idx)
+        return self.eval_df.loc[level, idx]
+
     def to_string(self) -> str:
         """
         Decimation parameters as a string
@@ -217,8 +233,8 @@ class DecimationSetup(ResisticsProcess):
     --------
     >>> from resistics.decimate import DecimationSetup
     >>> dec_setup = DecimationSetup(n_levels=3, per_level=2)
-    >>> params = dec_setup.run(128)
-    >>> print(params)
+    >>> dec_params = dec_setup.run(128)
+    >>> print(dec_params)
     <class 'resistics.decimate.DecimationParameters'>
                          0          1     fs  total_factors  incremental_factors
     Decimation level
@@ -408,8 +424,8 @@ class DecimatedData(ResisticsData):
         >>> dec_setup = DecimationSetup()
         >>> dec_params = dec_setup.run(time_data.fs)
         >>> decimator = Decimator(dec_params)
-        >>> decimated = decimator.run(time_data)
-        >>> decimated.summary()
+        >>> dec_data = decimator.run(time_data)
+        >>> dec_data.summary()
         ##---Begin Summary----------------------------------
         <class 'resistics.decimate.DecimatedData'>
         Level 0
@@ -419,8 +435,8 @@ class DecimatedData(ResisticsData):
         Level 2
         fs = 8.0, dt = 0.125, n_samples = 313, first_time = 2020-01-01 00:00:00, last_time = 2020-01-01 00:00:39
         ##---End summary------------------------------------
-        >>> for ilevel in range(0, decimated.max_level + 1):
-        ...     time_data = decimated.get_level(ilevel)
+        >>> for ilevel in range(0, dec_data.max_level + 1):
+        ...     time_data = dec_data.get_level(ilevel)
         ...     plt.plot(time_data.get_x(), time_data["Hx"], label=f"Level{ilevel}") # doctest: +SKIP
         >>> plt.legend(loc=3) # doctest: +SKIP
         >>> plt.tight_layout() # doctest: +SKIP
@@ -429,7 +445,7 @@ class DecimatedData(ResisticsData):
 
     def __init__(
         self,
-        params: DecimationParameters,
+        dec_params: DecimationParameters,
         data: Dict[int, TimeData],
         history: ProcessHistory,
     ):
@@ -438,14 +454,14 @@ class DecimatedData(ResisticsData):
 
         Parameters
         ----------
-        params : DecimationParameters
+        dec_params : DecimationParameters
             The decimation parameters used
         data : Dict[int, TimeData]
             The data as a dictionary of level indices to TimeData
         history : ProcessHistory
             The process history
         """
-        self.params = params
+        self.dec_params = dec_params
         self.data = data
         self.history = history
         self.max_level = max(list(self.data.keys()))
@@ -469,8 +485,8 @@ class DecimatedData(ResisticsData):
         ValueError
             If level > max_level
         """
-        if level > self.max_level:
-            raise ValueError(f"Level {level} > max level decimated {self.max_level}")
+        if level >= self.max_level:
+            raise ValueError(f"Level {level} not < max {self.max_level}")
         return self.data[level]
 
     def plot(self, max_pts: int = 10_000) -> go.Figure:
@@ -504,7 +520,7 @@ class DecimatedData(ResisticsData):
             Class info as string
         """
         outstr = f"{self.type_to_string()}\n"
-        for ilevel in range(self.params.n_levels):
+        for ilevel in range(self.dec_params.n_levels):
             if ilevel not in self.data:
                 continue
             outstr += f"Level {ilevel}\n"
@@ -518,16 +534,16 @@ class DecimatedData(ResisticsData):
 
 
 class Decimator(ResisticsProcess):
-    def __init__(self, params: DecimationParameters):
+    def __init__(self, dec_params: DecimationParameters):
         """
         Initialise decimator with DecimationParameters
 
         Parameters
         ----------
-        params : DecimationParameters
+        dec_params : DecimationParameters
             Decimation parameters
         """
-        self.params = params
+        self.dec_params = dec_params
 
     def parameters(self) -> Dict[str, Any]:
         """
@@ -539,10 +555,10 @@ class Decimator(ResisticsProcess):
             The process parameters
         """
         return {
-            "fs": self.params.fs,
-            "n_levels": self.params.n_levels,
-            "per_level": self.params.per_level,
-            "min_samples": self.params.min_samples,
+            "fs": self.dec_params.fs,
+            "n_levels": self.dec_params.n_levels,
+            "per_level": self.dec_params.per_level,
+            "min_samples": self.dec_params.min_samples,
         }
 
     def run(self, time_data: TimeData) -> DecimatedData:
@@ -560,20 +576,21 @@ class Decimator(ResisticsProcess):
             DecimatedData instance with all the decimated data
         """
         data = {}
-        completed = 0
-        for ilevel in range(0, self.params.n_levels):
-            factor = self.params.get_incremental_factor(ilevel)
+        messages = []
+        for ilevel in range(0, self.dec_params.n_levels):
+            logger.info(f"Decimating level {ilevel}")
+            factor = self.dec_params.get_incremental_factor(ilevel)
+            fs = self.dec_params.get_fs(ilevel)
             time_data_new = self._decimate(time_data.copy(), factor)
-            if time_data_new.n_samples < self.params.min_samples:
-                logger.warning(
-                    f"Level {ilevel}, n_samples < {self.params.min_samples}. Ending..."
-                )
+            if time_data_new.n_samples < self.dec_params.min_samples:
+                logger.warning(f"n_samples < min allowed {self.dec_params.min_samples}")
                 break
-            completed += 1
             data[ilevel] = time_data_new
             time_data = time_data_new
-        record = self._get_process_record(f"Completed levels {list(range(completed))}")
-        return DecimatedData(self.params, data, ProcessHistory([record]))
+            messages.append(f"Decimated level {ilevel}, inc. factor {factor}, fs {fs}")
+        messages.append(f"Completed levels {list(range(len(data)))}")
+        record = self._get_process_record(messages)
+        return DecimatedData(self.dec_params, data, ProcessHistory([record]))
 
     def _decimate(self, time_data: TimeData, factor: int) -> TimeData:
         """
