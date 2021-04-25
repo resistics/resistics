@@ -1109,7 +1109,7 @@ class WindowedDecimatedData(ResisticsData):
     Overlap size: 64
     Increment duration: 0:01:16.8
 
-    Each level has it's own window table
+    Each level has its own window table
 
     >>> wins = win_data.get_wins(1)
     >>> print(wins.win_table.to_string())
