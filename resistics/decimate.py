@@ -588,7 +588,9 @@ class Decimator(ResisticsProcess):
             data[ilevel] = time_data_new
             time_data = time_data_new
             messages.append(f"Decimated level {ilevel}, inc. factor {factor}, fs {fs}")
-        messages.append(f"Completed levels {list(range(len(data)))}")
+        completed = list(range(len(data)))
+        target = list(range(self.dec_params.n_levels))
+        messages.append(f"Completed levels {completed} out of {target}")
         record = self._get_process_record(messages)
         return DecimatedData(self.dec_params, data, ProcessHistory([record]))
 
