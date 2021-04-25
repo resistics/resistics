@@ -159,7 +159,7 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
 
     .. warning::
 
-        At such high time resolutions, there are machine precision errors that
+        At high time resolutions, there are machine precision errors that
         come into play. Therefore, if nanoseconds < 0.000001, it will be zeroed
         out
 
