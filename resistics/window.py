@@ -23,15 +23,15 @@ The window module includes functionality to do the following:
 - Functions to map windows to samples in TimeData
 - Converting a global index array to datetime
 """
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Tuple, Dict
 from logging import getLogger
 import numpy as np
 import pandas as pd
 
-from resistics.common import ResisticsData, ResisticsProcess
+from resistics.common import ProcessHistory, ResisticsData, ResisticsProcess
 from resistics.sampling import RSDateTime, RSTimeDelta
 from resistics.time import TimeData
-from resistics.decimate import DecimationParameters
+from resistics.decimate import DecimationParameters, DecimatedData
 
 logger = getLogger(__name__)
 
@@ -77,19 +77,19 @@ def window_duration(window_size: int, fs: float) -> RSTimeDelta:
     return to_timedelta(1 / fs) * window_size
 
 
-def increment_duration(window_size: int, overlap_size: int, fs: float) -> RSTimeDelta:
+def increment_duration(window_size: int, olap_size: int, fs: float) -> RSTimeDelta:
     """
     Get the increment between window start times
 
-    If the overlap_size = 0, then the time increment between windows is simply
-    the window_duration. However, when there is an overlap, the increment
+    If the overlap size = 0, then the time increment between windows is simply
+    the window duration. However, when there is an overlap, the increment
     between window start times has to be adjusted by the overlap size
 
     Parameters
     ----------
     window_size : int
         The window size in samples
-    overlap_size : int
+    olap_size : int
         The overlap size in samples
     fs : float
         The sample frequency Hz
@@ -111,7 +111,7 @@ def increment_duration(window_size: int, overlap_size: int, fs: float) -> RSTime
     """
     from resistics.sampling import to_timedelta
 
-    return to_timedelta(1 / fs) * (window_size - overlap_size)
+    return to_timedelta(1 / fs) * (window_size - olap_size)
 
 
 def window_to_datetime(
@@ -188,10 +188,10 @@ def datetime_to_window(
 
     >>> fs = 128
     >>> window_size = 256
-    >>> overlap_size = 64
+    >>> olap_size = 64
     >>> ref_time = to_datetime("2021-03-15 00:00:00")
     >>> time = to_datetime("2021-04-17 18:00:00")
-    >>> increment = increment_duration(window_size, overlap_size, fs)
+    >>> increment = increment_duration(window_size, olap_size, fs)
     >>> print(increment)
     0:00:01.5
     >>> window_index = datetime_to_window(ref_time, time, increment)
@@ -244,7 +244,7 @@ def datetime_to_window(
 
 
 def get_first_and_last_window(
-    ref_time: RSDateTime, time_data: TimeData, window_size: int, overlap_size: int
+    ref_time: RSDateTime, time_data: TimeData, window_size: int, olap_size: int
 ) -> Tuple[int, int]:
     """
     Get first and last window for a TimeData
@@ -257,7 +257,7 @@ def get_first_and_last_window(
         The TimeData
     window_size : int
         Window size in samples
-    overlap_size : int
+    olap_size : int
         Overlap size in samples
 
     Returns
@@ -276,8 +276,8 @@ def get_first_and_last_window(
     >>> print(time_data.fs, time_data.first_time, time_data.last_time)
     10.0 2021-01-01 01:00:00 2021-01-01 01:01:39.9
     >>> window_size = 100
-    >>> overlap_size = 25
-    >>> first_window, last_window = get_first_and_last_window(ref_time, time_data, window_size, overlap_size)
+    >>> olap_size = 25
+    >>> first_window, last_window = get_first_and_last_window(ref_time, time_data, window_size, olap_size)
     >>> print(first_window, last_window)
     480 492
 
@@ -285,7 +285,7 @@ def get_first_and_last_window(
     last window is checked to make sure it does not extend past the end of the
     time data
 
-    >>> increment = increment_duration(window_size, overlap_size, time_data.fs)
+    >>> increment = increment_duration(window_size, olap_size, time_data.fs)
     >>> first_window_start_time = window_to_datetime(ref_time, 480, increment)
     >>> last_window_start_time = window_to_datetime(ref_time, 492, increment)
     >>> print(first_window_start_time, last_window_start_time)
@@ -297,7 +297,7 @@ def get_first_and_last_window(
     >>> time_data.last_time > last_window_start_time + increment
     True
     """
-    increment = increment_duration(window_size, overlap_size, time_data.fs)
+    increment = increment_duration(window_size, olap_size, time_data.fs)
     first_window = datetime_to_window(
         ref_time, time_data.first_time, increment, method="ceil"
     )
@@ -312,7 +312,7 @@ def get_first_and_last_window(
 
 
 def get_window_table(
-    ref_time: RSDateTime, time_data: TimeData, window_size: int, overlap_size: int
+    ref_time: RSDateTime, time_data: TimeData, window_size: int, olap_size: int
 ) -> pd.DataFrame:
     """
     Get a DataFrame with
@@ -325,7 +325,7 @@ def get_window_table(
         Time data that will be windowed
     window_size : int
         The window size
-    overlap_size : int
+    olap_size : int
         The overlap size
 
     Returns
@@ -347,8 +347,8 @@ def get_window_table(
         >>> print(time_data.fs, time_data.first_time, time_data.last_time)
         10.0 2021-01-01 01:00:00 2021-01-01 01:01:39.9
         >>> window_size = 100
-        >>> overlap_size = 25
-        >>> df = get_window_table(ref_time, time_data, window_size, overlap_size)
+        >>> olap_size = 25
+        >>> df = get_window_table(ref_time, time_data, window_size, olap_size)
         >>> print(df.to_string())
             global  local  from_sample  to_sample            window_start              window_end
         0      480      0            0         99 2021-01-01 01:00:00.000 2021-01-01 01:00:09.900
@@ -379,13 +379,13 @@ def get_window_table(
     import numpy as np
     from resistics.sampling import to_n_samples, datetime_array_estimate
 
-    increment_size = window_size - overlap_size
-    increment = increment_duration(window_size, overlap_size, time_data.fs)
+    increment_size = window_size - olap_size
+    increment = increment_duration(window_size, olap_size, time_data.fs)
     fs = time_data.fs
     first_time = time_data.first_time
 
     first_window, last_window = get_first_and_last_window(
-        ref_time, time_data, window_size, overlap_size
+        ref_time, time_data, window_size, olap_size
     )
     first_window_time = window_to_datetime(ref_time, first_window, increment)
     n_windows = last_window - first_window + 1
@@ -430,22 +430,22 @@ class WindowParameters(ResisticsData):
     >>> win_params = win_setup.run(dec_params)
     >>> win_params
     <class 'resistics.window.WindowParameters'>
-                    window_size  overlap_size
+                    window_size  olap_size
     Decimation level
     0                        1024           256
     1                         512           128
     2                         256            64
     >>> win_params.get_window_size(0)
     1024
-    >>> win_params.get_overlap_size(0)
+    >>> win_params.get_olap_size(0)
     256
-    >>> win_params.get_overlap_size(3)
+    >>> win_params.get_olap_size(3)
     Traceback (most recent call last):
     ...
     ValueError: Level 3 must be 0 <= level < 3
     """
 
-    def __init__(self, n_levels: int, win_df: pd.DataFrame):
+    def __init__(self, n_levels: int, min_n_windows: int, win_df: pd.DataFrame):
         """
         Windowing parameters per decimation level
 
@@ -453,10 +453,13 @@ class WindowParameters(ResisticsData):
         ----------
         n_levels : int
             The number of decimation levels
+        min_n_windows : int
+            Minimum number of windows
         win_df : pd.DataFrame
             The window and overlap size information
         """
         self.n_levels = n_levels
+        self.min_n_windows = min_n_windows
         self.win_df = win_df
 
     def check_level(self, level: int):
@@ -493,7 +496,7 @@ class WindowParameters(ResisticsData):
         self.check_level(level)
         return self.win_df.loc[level, "window_size"]
 
-    def get_overlap_size(self, level: int) -> int:
+    def get_olap_size(self, level: int) -> int:
         """
         Get overlap size
 
@@ -508,7 +511,7 @@ class WindowParameters(ResisticsData):
             The overlap size
         """
         self.check_level(level)
-        return self.win_df.loc[level, "overlap_size"]
+        return self.win_df.loc[level, "olap_size"]
 
     def to_string(self) -> str:
         """
@@ -548,7 +551,7 @@ class WindowSetup(ResisticsProcess):
     >>> win_params = win_setup.run(dec_params)
     >>> win_params
     <class 'resistics.window.WindowParameters'>
-                        window_size  overlap_size
+                        window_size   olap_size
     Decimation level
     0                         256            64
     1                         256            64
@@ -564,7 +567,7 @@ class WindowSetup(ResisticsProcess):
     >>> win_params = win_setup.run(dec_params)
     >>> win_params
     <class 'resistics.window.WindowParameters'>
-                    window_size  overlap_size
+                    window_size       olap_size
     Decimation level
     0                        1000           250
     1                         578           144
@@ -574,18 +577,51 @@ class WindowSetup(ResisticsProcess):
     def __init__(
         self,
         min_size: int = 256,
-        min_overlap: int = 64,
+        min_olap: int = 64,
         window_factor: int = 4,
-        overlap_proportion: float = 0.25,
+        olap_proportion: float = 0.25,
+        min_n_windows: int = 5,
         window_sizes: Optional[List[int]] = None,
-        overlap_sizes: Optional[List[int]] = None,
+        olap_sizes: Optional[List[int]] = None,
     ):
+        """
+        Initialise WindowSetup
+
+        WindowSetup outputs the WindowParameters to use for windowing decimated
+        time data.
+
+        Parameters
+        ----------
+        min_size : int, optional
+            Minimum window size, by default 256
+        min_olap : int, optional
+            Minimum overlap size, by default 64
+        window_factor : int, optional
+            Window factor, by default 4. Window sizes are calculated by sampling
+            frequency / 4 to ensure sufficient frequency resolution. If the
+            sampling frequency is small, window size will be adjusted to
+            min_size
+        olap_proportion : float, optional
+            The proportion of the window size to use as the overlap, by default
+            0.25. For example, for a window size of 128, the overlap would be
+            0.25 * 128 = 32
+        min_n_windows : int, optional
+            The minimum number of windows needed in a decimation level, by
+            default 5
+        window_sizes : Optional[List[int]], optional
+            Explicit define window sizes, by default None. Must have the same
+            length as number of decimation levels
+        olap_sizes : Optional[List[int]], optional
+            Explicitly define overlap sizes, by default None. Must have the same
+            length as number of decimation levels
+        """
         self.min_size = min_size
-        self.min_overlap = min_overlap
+        self.min_olap = min_olap
         self.window_factor = window_factor
-        self.overlap_proportion = overlap_proportion
+        self.olap_proportion = olap_proportion
+        self.min_n_windows = min_n_windows
         self.window_sizes = window_sizes
-        self.overlap_sizes = overlap_sizes
+        self.olap_sizes = olap_sizes
 
     def run(self, dec_params: DecimationParameters) -> WindowParameters:
         """
@@ -596,12 +632,12 @@ class WindowSetup(ResisticsProcess):
         the following way:
 
         - window size = frequency at decimation level / window_factor
-        - overlap size = window size * overlap_proportion
+        - overlap size = window size * overlap proportion
 
         This is to ensure good frequency resolution at high frequencies. At low
         sampling frequencies, this would result in very small window sizes,
         therefore, there a minimum allowable sizes for both windows and overlap
-        defined by min_size and min_overlap in the initialiser. If window sizes
+        defined by min_size and min_olap in the initialiser. If window sizes
         or overlaps size are calculated below these respecitively, they will be
         set to the minimum values.
 
@@ -621,16 +657,16 @@ class WindowSetup(ResisticsProcess):
         else:
             window_sizes = list(self.window_sizes)
 
-        if self.overlap_sizes is None:
-            overlap_sizes = self._get_overlap_sizes(window_sizes)
+        if self.olap_sizes is None:
+            olap_sizes = self._get_olap_sizes(window_sizes)
         else:
-            overlap_sizes = self.overlap_sizes
+            olap_sizes = self.olap_sizes
 
         win_df = pd.DataFrame(
-            data={"window_size": window_sizes, "overlap_size": overlap_sizes}
+            data={"window_size": window_sizes, "olap_size": olap_sizes}
         )
         win_df.index.name = "Decimation level"
-        return WindowParameters(dec_params.n_levels, win_df)
+        return WindowParameters(dec_params.n_levels, self.min_n_windows, win_df)
 
     def _get_window_sizes(self, dec_params: DecimationParameters) -> List[int]:
         """
@@ -655,7 +691,7 @@ class WindowSetup(ResisticsProcess):
             window_sizes.append(int(window_size))
         return window_sizes
 
-    def _get_overlap_sizes(self, window_sizes: List[int]) -> List[int]:
+    def _get_olap_sizes(self, window_sizes: List[int]) -> List[int]:
         """
         Get overlap sizes
 
@@ -669,27 +705,27 @@ class WindowSetup(ResisticsProcess):
         List[int]
             The overlap sizes
         """
-        overlap_sizes = []
+        olap_sizes = []
         for window_size in window_sizes:
-            overlap_size = int(window_size * self.overlap_proportion)
-            if overlap_size < self.min_overlap:
-                overlap_size = self.min_overlap
-            overlap_sizes.append(overlap_size)
-        return overlap_sizes
+            olap_size = int(window_size * self.olap_proportion)
+            if olap_size < self.min_olap:
+                olap_size = self.min_olap
+            olap_sizes.append(olap_size)
+        return olap_sizes
 
 
-class WindowData(ResisticsData):
+class WindowedTimeData(ResisticsData):
     """
-    WindowData for a TimeData object
+    WindowedTimeData for a TimeData object
 
-    Note that the WindowData actually holds views to the TimeData data to avoid
+    Note that the WindowedTimeData actually holds views to the TimeData data to avoid
     excess memory usage.
 
     Examples
     --------
     >>> from resistics.testing import time_data_linear
     >>> from resistics.sampling import to_datetime
-    >>> from resistics.window import Windower
+    >>> from resistics.window import WindowerTimeData
     >>> time_data = time_data_linear(first_time="2021-01-01 01:01:00", n_samples=12)
     >>> time_data.fs
     10.0
@@ -699,10 +735,10 @@ class WindowData(ResisticsData):
            [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
            [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.]])
     >>> window_size = 5
-    >>> overlap_size = 2
+    >>> olap_size = 2
     >>> ref_time = to_datetime("2021-01-01 01:00:00")
-    >>> windower = Windower(min_windows=2)
-    >>> windower.check(ref_time, time_data, window_size, overlap_size)
+    >>> windower = WindowerTimeData(window_size, olap_size, min_n_windows=2)
+    >>> windower.check(ref_time, time_data)
     True
     >>> window_data = windower.run(time_data)
     >>> print(window_data.window_table.to_string())
@@ -731,7 +767,7 @@ class WindowData(ResisticsData):
         window_table: pd.DataFrame,
     ):
         """
-        WindowData which can supply data for a window in TimeData
+        WindowedTimeData which can supply data for a window in TimeData
 
         Parameters
         ----------
@@ -745,7 +781,7 @@ class WindowData(ResisticsData):
         Raises
         ------
         ValueError
-            If the window tabkle is somehow
+            If the window table is somehow malformed
         """
         self.window_views = window_views
         self.window_table = window_table.set_index("local")
@@ -797,11 +833,11 @@ class WindowData(ResisticsData):
         return self.get_local(global_window + self.offset)
 
 
-class Windower(ResisticsProcess):
+class WindowerTimeData(ResisticsProcess):
     """
-    The Windower creates a views to the data for each window
+    The WindowerTimeData creates a views to the data for each window
 
-    Rather than duplicate data for each window, the Windower creates an array of
+    Rather than duplicate data for each window, the WindowerTimeData creates an array of
     views which point to the right data for the window in the original array.
 
     Examples
@@ -810,7 +846,7 @@ class Windower(ResisticsProcess):
     of simplicity, set the reference time to the start time of the time data.
 
     >>> from resistics.testing import time_data_linear
-    >>> from resistics.window import Windower
+    >>> from resistics.window import WindowerTimeData
     >>> time_data = time_data_linear(n_samples=12)
     >>> time_data.data
     array([[ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
@@ -818,20 +854,20 @@ class Windower(ResisticsProcess):
            [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
            [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.]])
     >>> window_size = 5
-    >>> overlap_size = 2
+    >>> olap_size = 2
     >>> ref_time = time_data.first_time
     >>> str(ref_time)
     '2020-01-01 00:00:00'
-    >>> windower = Windower()
-    >>> windower.check(ref_time, time_data, window_size, overlap_size)
+    >>> windower = WindowerTimeData(window_size, olap_size)
+    >>> windower.check(ref_time, time_data)
     False
 
     The default minimum number of windows is 5. Here we have only 3. Let's
-    recreate the Windower with a different minimum. Remember, we are running
+    recreate the WindowerTimeData with a different minimum. Remember, we are running
     with a window size of 5 and overlap of 2 samples between windows.
 
-    >>> windower = Windower(min_windows=2)
-    >>> windower.check(ref_time, time_data, window_size, overlap_size)
+    >>> windower = WindowerTimeData(window_size, olap_size, min_n_windows=2)
+    >>> windower.check(ref_time, time_data)
     True
     >>> window_data = windower.run(time_data)
     >>> print(window_data.window_table.to_string())
@@ -855,27 +891,28 @@ class Windower(ResisticsProcess):
             [ 6.,  7.,  8.,  9., 10.]]])
     """
 
-    def __init__(self, min_windows: int = 5):
+    def __init__(self, window_size: int, olap_size: int, min_n_windows: int = 5):
         """
-        Initialise Windower
+        Initialise TimeData windower
 
         Parameters
         ----------
-        min_windows : int, optional
+        window_size : int
+            The window size
+        olap_size : int
+            The overlap size
+        min_n_windows : int, optional
             Minimum number of windows required, by default 5. The check to see
             how many windows can be made is done at the check stage.
         """
-        self.min_windows = min_windows
-        self.ref_time: Union[RSDateTime, None] = None
-        self.window_size: Union[int, None] = None
-        self.overlap_size: Union[int, None] = None
+        self.window_size = window_size
+        self.olap_size = olap_size
+        self.min_n_windows = min_n_windows
 
     def check(
         self,
         ref_time: RSDateTime,
         time_data: TimeData,
-        window_size: int,
-        overlap_size: int,
     ) -> bool:
         """
         Check to ensure number windows is greater than min windows
@@ -886,10 +923,6 @@ class Windower(ResisticsProcess):
             The reference time
         time_data : TimeData
             The time data
-        window_size : int
-            The window size
-        overlap_size : int
-            The overlap size
 
         Returns
         -------
@@ -897,19 +930,18 @@ class Windower(ResisticsProcess):
             True if all checks complete, False is not enough windows can be made
         """
         self.ref_time = ref_time
-        self.window_size = window_size
-        self.overlap_size = overlap_size
+        logger.info(f"Window size {self.window_size}, overlap size {self.olap_size}")
         self.window_table = get_window_table(
-            ref_time, time_data, window_size, overlap_size
+            ref_time, time_data, self.window_size, self.olap_size
         )
         n_windows = len(self.window_table.index)
-        if n_windows < self.min_windows:
-            logger.error(f"Number of windows {n_windows} < minimum {self.min_windows}")
+        if n_windows < self.min_n_windows:
+            logger.error(f"Number windows {n_windows} < minimum {self.min_n_windows}")
             return False
-        logger.info(f"{n_windows} windows, size {window_size}, overlap {overlap_size}")
+        logger.info(f"Time data has {n_windows} windows")
         return True
 
-    def run(self, time_data: TimeData) -> WindowData:
+    def run(self, time_data: TimeData) -> WindowedTimeData:
         """
         Run the windowing which gets the views into the data
 
@@ -920,11 +952,11 @@ class Windower(ResisticsProcess):
 
         Returns
         -------
-        WindowData
+        WindowedTimeData
             Window data for accessing windows
         """
         window_views = self._get_window_views(time_data)
-        return WindowData(window_views, self.window_table)
+        return WindowedTimeData(window_views, self.window_table)
 
     def _get_window_views(self, time_data: TimeData) -> np.ndarray:
         """
@@ -945,17 +977,17 @@ class Windower(ResisticsProcess):
         Raises
         ------
         ValueError
-            If window_size or overlap_size is None, likely caused by not having
+            If window_size or olap_size is None, likely caused by not having
             called check first
         """
         from numpy.lib.stride_tricks import sliding_window_view
 
-        if self.window_size is None or self.overlap_size is None:
+        if self.window_size is None or self.olap_size is None:
             raise ValueError("One or both of window/overlap is None. Run check first.")
 
         n_chans = time_data.n_chans
         from_sample = self.window_table.loc[0, "from_sample"]
-        increment_size = self.window_size - self.overlap_size
+        increment_size = self.window_size - self.olap_size
 
         view = np.squeeze(
             sliding_window_view(
@@ -965,3 +997,49 @@ class Windower(ResisticsProcess):
             )
         )
         return view[from_sample::increment_size]
+
+
+class WindowedDecimatedData:
+    """
+    Window a DecimatedData
+    """
+
+    def __init__(self, windows: Dict[int, WindowedTimeData], history: ProcessHistory):
+        self.windows = windows
+        self.history = history
+        self.max_level = max(list(self.windows.keys()))
+
+    def get_windows(self, level: int) -> WindowedTimeData:
+        if level >= self.max_level:
+            raise ValueError(f"Level {level} not < max {self.max_level}")
+        return self.windows[level]
+
+
+class WindowerDecimatedData(ResisticsProcess):
+    def run(
+        self,
+        ref_time: RSDateTime,
+        window_params: WindowParameters,
+        dec_data: DecimatedData,
+    ) -> WindowedDecimatedData:
+
+        windows = {}
+        messages = []
+        for ilevel in range(0, dec_data.max_level + 1):
+            time_data = dec_data.get_level(ilevel)
+            window_size = window_params.get_window_size(ilevel)
+            olap_size = window_params.get_olap_size(ilevel)
+            logger.info(f"Windowing decimation level {ilevel}")
+            logger.info(f"Window size {window_size}, overlap size {olap_size}")
+            windower = WindowerTimeData(
+                window_size, olap_size, min_n_windows=window_params.min_n_windows
+            )
+            if not windower.check(ref_time, time_data):
+                continue
+            windowed = windower.run(time_data)
+            messages.append(f"Decimated level {ilevel}, {windowed.n_windows} windows")
+            messages.append(f"Window size {window_size}, olap_size {olap_size}")
+            windows[ilevel] = windowed
+        history = dec_data.history.copy()
+        history.add_record(self._get_process_record(messages))
+        return WindowedDecimatedData(windows, history)
