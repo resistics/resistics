@@ -465,6 +465,7 @@ class DecimatedData(ResisticsData):
         self.data = data
         self.history = history
         self.max_level = max(list(self.data.keys()))
+        self.n_levels = self.max_level + 1
 
     def get_level(self, level: int) -> TimeData:
         """
@@ -485,8 +486,8 @@ class DecimatedData(ResisticsData):
         ValueError
             If level > max_level
         """
-        if level >= self.max_level:
-            raise ValueError(f"Level {level} not < max {self.max_level}")
+        if level > self.max_level:
+            raise ValueError(f"Level {level} not <= max {self.max_level}")
         return self.data[level]
 
     def plot(self, max_pts: int = 10_000) -> go.Figure:
@@ -576,6 +577,7 @@ class Decimator(ResisticsProcess):
             DecimatedData instance with all the decimated data
         """
         data = {}
+        history = time_data.history.copy()
         messages = []
         for ilevel in range(0, self.dec_params.n_levels):
             logger.info(f"Decimating level {ilevel}")
@@ -591,8 +593,8 @@ class Decimator(ResisticsProcess):
         completed = list(range(len(data)))
         target = list(range(self.dec_params.n_levels))
         messages.append(f"Completed levels {completed} out of {target}")
-        record = self._get_process_record(messages)
-        return DecimatedData(self.dec_params, data, ProcessHistory([record]))
+        history.add_record(self._get_process_record(messages))
+        return DecimatedData(self.dec_params, data, history)
 
     def _decimate(self, time_data: TimeData, factor: int) -> TimeData:
         """
