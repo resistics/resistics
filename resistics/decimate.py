@@ -229,6 +229,10 @@ class DecimationSetup(ResisticsProcess):
     """
     Process to calculate decimation parameters
 
+    .. note::
+
+        Note that the running check for DecimationSetup always returns True
+
     Examples
     --------
     >>> from resistics.decimate import DecimationSetup
@@ -424,16 +428,17 @@ class DecimatedData(ResisticsData):
         >>> dec_setup = DecimationSetup()
         >>> dec_params = dec_setup.run(time_data.fs)
         >>> decimator = Decimator(dec_params)
+        >>> decimator.check()
+        True
         >>> dec_data = decimator.run(time_data)
         >>> dec_data.summary()
         ##---Begin Summary----------------------------------
         <class 'resistics.decimate.DecimatedData'>
-        Level 0
-        fs = 256.0, dt = 0.00390625, n_samples = 10000, first_time = 2020-01-01 00:00:00, last_time = 2020-01-01 00:00:39.05859375
-        Level 1
-        fs = 64.0, dt = 0.015625, n_samples = 2500, first_time = 2020-01-01 00:00:00, last_time = 2020-01-01 00:00:39.046875
-        Level 2
-        fs = 8.0, dt = 0.125, n_samples = 313, first_time = 2020-01-01 00:00:00, last_time = 2020-01-01 00:00:39
+                  fs        dt  n_samples           first_time                     last_time
+        level
+        0      256.0  0.003906      10000  2020-01-01 00:00:00  2020-01-01 00:00:39.05859375
+        1       64.0  0.015625       2500  2020-01-01 00:00:00    2020-01-01 00:00:39.046875
+        2        8.0  0.125000        313  2020-01-01 00:00:00           2020-01-01 00:00:39
         ##---End summary------------------------------------
         >>> for ilevel in range(0, dec_data.max_level + 1):
         ...     time_data = dec_data.get_level(ilevel)
@@ -521,17 +526,17 @@ class DecimatedData(ResisticsData):
             Class info as string
         """
         outstr = f"{self.type_to_string()}\n"
-        for ilevel in range(self.dec_params.n_levels):
-            if ilevel not in self.data:
-                continue
-            outstr += f"Level {ilevel}\n"
-            time_data = self.data[ilevel]
-            level_str = f"fs = {time_data.fs}, dt = {time_data.dt},"
-            level_str += f" n_samples = {time_data.n_samples},"
-            level_str += f" first_time = {str(time_data.first_time)},"
-            level_str += f" last_time = {str(time_data.last_time)}"
-            outstr += f"{level_str}\n"
-        return outstr.strip("\n")
+        data = [
+            [ilevel, x.fs, x.dt, x.n_samples, x.first_time, x.last_time]
+            for ilevel, x in self.data.items()
+        ]
+        df = pd.DataFrame(
+            data=data,
+            columns=["level", "fs", "dt", "n_samples", "first_time", "last_time"],
+        )
+        df = df.set_index("level")
+        outstr += df.to_string()
+        return outstr
 
 
 class Decimator(ResisticsProcess):
