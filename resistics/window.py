@@ -529,6 +529,10 @@ class WindowSetup(ResisticsProcess):
     """
     Setup WindowParameters
 
+    .. note::
+
+        Note that the running check for WindowSetup always returns True
+
     Examples
     --------
     Generate decimation and windowing parameters for data sampled at 0.05 Hz or
@@ -1032,6 +1036,97 @@ class WindowerTimeData(ResisticsProcess):
 class WindowedDecimatedData(ResisticsData):
     """
     Windows of a DecimatedData object
+
+    Examples
+    --------
+    WindowedDecimatedData provides window views for all decimation levels. This
+    can be useful for later spectra or statistic calculations.
+
+    There's quite a few imports needed for this example
+
+    >>> from resistics.sampling import to_datetime
+    >>> from resistics.testing import time_data_random
+    >>> from resistics.decimate import DecimationSetup, Decimator
+    >>> from resistics.window import WindowSetup, WindowerDecimatedData
+
+    Now the actual example using only defaults. Begin with decimation.
+
+    >>> ref_time = to_datetime("2021-01-01 00:00:00")
+    >>> time_data = time_data_random(first_time="2021-01-02 06:30:00", n_samples=10_000, fs=10)
+    >>> dec_params = DecimationSetup().run(time_data.fs)
+    >>> decimator = Decimator(dec_params)
+    >>> decimator.check()
+    True
+    >>> dec_data = decimator.run(time_data)
+    >>> print(dec_data.to_string())
+    <class 'resistics.decimate.DecimatedData'>
+                fs   dt  n_samples           first_time              last_time
+    level
+    0      10.0000  0.1      10000  2021-01-02 06:30:00  2021-01-02 06:46:39.9
+    1       2.5000  0.4       2500  2021-01-02 06:30:00  2021-01-02 06:46:39.6
+    2       0.3125  3.2        313  2021-01-02 06:30:00  2021-01-02 06:46:38.4
+
+    Next, initialise the window parameters
+
+    >>> win_params = WindowSetup().run(dec_params)
+    >>> print(win_params.to_string())
+    <class 'resistics.window.WindowParameters'>
+                      win_size  olap_size
+    Decimation level
+    0                      256         64
+    1                      256         64
+    2                      256         64
+    3                      256         64
+    4                      256         64
+    5                      256         64
+    6                      256         64
+    7                      256         64
+
+    Perform the windowing. This actually creates views into the decimated data
+    using the numpy.lib.stride_tricks.sliding_window_view function
+
+    >>> windower = WindowerDecimatedData()
+    >>> windower.check()
+    True
+    >>> win_data = windower.run(ref_time, win_params, dec_data)
+    >>> print(win_data.to_string())
+    <class 'resistics.window.WindowedDecimatedData'>
+    Windowed 2 levels
+    Level 0
+    <class 'resistics.window.WindowedTimeData'>
+    Number of windows: 51
+    Sampling frequency Hz: 10.0
+    Window size: 256
+    Window duration 0:00:25.6
+    Overlap size: 64
+    Increment duration: 0:00:19.2
+    Level 1
+    <class 'resistics.window.WindowedTimeData'>
+    Number of windows: 12
+    Sampling frequency Hz: 2.5
+    Window size: 256
+    Window duration 0:01:42.4
+    Overlap size: 64
+    Increment duration: 0:01:16.8
+
+    Each level has it's own window table
+
+    >>> wins = win_data.get_wins(1)
+    >>> print(wins.win_table.to_string())
+           global  from_sample  to_sample               win_start                 win_end
+    local
+    0        1430           60        315 2021-01-02 06:30:24.000 2021-01-02 06:32:06.000
+    1        1431          252        507 2021-01-02 06:31:40.800 2021-01-02 06:33:22.800
+    2        1432          444        699 2021-01-02 06:32:57.600 2021-01-02 06:34:39.600
+    3        1433          636        891 2021-01-02 06:34:14.400 2021-01-02 06:35:56.400
+    4        1434          828       1083 2021-01-02 06:35:31.200 2021-01-02 06:37:13.200
+    5        1435         1020       1275 2021-01-02 06:36:48.000 2021-01-02 06:38:30.000
+    6        1436         1212       1467 2021-01-02 06:38:04.800 2021-01-02 06:39:46.800
+    7        1437         1404       1659 2021-01-02 06:39:21.600 2021-01-02 06:41:03.600
+    8        1438         1596       1851 2021-01-02 06:40:38.400 2021-01-02 06:42:20.400
+    9        1439         1788       2043 2021-01-02 06:41:55.200 2021-01-02 06:43:37.200
+    10       1440         1980       2235 2021-01-02 06:43:12.000 2021-01-02 06:44:54.000
+    11       1441         2172       2427 2021-01-02 06:44:28.800 2021-01-02 06:46:10.800
     """
 
     def __init__(self, wins: Dict[int, WindowedTimeData], history: ProcessHistory):
