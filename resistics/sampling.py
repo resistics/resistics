@@ -157,6 +157,12 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
     RSTimeDelta uses attotimedelta, a high precision timedelta object. This can
     be useful for high sampling frequencies.
 
+    .. warning::
+
+        At such high time resolutions, there are machine precision errors that
+        come into play. Therefore, if nanoseconds < 0.000001, it will be zeroed
+        out
+
     Parameters
     ----------
     delta : TimeDeltaLike
@@ -171,23 +177,53 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
     --------
     >>> import pandas as pd
     >>> from resistics.sampling import to_timedelta
-    >>> to_timedelta(1/4_096)
+
+    Low frequency sampling
+
+    >>> fs = 0.0000125
+    >>> to_timedelta(1/fs)
+    attotime.objects.attotimedelta(0, 80000)
+    >>> str(to_timedelta(1/fs))
+    '22:13:20'
+    >>> fs = 0.004
+    >>> to_timedelta(1/fs)
+    attotime.objects.attotimedelta(0, 250)
+    >>> str(to_timedelta(1/fs))
+    '0:04:10'
+    >>> fs = 0.3125
+    >>> str(to_timedelta(1/fs))
+    '0:00:03.2'
+
+    Higher frequency sampling
+
+    >>> fs = 4096
+    >>> to_timedelta(1/fs)
     attotime.objects.attotimedelta(0, 0, 244, 140.625)
-    >>> str(to_timedelta(1/4_096))
+    >>> str(to_timedelta(1/fs))
     '0:00:00.000244140625'
-    >>> str(to_timedelta(1/65_536))
+    >>> fs = 65_536
+    >>> str(to_timedelta(1/fs))
     '0:00:00.0000152587890625'
+    >>> fs = 524_288
+    >>> str(to_timedelta(1/fs))
+    '0:00:00.0000019073486328125'
+
+    to_timedelta can also accept pandas Timedelta objects
+
     >>> str(to_timedelta(pd.Timedelta(1, "s")))
     '0:00:01'
     """
     from math import floor
 
+    eps = 0.000001
     if isinstance(delta, (int, float)):
         seconds = int(floor(delta))
         delta = (delta - seconds) * 1_000_000
         microseconds = int(floor(delta))
         delta = delta - microseconds
         nanoseconds = delta * 1_000
+        if nanoseconds < eps:
+            nanoseconds = 0
         return RSTimeDelta(
             seconds=seconds, microseconds=microseconds, nanoseconds=nanoseconds
         )
