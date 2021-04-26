@@ -1173,11 +1173,8 @@ class Metadata(ResisticsBase):
         value : Any
             The value
         """
-        if key not in self._metadata:
-            logger.info(f"Adding new key {key} with value {value}")
         if self._specs is not None and key in self._specs:
             spec_type = self._specs[key]["type"]
-            logger.info(f"Specifications for this header, require type {spec_type}")
             value = format_value(value, spec_type)
         self._metadata[key] = value
 
