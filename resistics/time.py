@@ -844,12 +844,11 @@ class TimeReaderAscii(TimeReaderJSON):
         for chan in chans:
             chan_path = self.dir_path / self.metadata[chan, "data_files"]
             if chan_path.suffix != ".ascii":
-                logger.error(f"{chan_path.name} has incorrect suffix (require .ascii)")
                 chk_files = False
             if not is_file(chan_path):
-                logger.error(f"Unable to find {chan} data file {chan_path.name}")
                 chk_files = False
         if not chk_files:
+            logger.warning(f"Unable to locate data files in {self.dir_path}")
             return False
         logger.info(f"Passed checks and successfully read headers from {metadata_path}")
         return True
@@ -943,12 +942,11 @@ class TimeReaderNumpy(TimeReaderJSON):
         for chan in chans:
             chan_path = self.dir_path / self.metadata[chan, "data_files"]
             if chan_path.suffix != ".npy":
-                logger.error(f"{chan_path.name} has incorrect suffix (require .npy)")
                 chk_files = False
             if not is_file(chan_path):
-                logger.error(f"Unable to find {chan} data file {chan_path.name}")
                 chk_files = False
         if not chk_files:
+            logger.warning(f"Unable to locate data files in {self.dir_path}")
             return False
         logger.info(f"Passed checks and successfully read headers from {metadata_path}")
         return True
