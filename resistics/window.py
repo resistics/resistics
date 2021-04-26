@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 
 from resistics.common import ProcessHistory, ResisticsData, ResisticsProcess
+from resistics.common import MetadataGroup
 from resistics.sampling import RSDateTime, RSTimeDelta
 from resistics.time import TimeData
 from resistics.decimate import DecimationParameters, DecimatedData
@@ -761,7 +762,7 @@ class WindowedTimeData(ResisticsData):
 
     def __init__(
         self,
-        fs: float,
+        metadata: MetadataGroup,
         win_size: int,
         olap_size: int,
         win_views: np.ndarray,
@@ -772,8 +773,8 @@ class WindowedTimeData(ResisticsData):
 
         Parameters
         ----------
-        fs : float
-            Sampling frequency of time data
+        metadata : MetadataGroup
+            The metadata from the time data
         win_size : int
             Window size
         olap_size : int
@@ -790,7 +791,7 @@ class WindowedTimeData(ResisticsData):
         ValueError
             If the window table is somehow malformed
         """
-        self.fs = fs
+        self.metadata = metadata
         self.win_size = win_size
         self.olap_size = olap_size
         self.win_views = win_views
@@ -800,6 +801,18 @@ class WindowedTimeData(ResisticsData):
         if len(offset) != 1:
             raise ValueError("Malformed window table, varying local to global offset")
         self.offset = offset[0]
+
+    @property
+    def fs(self) -> float:
+        """
+        Get sampling frequency
+
+        Returns
+        -------
+        float
+            The sampling frequency in Hz
+        """
+        return self.metadata["common", "fs"]
 
     def get_local(self, local_win: int) -> np.ndarray:
         """
@@ -968,7 +981,7 @@ class WindowerTimeData(ResisticsProcess):
         if n_wins < self.min_n_wins:
             logger.error(f"Number windows {n_wins} < minimum {self.min_n_wins}")
             return False
-        logger.info(f"Time data has {n_wins} windows")
+        logger.info(f"Time data will have {n_wins} windows")
         return True
 
     def run(self, time_data: TimeData) -> WindowedTimeData:
@@ -987,7 +1000,11 @@ class WindowerTimeData(ResisticsProcess):
         """
         win_views = self._get_win_views(time_data)
         return WindowedTimeData(
-            time_data.fs, self.win_size, self.olap_size, win_views, self.win_table
+            time_data.metadata.copy(),
+            self.win_size,
+            self.olap_size,
+            win_views,
+            self.win_table,
         )
 
     def _get_win_views(self, time_data: TimeData) -> np.ndarray:
@@ -1025,7 +1042,7 @@ class WindowerTimeData(ResisticsProcess):
             sliding_window_view(
                 time_data.data,
                 window_shape=(n_chans, self.win_size),
-                writeable=False,
+                writeable=True,
             )
         )
         return view[from_sample::increment_size]
