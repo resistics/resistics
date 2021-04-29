@@ -188,6 +188,23 @@ class DecimationParameters(ResisticsData):
         self.check_level(level)
         return int(self.eval_df.loc[level, "incremental_factors"])
 
+    def get_eval_freqs(self, level: int) -> pd.Series:
+        """
+        Get the evaluation frequencies for a level
+
+        Parameters
+        ----------
+        level : int
+            The level
+
+        Returns
+        -------
+        pd.Series
+            The evaluation frequencies
+        """
+        self.check_level(level)
+        return self.eval_df.loc[level, list(range(self.per_level))]
+
     def get_eval_freq(self, level: int, idx: int) -> float:
         """
         Get an evaluation frequency
