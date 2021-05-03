@@ -763,6 +763,7 @@ class WindowedTimeData(ResisticsData):
     def __init__(
         self,
         metadata: MetadataGroup,
+        chans: List[str],
         win_size: int,
         olap_size: int,
         win_views: np.ndarray,
@@ -775,6 +776,8 @@ class WindowedTimeData(ResisticsData):
         ----------
         metadata : MetadataGroup
             The metadata from the time data
+        chans : List[str]
+            The channels in the data
         win_size : int
             Window size
         olap_size : int
@@ -792,6 +795,7 @@ class WindowedTimeData(ResisticsData):
             If the window table is somehow malformed
         """
         self.metadata = metadata
+        self.chans = chans
         self.win_size = win_size
         self.olap_size = olap_size
         self.win_views = win_views
@@ -854,6 +858,32 @@ class WindowedTimeData(ResisticsData):
             Window data
         """
         return self.get_local(global_win + self.offset)
+
+    def get_chan(self, chan: str) -> np.ndarray:
+        """
+        Get all the windows for a channel
+
+        Parameters
+        ----------
+        chan : str
+            The channel
+
+        Returns
+        -------
+        np.ndarray
+            The data for the channels
+
+        Raises
+        ------
+        ChannelNotFoundError
+            If the channel is not found in the data
+        """
+        from resistics.errors import ChannelNotFoundError
+
+        if chan not in self.chans:
+            raise ChannelNotFoundError(chan, self.chans)
+        idx = self.chans.index(chan)
+        return self.win_views[..., idx, :]
 
     def to_string(self) -> str:
         """
@@ -1000,7 +1030,8 @@ class WindowerTimeData(ResisticsProcess):
         """
         win_views = self._get_win_views(time_data)
         return WindowedTimeData(
-            time_data.metadata.copy(),
+            time_data.metadata,
+            time_data.chans,
             self.win_size,
             self.olap_size,
             win_views,
@@ -1144,23 +1175,35 @@ class WindowedDecimatedData(ResisticsData):
     11       1441         2172       2427 2021-01-02 06:44:28.800 2021-01-02 06:46:10.800
     """
 
-    def __init__(self, wins: Dict[int, WindowedTimeData], history: ProcessHistory):
+    def __init__(
+        self,
+        chans: List[str],
+        wins: Dict[int, WindowedTimeData],
+        history: ProcessHistory,
+    ):
         """
         Initialise
 
         Parameters
         ----------
+        chans : List[str]
+            The channels in the data
         wins : Dict[int, WindowedTimeData]
             Dictionary of decimation level to WindowedTimeData
         history : ProcessHistory
             Processing history
         """
+        self.chans = chans
         self.wins = wins
         self.history = history
         self.max_level = max(list(self.wins.keys()))
         self.n_levels = self.max_level + 1
 
-    def get_wins(self, level: int) -> WindowedTimeData:
+    @property
+    def n_chans(self):
+        return len(self.chans)
+
+    def get_level(self, level: int) -> WindowedTimeData:
         """
         Get windows for a decimation level
 
@@ -1224,7 +1267,7 @@ class WindowerDecimatedData(ResisticsProcess):
         WindowedDecimatedData
             Windows for decimated data
         """
-        windows = {}
+        wins = {}
         messages = []
         for ilevel in range(0, dec_data.n_levels):
             time_data = dec_data.get_level(ilevel)
@@ -1240,7 +1283,7 @@ class WindowerDecimatedData(ResisticsProcess):
             windowed = windower.run(time_data)
             messages.append(f"Level {ilevel}, generated {windowed.n_wins} windows")
             messages.append(f"Window size {win_size}, olap_size {olap_size}")
-            windows[ilevel] = windowed
+            wins[ilevel] = windowed
         history = dec_data.history.copy()
         history.add_record(self._get_process_record(messages))
-        return WindowedDecimatedData(windows, history)
+        return WindowedDecimatedData(dec_data.chans, wins, history)

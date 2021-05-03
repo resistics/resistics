@@ -5,7 +5,7 @@ Module for time data decimation including classes and for the following
 - Performing decimation on time data
 """
 from loguru import logger
-from typing import Any, Optional, Tuple, Union, Dict
+from typing import Any, Optional, Tuple, Union, Dict, List
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -465,6 +465,7 @@ class DecimatedData(ResisticsData):
     def __init__(
         self,
         dec_params: DecimationParameters,
+        chans: List[str],
         data: Dict[int, TimeData],
         history: ProcessHistory,
     ):
@@ -475,12 +476,15 @@ class DecimatedData(ResisticsData):
         ----------
         dec_params : DecimationParameters
             The decimation parameters used
+        chans : List[str]
+            The channels in the data
         data : Dict[int, TimeData]
             The data as a dictionary of level indices to TimeData
         history : ProcessHistory
             The process history
         """
         self.dec_params = dec_params
+        self.chans = chans
         self.data = data
         self.history = history
         self.max_level = max(list(self.data.keys()))
@@ -596,6 +600,7 @@ class Decimator(ResisticsProcess):
             DecimatedData instance with all the decimated data
         """
         data = {}
+        chans = time_data.chans
         history = time_data.history.copy()
         messages = []
         for ilevel in range(0, self.dec_params.n_levels):
@@ -613,7 +618,7 @@ class Decimator(ResisticsProcess):
         target = list(range(self.dec_params.n_levels))
         messages.append(f"Completed levels {completed} out of {target}")
         history.add_record(self._get_process_record(messages))
-        return DecimatedData(self.dec_params, data, history)
+        return DecimatedData(self.dec_params, chans, data, history)
 
     def _decimate(self, time_data: TimeData, factor: int) -> TimeData:
         """
