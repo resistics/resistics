@@ -1224,7 +1224,6 @@ class InterpolateNans(ResisticsProcess):
     >>> time_data_new = processor.run(time_data)
     >>> time_data_new["Hx"]
     array([2., 2., 3., 5., 1., 2., 3., 4., 2., 6., 7., 6., 5., 4., 3., 2.])
-    >>>
     """
 
     def run(self, time_data: TimeData) -> TimeData:
