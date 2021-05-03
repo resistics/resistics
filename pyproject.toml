@@ -37,6 +37,9 @@ lttbc = "^0.2.0"
 attotime = "0.2.3"
 plotly = "^4.14.3"
 loguru = "^0.5.3"
+attrs = "^20.3.0"
+scikit-learn = "^0.24.2"
+statsmodels = "^0.12.2"
 
 [tool.poetry.dev-dependencies]
 matplotlib="^3.4.1"
