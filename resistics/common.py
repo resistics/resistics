@@ -2,98 +2,20 @@
 Common resistics functions and classes used throughout the package
 """
 from loguru import logger
-from typing import Type, List, Tuple, Union, Dict, Set, Any
-from typing import Collection, Iterator, Callable, Optional
+from typing import List, Tuple, Union, Dict, Set, Any, Collection, Optional
 from pathlib import Path
+from pydantic import BaseModel, Field
+from datetime import datetime
 import numpy as np
-import pandas as pd
 
-from resistics.sampling import RSDateTime
-from resistics.sampling import datetime_to_string, to_datetime
+from resistics.sampling import RSDateTime, datetime_to_string
 
 
-# alias a metadata specification
-Spec = Dict[str, Dict[str, Any]]
+def get_version() -> str:
+    """Get the version of resistics"""
+    import resistics
 
-
-serialize_fncs: Dict[Type[Any], Callable] = {
-    str: (lambda x: x),
-    float: (lambda x: x),
-    int: (lambda x: x),
-    bool: (lambda x: str(x)),
-    RSDateTime: (lambda x: datetime_to_string(x)),
-    pd.Timestamp: (lambda x: x.isoformat()),
-    pd.Timedelta: (lambda x: x.total_seconds()),
-    list: (lambda x: list_to_string(x)),
-}
-
-
-deserialize_fncs: Dict[Type[Any], Callable] = {
-    str: (lambda x: str(x)),
-    float: (lambda x: float(x)),
-    int: (lambda x: int(x)),
-    bool: (lambda x: x.lower() == "true"),
-    RSDateTime: (lambda x: to_datetime(x)),
-    pd.Timestamp: (lambda x: pd.Timestamp(x)),
-    pd.Timedelta: (lambda x: pd.Timedelta(x, "s")),
-    list: (lambda x: [y.strip() for y in x.split(",")]),
-}
-
-
-def serialize(x: Any) -> Any:
-    """
-    Serialize a variable
-
-    Parameters
-    ----------
-    x : Any
-        Variable
-
-    Returns
-    -------
-    Any
-        Serialized
-
-    Raises
-    ------
-    SerializationError
-        If type not supported
-    """
-    from resistics.errors import SerializationError
-
-    if type(x) not in serialize_fncs:
-        raise SerializationError(x)
-    fnc = serialize_fncs[type(x)]
-    return fnc(x)
-
-
-def deserialize(x: Any, expected_type: Type[Any]) -> Any:
-    """
-    Derialize a variable
-
-    Parameters
-    ----------
-    x : Any
-        Variable
-    expected_type : Type[Any]
-        The expected type for the variable
-
-    Returns
-    -------
-    Any
-        The derialized variable
-
-    Raises
-    ------
-    DeserializationError
-        If expected type not supported
-    """
-    from resistics.errors import DeserializationError
-
-    if expected_type not in deserialize_fncs:
-        raise DeserializationError(x, expected_type)
-    fnc = deserialize_fncs[expected_type]
-    return fnc(x)
+    return resistics.__version__
 
 
 def is_file(file_path: Path) -> bool:
@@ -207,7 +129,6 @@ def dir_contents(dir_path: Path) -> Tuple[List[Path], List[Path]]:
         List of directories
     files : list
         List of files excluding hidden files
-
 
     Raises
     ------
@@ -600,90 +521,6 @@ def list_to_ranges(data: Union[List, Set]) -> str:
     return ",".join(result)
 
 
-def format_value(value: Any, format_type: Type[Any]) -> Any:
-    """
-    Format a value
-
-    Parameters
-    ----------
-    value : Any
-        The value to format
-    format_type : Type
-        The type to format to
-
-    Returns
-    -------
-    Any
-        The formatted value
-
-    Raises
-    ------
-    TypeError
-        If unable to convert the value
-
-    Examples
-    --------
-    >>> from resistics.common import format_value
-    >>> format_value("5", int)
-    5
-    """
-    if isinstance(value, format_type):
-        return value
-    try:
-        value = deserialize(value, format_type)
-    except Exception:
-        raise TypeError(f"Unable to convert {value} to type {format_type}")
-    return value
-
-
-def format_dict(in_dict: Dict[str, Any], specs: Spec) -> Dict[str, Any]:
-    """
-    Format the values in a dictionary
-
-    .. warning::
-
-        If a key is not present in in_dict and is present in the specifications
-        but without a default, a KeyError will be raised.
-
-    Parameters
-    ----------
-    in_dict : Dict[str, Any]
-        The dictionary to format
-    specs : Spec
-        Dictionary mapping key to key specifications type and default value
-
-    Returns
-    -------
-    Dict[str, Any]
-        Dictionary with values formatted
-
-    Raises
-    ------
-    KeyError
-        If a key in the specifications has no default and does not exist in the
-        in_dict
-
-    Examples
-    --------
-    An example where a default is provided for a missing header
-
-    >>> from resistics.common import format_dict
-    >>> in_dict = {"a": "12", "b": "something"}
-    >>> specs = {"a": {"type": int, "default": 1}, "c": {"type": float, "default": -2.3}}
-    >>> format_dict(in_dict, specs)
-    {'a': 12, 'b': 'something', 'c': -2.3}
-    """
-    for key, spec in specs.items():
-        if key in in_dict:
-            in_dict[key] = format_value(in_dict[key], spec["type"])
-        else:
-            if spec["default"] is not None:
-                in_dict[key] = spec["default"]
-            else:
-                raise KeyError(f"Required key {key} not found in input dictionary")
-    return in_dict
-
-
 class ResisticsBase(object):
     """
     Resistics base class
@@ -760,186 +597,268 @@ class ResisticsData(ResisticsBase):
         pass
 
 
-class ProcessRecord(ResisticsBase):
-    """
-    Class to hold a process record
-    """
+class ResisticsModel(BaseModel):
+    """Base resistics model"""
 
-    def __init__(self, record_dict: Dict[str, Any]) -> None:
-        """
-        Initialise a process record with a dictionary
-
-        The keywords process, parameters and messages are required
-
-        Parameters
-        ----------
-        record_dict : Dict[str, Any]
-            A dictionary with information for the process
-
-        Raises
-        ------
-        KeyError
-            If any of the required keywords are missing
-        """
-        required = ["process", "parameters", "messages", "entry_type"]
-        for req in required:
-            if req not in record_dict:
-                raise KeyError(f"Provided dictionary missing required key {req}")
-        self._record = dict(record_dict)
-
-    def copy(self) -> "ProcessRecord":
-        """
-        Get a copy of the ProcessRecord
-
-        Returns
-        -------
-        ProcessRecord
-            A copy of the process record
-        """
-        return ProcessRecord(self._record)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Return the record as a dictionary
-
-        Returns
-        -------
-        Dict[str, Any]
-            Record of process as a dictionary
-        """
-        return dict(self._record)
+    def __str__(self) -> str:
+        return self.to_string()
 
     def to_string(self) -> str:
-        """
-        Represent the process record as a string
+        """Class info as string"""
+        import json
 
-        Returns
-        -------
-        str
-            Process record as a string
-        """
-        import yaml
+        json_dict = json.loads(self.json())
+        return json.dumps(json_dict, indent=4, sort_keys=False)
 
-        return yaml.dump(self._record, indent=4, sort_keys=False).rstrip().rstrip("\n")
+    def summary(self) -> None:
+        """Print a summary of the class"""
+        import json
+        from prettyprinter import cpprint
+
+        cpprint(json.loads(self.json()))
+
+    class Config:
+        """pydantic configuration information"""
+
+        json_encoders = {RSDateTime: datetime_to_string}
 
 
-def get_process_record(
-    name: str,
-    parameters: Dict[str, Any],
-    messages: Union[str, List[str]],
-    process_type: str = "process",
-) -> ProcessRecord:
+class Metadata(ResisticsModel):
+    """Base class for metadata"""
+
+    pass
+
+
+class Record(ResisticsModel):
     """
-    Get a process record
+    Class to hold a process record
 
     Parameters
     ----------
-    name : str
-        The name of the process
+    time_utc : datetime
+        The UTC time when the process ran
+    time_local : datetime
+        The local time when the process ran
+    creator : str
+        The name of the record creator
     parameters : Dict[str, Any]
-        The parameters as a dictionary
-    messages : Union[str, List[str]]
-        The messages as either a single str or a list of strings
-    process_type : str
-        The type of process
-
-    Returns
-    -------
-    ProcessRecord
-        The process record
+        The parameters of the process
+    messages : List[str]
+        Any messages in the process
+    record_type : str
+        The process type
     """
-    if isinstance(messages, str):
-        messages = [messages]
-    return ProcessRecord(
-        {
-            "run_on_local": pd.Timestamp.now(tz=None).isoformat(),
-            "run_on_utc": pd.Timestamp.utcnow().isoformat(),
-            "process": name,
-            "parameters": parameters,
-            "messages": messages,
-            "entry_type": process_type,
-        }
-    )
+
+    time_local: datetime = Field(default_factory=datetime.now)
+    time_utc: datetime = Field(default_factory=datetime.utcnow)
+    creator: str
+    parameters: Dict[str, Any]
+    messages: List[str]
+    record_type: str
 
 
-class ProcessHistory(ResisticsBase):
+class History(ResisticsModel):
     """
     Class for storing processing history
+
+    Parameters
+    ----------
+    records : List[Record], optional
+        List of records, by default []
+
+    Examples
+    --------
+    >>> from resistics.testing import record_example1, record_example2
+    >>> from resistics.common import History
+    >>> record1 = record_example1()
+    >>> record2 = record_example2()
+    >>> history = History(records=[record1, record2])
+    >>> history.summary()
+    {
+        'records': [
+            {
+                'time_local': '...',
+                'time_utc': '...',
+                'creator': 'example1',
+                'parameters': {'a': 5, 'b': -7.0},
+                'messages': ['Message 1', 'Message 2'],
+                'record_type': 'process'
+            },
+            {
+                'time_local': '...',
+                'time_utc': '...',
+                'creator': 'example2',
+                'parameters': {'a': 'parzen', 'b': -21},
+                'messages': ['Message 5', 'Message 6'],
+                'record_type': 'process'
+            }
+        ]
+    }
     """
 
-    def __init__(self, records: Optional[List[ProcessRecord]] = None):
-        """
-        Initialise either an empty process history or with a list of records
+    records: List[Record] = []
 
-        Parameters
-        ----------
-        records : Optional[List[ProcessRecord]], optional
-            List of process records, by default None
-        """
-        if records is None:
-            self._records = []
-        else:
-            self._records = records
-
-    def add_record(self, record: ProcessRecord):
+    def add_record(self, record: Record):
         """
         Add a process record to the list
 
         Parameters
         ----------
-        record : ProcessRecord
+        record : Record
             The record to add
         """
-        self._records.append(record)
-
-    def copy(self) -> "ProcessHistory":
-        """
-        Get a copy of the ProcessHistory
-
-        Returns
-        -------
-        ProcessHistory
-            A copy of the ProcessHistory
-        """
-        return ProcessHistory([x.copy() for x in self._records])
-
-    def to_dict(self) -> Dict[str, ProcessRecord]:
-        """
-        Convert to a dictionary of process records
-
-        Returns
-        -------
-        Dict[str, ProcessRecord]
-            The dictionary of process records
-        """
-        history = {}
-        for idx, record in enumerate(self._records):
-            history[f"process_{idx}"] = record.to_dict()
-        return history
-
-    def to_string(self) -> str:
-        """
-        Get the process history as a string
-
-        Returns
-        -------
-        str
-            Process history as a string
-        """
-        import yaml
-
-        outstr = f"{self.type_to_string()}\n"
-        outstr += yaml.dump(self.to_dict(), indent=4, sort_keys=False)
-        return outstr.rstrip().rstrip("\n")
+        self.records.append(record)
 
 
-def histories_to_parameters(histories: List[ProcessHistory]) -> Dict[str, Any]:
+def get_record(
+    process_name: str,
+    parameters: Dict[str, Any],
+    messages: Union[str, List[str]],
+    record_type: str = "process",
+    time_utc: Optional[datetime] = None,
+    time_local: Optional[datetime] = None,
+) -> Record:
+    """
+    Get a process record
+
+    Parameters
+    ----------
+    process_name : str
+        The name of the process
+    parameters : Dict[str, Any]
+        The parameters as a dictionary
+    messages : Union[str, List[str]]
+        The messages as either a single str or a list of strings
+    record_type : str, optional
+        The type of record, by default "process"
+    time_utc : Optional[datetime], optional
+        UTC time to attach to the record, by default None. If None, will default
+        to UTC now
+    time_local : Optional[datetime], optional
+        Local time to attach to the record, by default None. If None, will
+        defult to local now
+
+    Returns
+    -------
+    Record
+        The process record
+
+    Examples
+    --------
+    >>> from resistics.common import get_record
+    >>> record = get_record("example", {"a": 5, "b": -7.0}, messages="a message")
+    >>> record.creator
+    'example'
+    >>> record.parameters
+    {'a': 5, 'b': -7.0}
+    >>> record.messages
+    ['a message']
+    >>> record.record_type
+    'process'
+    >>> record.time_utc
+    datetime.datetime(...)
+    >>> record.time_local
+    datetime.datetime(...)
+    """
+    if isinstance(messages, str):
+        messages = [messages]
+    if time_utc is None:
+        time_utc = datetime.utcnow()
+    if time_local is None:
+        time_local = datetime.now()
+    return Record(
+        time_utc=time_utc,
+        time_local=time_local,
+        creator=process_name,
+        parameters=parameters,
+        messages=messages,
+        record_type=record_type,
+    )
+
+
+def get_history(record: Record, history: Optional[History] = None) -> History:
+    """
+    Get a new History instance or add a record to a copy of an existing one
+
+    This method always makes a deepcopy of an input history to avoid any
+    unplanned modifications to the inputs.
+
+    Parameters
+    ----------
+    record : Record
+        The record
+    history : Optional[History], optional
+        A history to add to, by default None
+
+    Returns
+    -------
+    History
+        History with the record added
+
+    Examples
+    --------
+    Get a new History with a single Record
+
+    >>> from resistics.common import get_history
+    >>> from resistics.testing import record_example1, record_example2
+    >>> record1 = record_example1()
+    >>> history = get_history(record1)
+    >>> history.summary()
+    {
+        'records': [
+            {
+                'time_local': '...',
+                'time_utc': '...',
+                'creator': 'example1',
+                'parameters': {'a': 5, 'b': -7.0},
+                'messages': ['Message 1', 'Message 2'],
+                'record_type': 'process'
+            }
+        ]
+    }
+
+    Alternatively, add to an existing History. This will make a copy of the
+    original history. If a copy is not needed, the add_record method of history
+    can be used.
+
+    >>> record2 = record_example2()
+    >>> history = get_history(record2, history)
+    >>> history.summary()
+    {
+        'records': [
+            {
+                'time_local': '...',
+                'time_utc': '...',
+                'creator': 'example1',
+                'parameters': {'a': 5, 'b': -7.0},
+                'messages': ['Message 1', 'Message 2'],
+                'record_type': 'process'
+            },
+            {
+                'time_local': '...',
+                'time_utc': '...',
+                'creator': 'example2',
+                'parameters': {'a': 'parzen', 'b': -21},
+                'messages': ['Message 5', 'Message 6'],
+                'record_type': 'process'
+            }
+        ]
+    }
+    """
+    if history is None:
+        return History(records=[record])
+    history = History(**history.dict())
+    history.add_record(record)
+    return history
+
+
+def histories_to_parameters(histories: List[History]) -> Dict[str, Any]:
     """
     Convert histories to a dictionary of parameters
 
     Parameters
     ----------
-    histories : List[ProcessHistory]
+    histories : List[History]
         List of process histories
 
     Returns
@@ -948,12 +867,12 @@ def histories_to_parameters(histories: List[ProcessHistory]) -> Dict[str, Any]:
         Parameter dictionary
     """
     parameters = {
-        f"Dataset {idx}": history.to_dict() for idx, history in enumerate(histories)
+        f"Dataset {idx}": history.dict() for idx, history in enumerate(histories)
     }
     return parameters
 
 
-class ResisticsProcess(ResisticsBase):
+class ResisticsProcess(BaseModel):
     """
     Base class for resistics processes
 
@@ -966,7 +885,6 @@ class ResisticsProcess(ResisticsBase):
     .. code-block::
 
         processor.check()
-        processor.prepare()
         processor.run()
     """
 
@@ -1012,16 +930,6 @@ class ResisticsProcess(ResisticsBase):
         """
         return True
 
-    def prepare(self):
-        """
-        Any preparation logic should be placed in the prepare method of a child
-        class
-
-        Where no prepare logic is required, this method does not have to be
-        implemented in child classes
-        """
-        pass
-
     def run(self):
         """
         Run the process
@@ -1033,9 +941,9 @@ class ResisticsProcess(ResisticsBase):
         """
         raise NotImplementedError("Child processor classes must have a run method")
 
-    def _get_process_record(self, messages: Union[str, List[str]]) -> ProcessRecord:
+    def _get_record(self, messages: Union[str, List[str]]) -> Record:
         """
-        Get the process record for the processor
+        Get the record for the processor
 
         Parameters
         ----------
@@ -1044,701 +952,105 @@ class ResisticsProcess(ResisticsBase):
 
         Returns
         -------
-        ProcessRecord
-            A process record
+        Record
+            A record
         """
-        return get_process_record(self.name, self.parameters(), messages)
+        return get_record(self.name, self.parameters(), messages)
 
 
-class Metadata(ResisticsBase):
+class JSONFile(ResisticsModel):
     """
-    A class for holding metadata for various data types
-
-    Internally, metadata is essentially a dictionary and has keys and values.
-    Given an appropriate set of specifications, it can ensure metadata values
-    have the appropriate type and will raise an error if they do not.
+    Model for writing out resistics JSON files
 
     Examples
     --------
-    Initialising metadata
-
-    >>> from resistics.common import Metadata
-    >>> metadata_dict = {"a": "12", "b": "something"}
-    >>> metadata = Metadata(metadata_dict)
-    >>> metadata.to_dict()
-    {'a': '12', 'b': 'something', 'describes': 'unknown'}
-    >>> metadata["a"]
-    '12'
-    >>> metadata["a"] = 15
-    >>> metadata.to_dict()
-    {'a': 15, 'b': 'something', 'describes': 'unknown'}
-
-    If specifications are provided, updating a metadata value will be checked
-    against the specifications
-
-    >>> metadata_dict = {"a": "12", "b": "something"}
-    >>> spec = {"a": {"type": int, "default": 0}}
-    >>> metadata = Metadata(metadata_dict, spec)
-    >>> metadata.to_dict()
-    {'a': 12, 'b': 'something', 'describes': 'unknown'}
-    >>> metadata["a"] = "try to set to string"
-    Traceback (most recent call last):
-    ...
-    TypeError: Unable to convert try to set to string to type <class 'int'>
-    >>> metadata["b"] = 12
-    >>> metadata.to_dict()
-    {'a': 12, 'b': 12, 'describes': 'unknown'}
-    """
-
-    def __init__(
-        self,
-        metadata: Dict[str, Any],
-        specs: Optional[Spec] = None,
-    ) -> None:
-        """
-        Initialise metadata
-
-        Providing a specifications dictionary will automatically format metadata
-        values and insert default values for missing metadata keys.
-
-        Metadata makes a copy of the metadata to ensure changing it somewhere
-        else will leave it unaltered here. However, specifications are not
-        copied as these are assumed to remain constant in a run.
-
-        It is suggested to pass describes as a key with a single word value to
-        make it clear what the metadata describes. If no 'describes' key is
-        passed, one will be added with the value 'unknown'
-
-        Parameters
-        ----------
-        metadata : Dict[str, Any]
-            Metadata dictionary
-        specs : Optional[Specification], optional
-            Mapping of metadata key to a dictionary with type and default
-            information, by default None. If no specifications are provided, no
-            checking is done of header value type and no defaults are added for
-            missing metadata.
-        """
-        import copy
-
-        self._metadata = copy.deepcopy(metadata)
-        self._specs = specs
-        if self._specs is not None:
-            self._metadata = format_dict(self._metadata, self._specs)
-        # add a tag if one doesn't exist
-        if "describes" not in self._metadata:
-            self._metadata["describes"] = "unknown"
-
-    def __iter__(self) -> Iterator:
-        """Iterator over metadata keys"""
-        return self._metadata.__iter__()
-
-    def __getitem__(self, key: str) -> Any:
-        """
-        Get a metadata value
-
-        Parameters
-        ----------
-        key : str
-            The metadata key
-
-        Returns
-        -------
-        Any
-            The value
-
-        Raises
-        ------
-        MetadataKeyNotFound
-            If key does not exist
-        """
-        from resistics.errors import MetadataKeyNotFound
-
-        if key not in self._metadata:
-            raise MetadataKeyNotFound(key, self.keys())
-        return self._metadata[key]
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        """
-        Set the value of a metadata key
-
-        Type checking will be performed against a specification if available for
-        the key. If no specification is available for the key, the value will be
-        added without checking.
-
-        Parameters
-        ----------
-        key : str
-            The key
-        value : Any
-            The value
-        """
-        if self._specs is not None and key in self._specs:
-            spec_type = self._specs[key]["type"]
-            value = format_value(value, spec_type)
-        self._metadata[key] = value
-
-    def keys(self, describes: bool = True) -> List[str]:
-        """
-        Get the keys in the metadata
-
-        Parameters
-        ----------
-        describes : bool, optional
-            Flag for including the describes entry, by default True
-
-        Returns
-        -------
-        List[str]
-            List of keys
-        """
-        keys = list(self._metadata.keys())
-        if not describes:
-            keys.remove("describes")
-        return keys
-
-    def copy(self) -> "Metadata":
-        """
-        Copy the metadata
-
-        Returns
-        -------
-        Metadata
-            A copy of the metadata
-        """
-        return Metadata(self.to_dict(), self._specs)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Get headers as a dictionary
-
-        Returns
-        -------
-        Dict
-            Get a dictonary of the header key to header value
-        """
-        import copy
-
-        return copy.deepcopy(self._metadata)
-
-    def to_series(self) -> pd.Series:
-        """
-        Get the headers as a pandas Series
-
-        Returns
-        -------
-        pd.Series
-            The headers as a pandas Series with headers as indices and values as
-            the values
-        """
-        return pd.Series(self._metadata)
-
-    def to_string(self) -> str:
-        """
-        Get headers as string
-
-        Returns
-        -------
-        str
-            String representation of headers
-        """
-        outstr = f"{self.type_to_string()}\n"
-        return outstr + str(self._metadata)
-
-    def serialize(self) -> Dict[str, Any]:
-        """
-        Serialize metadata values to allow writing out as a json file
-
-        .. warning::
-
-            This does not perform a full serialization but simply enough to
-            allow writing out with json
-
-        Returns
-        -------
-        Dict[str, Any]
-            Serialized dictionary
-        """
-        return {key: serialize(value) for key, value in self._metadata.items()}
-
-
-def metadata_from_specs(
-    specs: Spec, overwrite: Optional[Dict[str, Any]] = None
-) -> Metadata:
-    """
-    Get a new Metadata instance given a set of key specifications
-    (e.g. time, calibration) and optional override values.
-
-    Parameters
-    ----------
-    specs : Spec
-        Key specifications
-    overwrite : Optional[Dict[str, Any]], optional
-        Override values for particular keys which will be used instead of
-        defaults in the specification, by default None
-
-    Returns
-    -------
-    Metadata
-        A metadata instance
-    """
-    metadata_dict = {key: spec["default"] for key, spec in specs.items()}
-    if overwrite is not None:
-        for key, value in overwrite.items():
-            metadata_dict[key] = value
-    return Metadata(metadata_dict, specs)
-
-
-class MetadataGroup(ResisticsBase):
-    """Object for holding a group of metadata
-
-    This can be used for time data or other types of datasets which have
-    multiple Metadata. For example, time data has metadata which is
-    common to all channels (e.g. latitude, longitude) and then channel specific
-    metadata.
-
-    Each Metadata instance in the group is called an entry.
-
-    Examples
-    --------
-    >>> from resistics.common import MetadataGroup
-    >>> group = {}
-    >>> group["common"] = {"fs":512, "n_samples": 512000}
-    >>> group["Ex"] = {"sensor": "MFS", "serial": 100}
-    >>> group["Ey"] = {"sensor": "Phnx", "serial": 20}
-    >>> metadata_grp = MetadataGroup(group)
-    >>> metadata_grp.summary()
-    ##---Begin Summary--------------------------------
-    <class 'resistics.common.MetadataGroup'>
-    Entry 'common' metadata
-            <class 'resistics.common.Metadata'>
-            {'fs': 512, 'n_samples': 512000, 'describes': 'unknown'}
-    Entry 'Ex' metadata
-            <class 'resistics.common.Metadata'>
-            {'sensor': 'MFS', 'serial': 100, 'describes': 'unknown'}
-    Entry 'Ey' metadata
-            <class 'resistics.common.Metadata'>
-            {'sensor': 'Phnx', 'serial': 20, 'describes': 'unknown'}
-    ##---End summary----------------------------------
-    >>> metadata_grp["common", "fs"]
-    512
-    >>> metadata_grp["Ex", "sensor"]
-    'MFS'
-    >>> metadata_grp["common", "fs"] = 128
-    >>> metadata_grp["Ex", "sensor"] = "this is a test"
-    >>> metadata_grp.summary()
-    ##---Begin Summary--------------------------------
-    <class 'resistics.common.MetadataGroup'>
-    Entry 'common' metadata
-            <class 'resistics.common.Metadata'>
-            {'fs': 128, 'n_samples': 512000, 'describes': 'unknown'}
-    Entry 'Ex' metadata
-            <class 'resistics.common.Metadata'>
-            {'sensor': 'this is a test', 'serial': 100, 'describes': 'unknown'}
-    Entry 'Ey' metadata
-            <class 'resistics.common.Metadata'>
-            {'sensor': 'Phnx', 'serial': 20, 'describes': 'unknown'}
-    ##---End summary----------------------------------
-    """
-
-    def __init__(
-        self,
-        group: Union[Dict[str, Metadata], Dict[str, Dict[str, Any]]],
-        specs: Optional[Spec] = None,
-    ) -> None:
-        """
-        Initialise with a group and a single specification
-
-        The same specification will be used for all entries in the group. Where
-        different specifications are required, more can be added using the
-        add_entry method
-
-        Parameters
-        ----------
-        group : Union[Dict[str, Metadata], Dict[str, Dict[str, Any]]]
-            Dictionary mapping to Metadata or to dictionaries to be converted to
-            Metadata
-        specs : Optional[Spec], optional
-            The specifications, by default None
-        """
-        self._group: Dict[str, Metadata] = {}
-        self.add_entries(group, specs)
-
-    def __iter__(self) -> Iterator:
-        """Iterator over MetadataGroup entries"""
-        return self._group.__iter__()
-
-    def entries(
-        self, describes: Optional[Union[str, Collection[str]]] = None
-    ) -> List[str]:
-        """
-        Get a list of entries in the group
-
-        Parameters
-        ----------
-        describes : Optional[Union[str, Collection[str]]], optional
-            Restrict to entries which describe the same thing, by default None.
-            For example, pull out entries that describe channels.
-
-        Returns
-        -------
-        List[str]
-            List of entries
-        """
-        entries = self._group.keys()
-        if describes is None:
-            return list(entries)
-        if isinstance(describes, str):
-            return [x for x in entries if self._group[x]["describes"] == describes]
-        return [x for x in entries if self._group[x]["describes"] in describes]
-
-    def __getitem__(self, args: Union[str, Tuple[str, str]]) -> Any:
-        """
-        Get a either a Metadata or a key value from a Metadata
-
-        Parameters
-        ----------
-        args : Union[str, Tuple[str, str]]
-            The arguments. Argument one must be the name of an entry. Argument
-            two is optional and a key in the entry Metadata
-
-        Returns
-        -------
-        Any
-            Metadata if only an entry is passed, other the value of a metadata
-            entry key
-
-        Raises
-        ------
-        ValueError
-            If the arguments have been incorrectly specified
-        """
-        if isinstance(args, str):
-            return self.get_entry(args)
-        elif isinstance(args, tuple) and len(args) == 2:
-            return self.get_entry(args[0])[args[1]]
-        else:
-            raise ValueError(f"Arguments {args} have been incorrectly specified")
-
-    def get_entry(self, entry: str) -> Metadata:
-        """
-        Get a metadata entry
-
-        Parameters
-        ----------
-        entry : str
-            Entry name
-
-        Returns
-        -------
-        Metadata
-            A metdata
-
-        Raises
-        ------
-        MetadataEntryNotFound
-            If the entry is not part of the MetadataGroup
-        """
-        from resistics.errors import MetadataEntryNotFound
-
-        if entry not in self._group:
-            raise MetadataEntryNotFound(entry, self.entries())
-        return self._group[entry]
-
-    def __setitem__(
-        self, args: Union[str, Tuple[str, str]], value: Union[Metadata, Any]
-    ) -> None:
-        """
-        Set either an entry or the value of a key in an entry
-
-        Parameters
-        ----------
-        args : Union[str, Tuple[str, str]]
-            The arguments. One argument must be the name of an entry. The second
-            is optional and should be the name of a key in Metadata.
-        value : Union[Metadata, Any]
-            If only an entry is passed, this should be a Metadata. Otherwise,
-            when setting the value of a Metadata key, this should be a value.
-
-        Raises
-        ------
-        ValueError
-            If the arguments have been incorrectly specified
-        """
-        if isinstance(args, str):
-            self.set_entry(args, value)
-        elif len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], str):
-            self.get_entry(args[0])[args[1]] = value
-        else:
-            raise ValueError(f"Arguments {args} have been incorrectly specified")
-
-    def set_entry(self, entry: str, metadata: Metadata) -> None:
-        """
-        Set an entry to a new metadata
-
-        Note that setting entry Metadata makes a copy so if it is changed
-        elsewhere, those changes will not be reflected in the MetadataGroup
-
-        Parameters
-        ----------
-        entry : str
-            The entry
-        metadata : Metadata
-            The metdata to set the entry to
-
-        Raises
-        ------
-        MetadataEntryNotFound
-            If the entry is not found. This method cannot be used for adding new
-            entries. The add_entry method should be used to add new entries.
-        """
-        from resistics.errors import MetadataEntryNotFound
-
-        if entry not in self._group:
-            raise MetadataEntryNotFound(
-                entry,
-                self.entries(),
-                "Entry does not exist. Use add_entry to add a new entry",
-            )
-        self._group[entry] = metadata.copy()
-
-    def add_entries(
-        self,
-        group: Union[Dict[str, Metadata], Dict[str, Dict[str, Any]]],
-        specs: Optional[Spec] = None,
-    ) -> None:
-        """
-        Add entries to the MetadataGroup
-
-        If an entry is provided as Metadata, it is added without modification.
-        If an entry is provided as a dictionary, the specification will be
-        applied if it is passed.
-
-        Parameters
-        ----------
-        group : Union[Dict[str, Metadata], Dict[str, Dict[str, Any]]]
-            Group of metadata
-        specs : Optional[Spec], optional
-            Specifications which will be applied to any entry passed as a
-            dictionary, by default None
-        """
-        for entry, entry_metadata in group.items():
-            if isinstance(entry_metadata, Metadata):
-                self.add_entry(entry, entry_metadata)
-            elif isinstance(entry, dict) and specs is not None:
-                self.add_entry(entry, Metadata(entry_metadata, specs))
-            else:
-                self.add_entry(entry, Metadata(entry_metadata))
-
-    def add_entry(self, entry: str, entry_metadata: Metadata) -> None:
-        """
-        Add an entry to the MetadataGroup
-
-        Parameters
-        ----------
-        entry : str
-            The name of the entry
-        entry_metadata : Metadata
-            The entry metadata
-
-        Raises
-        ------
-        MetadataEntryAlreadyExists
-            If the entry already exists. In this case, set entry should be used
-            instead
-        """
-        from resistics.errors import MetadataEntryAlreadyExists
-
-        if entry in self._group:
-            raise MetadataEntryAlreadyExists(
-                entry, self.entries(), "Use set_entry to change an existing entry"
-            )
-        self._group[entry] = entry_metadata.copy()
-
-    def copy(self) -> "MetadataGroup":
-        """
-        Get a copy of the MetadataGroup
-
-        Returns
-        -------
-        MetadataGroup
-            A copy
-        """
-        return MetadataGroup(
-            {
-                entry: entry_metadata.copy()
-                for entry, entry_metadata in self._group.items()
-            }
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Get the MetadataGroup as a dictionary
-
-        Returns
-        -------
-        Dict[str, Any]
-            MetadataGroup as dictionary
-        """
-        return {
-            entry: entry_metadata.to_dict()
-            for entry, entry_metadata in self._group.items()
-        }
-
-    def to_string(self) -> str:
-        """
-        Get string representation of MetadataGroup
-
-        Returns
-        -------
-        str
-            Class information as a string
-        """
-        outstr = f"{self.type_to_string()}\n"
-        for entry, entry_metadata in self._group.items():
-            outstr += f"Entry '{entry}' metadata\n"
-            outstr += "\t" + entry_metadata.to_string().replace("\n", "\n\t")
-            outstr += "\n"
-        return outstr.rstrip("\n")
-
-    def serialize(self) -> Dict[str, Any]:
-        """
-        Get the MetadataGroup as a serialized dictionary
-
-        .. warning::
-
-            This does not perform a full serialization but simply enough to
-            allow writing out with json
-
-        Returns
-        -------
-        Dict[str, Any]
-            MetadataGroup converted to a serialized dictionary that can be saved
-        """
-        return {
-            entry: entry_metadata.serialize()
-            for entry, entry_metadata in self._group.items()
-        }
-
-
-def metadata_group_from_specs(
-    specs_grp: Dict[str, Spec],
-    overwrite: Optional[Dict[str, Dict[str, Any]]] = None,
-) -> MetadataGroup:
-    """
-    Create a new MetadataGroup from a group of specifications
-
-    Parameters
-    ----------
-    specs_grp : Dict[str, Spec]
-        Group of specifications
-    overwrite : Optional[Dict[str, Dict[str, Any]]], optional
-        Any override values, by default None
-
-    Returns
-    -------
-    MetadataGroup
-        The new MetadataGroup
-    """
-    metadata = {}
-    for entry, specs in specs_grp.items():
-        if overwrite is not None and entry in overwrite:
-            metadata[entry] = metadata_from_specs(specs, overwrite[entry])
-        else:
-            metadata[entry] = metadata_from_specs(specs)
-    return MetadataGroup(metadata)
-
-
-def metadata_to_json(metadata: Union[Metadata, MetadataGroup], json_path: Path) -> None:
-    """
-    Write a metadata to a file
-
-    Parameters
-    ----------
-    metadata : Union[Metadata, MetadataGroup]
-        A Metadata or MetadataGroup instance
-    json_path : Path
-        The path to write to
-    """
-    import resistics
-    import pandas as pd
-    import json
-
-    out_dict = {
-        "created_by": "resistics",
-        "created_on_local": serialize(pd.Timestamp.now(tz=None)),
-        "created_on_utc": serialize(pd.Timestamp.utcnow()),
-        "version": resistics.__version__,
-        "type": metadata.type_to_string(),
-        "content": metadata.serialize(),
+    >>> from resistics.common import JSONFile
+    >>> from resistics.testing import time_metadata_simple
+    >>> metadata = time_metadata_simple()
+    >>> test = JSONFile(metadata=metadata)
+    >>> test.summary()
+    {
+        'created_by': 'resistics',
+        'created_on_local': '...',
+        'created_on_utc': '...',
+        'version': '0.0.7.dev1',
+        'metadata': {
+            'fs': 10.0,
+            'n_chans': 2,
+            'n_samples': 100,
+            'chans': ['chan1', 'chan2'],
+            'chans_metadata': {
+                'chan1': {
+                    'data_files': ['example1.ascii'],
+                    'sensor': '',
+                    'serial': '',
+                    'gain1': 1,
+                    'gain2': 1,
+                    'scaling': 1,
+                    'hchopper': False,
+                    'echopper': False,
+                    'dx': 1,
+                    'dy': 1,
+                    'dz': 1,
+                    'sensor_calibration_file': '',
+                    'instrument_calibration_file': ''
+                },
+                'chan2': {
+                    'data_files': ['example2.ascii'],
+                    'sensor': 'MFS',
+                    'serial': '',
+                    'gain1': 1,
+                    'gain2': 1,
+                    'scaling': 1,
+                    'hchopper': False,
+                    'echopper': False,
+                    'dx': 1,
+                    'dy': 1,
+                    'dz': 1,
+                    'sensor_calibration_file': '',
+                    'instrument_calibration_file': ''
+                }
+            },
+            'first_time': '2021-01-01 00:00:00.000000_000000_000000_000000',
+            'last_time': '2021-01-01 00:01:00.000000_000000_000000_000000',
+            'system': '',
+            'wgs84_latitude': -999.0,
+            'wgs84_longitude': -999.0,
+            'easting': -999.0,
+            'northing': -999.0,
+            'elevation': -999.0
+        },
+        'history': None
     }
-    with json_path.open("w") as f:
-        json.dump(out_dict, f)
-
-
-def json_to_metadata(json_path: Path) -> Union[Metadata, MetadataGroup]:
     """
-    Read metadata from a json file
+
+    created_by: str = "resistics"
+    created_on_local: datetime = Field(default_factory=datetime.now)
+    created_on_utc: datetime = Field(default_factory=datetime.utcnow)
+    version: Optional[str] = Field(default_factory=get_version)
+    metadata: Optional[Metadata] = None
+    history: Optional[History] = None
+
+
+def write_json(
+    json_path: Path,
+    metadata: Optional[Metadata] = None,
+    history: Optional[History] = None,
+) -> None:
+    """
+    Save History as a json file
 
     Parameters
     ----------
-    json_path : Path
-        The JSON file
-
-    Returns
-    -------
-    Union[Metadata, MetadataGroup]
-        Returns Metadata or MetadataGroup depending on contents of file
-
-    Raises
-    ------
-    MetadataReadError
-        If JSON file is unrecognised header type
-    """
-    import json
-    from resistics.errors import MetadataReadError
-
-    with json_path.open("r") as f:
-        json_data = json.load(f)
-    metadata_type = json_data["type"]
-    content = json_data["content"]
-    if "MetadataGroup" in metadata_type:
-        logger.info(f"Found MetadataGroup in file {json_path}")
-        return MetadataGroup(content)
-    elif "Metadata" in metadata_type:
-        logger.info(f"Found Metadata in file {json_path}")
-        return Metadata(content)
-    else:
-        logger.error(f"Unrecognised type of metadata in {json_path}")
-        raise MetadataReadError(json_path)
-
-
-def history_to_json(history: ProcessHistory, json_path: Path) -> None:
-    """
-    Save ProcessHistory as a json file
-
-    Parameters
-    ----------
-    history : ProcessHistory
-        The process history
     json_path : Path
         Path to write JSON data to
+    metadata : Metadata
+        Metadata to write out
+    history : History
+        The history
     """
-    import resistics
-    import pandas as pd
     import json
 
-    out_dict = {
-        "created_by": "resistics",
-        "created_on_local": serialize(pd.Timestamp.now(tz=None)),
-        "created_on_utc": serialize(pd.Timestamp.utcnow()),
-        "version": resistics.__version__,
-        "type": history.type_to_string(),
-        "content": history.to_dict(),
-    }
+    file_contents = JSONFile(json_path=json_path, metadata=metadata, history=history)
     with json_path.open("w") as f:
-        json.dump(out_dict, f)
-
-
-def json_to_history(yaml_path: Path) -> ProcessHistory:
-    return ProcessHistory()
+        json.dump(file_contents.json(), f)

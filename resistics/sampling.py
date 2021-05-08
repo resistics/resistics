@@ -8,7 +8,7 @@
 - attotime is a high precision datetime library
 """
 from loguru import logger
-from typing import Union, Tuple, Optional
+from typing import Union, Tuple, Optional, Any
 from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
@@ -18,6 +18,35 @@ DateTimeLike = Union[str, pd.Timestamp, datetime]
 TimeDeltaLike = Union[float, timedelta, pd.Timedelta]
 RSDateTime = attodatetime
 RSTimeDelta = attotimedelta
+
+
+class HighResDateTime(RSDateTime):
+    """Wrapper around RSDateTime to use for pydantic"""
+
+    @classmethod
+    def __get_validators__(cls):
+        """Yield validators for RSDateTime"""
+        yield cls.validate
+
+    @classmethod
+    def __modify_schema__(cls, field_schema):
+        """Add to the pydantic schema"""
+        field_schema.update(
+            pattern="%Y-%m-%d %H:%M:%S.%f_%o_%q_%v",
+            examples=["2021-01-01 00:00:00.000061_035156_250000_000000"],
+        )
+
+    @classmethod
+    def validate(cls, val: Any):
+        """Validator to be used by pydantic"""
+        if isinstance(val, RSDateTime):
+            return val
+        if isinstance(val, (str, pd.Timestamp, datetime)):
+            return to_datetime(val)
+        raise TypeError(f"Type {type(val)} not recognised for RSDateTime")
+
+    def __repr__(self) -> str:
+        return super().__repr__()
 
 
 def datetime_to_string(time: RSDateTime) -> str:
