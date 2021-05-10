@@ -529,58 +529,23 @@ class ResisticsBase(object):
     """
 
     def __repr__(self) -> str:
-        """
-        Return a string of class information
-
-        Returns
-        -------
-        str
-            String representation of class
-        """
+        """Return a string of class information"""
         return self.to_string()
 
     def __str__(self) -> str:
-        """
-        Return a string of class information
-
-        Returns
-        -------
-        str
-            String representation of class
-        """
+        """Return a string of class information"""
         return self.to_string()
 
     def type_to_string(self) -> str:
-        """
-        Get the class type
-
-        Returns
-        -------
-        str
-            Class type as string
-        """
+        """Get the class type as a string"""
         return str(self.__class__)
 
     def to_string(self) -> str:
-        """
-        Get a string representation of the class
-
-        Returns
-        -------
-        str
-            String representation of class
-        """
+        """Class details as a string"""
         return self.type_to_string()
 
     def summary(self, symbol: str = "-") -> None:
-        """
-        Print a summary of the class
-
-        Parameters
-        ----------
-        symbol : str, optional
-            The symbol to use in the summary prints, by default "-"
-        """
+        """Print a summary of class details"""
         name = str(self.__class__)
         length = len(name) + 10
         print("##" + 3 * symbol + "Begin Summary" + ((length - 18) * symbol))
@@ -606,9 +571,10 @@ class ResisticsModel(BaseModel):
     def to_string(self) -> str:
         """Class info as string"""
         import json
+        import yaml
 
         json_dict = json.loads(self.json())
-        return json.dumps(json_dict, indent=4, sort_keys=False)
+        return yaml.dump(json_dict, indent=4, sort_keys=False)
 
     def summary(self) -> None:
         """Print a summary of the class"""
@@ -971,13 +937,13 @@ class JSONFile(ResisticsModel):
     >>> test.summary()
     {
         'created_by': 'resistics',
-        'created_on_local': '...',
-        'created_on_utc': '...',
+        'created_on_local': '2021-05-10T20:33:30.584333',
+        'created_on_utc': '2021-05-10T19:33:30.584333',
         'version': '0.0.7.dev1',
         'metadata': {
             'fs': 10.0,
             'n_chans': 2,
-            'n_samples': 100,
+            'n_samples': 11,
             'chans': ['chan1', 'chan2'],
             'chans_metadata': {
                 'chan1': {
@@ -1012,15 +978,15 @@ class JSONFile(ResisticsModel):
                 }
             },
             'first_time': '2021-01-01 00:00:00.000000_000000_000000_000000',
-            'last_time': '2021-01-01 00:01:00.000000_000000_000000_000000',
+            'last_time': '2021-01-01 00:00:01.000000_000000_000000_000000',
             'system': '',
             'wgs84_latitude': -999.0,
             'wgs84_longitude': -999.0,
             'easting': -999.0,
             'northing': -999.0,
-            'elevation': -999.0
-        },
-        'history': None
+            'elevation': -999.0,
+            'history': None
+        }
     }
     """
 
@@ -1029,28 +995,15 @@ class JSONFile(ResisticsModel):
     created_on_utc: datetime = Field(default_factory=datetime.utcnow)
     version: Optional[str] = Field(default_factory=get_version)
     metadata: Optional[Metadata] = None
-    history: Optional[History] = None
 
+    def write(self, json_path: Path):
+        """
+        Write out JSON metadata file
 
-def write_json(
-    json_path: Path,
-    metadata: Optional[Metadata] = None,
-    history: Optional[History] = None,
-) -> None:
-    """
-    Save History as a json file
-
-    Parameters
-    ----------
-    json_path : Path
-        Path to write JSON data to
-    metadata : Metadata
-        Metadata to write out
-    history : History
-        The history
-    """
-    import json
-
-    file_contents = JSONFile(json_path=json_path, metadata=metadata, history=history)
-    with json_path.open("w") as f:
-        json.dump(file_contents.json(), f)
+        Parameters
+        ----------
+        json_path : Path
+            Path to write JSON file
+        """
+        with json_path.open("w") as f:
+            f.write(self.json())
