@@ -1,102 +1,56 @@
 """
 Module for custom resistics errors
 """
-from typing import Collection, Any, Type, Optional
+from typing import Collection, Optional
 from pathlib import Path
 
 
 ###
 # general errors
 ###
-class PathNotFoundError(Exception):
-    """Use if path does not exist"""
+class PathError(Exception):
+    """Use for a general error with paths"""
 
     def __init__(self, path: Path):
         self.path = path
 
     def __str__(self) -> str:
+        return f"Error with path {self.path}"
+
+
+class PathNotFoundError(PathError):
+    """Use if path does not exist"""
+
+    def __str__(self) -> str:
         return f"Path {self.path} does not exist"
 
 
-class NotFileError(PathNotFoundError):
+class NotFileError(PathError):
     """Use if expected a file and got a directory"""
 
     def __str__(self) -> str:
         return f"Path {self.path} is not a file"
 
 
-class NotDirectoryError(PathNotFoundError):
+class NotDirectoryError(PathError):
     """Use if expected a directory and got a file"""
 
     def __str__(self) -> str:
         return f"Path {self.path} is not a directory"
 
 
-###
-# Serialization errors
-###
-class SerializationError(Exception):
-    def __init__(self, obj: Any):
-        self.obj = obj
+class WriteError(Exception):
+    def __init__(self, path: Path, message: str = ""):
+        self.path = path
+        self.message = message
 
     def __str__(self) -> str:
-        return f"Unable to serialize {self.obj} of type {type(self.obj)}"
-
-
-class DeserializationError(Exception):
-    def __init__(self, obj: Any, obj_type: Type[Any]):
-        self.obj = obj
-        self.obj_type = obj_type
-
-    def __str__(self) -> str:
-        return f"Unable to deserialize {self.obj} to expected type {self.obj_type}"
+        return f"Error with path {self.path}. {self.message}."
 
 
 ###
 # metadata data errors
 ###
-class MetadataKeyNotFound(Exception):
-    """Use if a key is requested which does not exist in the metadata"""
-
-    def __init__(self, key: str, keys: Collection[str]):
-        self.key = key
-        self.keys = keys
-
-    def __str__(self) -> str:
-        return f"Key {self.key} not found in Metadata with keys {self.keys}"
-
-
-class MetadataEntryError(Exception):
-    """Parent class for MetadataGroup entry errors"""
-
-    def __init__(
-        self, entry: str, entries: Collection[str], message: Optional[str] = None
-    ):
-        self.entry = entry
-        self.entries = entries
-        self.message = message
-
-
-class MetadataEntryNotFound(MetadataEntryError):
-    """Use if Metadata entry not found in a MetadataGroup"""
-
-    def __str__(self) -> str:
-        out = f"Entry {self.entry} not found in Group with entries {self.entries}."
-        if self.message is not None:
-            out += " {self.message}."
-        return out
-
-
-class MetadataEntryAlreadyExists(MetadataEntryError):
-    """Use if Metadata entry already exists when trying to add"""
-
-    def __str__(self) -> str:
-        out = f"Entry {self.entry} already exists in Group with entries {self.entries}."
-        if self.message is not None:
-            out += " {self.message}."
-        return out
-
-
 class MetadataReadError(Exception):
     """Use when failed to read a metadata"""
 
@@ -114,23 +68,26 @@ class MetadataReadError(Exception):
 ###
 # project and site errors
 ###
-class ProjectCreateError(Exception):
-    """Use if encounter an error creating a project"""
+class ProjectPathError(Exception):
+    """Use for a general error with a project path"""
 
     def __init__(self, project_dir: Path, message: str):
         self.project_dir = project_dir
         self.message = message
+
+    def __str__(self):
+        return f"{self.project_dir}, {self.message}"
+
+
+class ProjectCreateError(ProjectPathError):
+    """Use if encounter an error creating a project"""
 
     def __str__(self) -> str:
         return f"Error creating project in {self.project_dir}. {self.message}."
 
 
-class ProjectLoadError(Exception):
+class ProjectLoadError(ProjectPathError):
     """Use if error on project load"""
-
-    def __init__(self, project_dir: Path, message: str):
-        self.project_dir = project_dir
-        self.message = message
 
     def __str__(self) -> str:
         return f"Error loading project {self.project_dir}. {self.message}."
@@ -186,17 +143,6 @@ class ChannelNotFoundError(Exception):
 ###
 # for running processes
 ###
-class ProcessCheckError(Exception):
-    """Use when a error is encountered during a process check"""
-
-    def __init__(self, process: str, message: str):
-        self.process = process
-        self.message = message
-
-    def __str__(self) -> str:
-        return f"Check error encounted in {self.process}. {self.message}."
-
-
 class ProcessRunError(Exception):
     """Use when a error is encountered during a process run"""
 
