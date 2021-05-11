@@ -2,33 +2,83 @@ from typing import List
 import numpy as np
 import pandas as pd
 
-from resistics.common import MetadataGroup, ProcessHistory
-from resistics.time import TimeData
+from resistics.common import Record, History, get_record
+from resistics.time import get_time_metadata, TimeMetadata, TimeData
 
-# from resistics.calibrate import CalibrationData
+# from resistics.project import Measurement, Site, Project
 
 
-def time_metadata(fs: float, first_time: pd.Timestamp, n_samples: int) -> MetadataGroup:
-    """
-    Get some time metadata
+def record_example1() -> Record:
+    """Get an example Record"""
+    from resistics.common import get_record
 
-    Parameters
-    ----------
-    fs : float
-        Sampling frequency
-    first_time : pd.Timestamp
-        Timestamp of first sample
-    n_samples : int
-        Number of samples
+    return get_record(
+        "example1", {"a": 5, "b": -7.0}, messages=["Message 1", "Message 2"]
+    )
 
-    Returns
-    -------
-    MetadataGroup
-        MetadataGroup to use with TimeData
-    """
-    from resistics.time import get_time_metadata
 
-    common_metadata = {
+def record_example2() -> Record:
+    """Get an example Record"""
+    from resistics.common import get_record
+
+    return get_record(
+        "example2", {"a": "parzen", "b": -21}, messages=["Message 5", "Message 6"]
+    )
+
+
+def history_example() -> History:
+    """Get a History example"""
+    from resistics.common import History
+
+    return History(records=[record_example1(), record_example2()])
+
+
+def time_metadata_1chan(
+    fs: float = 10, first_time: str = "2021-01-01 00:00:00", n_samples: int = 11
+) -> TimeMetadata:
+    """Get a simple TimeMetadata instance"""
+    first_time = pd.to_datetime(first_time)
+    time_dict = {
+        "chans": ["chan1"],
+        "fs": fs,
+        "n_samples": n_samples,
+        "n_chans": 2,
+        "first_time": first_time,
+        "last_time": first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
+    }
+    chans_dict = {
+        "chan1": {"data_files": "example1.ascii"},
+    }
+    return get_time_metadata(time_dict, chans_dict)
+
+
+def time_metadata_2chan(
+    fs: float = 10, first_time: str = "2021-01-01 00:00:00", n_samples: int = 11
+) -> TimeMetadata:
+    """Get a simple TimeMetadata instance"""
+    first_time = pd.to_datetime(first_time)
+    time_dict = {
+        "chans": ["chan1", "chan2"],
+        "fs": fs,
+        "n_samples": n_samples,
+        "n_chans": 2,
+        "first_time": first_time,
+        "last_time": first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
+    }
+    chans_dict = {
+        "chan1": {"data_files": "example1.ascii"},
+        "chan2": {"data_files": "example2.ascii", "sensor": "MFS"},
+    }
+    return get_time_metadata(time_dict, chans_dict)
+
+
+def time_metadata_mt(
+    fs: float = 10, first_time: str = "2020-01-01 00:00:00", n_samples: int = 11
+) -> TimeMetadata:
+    """Get a magnetotelluric style TimeMetadata instance"""
+    first_time = pd.to_datetime(first_time)
+    time_dict = {
+        "chans": ["Ex", "Ey", "Hx", "Hy"],
         "fs": fs,
         "dt": 1 / fs,
         "n_chans": 4,
@@ -36,13 +86,13 @@ def time_metadata(fs: float, first_time: pd.Timestamp, n_samples: int) -> Metada
         "first_time": first_time,
         "last_time": first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
     }
-    chan_metadata = {
+    chans_dict = {
         "Ex": {"data_files": "Ex.ascii"},
         "Ey": {"data_files": "Ex.ascii"},
         "Hx": {"data_files": "Ex.ascii"},
         "Hy": {"data_files": "Ex.ascii"},
     }
-    return get_time_metadata(common_metadata, chan_metadata)
+    return get_time_metadata(time_dict, chans_dict)
 
 
 def time_data_ones(
@@ -65,16 +115,13 @@ def time_data_ones(
     TimeData
         The TimeData
     """
-    from resistics.common import serialize, get_process_record
-
-    first_time = pd.Timestamp(first_time)
-    chans = ["Ex", "Ey", "Hx", "Hy"]
-    data = np.ones(shape=(len(chans), n_samples), dtype=np.float32)
-    metadata = time_metadata(fs, first_time, n_samples)
-    parameters = {"fs": fs, "first_time": serialize(first_time), "n_samples": n_samples}
+    metadata = time_metadata_mt(fs, first_time, n_samples)
+    data = np.ones(shape=(len(metadata.chans), n_samples), dtype=np.float32)
+    parameters = {"fs": fs, "first_time": first_time, "n_samples": n_samples}
     messages = ["Generated time data with fixed values"]
-    record = get_process_record("time_data_ones", parameters, messages)
-    return TimeData(metadata, chans, data, ProcessHistory([record]))
+    record = get_record("time_data_ones", parameters, messages)
+    metadata.history.add_record(record)
+    return TimeData(metadata, data)
 
 
 def time_data_simple(
@@ -95,10 +142,6 @@ def time_data_simple(
     TimeData
         The TimeData
     """
-    from resistics.common import serialize, get_process_record
-
-    first_time = pd.Timestamp(first_time)
-    chans = ["Ex", "Ey", "Hx", "Hy"]
     data = np.array(
         [
             [1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1],
@@ -108,11 +151,12 @@ def time_data_simple(
         ]
     )
     n_samples = data.shape[1]
-    metadata = time_metadata(fs, first_time, n_samples)
-    parameters = {"fs": fs, "first_time": serialize(first_time)}
+    metadata = time_metadata_mt(fs, first_time, n_samples)
+    parameters = {"fs": fs, "first_time": first_time}
     messages = ["Generated time data with simple values"]
-    record = get_process_record("time_data_simple", parameters, messages)
-    return TimeData(metadata, chans, data, ProcessHistory([record]))
+    record = get_record("time_data_simple", parameters, messages)
+    metadata.history.add_record(record)
+    return TimeData(metadata, data)
 
 
 def time_data_with_nans(
@@ -133,10 +177,6 @@ def time_data_with_nans(
     TimeData
         The TimeData
     """
-    from resistics.common import serialize, get_process_record
-
-    first_time = pd.Timestamp(first_time)
-    chans = ["Ex", "Ey", "Hx", "Hy"]
     data = np.array(
         [
             [1, 1, 1, 0, np.nan, 0, 1, 1, 1, np.nan, 0, 0, 0, 0, 1, 1],
@@ -146,11 +186,12 @@ def time_data_with_nans(
         ]
     )
     n_samples = data.shape[1]
-    metadata = time_metadata(fs, first_time, n_samples)
-    parameters = {"fs": fs, "first_time": serialize(first_time)}
+    metadata = time_metadata_mt(fs, first_time, n_samples)
+    parameters = {"fs": fs, "first_time": first_time}
     messages = ["Generated time data with some nan values"]
-    record = get_process_record("time_data_with_nans", parameters, messages)
-    return TimeData(metadata, chans, data, ProcessHistory([record]))
+    record = get_record("time_data_with_nans", parameters, messages)
+    metadata.history.add_record(record)
+    return TimeData(metadata, data)
 
 
 def time_data_linear(
@@ -173,18 +214,15 @@ def time_data_linear(
     TimeData
         TimeData with linear values
     """
-    from resistics.common import serialize, get_process_record
-
-    first_time = pd.Timestamp(first_time)
-    chans = ["Ex", "Ey", "Hx", "Hy"]
-    data = np.empty(shape=(len(chans), n_samples))
-    for idx in range(len(chans)):
+    metadata = time_metadata_mt(fs, first_time, n_samples)
+    data = np.empty(shape=(metadata.n_chans, n_samples))
+    for idx in range(metadata.n_chans):
         data[idx, :] = np.arange(n_samples)
-    metadata = time_metadata(fs, first_time, n_samples)
-    parameters = {"fs": fs, "first_time": serialize(first_time), "n_samples": n_samples}
+    parameters = {"fs": fs, "first_time": first_time, "n_samples": n_samples}
     messages = ["Generated time data with random values"]
-    record = get_process_record("time_data_random", parameters, messages)
-    return TimeData(metadata, chans, data, ProcessHistory([record]))
+    record = get_record("time_data_random", parameters, messages)
+    metadata.history.add_record(record)
+    return TimeData(metadata, data)
 
 
 def time_data_random(
@@ -207,16 +245,13 @@ def time_data_random(
     TimeData
         The TimeData
     """
-    from resistics.common import serialize, get_process_record
-
-    first_time = pd.Timestamp(first_time)
-    chans = ["Ex", "Ey", "Hx", "Hy"]
-    data = np.random.normal(0, 3, size=(len(chans), n_samples))
-    metadata = time_metadata(fs, first_time, n_samples)
-    parameters = {"fs": fs, "first_time": serialize(first_time), "n_samples": n_samples}
+    metadata = time_metadata_mt(fs, first_time, n_samples)
+    data = np.random.normal(0, 3, size=(metadata.n_chans, n_samples))
+    parameters = {"fs": fs, "first_time": first_time, "n_samples": n_samples}
     messages = ["Generated time data with random values"]
-    record = get_process_record("time_data_random", parameters, messages)
-    return TimeData(metadata, chans, data, ProcessHistory([record]))
+    record = get_record("time_data_random", parameters, messages)
+    metadata.history.add_record(record)
+    return TimeData(metadata, data)
 
 
 def time_data_periodic(
@@ -244,24 +279,21 @@ def time_data_periodic(
     TimeData
         Periodic TimeData
     """
-    from resistics.common import serialize, get_process_record
-
-    first_time = pd.Timestamp(first_time)
-    chans = ["Ex"]
+    metadata = time_metadata_1chan(fs, first_time, n_samples)
     times = np.arange(0, n_samples) * (1 / fs)
     data = np.zeros(shape=(1, n_samples))
     for freq in frequencies:
         data += np.sin(times * 2 * np.pi * freq)
-    metadata = time_metadata(fs, first_time, n_samples)
     parameters = {
-        "frequencies": serialize(frequencies),
+        "frequencies": frequencies,
         "fs": fs,
-        "first_time": serialize(first_time),
+        "first_time": first_time,
         "n_samples": n_samples,
     }
     messages = ["Generated time data with periodic values"]
-    record = get_process_record("time_data_periodic", parameters, messages)
-    return TimeData(metadata, chans, data, ProcessHistory([record]))
+    record = get_record("time_data_periodic", parameters, messages)
+    metadata.history.add_record(record)
+    return TimeData(metadata, data)
 
 
 def time_data_with_offset(
@@ -286,21 +318,22 @@ def time_data_with_offset(
     TimeData
         The TimeData
     """
-    from resistics.common import serialize, get_process_record
-
-    first_time = pd.Timestamp(first_time) + pd.Timedelta(offset, "s")
-    chans = ["Ex"]
+    first_time = (pd.to_datetime(first_time) + pd.Timedelta(offset, "s")).isoformat()
+    metadata = time_metadata_1chan(fs, first_time, n_samples)
     data = np.arange(0, n_samples).reshape(1, n_samples)
-    metadata = time_metadata(fs, first_time, n_samples)
     parameters = {
         "offset": offset,
         "fs": fs,
-        "first_time": serialize(first_time),
+        "first_time": first_time,
         "n_samples": n_samples,
     }
     messages = ["Generated time data with an offset"]
-    record = get_process_record("time_data_with_offset", parameters, messages)
-    return TimeData(metadata, chans, data, ProcessHistory([record]))
+    record = get_record("time_data_with_offset", parameters, messages)
+    metadata.history.add_record(record)
+    return TimeData(metadata, data)
+
+
+# def test_measurement(self) -> Measurement:
 
 
 # def calibration_headers(
@@ -320,7 +353,7 @@ def time_data_with_offset(
 # def calibration_data_ones(
 #     n_samples: int = 10, first_freq: float = 0.1, last_freq: float = 10
 # ) -> CalibrationData:
-#     from resistics.common import get_process_record
+#     from resistics.common import get_record
 
 #     headers = calibration_headers(n_samples)
 #     freqs = np.linspace(start=first_freq, stop=last_freq, num=n_samples)
@@ -334,14 +367,14 @@ def time_data_with_offset(
 #         "first_freq": first_freq,
 #         "last_freq": last_freq,
 #     }
-#     record = get_process_record("calibration_data_ones", parameters, messages)
-#     return CalibrationData(headers, df, ProcessHistory([record]))
+#     record = get_record("calibration_data_ones", parameters, messages)
+#     return CalibrationData(headers, df, History([record]))
 
 
 # def calibration_data_linear(
 #     n_samples: int = 10, first_freq: float = 0.1, last_freq: float = 10
 # ) -> CalibrationData:
-#     from resistics.common import get_process_record
+#     from resistics.common import get_record
 
 #     headers = calibration_headers(n_samples)
 #     freqs = np.linspace(start=first_freq, stop=last_freq, num=n_samples)
@@ -355,5 +388,5 @@ def time_data_with_offset(
 #         "first_freq": first_freq,
 #         "last_freq": last_freq,
 #     }
-#     record = get_process_record("calibration_data_ones", parameters, messages)
-#     return CalibrationData(headers, df, ProcessHistory([record]))
+#     record = get_record("calibration_data_ones", parameters, messages)
+#     return CalibrationData(headers, df, History([record]))

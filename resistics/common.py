@@ -879,22 +879,9 @@ class ResisticsProcess(BaseModel):
         Dict[str, Any]
             Dictionary of parameters
         """
-        return {
-            key: value
-            for key, value in self.__dict__.items()
-            if not key.startswith("__") and not callable(key)
-        }
+        import json
 
-    def check(self) -> bool:
-        """
-        Check to ensure the processor can run
-
-        Returns
-        -------
-        bool
-            A boolean flag to confirm whether the processor can run
-        """
-        return True
+        return json.loads(self.json())
 
     def run(self):
         """
@@ -931,20 +918,28 @@ class JSONFile(ResisticsModel):
     Examples
     --------
     >>> from resistics.common import JSONFile
-    >>> from resistics.testing import time_metadata_simple
-    >>> metadata = time_metadata_simple()
+    >>> from resistics.testing import time_metadata_1chan
+    >>> metadata = time_metadata_1chan()
     >>> test = JSONFile(metadata=metadata)
     >>> test.summary()
     {
         'created_by': 'resistics',
-        'created_on_local': '2021-05-10T20:33:30.584333',
-        'created_on_utc': '2021-05-10T19:33:30.584333',
+        'created_on_local': '...',
+        'created_on_utc': '...',
         'version': '0.0.7.dev1',
         'metadata': {
             'fs': 10.0,
             'n_chans': 2,
             'n_samples': 11,
-            'chans': ['chan1', 'chan2'],
+            'chans': ['chan1'],
+            'first_time': '2021-01-01 00:00:00.000000_000000_000000_000000',
+            'last_time': '2021-01-01 00:00:01.000000_000000_000000_000000',
+            'system': '',
+            'wgs84_latitude': -999.0,
+            'wgs84_longitude': -999.0,
+            'easting': -999.0,
+            'northing': -999.0,
+            'elevation': -999.0,
             'chans_metadata': {
                 'chan1': {
                     'data_files': ['example1.ascii'],
@@ -960,32 +955,9 @@ class JSONFile(ResisticsModel):
                     'dz': 1,
                     'sensor_calibration_file': '',
                     'instrument_calibration_file': ''
-                },
-                'chan2': {
-                    'data_files': ['example2.ascii'],
-                    'sensor': 'MFS',
-                    'serial': '',
-                    'gain1': 1,
-                    'gain2': 1,
-                    'scaling': 1,
-                    'hchopper': False,
-                    'echopper': False,
-                    'dx': 1,
-                    'dy': 1,
-                    'dz': 1,
-                    'sensor_calibration_file': '',
-                    'instrument_calibration_file': ''
                 }
             },
-            'first_time': '2021-01-01 00:00:00.000000_000000_000000_000000',
-            'last_time': '2021-01-01 00:00:01.000000_000000_000000_000000',
-            'system': '',
-            'wgs84_latitude': -999.0,
-            'wgs84_longitude': -999.0,
-            'easting': -999.0,
-            'northing': -999.0,
-            'elevation': -999.0,
-            'history': None
+            'history': {'records': []}
         }
     }
     """
