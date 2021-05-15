@@ -374,18 +374,7 @@ class DecimationLevelMetadata(Metadata):
 
 
 class DecimatedMetadata(WriteableMetadata):
-    """
-    Metadata for DecimatedData
-
-    Parameters
-    ----------
-    chans : List[str]
-        A list of channels
-    n_levels : int
-        The number of decimation levels
-    fs : List[float]
-        List of sampling frequencies in the decimated data
-    """
+    """Metadata for DecimatedData"""
 
     chans: List[str]
     n_levels: int
