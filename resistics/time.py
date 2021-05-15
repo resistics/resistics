@@ -90,6 +90,7 @@ class TimeMetadata(Metadata):
         >>> chan_metadata = metadata["chan1"]
         >>> chan_metadata.summary()
         {
+            'file_info': None,
             'data_files': ['example1.ascii'],
             'sensor': '',
             'serial': '',
@@ -255,7 +256,7 @@ class TimeData(ResisticsData):
     >>> from resistics.time import TimeData
     >>> data = [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]]
     >>> time_data = TimeData(time_metadata_2chan(), np.array(data))
-    >>> time_data.md.chans
+    >>> time_data.metadata.chans
     ['chan1', 'chan2']
     >>> time_data.get_chan("chan1")
     array([ 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11])
@@ -303,18 +304,6 @@ class TimeData(ResisticsData):
             The new channel data
         """
         self.set_chan(chan, chan_data)
-
-    @property
-    def md(self) -> TimeMetadata:
-        """
-        Short hand method for getting the metadata
-
-        Returns
-        -------
-        TimeMetadata
-            TimeData metadata
-        """
-        return self.metadata
 
     def get_chan_index(self, chan: str) -> int:
         """
@@ -808,18 +797,14 @@ class TimeReaderJSON(TimeReader):
         TimeDataReadError
             If the data files do not match the expected extension
         """
-        import json
         from resistics.errors import MetadataReadError, TimeDataReadError
 
         if self.extension is None:
             raise TimeDataReadError(dir_path, "No data file extension defined")
 
         metadata_path = dir_path / "metadata.json"
-        with metadata_path.open("r") as f:
-            metadata_json = json.load(f)
         try:
-            metadata_dict = metadata_json["metadata"]
-            metadata = TimeMetadata(**metadata_dict)
+            metadata = TimeMetadata.parse_file(metadata_path)
         except KeyError:
             raise MetadataReadError(metadata_path, "No metadata found in metadata file")
 
@@ -1017,17 +1002,16 @@ class TimeWriterNumpy(TimeWriter):
             If unable to write to the directory
         """
         from resistics.errors import WriteError
-        from resistics.common import JSONFile
 
         if not self._check_dir(dir_path):
             WriteError(dir_path, "Unable to write to directory, check logs")
         metadata_path = dir_path / "metadata.json"
-        metadata = time_data.md.copy()
-        for chan in time_data.md.chans:
+        metadata = time_data.metadata.copy()
+        for chan in time_data.metadata.chans:
             chan_path = dir_path / f"{chan.lower()}.npy"
             np.save(chan_path, time_data[chan])
             metadata[chan].data_files = [chan_path.name]
-        JSONFile(metadata=metadata).write(metadata_path)
+        metadata.write(metadata_path)
 
 
 class TimeWriterAscii(TimeWriter):
@@ -1052,17 +1036,16 @@ class TimeWriterAscii(TimeWriter):
             If unable to write to the directory
         """
         from resistics.errors import WriteError
-        from resistics.common import JSONFile
 
         if not self._check_dir(dir_path):
             WriteError(dir_path, "Unable to write to directory, check logs")
         metadata_path = dir_path / "metadata.json"
-        metadata = time_data.md.copy()
-        for chan in time_data.md.chans:
+        metadata = time_data.metadata.copy()
+        for chan in time_data.metadata.chans:
             chan_path = dir_path / f"{chan.lower()}.ascii"
             np.savetxt(chan_path, time_data[chan], fmt="%.6f", newline="\n")
             metadata[chan].data_files = [chan_path.name]
-        JSONFile(metadata=metadata).write(metadata_path)
+        metadata.write(metadata_path)
 
 
 def new_time_data(
@@ -1095,7 +1078,7 @@ def new_time_data(
         A new TimeData instance
     """
     if metadata is None:
-        metadata = TimeMetadata(**time_data.md.dict())
+        metadata = TimeMetadata(**time_data.metadata.dict())
     if data is None:
         data = np.array(time_data.data)
     if record is not None:
@@ -1123,13 +1106,13 @@ class Subsection(ResisticsProcess):
         >>> from resistics.testing import time_data_random
         >>> from resistics.time import Subsection
         >>> time_data = time_data_random(n_samples=1000)
-        >>> print(time_data.md.first_time, time_data.md.last_time)
+        >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
         2020-01-01 00:00:00 2020-01-01 00:01:39.9
         >>> process = Subsection(from_time="2020-01-01 00:00:25", to_time="2020-01-01 00:00:50.9")
         >>> subsection = process.run(time_data)
-        >>> print(subsection.md.first_time, subsection.md.last_time)
+        >>> print(subsection.metadata.first_time, subsection.metadata.last_time)
         2020-01-01 00:00:25 2020-01-01 00:00:50.9
-        >>> subsection.md.n_samples
+        >>> subsection.metadata.n_samples
         260
         >>> plt.plot(time_data.get_x(), time_data["Ex"], label="full") # doctest: +SKIP
         >>> plt.plot(subsection.get_x(), subsection["Ex"], label="sub") # doctest: +SKIP
@@ -1161,9 +1144,9 @@ class Subsection(ResisticsProcess):
         logger.info(f"Taking subsection between {self.from_time} and {self.to_time}")
         from_time = to_datetime(self.from_time)
         to_time = to_datetime(self.to_time)
-        fs = time_data.md.fs
-        first_time = time_data.md.first_time
-        last_time = time_data.md.last_time
+        fs = time_data.metadata.fs
+        first_time = time_data.metadata.first_time
+        last_time = time_data.metadata.last_time
         # convert to samples
         from_sample, to_sample = datetimes_to_samples(
             fs, first_time, last_time, from_time, to_time
@@ -1175,7 +1158,7 @@ class Subsection(ResisticsProcess):
         )
         messages = [f"Subection from sample {from_sample} to {to_sample}"]
         messages.append(f"Adjusted times {str(from_time)} to {str(to_time)}")
-        metadata = time_data.md.copy()
+        metadata = time_data.metadata.copy()
         metadata = adjust_time_metadata(metadata, fs, from_time, n_samples=n_samples)
         data = np.array(time_data.data[:, from_sample : to_sample + 1])
         record = self._get_record(messages)
@@ -1214,10 +1197,10 @@ class InterpolateNans(ResisticsProcess):
         TimeData
             TimeData with no nan values
         """
-        logger.info(f"Removing nan values from channels {time_data.md.chans}")
+        logger.info(f"Removing nan values from channels {time_data.metadata.chans}")
         messages = []
         data = np.array(time_data.data)
-        for chan in time_data.md.chans:
+        for chan in time_data.metadata.chans:
             idx = time_data.get_chan_index(chan)
             data[idx, :] = self._interpolate_nans(data[idx, :])
             messages.append(f"nan values removed from {chan}")
@@ -1287,11 +1270,11 @@ class RemoveMean(ResisticsProcess):
         """
         from resistics.common import array_to_string
 
-        logger.info(f"Removing mean from channels {time_data.md.chans}")
+        logger.info(f"Removing mean from channels {time_data.metadata.chans}")
         mean = np.mean(time_data.data, axis=1)
         data = time_data.data - mean[:, None]
         means_str = array_to_string(mean, precision=3)
-        messages = [f"Removed means {means_str} for chans {time_data.md.chans}"]
+        messages = [f"Removed means {means_str} for chans {time_data.metadata.chans}"]
         record = self._get_record(messages)
         return new_time_data(time_data, data=data, record=record)
 
@@ -1353,18 +1336,18 @@ class Add(ResisticsProcess):
             TimeData with values added
         """
         add = self._get_add(time_data)
-        logger.info(f"Added {add} to channels {time_data.md.chans}")
+        logger.info(f"Added {add} to channels {time_data.metadata.chans}")
         data = time_data.data + add[:, None]
-        messages = [f"Added {add} to channels {time_data.md.chans}"]
+        messages = [f"Added {add} to channels {time_data.metadata.chans}"]
         record = self._get_record(messages)
         return new_time_data(time_data, data=data, record=record)
 
     def _get_add(self, time_data: TimeData) -> np.ndarray:
         """Make an array to add to the data"""
-        add = np.zeros(shape=(time_data.md.n_chans))
+        add = np.zeros(shape=(time_data.metadata.n_chans))
         if isinstance(self.add, float) or isinstance(self.add, int):
             return add + self.add
-        for chan in time_data.md.chans:
+        for chan in time_data.metadata.chans:
             if chan in self.add:
                 idx = time_data.get_chan_index(chan)
                 add[idx] = self.add[chan]
@@ -1428,18 +1411,18 @@ class Multiply(ResisticsProcess):
             TimeData with channels multiplied by the specified numbers
         """
         mult = self._get_mult(time_data)
-        logger.info(f"Multipying channels {time_data.md.chans} by {mult}")
+        logger.info(f"Multipying channels {time_data.metadata.chans} by {mult}")
         data = time_data.data * mult[:, None]
-        messages = [f"Multiplied channels {time_data.md.chans} by {mult}"]
+        messages = [f"Multiplied channels {time_data.metadata.chans} by {mult}"]
         record = self._get_record(messages)
         return new_time_data(time_data, data=data, record=record)
 
     def _get_mult(self, time_data: TimeData) -> np.ndarray:
         """Make an array to multiply the data with"""
-        mult = np.ones(shape=(time_data.md.n_chans))
+        mult = np.ones(shape=(time_data.metadata.n_chans))
         if isinstance(self.multiplier, float) or isinstance(self.multiplier, int):
             return mult * self.multiplier
-        for chan in time_data.md.chans:
+        for chan in time_data.metadata.chans:
             if chan in self.multiplier:
                 idx = time_data.get_chan_index(chan)
                 mult[idx] = self.multiplier[chan]
@@ -1497,7 +1480,7 @@ class LowPass(ResisticsProcess):
         from scipy.signal import butter, sosfiltfilt
 
         logger.info(f"Low pass filtering with cutoff {self.cutoff} Hz")
-        normed = self.cutoff / time_data.md.nyquist
+        normed = self.cutoff / time_data.metadata.nyquist
         sos = butter(self.order, normed, btype="lowpass", analog=False, output="sos")
         data = sosfiltfilt(sos, time_data.data, axis=1)
         messages = [f"Low pass filtered data with cutoff {self.cutoff} Hz"]
@@ -1556,7 +1539,7 @@ class HighPass(ResisticsProcess):
         from scipy.signal import butter, sosfiltfilt
 
         logger.info(f"High pass filtering with cutoff {self.cutoff} Hz")
-        normed = self.cutoff / time_data.md.nyquist
+        normed = self.cutoff / time_data.metadata.nyquist
         sos = butter(self.order, normed, btype="highpass", analog=False, output="sos")
         data = sosfiltfilt(sos, time_data.data, axis=1)
         messages = [f"High pass filtered data with cutoff {self.cutoff} Hz"]
@@ -1618,8 +1601,8 @@ class BandPass(ResisticsProcess):
         from scipy.signal import butter, sosfiltfilt
 
         logger.info(f"Band pass between {self.cutoff_low} and {self.cutoff_high} Hz")
-        low = self.cutoff_low / time_data.md.nyquist
-        high = self.cutoff_high / time_data.md.nyquist
+        low = self.cutoff_low / time_data.metadata.nyquist
+        high = self.cutoff_high / time_data.metadata.nyquist
         sos = butter(
             self.order, (low, high), btype="bandpass", analog=False, output="sos"
         )
@@ -1682,9 +1665,9 @@ class Notch(ResisticsProcess):
         """
         from scipy.signal import butter, sosfiltfilt
 
-        band = 0.1 * time_data.md.fs if self.band is None else self.band
-        low = (self.notch - (band / 2)) / time_data.md.nyquist
-        high = (self.notch + (band / 2)) / time_data.md.nyquist
+        band = 0.1 * time_data.metadata.fs if self.band is None else self.band
+        low = (self.notch - (band / 2)) / time_data.metadata.nyquist
+        high = (self.notch + (band / 2)) / time_data.metadata.nyquist
         logger.info(f"Notch filtering at {self.notch} Hz with bandwidth {band} Hz")
         sos = butter(
             self.order, (low, high), btype="bandstop", analog=False, output="sos"
@@ -1715,11 +1698,11 @@ class Resample(ResisticsProcess):
         >>> from resistics.testing import time_data_periodic
         >>> from resistics.time import Resample
         >>> time_data = time_data_periodic([10, 50], fs=250, n_samples=200)
-        >>> print(time_data.md.n_samples, time_data.md.first_time, time_data.md.last_time)
+        >>> print(time_data.metadata.n_samples, time_data.metadata.first_time, time_data.metadata.last_time)
         200 2020-01-01 00:00:00 2020-01-01 00:00:00.796
         >>> process = Resample(new_fs=50)
         >>> resampled = process.run(time_data)
-        >>> print(resampled.md.n_samples, resampled.md.first_time, resampled.md.last_time)
+        >>> print(resampled.metadata.n_samples, resampled.metadata.first_time, resampled.metadata.last_time)
         40 2020-01-01 00:00:00 2020-01-01 00:00:00.78
         >>> plt.plot(time_data.get_x(), time_data["chan1"], label="original") # doctest: +SKIP
         >>> plt.plot(resampled.get_x(), resampled["chan1"], label="resampled") # doctest: +SKIP
@@ -1764,16 +1747,16 @@ class Resample(ResisticsProcess):
         from scipy.signal import resample_poly
         from fractions import Fraction
 
-        fs = time_data.md.fs
+        fs = time_data.metadata.fs
         logger.info(f"Resampling data from {fs} Hz to {self.new_fs} Hz")
         # get the resampling fraction in its simplest form
         frac = Fraction(self.new_fs / fs).limit_denominator()
         data = resample_poly(time_data.data, frac.numerator, frac.denominator, axis=1)
         # adjust headers and
         n_samples = data.shape[1]
-        metadata = time_data.md.copy()
+        metadata = time_data.metadata.copy()
         metadata = adjust_time_metadata(
-            metadata, self.new_fs, time_data.md.first_time, n_samples=n_samples
+            metadata, self.new_fs, time_data.metadata.first_time, n_samples=n_samples
         )
         messages = [f"Resampled data from {fs} Hz to {self.new_fs} Hz"]
         record = self._get_record(messages)
@@ -1798,11 +1781,11 @@ class Decimate(ResisticsProcess):
         >>> from resistics.testing import time_data_periodic
         >>> from resistics.time import Decimate
         >>> time_data = time_data_periodic([10, 50], fs=250, n_samples=200)
-        >>> print(time_data.md.n_samples, time_data.md.first_time, time_data.md.last_time)
+        >>> print(time_data.metadata.n_samples, time_data.metadata.first_time, time_data.metadata.last_time)
         200 2020-01-01 00:00:00 2020-01-01 00:00:00.796
         >>> process = Decimate(factor=5)
         >>> decimated = process.run(time_data)
-        >>> print(decimated.md.n_samples, decimated.md.first_time, decimated.md.last_time)
+        >>> print(decimated.metadata.n_samples, decimated.metadata.first_time, decimated.metadata.last_time)
         40 2020-01-01 00:00:00 2020-01-01 00:00:00.78
         >>> plt.plot(time_data.get_x(), time_data["chan1"], label="original") # doctest: +SKIP
         >>> plt.plot(decimated.get_x(), decimated["chan1"], label="decimated") # doctest: +SKIP
@@ -1839,13 +1822,13 @@ class Decimate(ResisticsProcess):
             data = decimate(data, factor, axis=1, zero_phase=True)
             messages.append(f"Data decimated by factor of {factor}")
         # return new TimeData
-        fs = time_data.md.fs
+        fs = time_data.metadata.fs
         new_fs = fs / self.factor
         messages.append(f"Sampling frequency adjusted from {fs} to {new_fs}")
         n_samples = data.shape[1]
-        metadata = time_data.md.copy()
+        metadata = time_data.metadata.copy()
         metadata = adjust_time_metadata(
-            metadata, new_fs, time_data.md.first_time, n_samples=n_samples
+            metadata, new_fs, time_data.metadata.first_time, n_samples=n_samples
         )
         record = self._get_record(messages)
         return new_time_data(time_data, metadata=metadata, data=data, record=record)
@@ -2007,7 +1990,7 @@ class ShiftTimestamps(ResisticsProcess):
         from resistics.sampling import to_timedelta
         from scipy.interpolate import interp1d
 
-        metadata = time_data.md
+        metadata = time_data.metadata
         if self.shift >= metadata.dt:
             raise ValueError(f"Shift {self.shift} not < sample period {metadata.dt}")
 
@@ -2028,7 +2011,7 @@ class ShiftTimestamps(ResisticsProcess):
         x_shift = np.arange(0, n_samples) + norm_shift
         interp_fnc = interp1d(x, time_data.data, axis=1, copy=False)
         data = interp_fnc(x_shift)
-        metadata = time_data.md.copy()
+        metadata = time_data.metadata.copy()
         metadata = adjust_time_metadata(
             metadata, metadata.fs, first_time, n_samples=n_samples
         )
@@ -2117,8 +2100,8 @@ class ShiftTimestamps(ResisticsProcess):
 #         messages = [f"Joining data between {first_time}, {last_time}"]
 #         messages.append(f"Sampling frequency {fs} Hz, channels {chans}")
 #         for time_data in args:
-#             first_time = time_data.md.first_time
-#             last_time = time_data.md.last_time
+#             first_time = time_data.metadata.first_time
+#             last_time = time_data.metadata.last_time
 #             from_sample, to_sample = datetimes_to_samples(
 #                 fs, first_time, last_time, first_time, last_time
 #             )
@@ -2435,7 +2418,7 @@ class ApplyFunction(ResisticsProcess):
         messages = []
         data = np.empty(shape=time_data.data.shape)
         for chan, fnc in self.fncs.items():
-            if chan in time_data.md.chans:
+            if chan in time_data.metadata.chans:
                 messages.append(f"Applying custom function to {chan}")
                 idx = time_data.get_chan_index(chan)
                 data[idx] = fnc(time_data[chan])
