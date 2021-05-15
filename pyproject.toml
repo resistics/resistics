@@ -42,6 +42,7 @@ statsmodels = "^0.12.2"
 pydantic = "^1.8.1"
 prettyprinter = "^0.18.0"
 PyYAML = "^5.4.1"
+pymc3 = "^3.11.2"
 
 [tool.poetry.dev-dependencies]
 matplotlib="^3.4.1"
