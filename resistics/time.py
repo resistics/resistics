@@ -1795,7 +1795,7 @@ class Decimate(ResisticsProcess):
         >>> plt.show() # doctest: +SKIP
     """
 
-    factor: conint(gt=2)
+    factor: conint(ge=1)
 
     def run(self, time_data: TimeData) -> TimeData:
         """
