@@ -521,47 +521,6 @@ def list_to_ranges(data: Union[List, Set]) -> str:
     return ",".join(result)
 
 
-class ResisticsBase(object):
-    """
-    Resistics base class
-
-    Parent class to ensure consistency of common methods
-    """
-
-    def __repr__(self) -> str:
-        """Return a string of class information"""
-        return self.to_string()
-
-    def __str__(self) -> str:
-        """Return a string of class information"""
-        return self.to_string()
-
-    def type_to_string(self) -> str:
-        """Get the class type as a string"""
-        return str(self.__class__)
-
-    def to_string(self) -> str:
-        """Class details as a string"""
-        return self.type_to_string()
-
-    def summary(self, symbol: str = "-") -> None:
-        """Print a summary of class details"""
-        name = str(self.__class__)
-        length = len(name) + 10
-        print("##" + 3 * symbol + "Begin Summary" + ((length - 18) * symbol))
-        print(self.to_string())
-        print("##" + 3 * symbol + "End summary" + (length - 16) * symbol)
-
-
-class ResisticsData(ResisticsBase):
-    """
-    Base class for a resistics data object
-    """
-
-    def __init__(self):
-        pass
-
-
 class ResisticsModel(BaseModel):
     """Base resistics model"""
 
@@ -589,10 +548,30 @@ class ResisticsModel(BaseModel):
         json_encoders = {RSDateTime: datetime_to_string}
 
 
+class ResisticsFile(ResisticsModel):
+
+    created_on_local: datetime = Field(default_factory=datetime.now)
+    created_on_utc: datetime = Field(default_factory=datetime.utcnow)
+    version: Optional[str] = Field(default_factory=get_version)
+
+
 class Metadata(ResisticsModel):
     """Base class for metadata"""
 
-    pass
+    file_info: Optional[ResisticsFile] = None
+
+    def write(self, json_path: Path):
+        """
+        Write out JSON metadata file
+
+        Parameters
+        ----------
+        json_path : Path
+            Path to write JSON file
+        """
+        self.file_info = ResisticsFile()
+        with json_path.open("w") as f:
+            f.write(self.json())
 
 
 class Record(ResisticsModel):
@@ -838,32 +817,18 @@ def histories_to_parameters(histories: List[History]) -> Dict[str, Any]:
     return parameters
 
 
-class ResisticsProcess(BaseModel):
+class ResisticsProcess(ResisticsModel):
     """
     Base class for resistics processes
 
     Resistics processes perform operations on data (including read and write
     operations). Each time a ResisticsProcess child class is run, it should add
     a process record to the dataset
-
-    The execution loop for a reistics process is:
-
-    .. code-block::
-
-        processor.check()
-        processor.run()
     """
 
     @property
     def name(self) -> str:
-        """
-        Return the processor class name
-
-        Returns
-        -------
-        str
-            The processor (class) name
-        """
+        """Get the name of the processor"""
         return self.__class__.__name__
 
     def parameters(self) -> Dict[str, Any]:
@@ -911,71 +876,42 @@ class ResisticsProcess(BaseModel):
         return get_record(self.name, self.parameters(), messages)
 
 
-class JSONFile(ResisticsModel):
+class ResisticsBase(object):
     """
-    Model for writing out resistics JSON files
+    Resistics base class
 
-    Examples
-    --------
-    >>> from resistics.common import JSONFile
-    >>> from resistics.testing import time_metadata_1chan
-    >>> metadata = time_metadata_1chan()
-    >>> test = JSONFile(metadata=metadata)
-    >>> test.summary()
-    {
-        'created_by': 'resistics',
-        'created_on_local': '...',
-        'created_on_utc': '...',
-        'version': '0.0.7.dev1',
-        'metadata': {
-            'fs': 10.0,
-            'n_chans': 2,
-            'n_samples': 11,
-            'chans': ['chan1'],
-            'first_time': '2021-01-01 00:00:00.000000_000000_000000_000000',
-            'last_time': '2021-01-01 00:00:01.000000_000000_000000_000000',
-            'system': '',
-            'wgs84_latitude': -999.0,
-            'wgs84_longitude': -999.0,
-            'easting': -999.0,
-            'northing': -999.0,
-            'elevation': -999.0,
-            'chans_metadata': {
-                'chan1': {
-                    'data_files': ['example1.ascii'],
-                    'sensor': '',
-                    'serial': '',
-                    'gain1': 1,
-                    'gain2': 1,
-                    'scaling': 1,
-                    'hchopper': False,
-                    'echopper': False,
-                    'dx': 1,
-                    'dy': 1,
-                    'dz': 1,
-                    'sensor_calibration_file': '',
-                    'instrument_calibration_file': ''
-                }
-            },
-            'history': {'records': []}
-        }
-    }
+    Parent class to ensure consistency of common methods
     """
 
-    created_by: str = "resistics"
-    created_on_local: datetime = Field(default_factory=datetime.now)
-    created_on_utc: datetime = Field(default_factory=datetime.utcnow)
-    version: Optional[str] = Field(default_factory=get_version)
-    metadata: Optional[Metadata] = None
+    def __repr__(self) -> str:
+        """Return a string of class information"""
+        return self.to_string()
 
-    def write(self, json_path: Path):
-        """
-        Write out JSON metadata file
+    def __str__(self) -> str:
+        """Return a string of class information"""
+        return self.to_string()
 
-        Parameters
-        ----------
-        json_path : Path
-            Path to write JSON file
-        """
-        with json_path.open("w") as f:
-            f.write(self.json())
+    def type_to_string(self) -> str:
+        """Get the class type as a string"""
+        return str(self.__class__)
+
+    def to_string(self) -> str:
+        """Class details as a string"""
+        return self.type_to_string()
+
+    def summary(self, symbol: str = "-") -> None:
+        """Print a summary of class details"""
+        name = str(self.__class__)
+        length = len(name) + 10
+        print("##" + 3 * symbol + "Begin Summary" + ((length - 18) * symbol))
+        print(self.to_string())
+        print("##" + 3 * symbol + "End summary" + (length - 16) * symbol)
+
+
+class ResisticsData(ResisticsBase):
+    """
+    Base class for a resistics data object
+    """
+
+    def __init__(self):
+        pass
