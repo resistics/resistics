@@ -13,7 +13,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-from resistics.common import ResisticsModel, Metadata, ResisticsProcess
+from resistics.common import ResisticsModel, WriteableMetadata, ResisticsProcess
 from resistics.sampling import HighResDateTime
 from resistics.time import TimeMetadata, TimeReader, TimeReaderNumpy, TimeReaderAscii
 
@@ -198,7 +198,7 @@ class Site(ResisticsModel):
         return df
 
 
-class ProjectMetadata(Metadata):
+class ProjectMetadata(WriteableMetadata):
     """Project metadata"""
 
     ref_time: HighResDateTime

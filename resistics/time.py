@@ -16,7 +16,9 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from resistics.common import ResisticsData, Metadata, ResisticsProcess, History, Record
+from resistics.common import ResisticsData, ResisticsProcess
+from resistics.common import Metadata, WriteableMetadata
+from resistics.common import History, Record
 from resistics.sampling import RSDateTime, RSTimeDelta, DateTimeLike
 from resistics.sampling import HighResDateTime, datetime_to_string
 
@@ -51,7 +53,7 @@ class ChanMetadata(Metadata):
         return value
 
 
-class TimeMetadata(Metadata):
+class TimeMetadata(WriteableMetadata):
     """Time metadata"""
 
     fs: float
@@ -90,7 +92,6 @@ class TimeMetadata(Metadata):
         >>> chan_metadata = metadata["chan1"]
         >>> chan_metadata.summary()
         {
-            'file_info': None,
             'data_files': ['example1.ascii'],
             'sensor': '',
             'serial': '',

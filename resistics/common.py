@@ -549,6 +549,7 @@ class ResisticsModel(BaseModel):
 
 
 class ResisticsFile(ResisticsModel):
+    """Required information for writing out a resistics file"""
 
     created_on_local: datetime = Field(default_factory=datetime.now)
     created_on_utc: datetime = Field(default_factory=datetime.utcnow)
@@ -556,7 +557,13 @@ class ResisticsFile(ResisticsModel):
 
 
 class Metadata(ResisticsModel):
-    """Base class for metadata"""
+    """Parent class for metadata"""
+
+    pass
+
+
+class WriteableMetadata(Metadata):
+    """Base class for writeable metadata"""
 
     file_info: Optional[ResisticsFile] = None
 
