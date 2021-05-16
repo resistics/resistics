@@ -57,7 +57,7 @@ class TimeMetadata(WriteableMetadata):
     """Time metadata"""
 
     fs: float
-    n_chans: int
+    n_chans: Optional[int] = None
     n_samples: int
     chans: List[str]
     first_time: HighResDateTime
@@ -70,6 +70,19 @@ class TimeMetadata(WriteableMetadata):
     elevation: float = -999.0
     chans_metadata: Dict[str, ChanMetadata]
     history: History = History()
+
+    class Config:
+        """pydantic configuration information"""
+
+        json_encoders = {RSDateTime: datetime_to_string}
+        validate_assignment = True
+
+    @validator("n_chans", always=True)
+    def set_n_chans(cls, value, values):
+        """Initialise number of channels"""
+        if value is None:
+            return len(values["chans"])
+        return value
 
     def __getitem__(self, chan: str) -> ChanMetadata:
         """
@@ -126,12 +139,6 @@ class TimeMetadata(WriteableMetadata):
     def nyquist(self) -> float:
         """Get the nyquist frequency"""
         return self.fs / 2
-
-    class Config:
-        """pydantic configuration information"""
-
-        json_encoders = {RSDateTime: datetime_to_string}
-        validate_assignment = True
 
 
 def get_time_metadata(
