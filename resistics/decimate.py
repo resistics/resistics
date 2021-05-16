@@ -496,9 +496,9 @@ class DecimatedData(ResisticsData):
                 ]
             }
         }
-        >>> for ilevel in range(0, dec_data.max_level + 1):
-        ...     time_data = dec_data.get_level(ilevel)
-        ...     plt.plot(time_data.get_x(), time_data["Hx"], label=f"Level{ilevel}") # doctest: +SKIP
+        >>> for ilevel in range(0, dec_data.metadata.n_levels):
+        ...     data = dec_data.get_level(ilevel)
+        ...     plt.plot(dec_data.get_x(ilevel), data[0], label=f"Level{ilevel}") # doctest: +SKIP
         >>> plt.legend(loc=3) # doctest: +SKIP
         >>> plt.tight_layout() # doctest: +SKIP
         >>> plt.show() # doctest: +SKIP
@@ -532,6 +532,48 @@ class DecimatedData(ResisticsData):
             raise ValueError(f"Level {level} not <= max {self.metadata.n_levels}")
         return self.data[level]
 
+    def get_timestamps(
+        self, level: int, samples: Optional[np.ndarray] = None, estimate: bool = True
+    ) -> Union[np.ndarray, pd.DatetimeIndex]:
+        """
+        Get an array of timestamps
+
+        Parameters
+        ----------
+        level : int
+            The decimation level
+        samples : Optional[np.ndarray], optional
+            If provided, timestamps are only returned for the specified samples,
+            by default None
+        estimate : bool, optional
+            Flag for using estimates instead of high precision datetimes, by
+            default True
+
+        Returns
+        -------
+        Union[np.ndarray, pd.DatetimeIndex]
+            The return dates. This will be a numpy array of RSDateTime objects
+            if estimate is False, else it will be a pandas DatetimeIndex
+
+        Raises
+        ------
+        ValueError
+            If the level is not within bounds
+        """
+        from resistics.sampling import datetime_array, datetime_array_estimate
+
+        if level >= self.metadata.n_levels:
+            raise ValueError(f"Level {level} not <= max {self.metadata.n_levels}")
+        fnc = datetime_array_estimate if estimate else datetime_array
+        level_metadata = self.metadata.levels_metadata[level]
+        if samples is not None:
+            return fnc(level_metadata.first_time, level_metadata.fs, samples=samples)
+        return fnc(
+            level_metadata.first_time,
+            level_metadata.fs,
+            n_samples=level_metadata.n_samples,
+        )
+
     def plot(self, max_pts: int = 10_000) -> go.Figure:
         """
         Plot the decimated data
@@ -563,6 +605,43 @@ class DecimatedData(ResisticsData):
             else:
                 time_data.plot(fig=fig, label_prefix=f"Level {ilevel}")
         return fig
+
+    def x_size(self, level: int) -> int:
+        """
+        For abstract plotting functions, return the size
+
+        Parameters
+        ----------
+        level : int
+            The decimation level
+
+        Returns
+        -------
+        int
+            The x size, equal to the number of samples
+        """
+        return self.metadata.levels_metadata[level].n_samples
+
+    def get_x(
+        self, level: int, samples: Optional[np.ndarray] = None
+    ) -> pd.DatetimeIndex:
+        """
+        For plotting, get x dimension, in this case times
+
+        Parameters
+        ----------
+        level : int
+            The decimation level
+        samples : Union[np.ndarray, None], optional
+            If provided, x values (timestamps) are only returned for the
+            specified samples, by default None
+
+        Returns
+        -------
+        pd.DatetimeIndex
+            Timestamp array
+        """
+        return self.get_timestamps(level, samples=samples, estimate=True)
 
     def to_string(self) -> str:
         """Class details as a string"""
