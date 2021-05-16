@@ -364,7 +364,7 @@ class DecimationSetup(ResisticsProcess):
         return factor
 
 
-class DecimationLevelMetadata(Metadata):
+class DecimatedLevelMetadata(Metadata):
     """Metadata for a decimation level"""
 
     fs: float
@@ -372,11 +372,16 @@ class DecimationLevelMetadata(Metadata):
     first_time: HighResDateTime
     last_time: HighResDateTime
 
+    @property
+    def dt(self):
+        return 1 / self.fs
+
 
 class DecimatedMetadata(WriteableMetadata):
     """Metadata for DecimatedData"""
 
     chans: List[str]
+    n_chans: int
     n_levels: int
     fs: List[float]
     system: str = ""
@@ -385,12 +390,19 @@ class DecimatedMetadata(WriteableMetadata):
     easting: float = -999.0
     northing: float = -999.0
     elevation: float = -999.0
-    level_metadata: List[DecimationLevelMetadata] = []
+    levels_metadata: List[DecimatedLevelMetadata] = []
     history: History = History()
 
     class Config:
 
         extra = "ignore"
+
+    @validator("n_chans", always=True)
+    def set_n_chans(cls, value, values):
+        """Initialise number of channels"""
+        if value is None:
+            return len(values["chans"])
+        return value
 
 
 class DecimatedData(ResisticsData):
@@ -420,6 +432,7 @@ class DecimatedData(ResisticsData):
         {
             'file_info': None,
             'chans': ['Ex', 'Ey', 'Hx', 'Hy'],
+            'n_chans': 4,
             'n_levels': 3,
             'fs': [256.0, 64.0, 8.0],
             'system': '',
@@ -428,7 +441,7 @@ class DecimatedData(ResisticsData):
             'easting': -999.0,
             'northing': -999.0,
             'elevation': -999.0,
-            'level_metadata': [
+            'levels_metadata': [
                 {
                     'fs': 256.0,
                     'n_samples': 10000,
@@ -491,12 +504,12 @@ class DecimatedData(ResisticsData):
         >>> plt.show() # doctest: +SKIP
     """
 
-    def __init__(self, metadata: DecimatedMetadata, data: Dict[int, TimeData]):
+    def __init__(self, metadata: DecimatedMetadata, data: Dict[int, np.ndarray]):
         """Initialise decimated data"""
         self.metadata = metadata
         self.data = data
 
-    def get_level(self, level: int) -> TimeData:
+    def get_level(self, level: int) -> np.ndarray:
         """
         Get TimeData for a level
 
@@ -568,7 +581,7 @@ class Decimator(ResisticsProcess):
         """
         metadata = time_data.metadata.dict()
         data = {}
-        level_metadata = []
+        levels_metadata = []
         messages = []
         for ilevel in range(0, self.n_levels):
             factor = self.dec_increments[ilevel]
@@ -580,12 +593,12 @@ class Decimator(ResisticsProcess):
             data[ilevel] = time_data_new
             time_data = time_data_new
             fs = self.dec_fs[ilevel]
-            level_metadata.append(DecimationLevelMetadata(**time_data.metadata.dict()))
+            levels_metadata.append(DecimatedLevelMetadata(**time_data.metadata.dict()))
             messages.append(f"Decimated level {ilevel}, inc. factor {factor}, fs {fs}")
         completed = list(range(len(data)))
         target = list(range(self.n_levels))
         messages.append(f"Completed levels {completed} out of {target}")
-        metadata = self._get_metadata(metadata, level_metadata)
+        metadata = self._get_metadata(metadata, levels_metadata)
         metadata.history.add_record(self._get_record(messages))
         return DecimatedData(metadata, data)
 
@@ -600,11 +613,11 @@ class Decimator(ResisticsProcess):
     def _get_metadata(
         self,
         metadata_dict: Dict[str, Any],
-        level_metadata: List[DecimationLevelMetadata],
+        levels_metadata: List[DecimatedLevelMetadata],
     ) -> DecimatedMetadata:
         """Get the metadata for the decimated data"""
-        metadata_dict["fs"] = [x.fs for x in level_metadata]
-        metadata_dict["n_levels"] = len(level_metadata)
+        metadata_dict["fs"] = [x.fs for x in levels_metadata]
+        metadata_dict["n_levels"] = len(levels_metadata)
         metadata = DecimatedMetadata(**metadata_dict)
-        metadata.level_metadata = level_metadata
+        metadata.levels_metadata = levels_metadata
         return metadata
