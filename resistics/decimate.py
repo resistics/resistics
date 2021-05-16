@@ -380,10 +380,10 @@ class DecimatedLevelMetadata(Metadata):
 class DecimatedMetadata(WriteableMetadata):
     """Metadata for DecimatedData"""
 
+    fs: List[float]
     chans: List[str]
     n_chans: int
     n_levels: int
-    fs: List[float]
     system: str = ""
     wgs84_latitude: float = -999.0
     wgs84_longitude: float = -999.0
@@ -431,10 +431,10 @@ class DecimatedData(ResisticsData):
         >>> dec_data.metadata.summary()
         {
             'file_info': None,
+            'fs': [256.0, 64.0, 8.0],
             'chans': ['Ex', 'Ey', 'Hx', 'Hy'],
             'n_chans': 4,
             'n_levels': 3,
-            'fs': [256.0, 64.0, 8.0],
             'system': '',
             'wgs84_latitude': -999.0,
             'wgs84_longitude': -999.0,
