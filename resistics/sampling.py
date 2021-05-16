@@ -245,7 +245,7 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
     """
     from math import floor
 
-    eps = 0.000001
+    eps = 0.0001
     if isinstance(delta, (int, float)):
         seconds = int(floor(delta))
         delta = (delta - seconds) * 1_000_000
