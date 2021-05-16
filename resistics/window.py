@@ -24,15 +24,15 @@ The window module includes functionality to do the following:
 - Converting a global index array to datetime
 """
 from loguru import logger
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple, Dict, Any
+from pydantic import validator, PositiveInt
 import numpy as np
 import pandas as pd
 
-from resistics.common import ProcessHistory, ResisticsData, ResisticsProcess
-from resistics.common import MetadataGroup
+from resistics.common import History, ResisticsModel, ResisticsData, ResisticsProcess
+from resistics.common import Metadata, WriteableMetadata
 from resistics.sampling import RSDateTime, RSTimeDelta
-from resistics.time import TimeData
-from resistics.decimate import DecimationParameters, DecimatedData
+from resistics.decimate import DecimatedLevelMetadata, DecimatedData
 
 
 def win_duration(win_size: int, fs: float) -> RSTimeDelta:
@@ -222,7 +222,7 @@ def datetime_to_win(
     from resistics.sampling import to_seconds
 
     if time < ref_time:
-        raise ValueError(f"Time {time} < reference time {ref_time}")
+        raise ValueError(f"Time {str(time)} < reference time {str(ref_time)}")
 
     increment_days_in_seconds, increment_remaining_in_seconds = to_seconds(increment)
     increment_seconds = increment_days_in_seconds + increment_remaining_in_seconds
@@ -243,17 +243,20 @@ def datetime_to_win(
 
 
 def get_first_and_last_win(
-    ref_time: RSDateTime, time_data: TimeData, win_size: int, olap_size: int
+    ref_time: RSDateTime,
+    metadata: DecimatedLevelMetadata,
+    win_size: int,
+    olap_size: int,
 ) -> Tuple[int, int]:
     """
-    Get first and last window for a TimeData
+    Get first and last window for a decimated data level
 
     Parameters
     ----------
     ref_time : RSDateTime
         The reference time
-    time_data : TimeData
-        The TimeData
+    metadata : DecimatedLevelMetadata
+        Metadata for the decimation level
     win_size : int
         Window size in samples
     olap_size : int
@@ -267,49 +270,65 @@ def get_first_and_last_win(
 
     Examples
     --------
-    >>> from resistics.testing import time_data_random
+    Get the first and last window for the first decimation level in a decimated
+    data instance
+
+    >>> from resistics.testing import decimated_data_random
     >>> from resistics.sampling import to_datetime
     >>> from resistics.window import get_first_and_last_win, win_to_datetime, inc_duration
     >>> ref_time = to_datetime("2021-01-01 00:00:00")
-    >>> time_data = time_data_random(n_samples = 1000, fs=10, first_time="2021-01-01 01:00:00")
-    >>> print(time_data.fs, time_data.first_time, time_data.last_time)
-    10.0 2021-01-01 01:00:00 2021-01-01 01:01:39.9
+    >>> dec_data = decimated_data_random(fs=10, first_time="2021-01-01 00:05:10")
+
+    Get the metadata for decimation level 0
+
+    >>> level_metadata = dec_data.metadata.levels_metadata[0]
+    >>> level_metadata.summary()
+    {
+        'fs': 10.0,
+        'n_samples': 10000,
+        'first_time': '2021-01-01 00:05:10.000000_000000_000000_000000',
+        'last_time': '2021-01-01 00:21:49.900000_000000_000000_000000'
+    }
+
+    Now calculate the first and last window, relative to the reference time
+
     >>> win_size = 100
     >>> olap_size = 25
-    >>> first_win, last_win = get_first_and_last_win(ref_time, time_data, win_size, olap_size)
+    >>> first_win, last_win = get_first_and_last_win(ref_time, level_metadata, win_size, olap_size)
     >>> print(first_win, last_win)
-    480 492
+    42 173
 
     These window indices can be converted to start times of the windows. The
     last window is checked to make sure it does not extend past the end of the
     time data
 
-    >>> increment = inc_duration(win_size, olap_size, time_data.fs)
-    >>> first_win_start_time = win_to_datetime(ref_time, 480, increment)
-    >>> last_win_start_time = win_to_datetime(ref_time, 492, increment)
+    >>> increment = inc_duration(win_size, olap_size, level_metadata.fs)
+    >>> first_win_start_time = win_to_datetime(ref_time, 42, increment)
+    >>> last_win_start_time = win_to_datetime(ref_time, 173, increment)
     >>> print(first_win_start_time, last_win_start_time)
-    2021-01-01 01:00:00 2021-01-01 01:01:30
+    2021-01-01 00:05:15 2021-01-01 00:21:37.5
     >>> print(last_win_start_time + increment)
-    2021-01-01 01:01:37.5
-    >>> print(time_data.last_time)
-    2021-01-01 01:01:39.9
-    >>> time_data.last_time > last_win_start_time + increment
+    2021-01-01 00:21:45
+    >>> print(level_metadata.last_time)
+    2021-01-01 00:21:49.9
+    >>> level_metadata.last_time > last_win_start_time + increment
     True
     """
-    increment = inc_duration(win_size, olap_size, time_data.fs)
-    first_win = datetime_to_win(
-        ref_time, time_data.first_time, increment, method="ceil"
-    )
-    last_win = datetime_to_win(ref_time, time_data.last_time, increment, method="floor")
+    increment = inc_duration(win_size, olap_size, metadata.fs)
+    first_win = datetime_to_win(ref_time, metadata.first_time, increment, method="ceil")
+    last_win = datetime_to_win(ref_time, metadata.last_time, increment, method="floor")
     # adjust if there is not enough date to complete the last window
     last_win_time = win_to_datetime(ref_time, last_win, increment)
-    if time_data.last_time < last_win_time + increment:
+    if metadata.last_time < last_win_time + increment:
         last_win -= 1
     return first_win, last_win
 
 
 def get_win_table(
-    ref_time: RSDateTime, time_data: TimeData, win_size: int, olap_size: int
+    ref_time: RSDateTime,
+    metadata: DecimatedLevelMetadata,
+    win_size: int,
+    olap_size: int,
 ) -> pd.DataFrame:
     """
     Get a DataFrame with
@@ -318,8 +337,8 @@ def get_win_table(
     ----------
     ref_time : RSDateTime
         Reference
-    time_data : TimeData
-        Time data that will be windowed
+    metadata : DecimatedLevelMetadata
+        Metadata for the decimation level
     win_size : int
         The window size
     olap_size : int
@@ -333,19 +352,23 @@ def get_win_table(
     Examples
     --------
     .. plot::
-        :width: 100%
+        :width: 90%
 
         >>> import matplotlib.pyplot as plt
-        >>> from resistics.testing import time_data_random
-        >>> from resistics.sampling import to_datetime
+        >>> from resistics.decimate import DecimatedLevelMetadata
+        >>> from resistics.sampling import to_datetime, to_timedelta
         >>> from resistics.window import get_win_table
         >>> ref_time = to_datetime("2021-01-01 00:00:00")
-        >>> time_data = time_data_random(n_samples = 1000, fs=10, first_time="2021-01-01 01:00:00")
-        >>> print(time_data.fs, time_data.first_time, time_data.last_time)
+        >>> fs = 10
+        >>> n_samples = 1000
+        >>> first_time = to_datetime("2021-01-01 01:00:00")
+        >>> last_time = first_time + to_timedelta((n_samples-1)/fs)
+        >>> metadata = DecimatedLevelMetadata(fs=10, n_samples=1000, first_time=first_time, last_time=last_time)
+        >>> print(metadata.fs, metadata.first_time, metadata.last_time)
         10.0 2021-01-01 01:00:00 2021-01-01 01:01:39.9
         >>> win_size = 100
         >>> olap_size = 25
-        >>> df = get_win_table(ref_time, time_data, win_size, olap_size)
+        >>> df = get_win_table(ref_time, metadata, win_size, olap_size)
         >>> print(df.to_string())
             global  local  from_sample  to_sample               win_start                 win_end
         0      480      0            0         99 2021-01-01 01:00:00.000 2021-01-01 01:00:09.900
@@ -377,12 +400,12 @@ def get_win_table(
     from resistics.sampling import to_n_samples, datetime_array_estimate
 
     increment_size = win_size - olap_size
-    increment = inc_duration(win_size, olap_size, time_data.fs)
-    fs = time_data.fs
-    first_time = time_data.first_time
+    increment = inc_duration(win_size, olap_size, metadata.fs)
+    fs = metadata.fs
+    first_time = metadata.first_time
 
     first_win, last_win = get_first_and_last_win(
-        ref_time, time_data, win_size, olap_size
+        ref_time, metadata, win_size, olap_size
     )
     first_win_time = win_to_datetime(ref_time, first_win, increment)
     n_wins = last_win - first_win + 1
@@ -402,9 +425,23 @@ def get_win_table(
     return pd.DataFrame(data=df_dict)
 
 
-class WindowParameters(ResisticsData):
+class WindowParameters(ResisticsModel):
     """
-    WindowParameters
+    Windowing parameters per decimation level
+
+    Windowing parameters are the window and overlap size for each decimation
+    level.
+
+    Parameters
+    ----------
+    n_levels : int
+        The number of decimation levels
+    min_n_wins : int
+        Minimum number of windows
+    win_sizes : List[int]
+        The window sizes per decimation level
+    olap_sizes : List[int]
+        The overlap sizes per decimation level
 
     Examples
     --------
@@ -416,22 +453,35 @@ class WindowParameters(ResisticsData):
     >>> from resistics.window import WindowSetup
     >>> dec_setup = DecimationSetup(n_levels=3, per_level=3)
     >>> dec_params = dec_setup.run(4096)
-    >>> dec_params
-    <class 'resistics.decimate.DecimationParameters'>
-                                0           1           2      fs  total_factors  incremental_factors
-    Decimation level
-    0                 1024.000000  724.077344  512.000000  4096.0              1                    1
-    1                  362.038672  256.000000  181.019336  2048.0              2                    2
-    2                  128.000000   90.509668   64.000000   512.0              8                    4
-    >>> win_setup = WindowSetup()
-    >>> win_params = win_setup.run(dec_params)
-    >>> win_params
-    <class 'resistics.window.WindowParameters'>
-                         win_size     olap_size
-    Decimation level
-    0                        1024           256
-    1                         512           128
-    2                         256            64
+    >>> dec_params.summary()
+    {
+        'fs': 4096.0,
+        'n_levels': 3,
+        'per_level': 3,
+        'min_samples': 256,
+        'eval_freqs': [
+            1024.0,
+            724.0773439350246,
+            512.0,
+            362.0386719675123,
+            256.0,
+            181.01933598375615,
+            128.0,
+            90.50966799187808,
+            64.0
+        ],
+        'dec_factors': [1, 2, 8],
+        'dec_increments': [1, 2, 4],
+        'dec_fs': [4096.0, 2048.0, 512.0]
+    }
+    >>> win_params = WindowSetup().run(dec_params.n_levels, dec_params.dec_fs)
+    >>> win_params.summary()
+    {
+        'n_levels': 3,
+        'min_n_wins': 5,
+        'win_sizes': [1024, 512, 256],
+        'olap_sizes': [256, 128, 64]
+    }
     >>> win_params.get_win_size(0)
     1024
     >>> win_params.get_olap_size(0)
@@ -442,95 +492,61 @@ class WindowParameters(ResisticsData):
     ValueError: Level 3 must be 0 <= level < 3
     """
 
-    def __init__(self, n_levels: int, min_n_wins: int, win_df: pd.DataFrame):
-        """
-        Windowing parameters per decimation level
-
-        Parameters
-        ----------
-        n_levels : int
-            The number of decimation levels
-        min_n_wins : int
-            Minimum number of windows
-        win_df : pd.DataFrame
-            The window and overlap size information
-        """
-        self.n_levels = n_levels
-        self.min_n_wins = min_n_wins
-        self.win_df = win_df
+    n_levels: int
+    min_n_wins: int
+    win_sizes: List[int]
+    olap_sizes: List[int]
 
     def check_level(self, level: int):
-        """
-        Check decimation level exists
-
-        Parameters
-        ----------
-        level : int
-            The level to check
-
-        Raises
-        ------
-        ValueError
-            If the decimation level is not within range
-        """
+        """Check the decimation level is within range"""
         if level < 0 or level >= self.n_levels:
             raise ValueError(f"Level {level} must be 0 <= level < {self.n_levels}")
 
     def get_win_size(self, level: int) -> int:
-        """
-        Get window size
-
-        Parameters
-        ----------
-        level : int
-            The decimation level
-
-        Returns
-        -------
-        int
-            The window size
-        """
+        """Get window size for a decimation level"""
         self.check_level(level)
-        return self.win_df.loc[level, "win_size"]
+        return self.win_sizes[level]
 
     def get_olap_size(self, level: int) -> int:
-        """
-        Get overlap size
-
-        Parameters
-        ----------
-        level : int
-            The decimation level
-
-        Returns
-        -------
-        int
-            The overlap size
-        """
+        """Get overlap size for a decimation level"""
         self.check_level(level)
-        return self.win_df.loc[level, "olap_size"]
-
-    def to_string(self) -> str:
-        """
-        Class information as a string
-
-        Returns
-        -------
-        str
-            Window parameters info as a string
-        """
-        outstr = f"{self.type_to_string()}\n"
-        outstr += self.win_df.to_string()
-        return outstr
+        return self.olap_sizes[level]
 
 
 class WindowSetup(ResisticsProcess):
     """
     Setup WindowParameters
 
-    .. note::
+    WindowSetup outputs the WindowParameters to use for windowing decimated
+    time data.
 
-        Note that the running check for WindowSetup always returns True
+    Window parameters are simply the window and overlap sizes for each
+    decimation level.
+
+    Parameters
+    ----------
+    min_size : int, optional
+        Minimum window size, by default 256
+    min_olap : int, optional
+        Minimum overlap size, by default 64
+    win_factor : int, optional
+        Window factor, by default 4. Window sizes are calculated by sampling
+        frequency / 4 to ensure sufficient frequency resolution. If the
+        sampling frequency is small, window size will be adjusted to
+        min_size
+    olap_proportion : float, optional
+        The proportion of the window size to use as the overlap, by default
+        0.25. For example, for a window size of 128, the overlap would be
+        0.25 * 128 = 32
+    min_n_wins : int, optional
+        The minimum number of windows needed in a decimation level, by
+        default 5
+    win_sizes : Optional[List[int]], optional
+        Explicit define window sizes, by default None. Must have the same
+        length as number of decimation levels
+    olap_sizes : Optional[List[int]], optional
+        Explicitly define overlap sizes, by default None. Must have the same
+        length as number of decimation levels
 
     Examples
     --------
@@ -539,24 +555,36 @@ class WindowSetup(ResisticsProcess):
 
     >>> from resistics.decimate import DecimationSetup
     >>> from resistics.window import WindowSetup
-    >>> dec_setup = DecimationSetup(n_levels=3, per_level=3)
-    >>> dec_params = dec_setup.run(0.05)
-    >>> dec_params
-    <class 'resistics.decimate.DecimationParameters'>
-                            0         1         2       fs  total_factors  incremental_factors
-    Decimation level
-    0                 0.012500  0.008839  0.006250  0.05000              1                    1
-    1                 0.004419  0.003125  0.002210  0.02500              2                    2
-    2                 0.001563  0.001105  0.000781  0.00625              8                    4
-    >>> win_setup = WindowSetup()
-    >>> win_params = win_setup.run(dec_params)
-    >>> win_params
-    <class 'resistics.window.WindowParameters'>
-                         win_size     olap_size
-    Decimation level
-    0                         256            64
-    1                         256            64
-    2                         256            64
+    >>> dec_params = DecimationSetup(n_levels=3, per_level=3).run(0.05)
+    >>> dec_params.summary()
+    {
+        'fs': 0.05,
+        'n_levels': 3,
+        'per_level': 3,
+        'min_samples': 256,
+        'eval_freqs': [
+            0.0125,
+            0.008838834764831844,
+            0.00625,
+            0.004419417382415922,
+            0.003125,
+            0.002209708691207961,
+            0.0015625,
+            0.0011048543456039805,
+            0.00078125
+        ],
+        'dec_factors': [1, 2, 8],
+        'dec_increments': [1, 2, 4],
+        'dec_fs': [0.05, 0.025, 0.00625]
+    }
+    >>> win_params = WindowSetup().run(dec_params.n_levels, dec_params.dec_fs)
+    >>> win_params.summary()
+    {
+        'n_levels': 3,
+        'min_n_wins': 5,
+        'win_sizes': [256, 256, 256],
+        'olap_sizes': [64, 64, 64]
+    }
 
     Window parameters can also be explicitly defined
 
@@ -565,66 +593,25 @@ class WindowSetup(ResisticsProcess):
     >>> dec_setup = DecimationSetup(n_levels=3, per_level=3)
     >>> dec_params = dec_setup.run(0.05)
     >>> win_setup = WindowSetup(win_sizes=[1000, 578, 104])
-    >>> win_params = win_setup.run(dec_params)
-    >>> win_params
-    <class 'resistics.window.WindowParameters'>
-                         win_size     olap_size
-    Decimation level
-    0                        1000           250
-    1                         578           144
-    2                         104            64
+    >>> win_params = win_setup.run(dec_params.n_levels, dec_params.dec_fs)
+    >>> win_params.summary()
+    {
+        'n_levels': 3,
+        'min_n_wins': 5,
+        'win_sizes': [1000, 578, 104],
+        'olap_sizes': [250, 144, 64]
+    }
     """
 
-    def __init__(
-        self,
-        min_size: int = 256,
-        min_olap: int = 64,
-        win_factor: int = 4,
-        olap_proportion: float = 0.25,
-        min_n_wins: int = 5,
-        win_sizes: Optional[List[int]] = None,
-        olap_sizes: Optional[List[int]] = None,
-    ):
-        """
-        Initialise WindowSetup
+    min_size: int = 256
+    min_olap: int = 64
+    win_factor: int = 4
+    olap_proportion: float = 0.25
+    min_n_wins: int = 5
+    win_sizes: Optional[List[int]] = None
+    olap_sizes: Optional[List[int]] = None
 
-        WindowSetup outputs the WindowParameters to use for windowing decimated
-        time data.
-
-        Parameters
-        ----------
-        min_size : int, optional
-            Minimum window size, by default 256
-        min_olap : int, optional
-            Minimum overlap size, by default 64
-        win_factor : int, optional
-            Window factor, by default 4. Window sizes are calculated by sampling
-            frequency / 4 to ensure sufficient frequency resolution. If the
-            sampling frequency is small, window size will be adjusted to
-            min_size
-        olap_proportion : float, optional
-            The proportion of the window size to use as the overlap, by default
-            0.25. For example, for a window size of 128, the overlap would be
-            0.25 * 128 = 32
-        min_n_wins : int, optional
-            The minimum number of windows needed in a decimation level, by
-            default 5
-        win_sizes : Optional[List[int]], optional
-            Explicit define window sizes, by default None. Must have the same
-            length as number of decimation levels
-        olap_sizes : Optional[List[int]], optional
-            Explicitly define overlap sizes, by default None. Must have the same
-            length as number of decimation levels
-        """
-        self.min_size = min_size
-        self.min_olap = min_olap
-        self.win_factor = win_factor
-        self.olap_proportion = olap_proportion
-        self.min_n_wins = min_n_wins
-        self.win_sizes = win_sizes
-        self.olap_sizes = olap_sizes
-
-    def run(self, dec_params: DecimationParameters) -> WindowParameters:
+    def run(self, n_levels: int, dec_fs: List[float]) -> WindowParameters:
         """
         Calculate window and overlap sizes for each decimation level based on
         decimation level sampling frequency and minimum allowable parameters
@@ -644,8 +631,10 @@ class WindowSetup(ResisticsProcess):
 
         Parameters
         ----------
-        dec_params : DecimationParameters
-            The decimation parameters
+        n_levels : int
+            The number of decimation levels
+        dec_fs : List[float]
+            The sampling frequencies for each decimation level
 
         Returns
         -------
@@ -654,7 +643,7 @@ class WindowSetup(ResisticsProcess):
             decimation level
         """
         if self.win_sizes is None:
-            win_sizes = self._get_win_sizes(dec_params)
+            win_sizes = self._get_win_sizes(n_levels, dec_fs)
         else:
             win_sizes = list(self.win_sizes)
 
@@ -663,18 +652,23 @@ class WindowSetup(ResisticsProcess):
         else:
             olap_sizes = self.olap_sizes
 
-        win_df = pd.DataFrame(data={"win_size": win_sizes, "olap_size": olap_sizes})
-        win_df.index.name = "Decimation level"
-        return WindowParameters(dec_params.n_levels, self.min_n_wins, win_df)
+        return WindowParameters(
+            n_levels=n_levels,
+            min_n_wins=self.min_n_wins,
+            win_sizes=win_sizes,
+            olap_sizes=olap_sizes,
+        )
 
-    def _get_win_sizes(self, dec_params: DecimationParameters) -> List[int]:
+    def _get_win_sizes(self, n_levels: int, dec_fs: List[float]) -> List[int]:
         """
         Get the window sizes
 
         Parameters
         ----------
-        dec_params : DecimationParameters
-            Decimation parameters
+        n_levels : int
+            The number of decimation levels
+        dec_fs : List[float]
+            The sampling frequencies for each decimation level
 
         Returns
         -------
@@ -682,9 +676,8 @@ class WindowSetup(ResisticsProcess):
             Window sizes
         """
         win_sizes = []
-        for ilevel in range(dec_params.n_levels):
-            info = dec_params.get_level(ilevel)
-            win_size = info["fs"] // self.win_factor
+        for ilevel in range(n_levels):
+            win_size = dec_fs[ilevel] // self.win_factor
             if win_size < self.min_size:
                 win_size = self.min_size
             win_sizes.append(int(win_size))
@@ -713,117 +706,104 @@ class WindowSetup(ResisticsProcess):
         return olap_sizes
 
 
-class WindowedTimeData(ResisticsData):
+class WindowedLevelMetadata(Metadata):
+    """Metadata for a windowed level"""
+
+    fs: float
+    n_wins: int
+    win_size: PositiveInt
+    olap_size: PositiveInt
+    index_offset: int
+
+    @property
+    def dt(self):
+        return 1 / self.fs
+
+
+class WindowedMetadata(WriteableMetadata):
+    """Metadata for windowed data"""
+
+    chans: List[str]
+    n_chans: Optional[int] = None
+    n_levels: int
+    fs: List[float]
+    system: str = ""
+    wgs84_latitude: float = -999.0
+    wgs84_longitude: float = -999.0
+    easting: float = -999.0
+    northing: float = -999.0
+    elevation: float = -999.0
+    levels_metadata: List[WindowedLevelMetadata] = []
+    history: History = History()
+
+    class Config:
+
+        extra = "ignore"
+
+    @validator("n_chans", always=True)
+    def set_n_chans(cls, value, values):
+        """Initialise number of channels"""
+        if value is None:
+            return len(values["chans"])
+        return value
+
+
+class WindowedData(ResisticsData):
     """
-    WindowedTimeData for a TimeData object
+    Windows of a DecimatedData object
 
-    Note that the WindowedTimeData actually holds views to the TimeData data to avoid
-    excess memory usage.
 
-    Examples
-    --------
-    >>> from resistics.testing import time_data_linear
-    >>> from resistics.sampling import to_datetime
-    >>> from resistics.window import WindowerTimeData
-    >>> time_data = time_data_linear(first_time="2021-01-01 01:01:00", n_samples=12)
-    >>> time_data.fs
-    10.0
-    >>> time_data.data
-    array([[ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
-           [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
-           [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
-           [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.]])
-    >>> win_size = 5
-    >>> olap_size = 2
-    >>> ref_time = to_datetime("2021-01-01 01:00:00")
-    >>> windower = WindowerTimeData(win_size, olap_size, min_n_wins=2)
-    >>> windower.check(ref_time, time_data)
-    True
-    >>> win_data = windower.run(time_data)
-    >>> print(win_data.win_table.to_string())
-           global  from_sample  to_sample               win_start                 win_end
-    local
-    0         200            0          4 2021-01-01 01:01:00.000 2021-01-01 01:01:00.400
-    1         201            3          7 2021-01-01 01:01:00.300 2021-01-01 01:01:00.700
-    2         202            6         10 2021-01-01 01:01:00.600 2021-01-01 01:01:01.000
-
-    The first window has global index 200. Why? There is a 1 minute time
-    difference between the reference time "2021-01-01 01:00:00" and the first
-    time "2021-01-01 01:01:00". There is a 3 sample increment between window
-    start samples (the window size - overlap size). This means there is a 0.3
-    seconds increment between windows. So how many windows in the 1 minute?
-
-    >>> 60 / 0.3
-    200.0
-
-    There are 200 windows in this 1 minute, and our data begins with the 201st
-    window, which when beginning with 0-index, has index 200.
     """
 
     def __init__(
         self,
-        metadata: MetadataGroup,
-        chans: List[str],
-        win_size: int,
-        olap_size: int,
-        win_views: np.ndarray,
-        win_table: pd.DataFrame,
+        metadata: WindowedMetadata,
+        data: Dict[int, np.ndarray],
     ):
         """
-        WindowedTimeData which can supply data for a window in TimeData
+        Initialise the WindowedData
 
         Parameters
         ----------
-        metadata : MetadataGroup
-            The metadata from the time data
-        chans : List[str]
-            The channels in the data
-        win_size : int
-            Window size
-        olap_size : int
-            Overlap size
-        win_views : np.ndarray
-            The window views into the original TimeData
-        win_table : pd.DataFrame
-            Table outlining global window index relative to the reference time,
-            the local window index, the sample ranges and time range for each
-            window
+        metadata : WindowedDataMetadata
+            The metadata for the windowed data
+        data : Dict[int, WindowedTimeData]
+            The windowed data
+        """
+        self.metadata = metadata
+        self.data = data
+
+    def get_level(self, level: int) -> np.ndarray:
+        """
+        Get windows for a decimation level
+
+        Parameters
+        ----------
+        level : int
+            The decimation level
+
+        Returns
+        -------
+        np.ndarray
+            The window array
 
         Raises
         ------
         ValueError
-            If the window table is somehow malformed
+            If decimation level is not within range
         """
-        self.metadata = metadata
-        self.chans = chans
-        self.win_size = win_size
-        self.olap_size = olap_size
-        self.win_views = win_views
-        self.win_table = win_table.set_index("local")
-        self.n_wins = len(win_table.index)
-        offset = (win_table["local"] - win_table["global"]).unique()
-        if len(offset) != 1:
-            raise ValueError("Malformed window table, varying local to global offset")
-        self.offset = offset[0]
+        if level >= self.metadata.n_levels:
+            raise ValueError(f"Level {level} not <= max {self.metadata.n_levels - 1}")
+        return self.data[level]
 
-    @property
-    def fs(self) -> float:
-        """
-        Get sampling frequency
-
-        Returns
-        -------
-        float
-            The sampling frequency in Hz
-        """
-        return self.metadata["common", "fs"]
-
-    def get_local(self, local_win: int) -> np.ndarray:
+    def get_local(self, level: int, local_win: int) -> np.ndarray:
         """
         Get window using local index
 
         Parameters
         ----------
+        level : int
+            The decimation level
         local_win : int
             Local window index
 
@@ -837,18 +817,19 @@ class WindowedTimeData(ResisticsData):
         ValueError
             If local window index is out of range
         """
-        if local_win < 0 or local_win >= self.n_wins:
-            raise ValueError(
-                f"Local window {local_win} not 0 <= local_win < {self.n_wins}"
-            )
-        return self.win_views[local_win]
+        n_wins = self.metadata.levels_metadata[level].n_wins
+        if local_win < 0 or local_win >= n_wins:
+            raise ValueError(f"Local window {local_win} not 0 <= local_win < {n_wins}")
+        return self.get_level(level)[local_win]
 
-    def get_global(self, global_win: int) -> np.ndarray:
+    def get_global(self, level: int, global_win: int) -> np.ndarray:
         """
         Get window using global index
 
         Parameters
         ----------
+        level : int
+            The decimation level
         global_win : int
             Global window index
 
@@ -857,14 +838,17 @@ class WindowedTimeData(ResisticsData):
         np.ndarray
             Window data
         """
-        return self.get_local(global_win + self.offset)
+        index_offset = self.metadata.levels_metadata[level].index_offset
+        return self.get_local(level, global_win + index_offset)
 
-    def get_chan(self, chan: str) -> np.ndarray:
+    def get_chan(self, level: int, chan: str) -> np.ndarray:
         """
         Get all the windows for a channel
 
         Parameters
         ----------
+        level : int
+            The decimation level
         chan : str
             The channel
 
@@ -880,376 +864,141 @@ class WindowedTimeData(ResisticsData):
         """
         from resistics.errors import ChannelNotFoundError
 
-        if chan not in self.chans:
-            raise ChannelNotFoundError(chan, self.chans)
-        idx = self.chans.index(chan)
-        return self.win_views[..., idx, :]
+        if chan not in self.metadata.chans:
+            raise ChannelNotFoundError(chan, self.metadata.chans)
+        idx = self.metadata.chans.index(chan)
+        return self.get_level(level)[..., idx, :]
 
     def to_string(self) -> str:
-        """
-        Get WindowedTimeData info as string
-
-        Returns
-        -------
-        str
-            Info as string
-        """
-        duration = win_duration(self.win_size, self.fs)
-        increment = inc_duration(self.win_size, self.olap_size, self.fs)
-        outstr = f"{self.type_to_string()}\n"
-        outstr += f"Number of windows: {self.n_wins}\n"
-        outstr += f"Sampling frequency Hz: {self.fs}\n"
-        outstr += f"Window size: {self.win_size}\n"
-        outstr += f"Window duration {str(duration)}\n"
-        outstr += f"Overlap size: {self.olap_size}\n"
-        outstr += f"Increment duration: {str(increment)}"
-        return outstr
+        """Class information as a string"""
+        return self.metadata.to_string()
 
 
-class WindowerTimeData(ResisticsProcess):
+class Windower(ResisticsProcess):
     """
-    The WindowerTimeData creates a views to the data for each window
-
-    Rather than duplicate data for each window, the WindowerTimeData creates an array of
-    views which point to the right data for the window in the original array.
+    Windows DecimatedData
 
     Examples
     --------
-    Window time data with a window size of 5 and overlap size of 2. For the sake
-    of simplicity, set the reference time to the start time of the time data.
+    The Windower windows a DecimatedData object given a reference time and some
+    window parameters.
 
-    >>> from resistics.testing import time_data_linear
-    >>> from resistics.window import WindowerTimeData
-    >>> time_data = time_data_linear(n_samples=12)
-    >>> time_data.data
-    array([[ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
-           [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
-           [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.],
-           [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11.]])
-    >>> win_size = 5
-    >>> olap_size = 2
-    >>> ref_time = time_data.first_time
-    >>> str(ref_time)
-    '2020-01-01 00:00:00'
-    >>> windower = WindowerTimeData(win_size, olap_size)
-    >>> windower.check(ref_time, time_data)
-    False
-
-    The default minimum number of windows is 5. Here we have only 3. Let's
-    recreate the WindowerTimeData with a different minimum. Remember, we are running
-    with a window size of 5 and overlap of 2 samples between windows.
-
-    >>> windower = WindowerTimeData(win_size, olap_size, min_n_wins=2)
-    >>> windower.check(ref_time, time_data)
-    True
-    >>> win_data = windower.run(time_data)
-    >>> print(win_data.win_table.to_string())
-               global  from_sample  to_sample           win_start                 win_end
-    local
-    0           0            0          4 2020-01-01 00:00:00.000 2020-01-01 00:00:00.400
-    1           1            3          7 2020-01-01 00:00:00.300 2020-01-01 00:00:00.700
-    2           2            6         10 2020-01-01 00:00:00.600 2020-01-01 00:00:01.000
-    >>> win_data.win_views
-    array([[[ 0.,  1.,  2.,  3.,  4.],
-            [ 0.,  1.,  2.,  3.,  4.],
-            [ 0.,  1.,  2.,  3.,  4.],
-            [ 0.,  1.,  2.,  3.,  4.]],
-           [[ 3.,  4.,  5.,  6.,  7.],
-            [ 3.,  4.,  5.,  6.,  7.],
-            [ 3.,  4.,  5.,  6.,  7.],
-            [ 3.,  4.,  5.,  6.,  7.]],
-           [[ 6.,  7.,  8.,  9., 10.],
-            [ 6.,  7.,  8.,  9., 10.],
-            [ 6.,  7.,  8.,  9., 10.],
-            [ 6.,  7.,  8.,  9., 10.]]])
-    """
-
-    def __init__(self, win_size: int, olap_size: int, min_n_wins: int = 5):
-        """
-        Initialise TimeData windower
-
-        Parameters
-        ----------
-        win_size : int
-            The window size
-        olap_size : int
-            The overlap size
-        min_n_wins : int, optional
-            Minimum number of windows required, by default 5. The check to see
-            how many windows can be made is done at the check stage.
-        """
-        self.win_size = win_size
-        self.olap_size = olap_size
-        self.min_n_wins = min_n_wins
-
-    def check(
-        self,
-        ref_time: RSDateTime,
-        time_data: TimeData,
-    ) -> bool:
-        """
-        Check to ensure number windows is greater than min windows
-
-        Parameters
-        ----------
-        ref_time : RSDateTime
-            The reference time
-        time_data : TimeData
-            The time data
-
-        Returns
-        -------
-        bool
-            True if all checks complete, False is not enough windows can be made
-        """
-        self.ref_time = ref_time
-        logger.info(f"Window size {self.win_size}, overlap size {self.olap_size}")
-        self.win_table = get_win_table(
-            ref_time, time_data, self.win_size, self.olap_size
-        )
-        n_wins = len(self.win_table.index)
-        if n_wins < self.min_n_wins:
-            logger.error(f"Number windows {n_wins} < minimum {self.min_n_wins}")
-            return False
-        logger.info(f"Time data will have {n_wins} windows")
-        return True
-
-    def run(self, time_data: TimeData) -> WindowedTimeData:
-        """
-        Run the windowing which gets the views into the data
-
-        Parameters
-        ----------
-        time_data : TimeData
-            TimeData to window
-
-        Returns
-        -------
-        WindowedTimeData
-            Window data for accessing windows
-        """
-        win_views = self._get_win_views(time_data)
-        return WindowedTimeData(
-            time_data.metadata,
-            time_data.chans,
-            self.win_size,
-            self.olap_size,
-            win_views,
-            self.win_table,
-        )
-
-    def _get_win_views(self, time_data: TimeData) -> np.ndarray:
-        """
-        Get the window views
-
-        This method uses sliding_window_view functionality in numpy.
-
-        Parameters
-        ----------
-        time_data : TimeData
-            TimeData to window
-
-        Returns
-        -------
-        np.ndarray
-            Sliding window views in an array
-
-        Raises
-        ------
-        ValueError
-            If win_size or olap_size is None, likely caused by not having
-            called check first
-        """
-        from numpy.lib.stride_tricks import sliding_window_view
-
-        if self.win_size is None or self.olap_size is None:
-            raise ValueError("One or both of window/overlap is None. Run check first.")
-
-        n_chans = time_data.n_chans
-        from_sample = self.win_table.loc[0, "from_sample"]
-        increment_size = self.win_size - self.olap_size
-
-        view = np.squeeze(
-            sliding_window_view(
-                time_data.data,
-                window_shape=(n_chans, self.win_size),
-                writeable=True,
-            )
-        )
-        return view[from_sample::increment_size]
-
-
-class WindowedDecimatedData(ResisticsData):
-    """
-    Windows of a DecimatedData object
-
-    Examples
-    --------
-    WindowedDecimatedData provides window views for all decimation levels. This
-    can be useful for later spectra or statistic calculations.
-
-    There's quite a few imports needed for this example
+    There's quite a few imports needed for this example. Begin by doing the
+    imports, defining a reference time and generating random decimated data.
 
     >>> from resistics.sampling import to_datetime
-    >>> from resistics.testing import time_data_random
-    >>> from resistics.decimate import DecimationSetup, Decimator
-    >>> from resistics.window import WindowSetup, WindowerDecimatedData
-
-    Now the actual example using only defaults. Begin with decimation.
-
+    >>> from resistics.testing import decimated_data_random
+    >>> from resistics.window import WindowSetup, Windower
     >>> ref_time = to_datetime("2021-01-01 00:00:00")
-    >>> time_data = time_data_random(first_time="2021-01-02 06:30:00", n_samples=10_000, fs=10)
-    >>> dec_params = DecimationSetup().run(time_data.fs)
-    >>> decimator = Decimator(dec_params)
-    >>> decimator.check()
-    True
-    >>> dec_data = decimator.run(time_data)
+    >>> dec_data = decimated_data_random(fs=128)
     >>> print(dec_data.to_string())
     <class 'resistics.decimate.DecimatedData'>
-                fs   dt  n_samples           first_time              last_time
+              fs        dt  n_samples           first_time                    last_time
     level
-    0      10.0000  0.1      10000  2021-01-02 06:30:00  2021-01-02 06:46:39.9
-    1       2.5000  0.4       2500  2021-01-02 06:30:00  2021-01-02 06:46:39.6
-    2       0.3125  3.2        313  2021-01-02 06:30:00  2021-01-02 06:46:38.4
+    0      128.0  0.007812      10000  2021-01-01 00:00:00  2021-01-01 00:01:18.1171875
+    1       32.0  0.031250       2500  2021-01-01 00:00:00    2021-01-01 00:01:18.09375
+    2        4.0  0.250000        313  2021-01-01 00:00:00          2021-01-01 00:01:18
 
     Next, initialise the window parameters
 
-    >>> win_params = WindowSetup().run(dec_params)
-    >>> print(win_params.to_string())
-    <class 'resistics.window.WindowParameters'>
-                      win_size  olap_size
-    Decimation level
-    0                      256         64
-    1                      256         64
-    2                      256         64
-    3                      256         64
-    4                      256         64
-    5                      256         64
-    6                      256         64
-    7                      256         64
+    >>> win_params = WindowSetup().run(dec_data.metadata.n_levels, dec_data.metadata.fs)
+    >>> win_params.summary()
+    {
+        'n_levels': 3,
+        'min_n_wins': 5,
+        'win_sizes': [256, 256, 256],
+        'olap_sizes': [64, 64, 64]
+    }
 
     Perform the windowing. This actually creates views into the decimated data
     using the numpy.lib.stride_tricks.sliding_window_view function
 
-    >>> windower = WindowerDecimatedData()
-    >>> windower.check()
-    True
-    >>> win_data = windower.run(ref_time, win_params, dec_data)
-    >>> print(win_data.to_string())
-    <class 'resistics.window.WindowedDecimatedData'>
-    Windowed 2 levels
-    Level 0
-    <class 'resistics.window.WindowedTimeData'>
-    Number of windows: 51
-    Sampling frequency Hz: 10.0
-    Window size: 256
-    Window duration 0:00:25.6
-    Overlap size: 64
-    Increment duration: 0:00:19.2
-    Level 1
-    <class 'resistics.window.WindowedTimeData'>
-    Number of windows: 12
-    Sampling frequency Hz: 2.5
-    Window size: 256
-    Window duration 0:01:42.4
-    Overlap size: 64
-    Increment duration: 0:01:16.8
-
-    Each level has its own window table
-
-    >>> wins = win_data.get_wins(1)
-    >>> print(wins.win_table.to_string())
-           global  from_sample  to_sample               win_start                 win_end
-    local
-    0        1430           60        315 2021-01-02 06:30:24.000 2021-01-02 06:32:06.000
-    1        1431          252        507 2021-01-02 06:31:40.800 2021-01-02 06:33:22.800
-    2        1432          444        699 2021-01-02 06:32:57.600 2021-01-02 06:34:39.600
-    3        1433          636        891 2021-01-02 06:34:14.400 2021-01-02 06:35:56.400
-    4        1434          828       1083 2021-01-02 06:35:31.200 2021-01-02 06:37:13.200
-    5        1435         1020       1275 2021-01-02 06:36:48.000 2021-01-02 06:38:30.000
-    6        1436         1212       1467 2021-01-02 06:38:04.800 2021-01-02 06:39:46.800
-    7        1437         1404       1659 2021-01-02 06:39:21.600 2021-01-02 06:41:03.600
-    8        1438         1596       1851 2021-01-02 06:40:38.400 2021-01-02 06:42:20.400
-    9        1439         1788       2043 2021-01-02 06:41:55.200 2021-01-02 06:43:37.200
-    10       1440         1980       2235 2021-01-02 06:43:12.000 2021-01-02 06:44:54.000
-    11       1441         2172       2427 2021-01-02 06:44:28.800 2021-01-02 06:46:10.800
+    >>> win_data = Windower().run(ref_time, win_params, dec_data)
+    >>> win_data.metadata.summary()
+    {
+        'file_info': None,
+        'chans': ['Ex', 'Ey', 'Hx', 'Hy'],
+        'n_chans': 4,
+        'n_levels': 3,
+        'fs': [128.0, 32.0, 4.0],
+        'system': '',
+        'wgs84_latitude': -999.0,
+        'wgs84_longitude': -999.0,
+        'easting': -999.0,
+        'northing': -999.0,
+        'elevation': -999.0,
+        'levels_metadata': [
+            {
+                'fs': 128.0,
+                'n_wins': 52,
+                'win_size': 256,
+                'olap_size': 64,
+                'index_offset': 0
+            },
+            {
+                'fs': 32.0,
+                'n_wins': 13,
+                'win_size': 256,
+                'olap_size': 64,
+                'index_offset': 0
+            }
+        ],
+        'history': {
+            'records': [
+                {
+                    'time_local': '...',
+                    'time_utc': '...',
+                    'creator': 'time_data_random',
+                    'parameters': {
+                        'fs': 128,
+                        'first_time': '2021-01-01 00:00:00',
+                        'n_samples': 10000
+                    },
+                    'messages': ['Generated time data with random values'],
+                    'record_type': 'process'
+                },
+                {
+                    'time_local': '...',
+                    'time_utc': '...',
+                    'creator': 'Decimator',
+                    'parameters': {
+                        'n_levels': 5,
+                        'min_samples': 256,
+                        'dec_fs': [128.0, 32.0, 4.0, 1.0, 0.125],
+                        'dec_increments': [1, 4, 8, 4, 8]
+                    },
+                    'messages': [
+                        'Decimated level 0, inc. factor 1, fs 128.0',
+                        'Decimated level 1, inc. factor 4, fs 32.0',
+                        'Decimated level 2, inc. factor 8, fs 4.0',
+                        'Completed levels [0, 1, 2] out of [0, 1, 2, 3, 4]'
+                    ],
+                    'record_type': 'process'
+                },
+                {
+                    'time_local': '...',
+                    'time_utc': '...',
+                    'creator': 'Windower',
+                    'parameters': {},
+                    'messages': [
+                        'Level 0, generated 52 windows',
+                        'Window size 256, olap_size 64',
+                        'Level 1, generated 13 windows',
+                        'Window size 256, olap_size 64'
+                    ],
+                    'record_type': 'process'
+                }
+            ]
+        }
+    }
     """
 
-    def __init__(
-        self,
-        chans: List[str],
-        wins: Dict[int, WindowedTimeData],
-        history: ProcessHistory,
-    ):
-        """
-        Initialise
-
-        Parameters
-        ----------
-        chans : List[str]
-            The channels in the data
-        wins : Dict[int, WindowedTimeData]
-            Dictionary of decimation level to WindowedTimeData
-        history : ProcessHistory
-            Processing history
-        """
-        self.chans = chans
-        self.wins = wins
-        self.history = history
-        self.max_level = max(list(self.wins.keys()))
-        self.n_levels = self.max_level + 1
-
-    @property
-    def n_chans(self):
-        return len(self.chans)
-
-    def get_level(self, level: int) -> WindowedTimeData:
-        """
-        Get windows for a decimation level
-
-        Parameters
-        ----------
-        level : int
-            The decimation level
-
-        Returns
-        -------
-        WindowedTimeData
-            The windows
-
-        Raises
-        ------
-        ValueError
-            If decimation level is not within range
-        """
-        if level > self.max_level:
-            raise ValueError(f"Level {level} not <= max {self.max_level}")
-        return self.wins[level]
-
-    def to_string(self) -> str:
-        """
-        Class information as a string
-
-        Returns
-        -------
-        str
-            WindowedDecimatedData information as a string
-        """
-        outstr = f"{self.type_to_string()}\n"
-        outstr += f"Windowed {self.n_levels} levels\n"
-        for ilevel in range(self.n_levels):
-            outstr += f"Level {ilevel}\n"
-            outstr += f"{self.wins[ilevel].to_string()}\n"
-        return outstr.strip("\n")
-
-
-class WindowerDecimatedData(ResisticsProcess):
     def run(
         self,
         ref_time: RSDateTime,
         win_params: WindowParameters,
         dec_data: DecimatedData,
-    ) -> WindowedDecimatedData:
+    ) -> WindowedData:
         """
         Perform windowing of DecimatedData
 
@@ -1264,26 +1013,109 @@ class WindowerDecimatedData(ResisticsProcess):
 
         Returns
         -------
-        WindowedDecimatedData
+        WindowedData
             Windows for decimated data
         """
-        wins = {}
+        metadata_dict = dec_data.metadata.dict()
+        data = {}
+        levels_metadata = []
         messages = []
-        for ilevel in range(0, dec_data.n_levels):
-            time_data = dec_data.get_level(ilevel)
+        for ilevel in range(0, dec_data.metadata.n_levels):
             win_size = win_params.get_win_size(ilevel)
             olap_size = win_params.get_olap_size(ilevel)
             logger.info(f"Windowing decimation level {ilevel}")
             logger.info(f"Window size {win_size}, overlap size {olap_size}")
-            windower = WindowerTimeData(
-                win_size, olap_size, min_n_wins=win_params.min_n_wins
+            win_table = get_win_table(
+                ref_time, dec_data.metadata.levels_metadata[ilevel], win_size, olap_size
             )
-            if not windower.check(ref_time, time_data):
-                continue
-            windowed = windower.run(time_data)
-            messages.append(f"Level {ilevel}, generated {windowed.n_wins} windows")
+            n_wins = len(win_table.index)
+            if n_wins < win_params.min_n_wins:
+                logger.debug(f"Number windows {n_wins} < min. {win_params.min_n_wins}")
+                break
+            level_data = self._get_level_data(
+                dec_data.get_level(ilevel),
+                win_table,
+                dec_data.metadata.n_chans,
+                win_size,
+                olap_size,
+            )
+            level_metadata = self._get_level_metadata(
+                dec_data.metadata.levels_metadata[ilevel],
+                win_table,
+                win_size,
+                olap_size,
+            )
+            data[ilevel] = level_data
+            levels_metadata.append(level_metadata)
+            messages.append(f"Level {ilevel}, generated {n_wins} windows")
             messages.append(f"Window size {win_size}, olap_size {olap_size}")
-            wins[ilevel] = windowed
-        history = dec_data.history.copy()
-        history.add_record(self._get_process_record(messages))
-        return WindowedDecimatedData(dec_data.chans, wins, history)
+        metadata = self._get_metadata(metadata_dict, levels_metadata)
+        metadata.history.add_record(self._get_record(messages))
+        return WindowedData(metadata, data)
+
+    def _get_level_data(
+        self,
+        data: np.ndarray,
+        win_table: pd.DataFrame,
+        n_chans: int,
+        win_size: int,
+        olap_size: int,
+    ) -> np.ndarray:
+        """
+        Get window data for a decimation level
+
+        Parameters
+        ----------
+        data : np.ndarray
+            The decimated time data for the level
+        win_table : pd.DataFrame
+            The window table
+        n_chans : int
+            The number of channels
+        win_size : int
+            The window size
+        olap_size : int
+            The overlap size
+
+        Returns
+        -------
+        np.ndarray
+            Sliding window views in an array for the decimation level
+        """
+        from numpy.lib.stride_tricks import sliding_window_view
+
+        from_sample = win_table.loc[0, "from_sample"]
+        increment_size = win_size - olap_size
+        view = np.squeeze(
+            sliding_window_view(data, window_shape=(n_chans, win_size), writeable=True)
+        )
+        return view[from_sample::increment_size]
+
+    def _get_level_metadata(
+        self,
+        dec_level_metadata: DecimatedLevelMetadata,
+        win_table: pd.DataFrame,
+        win_size: int,
+        olap_size: int,
+    ) -> WindowedLevelMetadata:
+        """Get the windowed metadata for a decimation level"""
+        offset = (win_table["global"] - win_table["local"]).unique()
+        if len(offset) != 1:
+            raise ValueError("Malformed window table, varying local to global offset")
+        return WindowedLevelMetadata(
+            fs=dec_level_metadata.fs,
+            n_wins=len(win_table.index),
+            win_size=win_size,
+            olap_size=olap_size,
+            index_offset=offset[0],
+        )
+
+    def _get_metadata(
+        self,
+        metadata_dict: Dict[str, Any],
+        levels_metadata: List[WindowedLevelMetadata],
+    ) -> WindowedMetadata:
+        """Get the metadata for the windowed data"""
+        metadata_dict.pop("file_info")
+        metadata_dict["levels_metadata"] = levels_metadata
+        return WindowedMetadata(**metadata_dict)
