@@ -1051,6 +1051,7 @@ class Windower(ResisticsProcess):
             messages.append(f"Window size {win_size}, olap_size {olap_size}")
         metadata = self._get_metadata(metadata_dict, levels_metadata)
         metadata.history.add_record(self._get_record(messages))
+        logger.info("Windowing completed")
         return WindowedData(metadata, data)
 
     def _get_level_data(
