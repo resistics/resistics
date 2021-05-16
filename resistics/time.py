@@ -26,7 +26,7 @@ from resistics.sampling import HighResDateTime, datetime_to_string
 class ChanMetadata(Metadata):
     """Channel metadata"""
 
-    data_files: List[str]
+    data_files: Optional[List[str]] = None
     sensor: str = ""
     serial: str = ""
     gain1: int = 1
@@ -57,9 +57,9 @@ class TimeMetadata(WriteableMetadata):
     """Time metadata"""
 
     fs: float
-    n_chans: int
-    n_samples: int
     chans: List[str]
+    n_chans: Optional[int] = None
+    n_samples: int
     first_time: HighResDateTime
     last_time: HighResDateTime
     system: str = ""

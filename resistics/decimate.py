@@ -381,7 +381,7 @@ class DecimatedMetadata(WriteableMetadata):
     """Metadata for DecimatedData"""
 
     chans: List[str]
-    n_chans: int
+    n_chans: Optional[int] = None
     n_levels: int
     fs: List[float]
     system: str = ""
@@ -546,11 +546,22 @@ class DecimatedData(ResisticsData):
         go.Figure
             Plotly Figure
         """
+        from resistics.time import TimeMetadata
+
         if len(self.data) == 0:
             logger.error("Data is empty, no decimation levels to plot")
-        fig = self.data[0].plot(max_pts=max_pts, label_prefix="Level 0")
-        for ilevel in range(1, self.metadata.n_levels):
-            self.data[ilevel].plot(fig=fig, label_prefix=f"Level {ilevel}")
+
+        fig = None
+        for ilevel in range(0, self.metadata.n_levels):
+            logger.info(f"Plotting decimation level {ilevel}")
+            metadata_dict = self.metadata.levels_metadata[ilevel].dict()
+            metadata_dict["chans"] = self.metadata.chans
+            metadata_dict["chans_metadata"] = []
+            time_data = TimeData(TimeMetadata(**metadata_dict), self.data[ilevel])
+            if fig is None:
+                fig = time_data.plot(label_prefix=f"Level {ilevel}")
+            else:
+                time_data.plot(fig=fig, label_prefix=f"Level {ilevel}")
         return fig
 
     def to_string(self) -> str:
@@ -605,7 +616,7 @@ class Decimator(ResisticsProcess):
             if time_data_new.metadata.n_samples < self.min_samples:
                 logger.warning(f"n_samples < min allowed {self.min_samples}")
                 break
-            data[ilevel] = time_data_new
+            data[ilevel] = time_data_new.data
             time_data = time_data_new
             fs = self.dec_fs[ilevel]
             levels_metadata.append(DecimatedLevelMetadata(**time_data.metadata.dict()))
