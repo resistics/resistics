@@ -58,7 +58,7 @@ class TimeMetadata(WriteableMetadata):
 
     fs: float
     chans: List[str]
-    n_chans: Optional[int] = None
+    n_chans: int
     n_samples: int
     first_time: HighResDateTime
     last_time: HighResDateTime

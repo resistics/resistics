@@ -724,7 +724,7 @@ class WindowedMetadata(WriteableMetadata):
     """Metadata for windowed data"""
 
     chans: List[str]
-    n_chans: Optional[int] = None
+    n_chans: int
     n_levels: int
     fs: List[float]
     system: str = ""

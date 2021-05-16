@@ -381,7 +381,7 @@ class DecimatedMetadata(WriteableMetadata):
     """Metadata for DecimatedData"""
 
     chans: List[str]
-    n_chans: Optional[int] = None
+    n_chans: int
     n_levels: int
     fs: List[float]
     system: str = ""
