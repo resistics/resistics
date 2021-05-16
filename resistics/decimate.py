@@ -553,6 +553,21 @@ class DecimatedData(ResisticsData):
             self.data[ilevel].plot(fig=fig, label_prefix=f"Level {ilevel}")
         return fig
 
+    def to_string(self) -> str:
+        """Class details as a string"""
+        outstr = f"{self.type_to_string()}\n"
+        data = [
+            [ilevel, x.fs, x.dt, x.n_samples, x.first_time, x.last_time]
+            for ilevel, x in enumerate(self.metadata.levels_metadata)
+        ]
+        df = pd.DataFrame(
+            data=data,
+            columns=["level", "fs", "dt", "n_samples", "first_time", "last_time"],
+        )
+        df = df.set_index("level")
+        outstr += df.to_string()
+        return outstr
+
 
 class Decimator(ResisticsProcess):
 
