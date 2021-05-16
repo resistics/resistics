@@ -4,6 +4,7 @@ import pandas as pd
 
 from resistics.common import Record, History, get_record
 from resistics.time import get_time_metadata, TimeMetadata, TimeData
+from resistics.decimate import DecimatedData
 
 # from resistics.project import Measurement, Site, Project
 
@@ -331,6 +332,19 @@ def time_data_with_offset(
     record = get_record("time_data_with_offset", parameters, messages)
     metadata.history.add_record(record)
     return TimeData(metadata, data)
+
+
+def decimated_data_random(
+    fs: float = 10, first_time: str = "2021-01-01 00:00:00", n_samples=10_000
+) -> DecimatedData:
+    """Get random decimated data"""
+    from resistics.decimate import DecimationSetup, Decimator
+
+    time_data = time_data_random(fs=fs, first_time=first_time, n_samples=n_samples)
+    dec_params = DecimationSetup(n_levels=5).run(fs)
+    decimator = Decimator(**dec_params.dict())
+    dec_data = decimator.run(time_data)
+    return dec_data
 
 
 # def test_measurement(self) -> Measurement:
