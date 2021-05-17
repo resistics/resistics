@@ -1018,38 +1018,37 @@ class Windower(ResisticsProcess):
         """
         metadata_dict = dec_data.metadata.dict()
         data = {}
-        levels_metadata = []
+        win_levels_metadata = []
         messages = []
         for ilevel in range(0, dec_data.metadata.n_levels):
             win_size = win_params.get_win_size(ilevel)
             olap_size = win_params.get_olap_size(ilevel)
             logger.info(f"Windowing decimation level {ilevel}")
             logger.info(f"Window size {win_size}, overlap size {olap_size}")
-            win_table = get_win_table(
-                ref_time, dec_data.metadata.levels_metadata[ilevel], win_size, olap_size
-            )
+            level_metadata = dec_data.metadata.levels_metadata[ilevel]
+            win_table = get_win_table(ref_time, level_metadata, win_size, olap_size)
             n_wins = len(win_table.index)
             if n_wins < win_params.min_n_wins:
                 logger.debug(f"Number windows {n_wins} < min. {win_params.min_n_wins}")
                 break
-            level_data = self._get_level_data(
+            win_level_data = self._get_level_data(
                 dec_data.get_level(ilevel),
                 win_table,
                 dec_data.metadata.n_chans,
                 win_size,
                 olap_size,
             )
-            level_metadata = self._get_level_metadata(
-                dec_data.metadata.levels_metadata[ilevel],
+            win_level_metadata = self._get_level_metadata(
+                level_metadata,
                 win_table,
                 win_size,
                 olap_size,
             )
-            data[ilevel] = level_data
-            levels_metadata.append(level_metadata)
+            data[ilevel] = win_level_data
+            win_levels_metadata.append(win_level_metadata)
             messages.append(f"Level {ilevel}, generated {n_wins} windows")
             messages.append(f"Window size {win_size}, olap_size {olap_size}")
-        metadata = self._get_metadata(metadata_dict, levels_metadata)
+        metadata = self._get_metadata(metadata_dict, win_levels_metadata)
         metadata.history.add_record(self._get_record(messages))
         logger.info("Windowing completed")
         return WindowedData(metadata, data)
