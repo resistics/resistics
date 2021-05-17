@@ -1023,6 +1023,8 @@ class Windower(ResisticsProcess):
             n_wins = len(win_table.index)
             if n_wins < win_params.min_n_wins:
                 logger.debug(f"Number windows {n_wins} < min. {win_params.min_n_wins}")
+                messages.append(f"Num. windows {n_wins} < min. {win_params.min_n_wins}")
+                messages.append(f"Level {ilevel} incomplete, ending windowing")
                 break
             win_level_data = self._get_level_data(
                 dec_data.get_level(ilevel),
@@ -1086,7 +1088,7 @@ class Windower(ResisticsProcess):
 
     def _get_level_metadata(
         self,
-        dec_level_metadata: DecimatedLevelMetadata,
+        level_metadata: DecimatedLevelMetadata,
         win_table: pd.DataFrame,
         win_size: int,
         olap_size: int,
@@ -1096,7 +1098,7 @@ class Windower(ResisticsProcess):
         if len(offset) != 1:
             raise ValueError("Malformed window table, varying local to global offset")
         return WindowedLevelMetadata(
-            fs=dec_level_metadata.fs,
+            fs=level_metadata.fs,
             n_wins=len(win_table.index),
             win_size=win_size,
             olap_size=olap_size,
