@@ -58,7 +58,7 @@ class TimeMetadata(WriteableMetadata):
 
     fs: float
     chans: List[str]
-    n_chans: int
+    n_chans: Optional[int] = None
     n_samples: int
     first_time: HighResDateTime
     last_time: HighResDateTime
@@ -76,13 +76,6 @@ class TimeMetadata(WriteableMetadata):
 
         json_encoders = {RSDateTime: datetime_to_string}
         validate_assignment = True
-
-    @validator("n_chans", always=True)
-    def set_n_chans(cls, value, values):
-        """Initialise number of channels"""
-        if value is None:
-            return len(values["chans"])
-        return value
 
     def __getitem__(self, chan: str) -> ChanMetadata:
         """

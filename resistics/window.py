@@ -25,7 +25,7 @@ The window module includes functionality to do the following:
 """
 from loguru import logger
 from typing import Optional, List, Tuple, Dict, Any
-from pydantic import validator, PositiveInt
+from pydantic import PositiveInt
 import numpy as np
 import pandas as pd
 
@@ -725,7 +725,7 @@ class WindowedMetadata(WriteableMetadata):
 
     fs: List[float]
     chans: List[str]
-    n_chans: int
+    n_chans: Optional[int] = None
     n_levels: int
     system: str = ""
     wgs84_latitude: float = -999.0
@@ -739,13 +739,6 @@ class WindowedMetadata(WriteableMetadata):
     class Config:
 
         extra = "ignore"
-
-    @validator("n_chans", always=True)
-    def set_n_chans(cls, value, values):
-        """Initialise number of channels"""
-        if value is None:
-            return len(values["chans"])
-        return value
 
 
 class WindowedData(ResisticsData):

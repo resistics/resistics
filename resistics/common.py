@@ -4,7 +4,7 @@ Common resistics functions and classes used throughout the package
 from loguru import logger
 from typing import List, Tuple, Union, Dict, Set, Any, Collection, Optional
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from datetime import datetime
 import numpy as np
 
@@ -560,6 +560,13 @@ class Metadata(ResisticsModel):
     """Parent class for metadata"""
 
     pass
+
+    @validator("n_chans", check_fields=False, always=True)
+    def validate_n_chans(cls, value: Union[None, int], values: Dict[str, Any]) -> int:
+        """Initialise number of channels"""
+        if value is None:
+            return len(values["chans"])
+        return value
 
 
 class WriteableMetadata(Metadata):

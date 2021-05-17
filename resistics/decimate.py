@@ -382,7 +382,7 @@ class DecimatedMetadata(WriteableMetadata):
 
     fs: List[float]
     chans: List[str]
-    n_chans: int
+    n_chans: Optional[int] = None
     n_levels: int
     system: str = ""
     wgs84_latitude: float = -999.0
@@ -396,13 +396,6 @@ class DecimatedMetadata(WriteableMetadata):
     class Config:
 
         extra = "ignore"
-
-    @validator("n_chans", always=True)
-    def set_n_chans(cls, value, values):
-        """Initialise number of channels"""
-        if value is None:
-            return len(values["chans"])
-        return value
 
 
 class DecimatedData(ResisticsData):
