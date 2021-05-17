@@ -977,7 +977,11 @@ class Windower(ResisticsProcess):
                         'Level 0, generated 52 windows',
                         'Window size 256, olap_size 64',
                         'Level 1, generated 13 windows',
-                        'Window size 256, olap_size 64'
+                        'Window size 256, olap_size 64',
+                        'Level 2, generated 1 windows',
+                        'Window size 256, olap_size 64',
+                        'Num. windows 1 < min. 5',
+                        'Level 2 incomplete, terminating windowing'
                     ],
                     'record_type': 'process'
                 }
@@ -1021,10 +1025,12 @@ class Windower(ResisticsProcess):
             level_metadata = dec_data.metadata.levels_metadata[ilevel]
             win_table = get_win_table(ref_time, level_metadata, win_size, olap_size)
             n_wins = len(win_table.index)
+            messages.append(f"Level {ilevel}, generated {n_wins} windows")
+            messages.append(f"Window size {win_size}, olap_size {olap_size}")
             if n_wins < win_params.min_n_wins:
                 logger.debug(f"Number windows {n_wins} < min. {win_params.min_n_wins}")
                 messages.append(f"Num. windows {n_wins} < min. {win_params.min_n_wins}")
-                messages.append(f"Level {ilevel} incomplete, ending windowing")
+                messages.append(f"Level {ilevel} incomplete, terminating windowing")
                 break
             win_level_data = self._get_level_data(
                 dec_data.get_level(ilevel),
@@ -1041,8 +1047,6 @@ class Windower(ResisticsProcess):
             )
             data[ilevel] = win_level_data
             win_levels_metadata.append(win_level_metadata)
-            messages.append(f"Level {ilevel}, generated {n_wins} windows")
-            messages.append(f"Window size {win_size}, olap_size {olap_size}")
         metadata = self._get_metadata(metadata_dict, win_levels_metadata)
         metadata.history.add_record(self._get_record(messages))
         logger.info("Windowing completed")
