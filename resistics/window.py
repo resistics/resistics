@@ -941,8 +941,8 @@ class Windower(ResisticsProcess):
                 {
                     'time_local': '...',
                     'time_utc': '...',
-                    'creator': 'time_data_random',
-                    'parameters': {
+                    'creator': {
+                        'name': 'time_data_random',
                         'fs': 128,
                         'first_time': '2021-01-01 00:00:00',
                         'n_samples': 10000
@@ -953,8 +953,8 @@ class Windower(ResisticsProcess):
                 {
                     'time_local': '...',
                     'time_utc': '...',
-                    'creator': 'Decimator',
-                    'parameters': {
+                    'creator': {
+                        'name': 'Decimator',
                         'n_levels': 5,
                         'min_samples': 256,
                         'dec_fs': [128.0, 32.0, 4.0, 1.0, 0.125],
@@ -971,8 +971,7 @@ class Windower(ResisticsProcess):
                 {
                     'time_local': '...',
                     'time_utc': '...',
-                    'creator': 'Windower',
-                    'parameters': {},
+                    'creator': {'name': 'Windower'},
                     'messages': [
                         'Level 0, generated 52 windows',
                         'Window size 256, olap_size 64',

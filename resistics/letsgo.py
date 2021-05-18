@@ -16,9 +16,8 @@ import plotly.express as px
 from resistics.common import ResisticsModel, WriteableMetadata, ResisticsProcess
 from resistics.sampling import HighResDateTime
 from resistics.time import TimeMetadata, TimeReader, TimeReaderNumpy, TimeReaderAscii
-
-# from resistics.decimate import DecimationSetup, Decimator
-# from resistics.window import WindowSetup
+from resistics.decimate import DecimationSetup
+from resistics.window import WindowSetup
 
 
 PROJ_FILE = "resistics.json"
@@ -68,9 +67,9 @@ def fs_results_path(results_dir: Path, site_name: str, run: str, fs: float) -> P
 
 class Configuration(ResisticsModel):
     time_readers: List[TimeReader] = [TimeReaderAscii(), TimeReaderNumpy()]
-    # decimation_setup: DecimationSetup = DecimationSetup()
-    # decimator: Decimator = Decimator()
-    # window_setup: WindowSetup
+    dec_setup: ResisticsProcess = DecimationSetup()
+    # decimator: ResisticsProcess = Decimator()
+    win_setup: ResisticsProcess = WindowSetup()
 
 
 class Measurement(ResisticsModel):

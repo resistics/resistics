@@ -14,7 +14,8 @@ def record_example1() -> Record:
     from resistics.common import get_record
 
     return get_record(
-        "example1", {"a": 5, "b": -7.0}, messages=["Message 1", "Message 2"]
+        creator={"name": "example1", "a": 5, "b": -7.0},
+        messages=["Message 1", "Message 2"],
     )
 
 
@@ -23,7 +24,8 @@ def record_example2() -> Record:
     from resistics.common import get_record
 
     return get_record(
-        "example2", {"a": "parzen", "b": -21}, messages=["Message 5", "Message 6"]
+        creator={"name": "example2", "a": "parzen", "b": -21},
+        messages=["Message 5", "Message 6"],
     )
 
 
@@ -118,9 +120,14 @@ def time_data_ones(
     """
     metadata = time_metadata_mt(fs, first_time, n_samples)
     data = np.ones(shape=(len(metadata.chans), n_samples), dtype=np.float32)
-    parameters = {"fs": fs, "first_time": first_time, "n_samples": n_samples}
+    creator = {
+        "name": "time_data_ones",
+        "fs": fs,
+        "first_time": first_time,
+        "n_samples": n_samples,
+    }
     messages = ["Generated time data with fixed values"]
-    record = get_record("time_data_ones", parameters, messages)
+    record = get_record(creator, messages)
     metadata.history.add_record(record)
     return TimeData(metadata, data)
 
@@ -153,9 +160,9 @@ def time_data_simple(
     )
     n_samples = data.shape[1]
     metadata = time_metadata_mt(fs, first_time, n_samples)
-    parameters = {"fs": fs, "first_time": first_time}
+    creator = {"name": "time_data_simple", "fs": fs, "first_time": first_time}
     messages = ["Generated time data with simple values"]
-    record = get_record("time_data_simple", parameters, messages)
+    record = get_record(creator, messages)
     metadata.history.add_record(record)
     return TimeData(metadata, data)
 
@@ -188,9 +195,9 @@ def time_data_with_nans(
     )
     n_samples = data.shape[1]
     metadata = time_metadata_mt(fs, first_time, n_samples)
-    parameters = {"fs": fs, "first_time": first_time}
+    creator = {"name": "time_data_with_nans", "fs": fs, "first_time": first_time}
     messages = ["Generated time data with some nan values"]
-    record = get_record("time_data_with_nans", parameters, messages)
+    record = get_record(creator, messages)
     metadata.history.add_record(record)
     return TimeData(metadata, data)
 
@@ -219,9 +226,14 @@ def time_data_linear(
     data = np.empty(shape=(metadata.n_chans, n_samples))
     for idx in range(metadata.n_chans):
         data[idx, :] = np.arange(n_samples)
-    parameters = {"fs": fs, "first_time": first_time, "n_samples": n_samples}
+    creator = {
+        "name": "time_data_random",
+        "fs": fs,
+        "first_time": first_time,
+        "n_samples": n_samples,
+    }
     messages = ["Generated time data with random values"]
-    record = get_record("time_data_random", parameters, messages)
+    record = get_record(creator, messages)
     metadata.history.add_record(record)
     return TimeData(metadata, data)
 
@@ -248,9 +260,14 @@ def time_data_random(
     """
     metadata = time_metadata_mt(fs, first_time, n_samples)
     data = np.random.normal(0, 3, size=(metadata.n_chans, n_samples))
-    parameters = {"fs": fs, "first_time": first_time, "n_samples": n_samples}
+    creator = {
+        "name": "time_data_random",
+        "fs": fs,
+        "first_time": first_time,
+        "n_samples": n_samples,
+    }
     messages = ["Generated time data with random values"]
-    record = get_record("time_data_random", parameters, messages)
+    record = get_record(creator, messages)
     metadata.history.add_record(record)
     return TimeData(metadata, data)
 
@@ -285,14 +302,15 @@ def time_data_periodic(
     data = np.zeros(shape=(1, n_samples))
     for freq in frequencies:
         data += np.sin(times * 2 * np.pi * freq)
-    parameters = {
+    creator = {
+        "name": "time_data_periodic",
         "frequencies": frequencies,
         "fs": fs,
         "first_time": first_time,
         "n_samples": n_samples,
     }
     messages = ["Generated time data with periodic values"]
-    record = get_record("time_data_periodic", parameters, messages)
+    record = get_record(creator, messages)
     metadata.history.add_record(record)
     return TimeData(metadata, data)
 
@@ -322,14 +340,15 @@ def time_data_with_offset(
     first_time = (pd.to_datetime(first_time) + pd.Timedelta(offset, "s")).isoformat()
     metadata = time_metadata_1chan(fs, first_time, n_samples)
     data = np.arange(0, n_samples).reshape(1, n_samples)
-    parameters = {
+    creator = {
+        "name": "time_data_with_offset",
         "offset": offset,
         "fs": fs,
         "first_time": first_time,
         "n_samples": n_samples,
     }
     messages = ["Generated time data with an offset"]
-    record = get_record("time_data_with_offset", parameters, messages)
+    record = get_record(creator, messages)
     metadata.history.add_record(record)
     return TimeData(metadata, data)
 

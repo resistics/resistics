@@ -573,6 +573,7 @@ class WriteableMetadata(Metadata):
     """Base class for writeable metadata"""
 
     file_info: Optional[ResisticsFile] = None
+    """Information about a file, relevant if writing out or reading back in"""
 
     def write(self, json_path: Path):
         """
@@ -590,30 +591,43 @@ class WriteableMetadata(Metadata):
 
 class Record(ResisticsModel):
     """
-    Class to hold a process record
+    Class to hold a record
 
-    Parameters
-    ----------
-    time_utc : datetime
-        The UTC time when the process ran
-    time_local : datetime
-        The local time when the process ran
-    creator : str
-        The name of the record creator
-    parameters : Dict[str, Any]
-        The parameters of the process
-    messages : List[str]
-        Any messages in the process
-    record_type : str
-        The process type
+    A record holds information about a process that was run. It is intended to
+    track processes applied to data, allowing a process history to be saved
+    along with any datasets.
+
+    Examples
+    --------
+    A simple example of creating a process record
+
+    >>> from resistics.common import Record
+    >>> messages = ["message 1", "message 2"]
+    >>> record = Record(
+    ...     creator={"name": "example", "parameter1": 15},
+    ...     messages=messages,
+    ...     record_type="example"
+    ... )
+    >>> record.summary()
+    {
+        'time_local': '...',
+        'time_utc': '...',
+        'creator': {'name': 'example', 'parameter1': 15},
+        'messages': ['message 1', 'message 2'],
+        'record_type': 'example'
+    }
     """
 
     time_local: datetime = Field(default_factory=datetime.now)
+    """The local time when the process ran"""
     time_utc: datetime = Field(default_factory=datetime.utcnow)
-    creator: str
-    parameters: Dict[str, Any]
+    """The UTC time when the process ran"""
+    creator: Dict[str, Any]
+    """The creator and its parameters as a dictionary"""
     messages: List[str]
+    """Any messages in the record"""
     record_type: str
+    """The record type"""
 
 
 class History(ResisticsModel):
@@ -638,16 +652,22 @@ class History(ResisticsModel):
             {
                 'time_local': '...',
                 'time_utc': '...',
-                'creator': 'example1',
-                'parameters': {'a': 5, 'b': -7.0},
+                'creator': {
+                    'name': 'example1',
+                    'a': 5,
+                    'b': -7.0
+                },
                 'messages': ['Message 1', 'Message 2'],
                 'record_type': 'process'
             },
             {
                 'time_local': '...',
                 'time_utc': '...',
-                'creator': 'example2',
-                'parameters': {'a': 'parzen', 'b': -21},
+                'creator': {
+                    'name': 'example2',
+                    'a': 'parzen',
+                    'b': -21
+                },
                 'messages': ['Message 5', 'Message 6'],
                 'record_type': 'process'
             }
@@ -670,8 +690,7 @@ class History(ResisticsModel):
 
 
 def get_record(
-    process_name: str,
-    parameters: Dict[str, Any],
+    creator: Dict[str, Any],
     messages: Union[str, List[str]],
     record_type: str = "process",
     time_utc: Optional[datetime] = None,
@@ -682,10 +701,8 @@ def get_record(
 
     Parameters
     ----------
-    process_name : str
-        The name of the process
-    parameters : Dict[str, Any]
-        The parameters as a dictionary
+    creator : Dict[str, Any]
+        The creator and its parameters as a dictionary
     messages : Union[str, List[str]]
         The messages as either a single str or a list of strings
     record_type : str, optional
@@ -705,11 +722,12 @@ def get_record(
     Examples
     --------
     >>> from resistics.common import get_record
-    >>> record = get_record("example", {"a": 5, "b": -7.0}, messages="a message")
+    >>> record = get_record(
+    ...     creator={"name": "example", "a": 5, "b": -7.0},
+    ...     messages="a message"
+    ... )
     >>> record.creator
-    'example'
-    >>> record.parameters
-    {'a': 5, 'b': -7.0}
+    {'name': 'example', 'a': 5, 'b': -7.0}
     >>> record.messages
     ['a message']
     >>> record.record_type
@@ -728,8 +746,7 @@ def get_record(
     return Record(
         time_utc=time_utc,
         time_local=time_local,
-        creator=process_name,
-        parameters=parameters,
+        creator=creator,
         messages=messages,
         record_type=record_type,
     )
@@ -768,8 +785,11 @@ def get_history(record: Record, history: Optional[History] = None) -> History:
             {
                 'time_local': '...',
                 'time_utc': '...',
-                'creator': 'example1',
-                'parameters': {'a': 5, 'b': -7.0},
+                'creator': {
+                    'name': 'example1',
+                    'a': 5,
+                    'b': -7.0
+                },
                 'messages': ['Message 1', 'Message 2'],
                 'record_type': 'process'
             }
@@ -788,16 +808,22 @@ def get_history(record: Record, history: Optional[History] = None) -> History:
             {
                 'time_local': '...',
                 'time_utc': '...',
-                'creator': 'example1',
-                'parameters': {'a': 5, 'b': -7.0},
+                'creator': {
+                    'name': 'example1',
+                    'a': 5,
+                    'b': -7.0
+                },
                 'messages': ['Message 1', 'Message 2'],
                 'record_type': 'process'
             },
             {
                 'time_local': '...',
                 'time_utc': '...',
-                'creator': 'example2',
-                'parameters': {'a': 'parzen', 'b': -21},
+                'creator': {
+                    'name': 'example2',
+                    'a': 'parzen',
+                    'b': -21
+                },
                 'messages': ['Message 5', 'Message 6'],
                 'record_type': 'process'
             }
@@ -811,26 +837,6 @@ def get_history(record: Record, history: Optional[History] = None) -> History:
     return history
 
 
-def histories_to_parameters(histories: List[History]) -> Dict[str, Any]:
-    """
-    Convert histories to a dictionary of parameters
-
-    Parameters
-    ----------
-    histories : List[History]
-        List of process histories
-
-    Returns
-    -------
-    Dict[str, Any]
-        Parameter dictionary
-    """
-    parameters = {
-        f"Dataset {idx}": history.dict() for idx, history in enumerate(histories)
-    }
-    return parameters
-
-
 class ResisticsProcess(ResisticsModel):
     """
     Base class for resistics processes
@@ -840,14 +846,105 @@ class ResisticsProcess(ResisticsModel):
     a process record to the dataset
     """
 
-    @property
-    def name(self) -> str:
-        """Get the name of the processor"""
-        return self.__class__.__name__
+    _types: Dict[str, type] = {}
+    name: Optional[str]
+
+    def __init_subclass__(cls) -> None:
+        """
+        Used to automatically register child processors in `_types`
+
+        When a resistics process is imported, it is added to the base
+        ResisticsProcess _types variable. Later, this dictionary of class types
+        can be used to initialise processes from a dictonary.
+
+        The intention of this method is to support initialising processes from
+        JSON files.
+        """
+        cls._types[cls.__name__] = cls
+
+    @classmethod
+    def __get_validators__(cls):
+        """Get the validators that will be used by pydantic"""
+        yield cls.validate
+
+    @classmethod
+    def validate(
+        cls, value: Union["ResisticsProcess", Dict[str, Any]]
+    ) -> "ResisticsProcess":
+        """
+        Validate a ResisticsProcess in another pydantic class
+
+        Parameters
+        ----------
+        value : Union[ResisticsProcess, Dict[str, Any]]
+            A ResisticsProcess child class or a dictionary
+
+        Returns
+        -------
+        ResisticsProcess
+            A ResisticsProcess child class
+
+        Raises
+        ------
+        ValueError
+            If the value is neither a ResisticsProcess or a dictionary
+        KeyError
+            If name is not in the dictionary
+        ValueError
+            If initialising from dictionary fails
+
+        Examples
+        --------
+        The following example will show how a generic ResisticsProcess child
+        class can be instantiated from a ResisticsProcess. This example will
+        use the resistics configuration with default processes as a starting
+        point and then change the parameters of the DecimationSetup.
+
+        >>> from resistics.common import ResisticsProcess
+        >>> from resistics.letsgo import Configuration
+        >>> config = Configuration()
+        >>> config.dec_setup
+        DecimationSetup(name='DecimationSetup', n_levels=8, per_level=5, min_samples=256, div_factor=2, eval_freqs=None)
+
+        Now create another configuration with a different setup by passing a
+        dictionary.
+
+        >>> from resistics.decimate import DecimationSetup
+        >>> setup = DecimationSetup(n_levels=4, per_level=3)
+        >>> test_dict = setup.dict()
+        >>> test_dict
+        {'name': 'DecimationSetup', 'n_levels': 4, 'per_level': 3, 'min_samples': 256, 'div_factor': 2, 'eval_freqs': None}
+        >>> config2 = Configuration(dec_setup=test_dict)
+        >>> config2.dec_setup
+        DecimationSetup(name='DecimationSetup', n_levels=4, per_level=3, min_samples=256, div_factor=2, eval_freqs=None)
+
+        This method allows the saving of a configuration with custom processors
+        in a JSON file which can be loaded and used again.
+        """
+        if isinstance(value, ResisticsProcess):
+            return value
+        if not isinstance(value, dict):
+            raise ValueError(
+                "ResisticsProcess unable to initialise from type {type(value)}"
+            )
+        if "name" not in value:
+            raise KeyError("No name provided for initialisation of process")
+        name = value.pop("name")
+        try:
+            return cls._types[name](**value)
+        except Exception:
+            raise ValueError(f"Unable to initialise {name} from dictionary")
+
+    @validator("name", always=True)
+    def validate_name(cls, value: Union[str, None]) -> str:
+        """Inialise the name attribute of the resistics process"""
+        if value is None:
+            return cls.__name__
+        return value
 
     def parameters(self) -> Dict[str, Any]:
         """
-        Return any process parameters
+        Return any process parameters incuding the process name
 
         These parameters are expected to be primatives and should be sufficient
         to reinitialise the process and re-run the data. The base class assumes
@@ -887,7 +984,7 @@ class ResisticsProcess(ResisticsModel):
         Record
             A record
         """
-        return get_record(self.name, self.parameters(), messages)
+        return get_record(self.parameters(), messages)
 
 
 class ResisticsBase(object):

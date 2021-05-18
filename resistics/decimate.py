@@ -459,8 +459,8 @@ class DecimatedData(ResisticsData):
                     {
                         'time_local': '...',
                         'time_utc': '...',
-                        'creator': 'time_data_random',
-                        'parameters': {
+                        'creator': {
+                            'name': 'time_data_random',
                             'fs': 256,
                             'first_time': '2020-01-01 00:00:00',
                             'n_samples': 10000
@@ -471,8 +471,8 @@ class DecimatedData(ResisticsData):
                     {
                         'time_local': '...',
                         'time_utc': '...',
-                        'creator': 'Decimator',
-                        'parameters': {
+                        'creator': {
+                            'name': 'Decimator',
                             'n_levels': 4,
                             'min_samples': 256,
                             'dec_fs': [256.0, 64.0, 8.0, 2.0],
