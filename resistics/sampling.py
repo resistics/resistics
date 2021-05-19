@@ -351,14 +351,26 @@ def to_n_samples(delta: RSTimeDelta, fs: float, method: str = "round") -> int:
     '8:00:00.005126953125'
     >>> to_n_samples(delta, fs=fs)
     117964822
+    >>> check = (8*3600)*fs + 21
+    >>> check
+    117964821
+    >>> check_inclusive = check + 1
+    >>> check_inclusive
+    117964822
 
     With a sampling frequency of 65536 Hz
 
     >>> fs = 65_536
-    >>> delta = to_timedelta(2*3600 + (40954/fs))
+    >>> delta = to_timedelta(2*3600 + (40_954/fs))
     >>> str(delta)
     '2:00:00.624908447265625'
     >>> to_n_samples(delta, fs=fs)
+    471900155
+    >>> check = 2*3600*fs + 40_954
+    >>> check
+    471900154
+    >>> check_inclusive = check + 1
+    >>> check_inclusive
     471900155
     """
     from math import floor, ceil
