@@ -59,9 +59,9 @@ class MetadataReadError(Exception):
         self.message = message
 
     def __str__(self) -> str:
-        out = f"Failed to read metadata from file {self.path}"
+        out = f"Failed to read metadata from file {self.path}."
         if self.message is not None:
-            out += " {self.message}."
+            out += f" {self.message}."
         return out
 
 
