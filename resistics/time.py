@@ -77,23 +77,6 @@ class TimeMetadata(WriteableMetadata):
         json_encoders = {RSDateTime: datetime_to_string}
         validate_assignment = True
 
-    @classmethod
-    def __get_validators__(cls):
-        """Get the validators that will be used by pydantic"""
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, value: "TimeMetadata") -> "TimeMetadata":
-        """Validate input to TimeMetadata"""
-        logger.info("Here1")
-        if isinstance(value, TimeMetadata):
-            logger.info("Here2")
-            return value
-        try:
-            return TimeMetadata(**value.dict())
-        except Exception:
-            raise ValueError(f"Failed initialising TimeMetadata from {type(value)}")
-
     def __getitem__(self, chan: str) -> ChanMetadata:
         """
         Get channel metadata
