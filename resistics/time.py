@@ -77,6 +77,23 @@ class TimeMetadata(WriteableMetadata):
         json_encoders = {RSDateTime: datetime_to_string}
         validate_assignment = True
 
+    @classmethod
+    def __get_validators__(cls):
+        """Get the validators that will be used by pydantic"""
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, value: "TimeMetadata") -> "TimeMetadata":
+        """Validate input to TimeMetadata"""
+        logger.info("Here1")
+        if isinstance(value, TimeMetadata):
+            logger.info("Here2")
+            return value
+        try:
+            return TimeMetadata(**value.dict())
+        except Exception:
+            raise ValueError(f"Failed initialising TimeMetadata from {type(value)}")
+
     def __getitem__(self, chan: str) -> ChanMetadata:
         """
         Get channel metadata
@@ -603,7 +620,7 @@ class TimeReader(ResisticsProcess):
         time_data = self.read_data(dir_path, metadata, from_sample, to_sample)
         if self.apply_scalings:
             logger.debug("Applying scaling to time series data")
-            return self.scale_data(metadata, time_data)
+            return self.scale_data(time_data)
         return time_data
 
     def read_metadata(self, dir_path: Path) -> TimeMetadata:
@@ -649,7 +666,7 @@ class TimeReader(ResisticsProcess):
         """
         raise NotImplementedError("read_data needs to be implemented in child classes")
 
-    def scale_data(self, metadata: TimeMetadata, time_data: TimeData) -> TimeData:
+    def scale_data(self, time_data: TimeData) -> TimeData:
         """
         Scale data to physically meaningful units.
 
@@ -661,8 +678,6 @@ class TimeReader(ResisticsProcess):
 
         Parameters
         ----------
-        metadata: TimeMetadata
-            The time series metadata
         time_data : TimeData
             TimeData read in from file
 
