@@ -559,8 +559,6 @@ class ResisticsFile(ResisticsModel):
 class Metadata(ResisticsModel):
     """Parent class for metadata"""
 
-    pass
-
     @validator("n_chans", check_fields=False, always=True)
     def validate_n_chans(cls, value: Union[None, int], values: Dict[str, Any]) -> int:
         """Initialise number of channels"""
