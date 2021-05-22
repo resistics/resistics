@@ -245,6 +245,38 @@ def is_electric(chan: str) -> bool:
     return False
 
 
+def any_electric(chans: List[str]) -> bool:
+    """
+    Return boolean if any channels in list are electric
+
+    Parameters
+    ----------
+    chans : List[str]
+        List of channels
+
+    Returns
+    -------
+    bool
+        True if any electric
+
+    Examples
+    --------
+    List with no electric channels should evaluate to False
+
+    >>> from resistics.common import any_electric
+    >>> chans = ["Hx", "Hy", "Hz"]
+    >>> any_electric(chans)
+    False
+
+    Now with one electric channel
+
+    >>> chans = ["Ex", "Hy", "Hz"]
+    >>> any_electric(chans)
+    True
+    """
+    return np.any([is_electric(x) for x in chans])
+
+
 def magnetic_chans() -> List[str]:
     """
     List of acceptable magnetic channels
@@ -282,6 +314,38 @@ def is_magnetic(chan: str) -> bool:
     if chan in magnetic_chans():
         return True
     return False
+
+
+def any_magnetic(chans: List[str]) -> bool:
+    """
+    Return boolean if any channels in list are magnetic
+
+    Parameters
+    ----------
+    chans : List[str]
+        List of channels
+
+    Returns
+    -------
+    bool
+        True if any magnetic
+
+    Examples
+    --------
+    List with no magnetic channels should evaluate to False
+
+    >>> from resistics.common import any_magnetic
+    >>> chans = ["Ex", "Ey", "Ez"]
+    >>> any_magnetic(chans)
+    False
+
+    Now with one magnetic channel
+
+    >>> chans = ["Ex", "Ey", "Hz"]
+    >>> any_magnetic(chans)
+    True
+    """
+    return np.any([is_magnetic(x) for x in chans])
 
 
 def to_resistics_chan(chan: str) -> str:
