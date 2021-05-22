@@ -460,15 +460,12 @@ class TimeData(ResisticsData):
         go.Figure
             Plotly figure
         """
-        from resistics.common import is_electric, is_magnetic
         from resistics.plot import figure_columns_as_lines, plot_columns_1d
 
         if subplots is None:
-            subplots = ["Electric", "Magnetic"]
+            subplots = self._get_subplots()
         if subplot_columns is None:
-            electric = [x for x in self.metadata.chans if is_electric(x)]
-            magnetic = [x for x in self.metadata.chans if is_magnetic(x)]
-            subplot_columns = {"Electric": electric, "Magnetic": magnetic}
+            subplot_columns = self._get_subplot_chans(subplots)
         if fig is None:
             ylabels = self._get_ylabels(subplot_columns)
             fig = figure_columns_as_lines(
@@ -483,6 +480,46 @@ class TimeData(ResisticsData):
             label_prefix=label_prefix,
         )
         return fig
+
+    def _get_subplots(self) -> List[str]:
+        """Get list of subplots"""
+        from resistics.common import any_electric, any_magnetic
+
+        subplots = []
+        if any_electric(self.metadata.chans):
+            subplots.append("Electric")
+        if any_magnetic(self.metadata.chans):
+            subplots.append("Magnetic")
+        return subplots
+
+    def _get_subplot_chans(self, subplots: List[str]) -> Dict[str, List[str]]:
+        """Get channels for each subplot"""
+        from resistics.common import is_electric, is_magnetic
+
+        subplot_columns = {}
+        if "Electric" in subplots:
+            subplot_columns["Electric"] = [
+                x for x in self.metadata.chans if is_electric(x)
+            ]
+        if "Magnetic" in subplots:
+            subplot_columns["Magnetic"] = [
+                x for x in self.metadata.chans if is_magnetic(x)
+            ]
+        return subplot_columns
+
+    def _get_ylabels(self, subplot_columns: Dict[str, List[str]]) -> Dict[str, str]:
+        """Get subplot columns"""
+        from resistics.common import is_electric, is_magnetic
+
+        y_labels = {}
+        for subplot, columns in subplot_columns.items():
+            if len(columns) > 0 and is_electric(columns[0]):
+                y_labels[subplot] = "mv/km"
+            elif len(columns) > 0 and is_magnetic(columns[0]):
+                y_labels[subplot] = "mV or nT"
+            else:
+                y_labels[subplot] = "Unknown"
+        return y_labels
 
     def x_size(self) -> int:
         """
@@ -512,32 +549,6 @@ class TimeData(ResisticsData):
             Timestamp array
         """
         return self.get_timestamps(samples=samples, estimate=True)
-
-    def _get_ylabels(self, subplot_columns: Dict[str, List[str]]) -> Dict[str, str]:
-        """
-        Get the ylabels for the subplots
-
-        Parameters
-        ----------
-        subplot_columns : Dict[str, List[str]]
-            The channels in each subplot
-
-        Returns
-        -------
-        Dict[str, str]
-            Mapping from column to y_label
-        """
-        from resistics.common import is_electric, is_magnetic
-
-        y_labels = {}
-        for subplot, columns in subplot_columns.items():
-            if len(columns) > 0 and is_electric(columns[0]):
-                y_labels[subplot] = "mv/km"
-            elif len(columns) > 0 and is_magnetic(columns[0]):
-                y_labels[subplot] = "mV or nT"
-            else:
-                y_labels[subplot] = "Unknown"
-        return y_labels
 
     def to_string(self) -> str:
         """Class details as a string"""
