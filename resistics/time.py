@@ -671,6 +671,28 @@ class TimeReader(ResisticsProcess):
         """
         return time_data
 
+    def _check_data_files(self, dir_path: Path, metadata: TimeMetadata) -> bool:
+        """Check all data files in TimeMetadata exist"""
+        from resistics.common import is_file
+
+        chk = True
+        for chan_metadata in metadata.chans_metadata.values():
+            for data_file in chan_metadata.data_files:
+                if not is_file(dir_path / data_file):
+                    logger.debug(f"Data file {data_file} does not exist in {dir_path}")
+                    chk = False
+        return chk
+
+    def _check_extensions(self, dir_path: Path, metadata: TimeMetadata) -> bool:
+        """Check the data files have the correct extensions"""
+        chk = True
+        for chan_metadata in metadata.chans_metadata.values():
+            for data_file in chan_metadata.data_files:
+                if (dir_path / data_file).suffix != self.extension:
+                    logger.debug(f"Extension of {data_file} != {self.extension}")
+                    chk = False
+        return chk
+
     def _get_read_samples(
         self,
         metadata: TimeMetadata,
@@ -812,28 +834,6 @@ class TimeReaderJSON(TimeReader):
         if not self._check_extensions(dir_path, metadata):
             raise TimeDataReadError(dir_path, f"Data file suffix not {self.extension}")
         return metadata
-
-    def _check_data_files(self, dir_path: Path, metadata: TimeMetadata) -> bool:
-        """Check all data files in TimeMetadata exist"""
-        from resistics.common import is_file
-
-        chk = True
-        for chan_metadata in metadata.chans_metadata.values():
-            for data_file in chan_metadata.data_files:
-                if not is_file(dir_path / data_file):
-                    logger.debug(f"Data file {data_file} does not exist in {dir_path}")
-                    chk = False
-        return chk
-
-    def _check_extensions(self, dir_path: Path, metadata: TimeMetadata) -> bool:
-        """Check the data files have the correct extensions"""
-        chk = True
-        for chan_metadata in metadata.chans_metadata.values():
-            for data_file in chan_metadata.data_files:
-                if (dir_path / data_file).suffix != self.extension:
-                    logger.debug(f"Extension of {data_file} != {self.extension}")
-                    chk = False
-        return chk
 
 
 class TimeReaderAscii(TimeReaderJSON):
