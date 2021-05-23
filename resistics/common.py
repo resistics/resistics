@@ -435,33 +435,6 @@ def fs_to_string(fs: float) -> str:
     return (f"{fs:.6f}").replace(".", "_")
 
 
-def lines_to_array(lines: List[str]) -> np.ndarray:
-    """
-    Format lines of numbers into a multi-dimensional array
-
-    This is most likely of use when reading in files with lines of numbers
-
-    Parameters
-    ----------
-    lines : List[str]
-        A list of strings, most commonly read from a file
-
-    Returns
-    -------
-    np.ndarray
-        Lines formatted as a mutli-dimensional numeric array
-
-    Examples
-    --------
-    >>> from resistics.common import lines_to_array
-    >>> lines_to_array(["3 4", "4 5", "5 4"]) # doctest: +NORMALIZE_WHITESPACE
-    array([[3., 4.],
-            [4., 5.],
-            [5., 4.]])
-    """
-    return np.array([x.split() for x in lines], dtype=float)
-
-
 def array_to_string(
     data: np.ndarray, sep: str = ", ", precision: int = 8, scientific: bool = False
 ) -> str:
