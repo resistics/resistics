@@ -1115,5 +1115,6 @@ class Windower(ResisticsProcess):
     ) -> WindowedMetadata:
         """Get the metadata for the windowed data"""
         metadata_dict.pop("file_info")
+        metadata_dict["n_levels"] = len(levels_metadata)
         metadata_dict["levels_metadata"] = levels_metadata
         return WindowedMetadata(**metadata_dict)

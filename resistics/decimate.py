@@ -716,6 +716,5 @@ class Decimator(ResisticsProcess):
         """Get the metadata for the decimated data"""
         metadata_dict["fs"] = [x.fs for x in levels_metadata]
         metadata_dict["n_levels"] = len(levels_metadata)
-        metadata = DecimatedMetadata(**metadata_dict)
-        metadata.levels_metadata = levels_metadata
-        return metadata
+        metadata_dict["levels_metadata"] = levels_metadata
+        return DecimatedMetadata(**metadata_dict)
