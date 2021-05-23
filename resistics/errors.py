@@ -1,7 +1,7 @@
 """
 Module for custom resistics errors
 """
-from typing import Collection, Optional
+from typing import Collection, Optional, List, Union
 from pathlib import Path
 
 
@@ -138,6 +138,27 @@ class ChannelNotFoundError(Exception):
     def __str__(self) -> str:
         chans_string = "', '".join(self.chans)
         return f"'{self.chan}' not found in channels '{chans_string}'"
+
+
+###
+# time data errors
+###
+class CalibrationFileNotFound(Exception):
+    """Use when calibration files are not found"""
+
+    def __init__(
+        self, dir_path: Path, file_paths: Union[Path, List[Path]], message: str = ""
+    ):
+        self.dir_path = dir_path
+        self.file_paths = file_paths
+        self.message = message
+
+    def __str__(self) -> str:
+        outstr = f"Failed to find calibration files {self.file_paths}"
+        outstr += f" in calibration data folder {self.dir_path}."
+        if self.message != "":
+            outstr += f" {self.message}"
+        return outstr
 
 
 ###
