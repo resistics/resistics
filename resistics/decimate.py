@@ -6,14 +6,15 @@ Module for time data decimation including classes and for the following
 """
 from loguru import logger
 from typing import Any, Optional, Tuple, Union, Dict, List
+from pathlib import Path
 from pydantic import validator
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
 from resistics.sampling import HighResDateTime
-from resistics.common import ResisticsProcess, ResisticsModel, ResisticsData, History
-from resistics.common import Metadata, WriteableMetadata
+from resistics.common import ResisticsProcess, ResisticsModel, ResisticsData
+from resistics.common import ResisticsWriter, History, Metadata, WriteableMetadata
 from resistics.time import TimeData
 
 
@@ -504,7 +505,7 @@ class DecimatedData(ResisticsData):
 
     def get_level(self, level: int) -> np.ndarray:
         """
-        Get TimeData for a level
+        Get data for a decimation level
 
         Parameters
         ----------
@@ -513,8 +514,8 @@ class DecimatedData(ResisticsData):
 
         Returns
         -------
-        TimeData
-            TimeData for the decimation level
+        np.ndarary
+            The data for the decimation level
 
         Raises
         ------
@@ -718,3 +719,74 @@ class Decimator(ResisticsProcess):
         metadata_dict["n_levels"] = len(levels_metadata)
         metadata_dict["levels_metadata"] = levels_metadata
         return DecimatedMetadata(**metadata_dict)
+
+
+class DecimatedDataWriter(ResisticsWriter):
+    """Writer of resistics decimated data"""
+
+    def run(self, dir_path: Path, dec_data: DecimatedData) -> None:
+        """
+        Write out DecimatedData
+
+        Parameters
+        ----------
+        dir_path : Path
+            The directory path to write to
+        dec_data : DecimatedData
+            Decimated data to write out
+
+        Raises
+        ------
+        WriteError
+            If unable to write to the directory
+        """
+        from resistics.errors import WriteError
+
+        if not self._check_dir(dir_path):
+            WriteError(dir_path, "Unable to write to directory, check logs")
+        logger.info(f"Writing decimated data to {dir_path}")
+        metadata_path = dir_path / "metadata.json"
+        metadata = dec_data.metadata.copy()
+        for ilevel in range(dec_data.metadata.n_levels):
+            level_path = dir_path / f"level_{ilevel:03d}.npy"
+            np.save(level_path, dec_data.get_level(ilevel))
+        metadata.history.add_record(self._get_record(dir_path, type(dec_data)))
+        metadata.write(metadata_path)
+
+
+class DecimatedDataReader(ResisticsProcess):
+    """Reader of resistics decimated data"""
+
+    def run(self, dir_path: Path) -> DecimatedData:
+        """
+        Read DecimatedData
+
+        Parameters
+        ----------
+        dir_path : Path
+            The directory path to read from
+
+        Returns
+        -------
+        DecimatedData
+            The decimated data
+
+        Raises
+        ------
+        ReadError
+            If the directory does not exist
+        """
+        from resistics.errors import ReadError
+
+        if not dir_path.exists():
+            raise ReadError(dir_path, "Directory does not exist")
+        logger.info(f"Reading decimated data from {dir_path}")
+        metadata_path = dir_path / "metadata.json"
+        metadata = DecimatedMetadata.parse_file(metadata_path)
+        data = {}
+        for ilevel in range(metadata.n_levels):
+            level_path = dir_path / f"level_{ilevel:03d}.npy"
+            data[ilevel] = np.load(level_path)
+        messages = [f"Decimated data read from {dir_path}"]
+        metadata.history.add_record(self._get_record(messages))
+        return DecimatedData(metadata, data)
