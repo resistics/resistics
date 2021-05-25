@@ -18,7 +18,7 @@ import plotly.graph_objects as go
 
 from resistics.common import ResisticsData, ResisticsProcess
 from resistics.common import Metadata, WriteableMetadata
-from resistics.common import History, Record
+from resistics.common import History, Record, ResisticsWriter
 from resistics.sampling import RSDateTime, RSTimeDelta, DateTimeLike
 from resistics.sampling import HighResDateTime, datetime_to_string
 
@@ -966,34 +966,9 @@ class TimeReaderNumpy(TimeReaderJSON):
         return TimeData(metadata, data)
 
 
-class TimeWriter(ResisticsProcess):
+class TimeWriterNumpy(ResisticsWriter):
     """
-    Base class for writing time series data
-
-    Parameters
-    ----------
-    create_path : bool, optional
-        Boolean flag for creating the path if it does not exist, by default False
-    overwrite : bool, optional
-        Boolean flag for overwriting the existing data, by default False
-    """
-
-    overwrite: bool = True
-
-    def _check_dir(self, dir_path: Path) -> bool:
-        """Check the output directory"""
-        if dir_path.exists() and not self.overwrite:
-            logger.error(f"Write path {dir_path} exists and overwrite is False")
-            return False
-        if not dir_path.exists():
-            logger.info(f"Directory {dir_path} not found. Creating including parents.")
-            dir_path.mkdir(parents=True)
-        return True
-
-
-class TimeWriterNumpy(TimeWriter):
-    """
-    Write out data in numpy binary format
+    Write out time data in numpy binary format
     """
 
     def run(self, dir_path: Path, time_data: TimeData) -> None:
@@ -1016,18 +991,20 @@ class TimeWriterNumpy(TimeWriter):
 
         if not self._check_dir(dir_path):
             WriteError(dir_path, "Unable to write to directory, check logs")
+        logger.info(f"Writing time numpy data to {dir_path}")
         metadata_path = dir_path / "metadata.json"
         metadata = time_data.metadata.copy()
         for chan in time_data.metadata.chans:
             chan_path = dir_path / f"{chan.lower()}.npy"
             np.save(chan_path, time_data[chan])
             metadata[chan].data_files = [chan_path.name]
+        metadata.history.add_record(self._get_record(dir_path, type(time_data)))
         metadata.write(metadata_path)
 
 
-class TimeWriterAscii(TimeWriter):
+class TimeWriterAscii(ResisticsWriter):
     """
-    Write out data in ascii format
+    Write out time data in ascii format
     """
 
     def run(self, dir_path: Path, time_data: TimeData) -> None:
@@ -1050,12 +1027,14 @@ class TimeWriterAscii(TimeWriter):
 
         if not self._check_dir(dir_path):
             WriteError(dir_path, "Unable to write to directory, check logs")
+        logger.info(f"Writing time ASCII data to {dir_path}")
         metadata_path = dir_path / "metadata.json"
         metadata = time_data.metadata.copy()
         for chan in time_data.metadata.chans:
             chan_path = dir_path / f"{chan.lower()}.ascii"
             np.savetxt(chan_path, time_data[chan], fmt="%.6f", newline="\n")
             metadata[chan].data_files = [chan_path.name]
+        metadata.history.add_record(self._get_record(dir_path, type(time_data)))
         metadata.write(metadata_path)
 
 
