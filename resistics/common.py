@@ -2,7 +2,8 @@
 Common resistics functions and classes used throughout the package
 """
 from loguru import logger
-from typing import List, Tuple, Union, Dict, Set, Any, Collection, Optional
+from typing import List, Tuple, Union, Dict, Set
+from typing import Any, Collection, Optional, Type
 from pathlib import Path
 from pydantic import BaseModel, Field, validator
 from datetime import datetime
@@ -1020,6 +1021,35 @@ class ResisticsProcess(ResisticsModel):
             A record
         """
         return get_record(self.parameters(), messages)
+
+
+class ResisticsWriter(ResisticsProcess):
+    """
+    Parent process for data writers
+
+    Parameters
+    ----------
+    overwrite : bool, optional
+        Boolean flag for overwriting the existing data, by default False
+    """
+
+    overwrite: bool = True
+
+    def _check_dir(self, dir_path: Path) -> bool:
+        """Check the output directory"""
+        if dir_path.exists() and not self.overwrite:
+            logger.error(f"Write path {dir_path} exists and overwrite is False")
+            return False
+        if dir_path.exists():
+            logger.warning(f"Overwriting existing directory {dir_path}")
+        if not dir_path.exists():
+            logger.info(f"Directory {dir_path} not found. Creating including parents.")
+            dir_path.mkdir(parents=True)
+        return True
+
+    def _get_record(self, dir_path: Path, data_type: Type):
+        """Get a process record for the writer"""
+        return super()._get_record([f"Writing out {data_type} to {dir_path}"])
 
 
 class ResisticsBase(object):
