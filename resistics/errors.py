@@ -48,6 +48,15 @@ class WriteError(Exception):
         return f"Error with path {self.path}. {self.message}."
 
 
+class ReadError(Exception):
+    def __init__(self, path: Path, message: str = ""):
+        self.path = path
+        self.message = message
+
+    def __str__(self) -> str:
+        return f"Unable to read from {self.path}. {self.message}."
+
+
 ###
 # metadata data errors
 ###
