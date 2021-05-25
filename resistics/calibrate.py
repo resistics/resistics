@@ -493,9 +493,6 @@ class SensorCalibrator(Calibrator):
         Interpolate the calibration data to the same frequencies as the time
         data
 
-        To avoid any issues, phases in the calibration data are unwrapped before
-        interpolating. After interpolation, they are wrapped again.
-
         Static gain is assumed to already be applied in the magnitude and is not
         applied separately.
 
@@ -515,5 +512,4 @@ class SensorCalibrator(Calibrator):
         """
         mag = np.interp(freqs, cal_data.frequency, cal_data.magnitude)
         phs = np.interp(freqs, cal_data.frequency, cal_data.phase)
-        # phs = (phs + np.pi) % (2 * np.pi) - np.pi
         return mag * np.exp(1j * phs)
