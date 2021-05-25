@@ -1049,7 +1049,7 @@ class ResisticsWriter(ResisticsProcess):
 
     def _get_record(self, dir_path: Path, data_type: Type):
         """Get a process record for the writer"""
-        return super()._get_record([f"Writing out {data_type} to {dir_path}"])
+        return super()._get_record([f"Writing out {data_type.__name__} to {dir_path}"])
 
 
 class ResisticsBase(object):
