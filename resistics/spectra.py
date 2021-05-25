@@ -3,12 +3,13 @@ Module containing functions and classes related to Spectra calculation and
 manipulation
 """
 from loguru import logger
+from pathlib import Path
 from typing import Union, Tuple, Dict, List, Any, Optional
 from pydantic import validator
 import numpy as np
 
 from resistics.common import ResisticsData, ResisticsProcess, History
-from resistics.common import Metadata, WriteableMetadata
+from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
 from resistics.decimate import DecimationParameters
 from resistics.window import WindowedData, WindowedLevelMetadata
 
@@ -35,8 +36,12 @@ class SpectraLevelMetadata(Metadata):
         cls, value: Union[List[float], None], values: Dict[str, Any]
     ) -> List[float]:
         """Validate frequencies list"""
+        from numpy.fft import rfftfreq
+
         if value is None:
-            return np.linspace(0, values["fs"] / 2, values["n_freqs"]).tolist()
+            value = rfftfreq(n=values["win_size"], d=1.0 / values["fs"]).tolist()
+        if len(value) != values["n_freqs"]:
+            raise ValueError(f"Num. freqs {len(value)} != n_freqs {values['n_freqs']}")
         return value
 
 
@@ -124,6 +129,7 @@ class FourierTransform(ResisticsProcess):
 
     win_fnc: Union[str, Tuple[str, float]] = ("kaiser", 14)
     detrend: str = "linear"
+    workers: int = -2
 
     def run(self, win_data: WindowedData) -> SpectraData:
         metadata_dict = win_data.metadata.dict()
@@ -160,7 +166,9 @@ class FourierTransform(ResisticsProcess):
         win_coeffs = self._get_window(metadata.win_size)
         data = data * win_coeffs
         # perform the fft on the last axis
-        return rfft(data, n=metadata.win_size, axis=-1, norm="ortho")
+        return rfft(
+            data, n=metadata.win_size, axis=-1, norm="ortho", workers=self.workers
+        )
 
     def _get_window(self, win_size: int):
         """Get the window to apply to the data"""
@@ -288,3 +296,74 @@ class EvaluationFreqs(ResisticsProcess):
 #         history.add_record(self._get_process_record(messages))
 #         logger.info("Smoothing completed")
 #         return SpectraDecimatedData(decspec_data.chans, smoothspec, history)
+
+
+class SpectraDataWriter(ResisticsWriter):
+    """Writer of resistics spectra data"""
+
+    def run(self, dir_path: Path, spec_data: SpectraData) -> None:
+        """
+        Write out SpectraData
+
+        Parameters
+        ----------
+        dir_path : Path
+            The directory path to write to
+        spec_data : SpectraData
+            Spectra data to write out
+
+        Raises
+        ------
+        WriteError
+            If unable to write to the directory
+        """
+        from resistics.errors import WriteError
+
+        if not self._check_dir(dir_path):
+            WriteError(dir_path, "Unable to write to directory, check logs")
+        logger.info(f"Writing spectra data to {dir_path}")
+        metadata_path = dir_path / "metadata.json"
+        metadata = spec_data.metadata.copy()
+        for ilevel in range(spec_data.metadata.n_levels):
+            level_path = dir_path / f"level_{ilevel:03d}.npy"
+            np.save(level_path, spec_data.get_level(ilevel))
+        metadata.history.add_record(self._get_record(dir_path, type(spec_data)))
+        metadata.write(metadata_path)
+
+
+class SpectraDataReader(ResisticsProcess):
+    """Reader of resistics spectra data"""
+
+    def run(self, dir_path: Path) -> SpectraData:
+        """
+        Read SpectraData
+
+        Parameters
+        ----------
+        dir_path : Path
+            The directory path to read from
+
+        Returns
+        -------
+        SpectraData
+            The spectra data
+
+        Raises
+        ------
+        ReadError
+            If the directory does not exist
+        """
+        from resistics.errors import ReadError
+
+        if not dir_path.exists():
+            raise ReadError(dir_path, "Directory does not exist")
+        logger.info(f"Reading spectra data from {dir_path}")
+        metadata_path = dir_path / "metadata.json"
+        metadata = SpectraMetadata.parse_file(metadata_path)
+        data = {}
+        for ilevel in range(metadata.n_levels):
+            level_path = dir_path / f"level_{ilevel:03d}.npy"
+            data[ilevel] = np.load(level_path)
+        messages = [f"Spectra data read from {dir_path}"]
+        metadata.history.add_record(self._get_record(messages))
+        return SpectraData(metadata, data)

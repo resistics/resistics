@@ -24,13 +24,14 @@ The window module includes functionality to do the following:
 - Converting a global index array to datetime
 """
 from loguru import logger
+from pathlib import Path
 from typing import Optional, List, Tuple, Dict, Any
 from pydantic import PositiveInt
 import numpy as np
 import pandas as pd
 
 from resistics.common import History, ResisticsModel, ResisticsData, ResisticsProcess
-from resistics.common import Metadata, WriteableMetadata
+from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
 from resistics.sampling import RSDateTime, RSTimeDelta
 from resistics.decimate import DecimatedLevelMetadata, DecimatedData
 
@@ -1118,3 +1119,74 @@ class Windower(ResisticsProcess):
         metadata_dict["n_levels"] = len(levels_metadata)
         metadata_dict["levels_metadata"] = levels_metadata
         return WindowedMetadata(**metadata_dict)
+
+
+class WindowedDataWriter(ResisticsWriter):
+    """Writer of resistics windowed data"""
+
+    def run(self, dir_path: Path, win_data: WindowedData) -> None:
+        """
+        Write out WindowedData
+
+        Parameters
+        ----------
+        dir_path : Path
+            The directory path to write to
+        win_data : WindowedData
+            Windowed data to write out
+
+        Raises
+        ------
+        WriteError
+            If unable to write to the directory
+        """
+        from resistics.errors import WriteError
+
+        if not self._check_dir(dir_path):
+            WriteError(dir_path, "Unable to write to directory, check logs")
+        logger.info(f"Writing windowed data to {dir_path}")
+        metadata_path = dir_path / "metadata.json"
+        metadata = win_data.metadata.copy()
+        for ilevel in range(win_data.metadata.n_levels):
+            level_path = dir_path / f"level_{ilevel:03d}.npy"
+            np.save(level_path, win_data.get_level(ilevel))
+        metadata.history.add_record(self._get_record(dir_path, type(win_data)))
+        metadata.write(metadata_path)
+
+
+class WindowedDataReader(ResisticsProcess):
+    """Reader of resistics windowed data"""
+
+    def run(self, dir_path: Path) -> WindowedData:
+        """
+        Read WindowedData
+
+        Parameters
+        ----------
+        dir_path : Path
+            The directory path to read from
+
+        Returns
+        -------
+        WindowedData
+            The windowed data
+
+        Raises
+        ------
+        ReadError
+            If the directory does not exist
+        """
+        from resistics.errors import ReadError
+
+        if not dir_path.exists():
+            raise ReadError(dir_path, "Directory does not exist")
+        logger.info(f"Reading windowed data from {dir_path}")
+        metadata_path = dir_path / "metadata.json"
+        metadata = WindowedMetadata.parse_file(metadata_path)
+        data = {}
+        for ilevel in range(metadata.n_levels):
+            level_path = dir_path / f"level_{ilevel:03d}.npy"
+            data[ilevel] = np.load(level_path)
+        messages = [f"Windowed data read from {dir_path}"]
+        metadata.history.add_record(self._get_record(messages))
+        return WindowedData(metadata, data)
