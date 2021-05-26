@@ -25,7 +25,7 @@ The window module includes functionality to do the following:
 """
 from loguru import logger
 from pathlib import Path
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Optional, List, Tuple, Dict, Union, Any
 from pydantic import PositiveInt
 import numpy as np
 import pandas as pd
@@ -1157,7 +1157,9 @@ class WindowedDataWriter(ResisticsWriter):
 class WindowedDataReader(ResisticsProcess):
     """Reader of resistics windowed data"""
 
-    def run(self, dir_path: Path) -> WindowedData:
+    def run(
+        self, dir_path: Path, metadata_only: bool = False
+    ) -> Union[WindowedMetadata, WindowedData]:
         """
         Read WindowedData
 
@@ -1165,11 +1167,13 @@ class WindowedDataReader(ResisticsProcess):
         ----------
         dir_path : Path
             The directory path to read from
+        metadata_only : bool, optional
+            Flag for getting metadata only, by default False
 
         Returns
         -------
-        WindowedData
-            The windowed data
+        Union[WindowedMetadata, WindowedData]
+            The WindowedData or WindowedMetadata if metadata_only is True
 
         Raises
         ------
@@ -1183,6 +1187,8 @@ class WindowedDataReader(ResisticsProcess):
         logger.info(f"Reading windowed data from {dir_path}")
         metadata_path = dir_path / "metadata.json"
         metadata = WindowedMetadata.parse_file(metadata_path)
+        if metadata_only:
+            return metadata
         data = {}
         for ilevel in range(metadata.n_levels):
             level_path = dir_path / f"level_{ilevel:03d}.npy"

@@ -757,7 +757,9 @@ class DecimatedDataWriter(ResisticsWriter):
 class DecimatedDataReader(ResisticsProcess):
     """Reader of resistics decimated data"""
 
-    def run(self, dir_path: Path) -> DecimatedData:
+    def run(
+        self, dir_path: Path, metadata_only: bool = False
+    ) -> Union[DecimatedMetadata, DecimatedData]:
         """
         Read DecimatedData
 
@@ -765,11 +767,13 @@ class DecimatedDataReader(ResisticsProcess):
         ----------
         dir_path : Path
             The directory path to read from
+        metadata_only : bool, optional
+            Flag for getting metadata only, by default False
 
         Returns
         -------
-        DecimatedData
-            The decimated data
+        Union[DecimatedMetadata, DecimatedData]
+            DecimatedData or DecimatedMetadata if metadata_only
 
         Raises
         ------
@@ -783,6 +787,8 @@ class DecimatedDataReader(ResisticsProcess):
         logger.info(f"Reading decimated data from {dir_path}")
         metadata_path = dir_path / "metadata.json"
         metadata = DecimatedMetadata.parse_file(metadata_path)
+        if metadata_only:
+            return metadata
         data = {}
         for ilevel in range(metadata.n_levels):
             level_path = dir_path / f"level_{ilevel:03d}.npy"

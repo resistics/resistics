@@ -334,7 +334,9 @@ class SpectraDataWriter(ResisticsWriter):
 class SpectraDataReader(ResisticsProcess):
     """Reader of resistics spectra data"""
 
-    def run(self, dir_path: Path) -> SpectraData:
+    def run(
+        self, dir_path: Path, metadata_only: bool = False
+    ) -> Union[SpectraMetadata, SpectraData]:
         """
         Read SpectraData
 
@@ -342,11 +344,13 @@ class SpectraDataReader(ResisticsProcess):
         ----------
         dir_path : Path
             The directory path to read from
+        metadata_only : bool, optional
+            Flag for getting metadata only, by default False
 
         Returns
         -------
-        SpectraData
-            The spectra data
+        Union[SpectraMetadata, SpectraData]
+            The SpectraData or SpectraMetadata if metadata_only is True
 
         Raises
         ------
@@ -360,6 +364,8 @@ class SpectraDataReader(ResisticsProcess):
         logger.info(f"Reading spectra data from {dir_path}")
         metadata_path = dir_path / "metadata.json"
         metadata = SpectraMetadata.parse_file(metadata_path)
+        if metadata_only:
+            return metadata
         data = {}
         for ilevel in range(metadata.n_levels):
             level_path = dir_path / f"level_{ilevel:03d}.npy"
