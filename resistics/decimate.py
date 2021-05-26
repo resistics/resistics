@@ -7,7 +7,7 @@ Module for time data decimation including classes and for the following
 from loguru import logger
 from typing import Any, Optional, Tuple, Union, Dict, List
 from pathlib import Path
-from pydantic import validator
+from pydantic import validator, PositiveInt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -61,7 +61,7 @@ class DecimationParameters(ResisticsModel):
     fs: float
     n_levels: int
     per_level: int
-    min_samples: int
+    min_samples: PositiveInt
     eval_freqs: List[float]
     dec_factors: List[int]
     dec_increments: Optional[List[int]] = None
@@ -654,22 +654,16 @@ class DecimatedData(ResisticsData):
 
 
 class Decimator(ResisticsProcess):
-
-    n_levels: int
-    min_samples: int
-    dec_fs: List[float]
-    dec_increments: List[int]
-
-    class Config:
-
-        extra = "ignore"
-
-    def run(self, time_data: TimeData) -> DecimatedData:
+    def run(
+        self, dec_params: DecimationParameters, time_data: TimeData
+    ) -> DecimatedData:
         """
         Decimate the TimeData
 
         Parameters
         ----------
+        dec_params : DecimationParameters
+            The decimation parameters
         time_data : TimeData
             TimeData to decimate
 
@@ -682,20 +676,20 @@ class Decimator(ResisticsProcess):
         data = {}
         levels_metadata = []
         messages = []
-        for ilevel in range(0, self.n_levels):
-            factor = self.dec_increments[ilevel]
+        for ilevel in range(0, dec_params.n_levels):
+            factor = dec_params.dec_increments[ilevel]
             logger.info(f"Decimating level {ilevel} with factor {factor}")
             time_data_new = self._decimate(time_data.copy(), factor)
-            if time_data_new.metadata.n_samples < self.min_samples:
-                logger.warning(f"n_samples < min allowed {self.min_samples}")
+            if time_data_new.metadata.n_samples < dec_params.min_samples:
+                logger.warning(f"n_samples < min allowed {dec_params.min_samples}")
                 break
             data[ilevel] = time_data_new.data
             time_data = time_data_new
-            fs = self.dec_fs[ilevel]
+            fs = dec_params.dec_fs[ilevel]
             levels_metadata.append(DecimatedLevelMetadata(**time_data.metadata.dict()))
             messages.append(f"Decimated level {ilevel}, inc. factor {factor}, fs {fs}")
         completed = list(range(len(data)))
-        target = list(range(self.n_levels))
+        target = list(range(dec_params.n_levels))
         messages.append(f"Completed levels {completed} out of {target}")
         metadata = self._get_metadata(metadata, levels_metadata)
         metadata.history.add_record(self._get_record(messages))
