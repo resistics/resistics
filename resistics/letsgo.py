@@ -16,8 +16,13 @@ import plotly.express as px
 from resistics.common import ResisticsModel, WriteableMetadata, ResisticsProcess
 from resistics.sampling import HighResDateTime
 from resistics.time import TimeMetadata, TimeReader, TimeReaderNumpy, TimeReaderAscii
-from resistics.decimate import DecimationSetup
-from resistics.window import WindowSetup
+from resistics.time import InterpolateNans, RemoveMean
+from resistics.calibrate import SensorCalibrationJSON, SensorCalibrator
+from resistics.decimate import DecimationSetup, Decimator
+from resistics.window import WindowSetup, Windower
+from resistics.spectra import FourierTransform, EvaluationFreqs
+
+# from resistics.regression import
 
 
 PROJ_FILE = "resistics.json"
@@ -32,44 +37,87 @@ PROJ_DIRS = {
 }
 
 
-def meas_time_path(time_dir: Path, site_name: str, meas_name: str) -> Path:
+def get_calibration_path(proj_dir: Path) -> Path:
+    """Get the path to the calibration data"""
+    return proj_dir / PROJ_DIRS["calibration"]
+
+
+def get_meas_time_path(proj_dir: Path, site_name: str, meas_name: str) -> Path:
     """Get path to measurement time data"""
-    return time_dir / site_name / meas_name
+    return proj_dir / PROJ_DIRS["time"] / site_name / meas_name
 
 
-def meas_spectra_path(
-    spectra_dir: Path, site_name: str, meas_name: str, run: str
+def get_meas_spectra_path(
+    proj_dir: Path, site_name: str, meas_name: str, config_name: str
 ) -> Path:
     """Get path to measurement spectra data"""
-    return spectra_dir / site_name / meas_name / run
+    return proj_dir / PROJ_DIRS["spectra"] / site_name / meas_name / config_name
 
 
-def meas_features_path(
-    features_dir: Path, site_name: str, meas_name: str, run: str
+def get_meas_features_path(
+    proj_dir: Path, site_name: str, meas_name: str, config_name: str
 ) -> Path:
     """Get path to measurement features data"""
-    return features_dir / site_name / meas_name / run
+    return proj_dir / PROJ_DIRS["features"] / site_name / meas_name / config_name
 
 
-def fs_mask_path(mask_dir: Path, site_name: str, run: str, fs: float) -> Path:
+def get_fs_mask_path(
+    proj_dir: Path, site_name: str, config_name: str, fs: float
+) -> Path:
     """Get path to sampling frequency mask data"""
     from resistics.common import fs_to_string
 
-    return mask_dir / site_name / run / f"{fs_to_string(fs)}.pkl"
+    mask_name = f"{fs_to_string(fs)}.pkl"
+    return proj_dir / PROJ_DIRS["masks"] / site_name / config_name / mask_name
 
 
-def fs_results_path(results_dir: Path, site_name: str, run: str, fs: float) -> Path:
+def get_fs_results_path(
+    proj_dir: Path, site_name: str, config_name: str, fs: float
+) -> Path:
     """Get path to sampling frequency results"""
     from resistics.common import fs_to_string
 
-    return results_dir / site_name / run / f"{fs_to_string(fs)}.json"
+    results_name = f"{fs_to_string(fs)}.json"
+    return proj_dir / PROJ_DIRS["results"] / site_name / config_name / results_name
 
 
 class Configuration(ResisticsModel):
+    """
+    The resistics configuration
+
+    Configuration can be customised by users who wish to use their own custom
+    processes for certain steps. This is most likely to be custom processes for
+    reading time data, calibration data or custom processes for solution
+    calculation.
+    """
+
+    name: str
+    """The name of the configuration"""
     time_readers: List[TimeReader] = [TimeReaderAscii(), TimeReaderNumpy()]
+    """Time readers in the configuration"""
+    time_processors: List[ResisticsProcess] = [InterpolateNans(), RemoveMean()]
+    """List of time processors to run"""
+    sensor_calibrator: ResisticsProcess = SensorCalibrator(
+        readers=[SensorCalibrationJSON()]
+    )
+    """The sensor calibrator and associated calibration file readers"""
     dec_setup: ResisticsProcess = DecimationSetup()
-    # decimator: ResisticsProcess = Decimator()
+    """Process to calculate decimation parameters"""
+    decimator: ResisticsProcess = Decimator()
+    """Process to decimate time data"""
     win_setup: ResisticsProcess = WindowSetup()
+    """Process to calculate windowing parameters"""
+    windower: ResisticsProcess = Windower()
+    """Process to window the decimated data"""
+    fourier: ResisticsProcess = FourierTransform()
+    """Process to perform the fourier transform"""
+    evals: ResisticsProcess = EvaluationFreqs()
+    """Process to get the spectra data at the evaluation frequencies"""
+
+
+def get_default_configuration():
+    """Get the default configuration"""
+    return Configuration(name="default")
 
 
 class Measurement(ResisticsModel):
@@ -80,6 +128,7 @@ class Measurement(ResisticsModel):
     information about other types of data
     """
 
+    site_name: str
     dir_path: Path
     metadata: TimeMetadata
     reader: TimeReader
@@ -303,6 +352,8 @@ class Project(ResisticsModel):
     def plot(self) -> go.Figure:
         """Plot a timeline of the project"""
         df = self.to_dataframe()
+        df["Site"] = df["site"]
+        df["Sampling frequency, Hz"] = df["fs"].values.astype(str)
         if len(df.index) == 0:
             logger.error("No measurements found to plot")
             return
@@ -310,8 +361,8 @@ class Project(ResisticsModel):
             df,
             x_start="first_time",
             x_end="last_time",
-            y="site",
-            color="fs",
+            y="Site",
+            color="Sampling frequency, Hz",
             title=str(self.dir_path),
         )
         return fig
@@ -435,7 +486,7 @@ class ProjectLoader(ResisticsProcess):
         subdirs = dir_subdirs(site_dir)
         measurements = {}
         for meas_dir in subdirs:
-            meas = self._load_measurement(meas_dir)
+            meas = self._load_measurement(site_dir.name, meas_dir)
             if meas is not None:
                 measurements[meas_dir.name] = meas
         if len(measurements) > 0:
@@ -452,7 +503,9 @@ class ProjectLoader(ResisticsProcess):
             config=self.config,
         )
 
-    def _load_measurement(self, meas_dir: Path) -> Union[Measurement, None]:
+    def _load_measurement(
+        self, site_name: str, meas_dir: Path
+    ) -> Union[Measurement, None]:
         """
         Load a measurement
 
@@ -462,6 +515,8 @@ class ProjectLoader(ResisticsProcess):
 
         Parameters
         ----------
+        site_name : str
+            The name of the Site
         meas_dir : Path
             The measurement subdirectory in the site time directory
 
@@ -475,6 +530,7 @@ class ProjectLoader(ResisticsProcess):
                 metadata = reader.run(dir_path=meas_dir, metadata_only=True)
                 logger.info(f"Read measurement {meas_dir} with {reader.name}")
                 return Measurement(
+                    site_name=site_name,
                     dir_path=meas_dir,
                     metadata=metadata,
                     reader=reader,
@@ -512,7 +568,7 @@ def load(dir_path: Union[Path, str], config: Optional[Configuration] = None) -> 
     if isinstance(dir_path, str):
         dir_path = Path(dir_path)
     if config is None:
-        config = Configuration()
+        config = get_default_configuration()
     loader = ProjectLoader(dir_path=dir_path, config=config)
     return loader.run()
 
@@ -555,3 +611,54 @@ def new(dir_path: Union[Path, str], proj_info: Dict[str, Any]) -> bool:
     metadata = ProjectMetadata(**proj_info)
     ProjectCreator(dir_path=dir_path, metadata=metadata).run()
     return True
+
+
+# def run_over_sites(proj: Project, sites: List[str], fnc: Callable):
+#     pass
+
+
+def process_time_to_spectra(proj: Project, meas: Measurement) -> None:
+    """
+    Process from time data to fourier spectra
+
+    Parameters
+    ----------
+    proj : Project
+        The project
+    meas : Measurement
+        The measurement to process
+    """
+    from resistics.spectra import SpectraDataWriter
+
+    config = proj.config
+
+    logger.info(f"Processing measurement {meas.site_name}, {meas.name}")
+    logger.info("Reading time data")
+    time_data = meas.reader.run(meas.dir_path, metadata=meas.metadata)
+    for process in config.time_processors:
+        logger.info(f"Running processor {process.name}")
+        time_data = process.run(time_data)
+    # calibration
+    logger.info("Calibrating time data")
+    calibrator = config.sensor_calibrator
+    calibration_path = get_calibration_path(proj.dir_path)
+    time_data = calibrator.run(calibration_path, time_data)
+    # # decimation
+    logger.info("Decimating time data")
+    dec_params = config.dec_setup.run(time_data.metadata.fs)
+    decimator = Decimator()
+    dec_data = decimator.run(dec_params, time_data)
+    # windowing
+    logger.info("Windowing time data")
+    win_params = config.win_setup.run(dec_data.metadata.n_levels, dec_data.metadata.fs)
+    win_data = Windower().run(proj.metadata.ref_time, win_params, dec_data)
+    # spectra
+    logger.info("Calculating spectra data")
+    spec_data = config.fourier.run(win_data)
+    # evaluation frequencies
+    spectra_path = get_meas_spectra_path(
+        proj.dir_path, meas.site_name, meas.name, config.name
+    )
+    logger.info(f"Calculating evaluation frequencies and saving to {spectra_path}")
+    eval_data = config.evals.run(dec_params, spec_data)
+    SpectraDataWriter().run(spectra_path, eval_data)
