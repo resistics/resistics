@@ -995,9 +995,15 @@ class ResisticsProcess(ResisticsModel):
 
         return json.loads(self.json())
 
-    def run(self):
+    def run(self, *args: Any):
         """
         Run the process
+
+        Parameters
+        ----------
+        args : Any
+            The parameters for the process, should be detailed for child
+            processors
 
         Raises
         ------
