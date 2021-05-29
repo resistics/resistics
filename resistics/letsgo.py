@@ -8,21 +8,23 @@ from loguru import logger
 from typing import Iterator, Union, Optional, List, Dict, Any
 from pathlib import Path
 from datetime import datetime
-from numbers import Number
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
+from resistics.errors import MetadataReadError, TimeDataReadError
 from resistics.common import ResisticsModel, WriteableMetadata, ResisticsProcess
 from resistics.sampling import HighResDateTime
-from resistics.time import TimeMetadata, TimeReader, TimeReaderNumpy, TimeReaderAscii
+from resistics.time import TimeMetadata, TimeData
+from resistics.time import TimeReader, TimeReaderNumpy, TimeReaderAscii
 from resistics.time import InterpolateNans, RemoveMean
 from resistics.calibrate import SensorCalibrationJSON, SensorCalibrator
-from resistics.decimate import DecimationSetup, Decimator
-from resistics.window import WindowSetup, Windower
-from resistics.spectra import FourierTransform, EvaluationFreqs
-
-# from resistics.regression import
+from resistics.decimate import DecimationParameters, DecimationSetup
+from resistics.decimate import Decimator, DecimatedData
+from resistics.window import WindowSetup, Windower, WindowedData
+from resistics.spectra import FourierTransform, EvaluationFreqs, SpectraData
+from resistics.regression import ImpedanceTensor, RegressionPreparer
+from resistics.regression import RegressionInputData
 
 
 PROJ_FILE = "resistics.json"
@@ -86,9 +88,92 @@ class Configuration(ResisticsModel):
     The resistics configuration
 
     Configuration can be customised by users who wish to use their own custom
-    processes for certain steps. This is most likely to be custom processes for
-    reading time data, calibration data or custom processes for solution
-    calculation.
+    processes for certain steps. In most cases, customisation will be for:
+
+    - Implementing new time data readers
+    - Implementing readers for specific calibration formats
+    - Adding new features to extract from the data
+
+    Examples
+    --------
+    Frequently, configuration will be used to change data readers.
+
+    >>> from resistics.letsgo import get_default_configuration
+    >>> config = get_default_configuration()
+    >>> config.name
+    'default'
+    >>> for tr in config.time_readers:
+    ...     tr.summary()
+    {
+        'name': 'TimeReaderAscii',
+        'apply_scalings': True,
+        'extension': '.ascii'
+    }
+    {
+        'name': 'TimeReaderNumpy',
+        'apply_scalings': True,
+        'extension': '.npy'
+    }
+    >>> config.sensor_calibrator.summary()
+    {
+        'name': 'SensorCalibrator',
+        'chans': None,
+        'readers': [
+            {
+                'name': 'SensorCalibrationJSON',
+                'extension': '.json',
+                'file_str': 'IC_$sensor$extension'
+            }
+        ]
+    }
+
+    To change these, it's best to make a new configuration with a different name
+
+    >>> from resistics.letsgo import Configuration
+    >>> from resistics.time import TimeReaderNumpy
+    >>> config = Configuration(name="myconfig", time_readers=[TimeReaderNumpy(apply_scalings=False)])
+    >>> for tr in config.time_readers:
+    ...     tr.summary()
+    {
+        'name': 'TimeReaderNumpy',
+        'apply_scalings': False,
+        'extension': '.npy'
+    }
+
+    Or for the sensor calibration
+
+    >>> from resistics.calibrate import SensorCalibrator, SensorCalibrationTXT
+    >>> calibration_reader = SensorCalibrationTXT(file_str="lemi120_IC_$serial$extension")
+    >>> calibrator = SensorCalibrator(chans=["Hx", "Hy", "Hz"], readers=[calibration_reader])
+    >>> config = Configuration(name="myconfig", sensor_calibrator=calibrator)
+    >>> config.sensor_calibrator.summary()
+    {
+        'name': 'SensorCalibrator',
+        'chans': ['Hx', 'Hy', 'Hz'],
+        'readers': [
+            {
+                'name': 'SensorCalibrationTXT',
+                'extension': '.TXT',
+                'file_str': 'lemi120_IC_$serial$extension'
+            }
+        ]
+    }
+
+    As a final example, create a configuration which used targetted windowing
+    instead of specified window sizes
+
+    >>> from resistics.letsgo import Configuration
+    >>> from resistics.window import WindowerTarget
+    >>> config = Configuration(name="window_target", windower=WindowerTarget(target=500))
+    >>> config.name
+    'window_target'
+    >>> config.windower.summary()
+    {
+        'name': 'WindowerTarget',
+        'target': 500,
+        'min_size': 64,
+        'olap_proportion': 0.25
+    }
     """
 
     name: str
@@ -97,10 +182,6 @@ class Configuration(ResisticsModel):
     """Time readers in the configuration"""
     time_processors: List[ResisticsProcess] = [InterpolateNans(), RemoveMean()]
     """List of time processors to run"""
-    sensor_calibrator: ResisticsProcess = SensorCalibrator(
-        readers=[SensorCalibrationJSON()]
-    )
-    """The sensor calibrator and associated calibration file readers"""
     dec_setup: ResisticsProcess = DecimationSetup()
     """Process to calculate decimation parameters"""
     decimator: ResisticsProcess = Decimator()
@@ -113,6 +194,12 @@ class Configuration(ResisticsModel):
     """Process to perform the fourier transform"""
     evals: ResisticsProcess = EvaluationFreqs()
     """Process to get the spectra data at the evaluation frequencies"""
+    sensor_calibrator: ResisticsProcess = SensorCalibrator(
+        readers=[SensorCalibrationJSON()]
+    )
+    """The sensor calibrator and associated calibration file readers"""
+    regression_preparer: ResisticsProcess = RegressionPreparer(tf=ImpedanceTensor())
+    """Process to prepare linear equations"""
 
 
 def get_default_configuration():
@@ -188,7 +275,7 @@ class Site(ResisticsModel):
             raise MeasurementNotFoundError(self.name, meas_name)
         return self.measurements[meas_name]
 
-    def get_measurements(self, fs: Optional[Number] = None) -> Dict[str, Measurement]:
+    def get_measurements(self, fs: Optional[float] = None) -> Dict[str, Measurement]:
         """Get dictionary of measurements with optional filter by sampling frequency"""
         if fs is None:
             return self.measurements
@@ -613,52 +700,259 @@ def new(dir_path: Union[Path, str], proj_info: Dict[str, Any]) -> bool:
     return True
 
 
-# def run_over_sites(proj: Project, sites: List[str], fnc: Callable):
-#     pass
-
-
-def process_time_to_spectra(proj: Project, meas: Measurement) -> None:
+def run_time_processors(config: Configuration, time_data: TimeData) -> TimeData:
     """
-    Process from time data to fourier spectra
+    Process time data
+
+    Parameters
+    ----------
+    config : Configuration
+        The configuration
+    time_data : TimeData
+        Time data to process
+
+    Returns
+    -------
+    TimeData
+        Process time data
+    """
+    for process in config.time_processors:
+        logger.info(f"Running processor {process.name}")
+        time_data = process.run(time_data)
+    return time_data
+
+
+def run_decimation(
+    config: Configuration,
+    time_data: TimeData,
+    dec_params: Optional[DecimationParameters] = None,
+) -> DecimatedData:
+    """
+    Decimate TimeData
+
+    Parameters
+    ----------
+    config : Configuration
+        The configuration
+    time_data : TimeData
+        Time data to decimate
+    dec_params : DecimationParameters
+        Number of levels, decimation factors etc.
+
+    Returns
+    -------
+    DecimatedData
+        Decimated time data
+    """
+    logger.info("Decimating time data")
+    if dec_params is None:
+        dec_params = config.dec_setup.run(time_data.metadata.fs)
+    return config.decimator.run(dec_params, time_data)
+
+
+def run_windowing(
+    config: Configuration, ref_time: HighResDateTime, dec_data: DecimatedData
+) -> WindowedData:
+    """
+    Window time data
+
+    Parameters
+    ----------
+    config : Configuration
+        The configuration
+    ref_time : HighResDateTime
+        The reference time
+    dec_data : DecimatedData
+        Decimated data to window
+
+    Returns
+    -------
+    WindowedData
+        The windowed data
+    """
+    logger.info("Windowing time data")
+    win_params = config.win_setup.run(dec_data.metadata.n_levels, dec_data.metadata.fs)
+    return config.windower.run(ref_time, win_params, dec_data)
+
+
+def run_fft(config: Configuration, win_data: WindowedData) -> SpectraData:
+    """
+    Run Fourier transform
+
+    Parameters
+    ----------
+    config : Configuration
+        The configuration
+    win_data : WindowedData
+        Windowed data
+
+    Returns
+    -------
+    SpectraData
+        Fourier transformed windowed data
+    """
+    logger.info("Calculating spectra data")
+    return config.fourier.run(win_data)
+
+
+def run_evals(
+    config: Configuration, dec_params: DecimationParameters, spec_data: SpectraData
+) -> SpectraData:
+    """
+    Run evaluation frequency data calculator
+
+    Parameters
+    ----------
+    config : Configuration
+        The configuration
+    dec_params : DecimationParameters
+        Decimation parameters with the evaluation frequencies
+    spec_data : SpectraData
+        The spectra data
+
+    Returns
+    -------
+    SpectraData
+        Spectra data at evaluation frequencies
+    """
+    logger.info("Calculating fourier coefficients at evaluation frequencies")
+    return config.evals.run(dec_params, spec_data)
+
+
+def run_sensor_calibration(
+    config: Configuration, calibration_path: Path, spec_data: SpectraData
+) -> SpectraData:
+    """
+    Run calibration
+
+    Parameters
+    ----------
+    config : Configuration
+        The configuration
+    calibration_path : Path
+        Path to calibration data
+    spec_data : SpectraData
+        Spectra data to calibrate
+
+    Returns
+    -------
+    SpectraData
+        Calibrated spectra data
+    """
+    logger.info("Calibrating time data")
+    return config.sensor_calibrator.run(calibration_path, spec_data)
+
+
+def run_regression_preparer(
+    config: Configuration, spec_data: SpectraData
+) -> RegressionInputData:
+    """
+    Prepare linear regression data
+
+    Parameters
+    ----------
+    config : Configuration
+        The configuration
+    spec_data : SpectraData
+        Spectra data
+
+    Returns
+    -------
+    RegressionInputData
+        Regression inputs for all evaluation frequencies
+    """
+    logger.info("Preparing regression input data")
+    return config.regression_preparer.run(spec_data)
+
+
+def quick(
+    dir_path: Path,
+    config: Optional[Configuration] = None,
+    calibration_path: Optional[Path] = None,
+) -> RegressionInputData:
+    """Quick processing of a single data directory"""
+    logger.info(f"Processing data in {dir_path}")
+    if config is None:
+        config = get_default_configuration()
+
+    logger.info("Reading time data")
+    time_data = None
+    for reader in config.time_readers:
+        try:
+            time_data = reader.run(dir_path)
+        except MetadataReadError:
+            logger.error(f"Unable to read metadata with reader {type(reader)}")
+        except TimeDataReadError:
+            logger.error("Failed reading time data")
+        except Exception:
+            logger.error("Unknown problem reading time data")
+    if time_data is None:
+        raise ValueError("Time data was not read")
+
+    ref_time = time_data.metadata.first_time
+    time_data = run_time_processors(config, time_data)
+    dec_params = config.dec_setup.run(time_data.metadata.fs)
+    dec_data = run_decimation(config, time_data, dec_params=dec_params)
+    win_data = run_windowing(config, ref_time, dec_data)
+    spec_data = run_fft(config, win_data)
+    eval_data = run_evals(config, dec_params, spec_data)
+    if calibration_path is not None:
+        eval_data = run_sensor_calibration(config, calibration_path, eval_data)
+    reg_data = run_regression_preparer(config, eval_data)
+    return reg_data
+
+
+def process_time_to_spectra(proj: Project, site_name: str, meas_name: str) -> None:
+    """
+    Process from time data to Fourier spectra
 
     Parameters
     ----------
     proj : Project
         The project
-    meas : Measurement
-        The measurement to process
+    site_name : str
+        The name of the site
+    meas_name : str
+        The name of the measurement to process
     """
     from resistics.spectra import SpectraDataWriter
 
+    logger.info(f"Processing measurement {site_name}, {meas_name}")
     config = proj.config
-
-    logger.info(f"Processing measurement {meas.site_name}, {meas.name}")
-    logger.info("Reading time data")
-    time_data = meas.reader.run(meas.dir_path, metadata=meas.metadata)
-    for process in config.time_processors:
-        logger.info(f"Running processor {process.name}")
-        time_data = process.run(time_data)
-    # calibration
-    logger.info("Calibrating time data")
-    calibrator = config.sensor_calibrator
     calibration_path = get_calibration_path(proj.dir_path)
-    time_data = calibrator.run(calibration_path, time_data)
-    # # decimation
-    logger.info("Decimating time data")
+
+    meas = proj[site_name][meas_name]
+    time_data = meas.reader.run(meas.dir_path, metadata=meas.metadata)
+    time_data = run_time_processors(config, time_data)
     dec_params = config.dec_setup.run(time_data.metadata.fs)
-    decimator = Decimator()
-    dec_data = decimator.run(dec_params, time_data)
-    # windowing
-    logger.info("Windowing time data")
-    win_params = config.win_setup.run(dec_data.metadata.n_levels, dec_data.metadata.fs)
-    win_data = Windower().run(proj.metadata.ref_time, win_params, dec_data)
-    # spectra
-    logger.info("Calculating spectra data")
-    spec_data = config.fourier.run(win_data)
-    # evaluation frequencies
+    dec_data = run_decimation(config, time_data, dec_params=dec_params)
+    win_data = run_windowing(config, proj.metadata.ref_time, dec_data)
+    spec_data = run_fft(config, win_data)
+    eval_data = run_evals(config, dec_params, spec_data)
+    eval_data = run_sensor_calibration(config, calibration_path, eval_data)
     spectra_path = get_meas_spectra_path(
         proj.dir_path, meas.site_name, meas.name, config.name
     )
-    logger.info(f"Calculating evaluation frequencies and saving to {spectra_path}")
-    eval_data = config.evals.run(dec_params, spec_data)
+    logger.info(f"Saving evaluation frequency data to {spectra_path}")
     SpectraDataWriter().run(spectra_path, eval_data)
+
+
+def process_spectra_to_tf(
+    proj: Project,
+    fs: float,
+    out_site: str,
+    in_site: Optional[str] = None,
+    remote_site: Optional[str] = None,
+    masks: Optional[Dict[str, str]] = None,
+):
+    from resistics.gather import Selector
+
+    sites = [proj[out_site]]
+    if in_site is not None:
+        sites.append(proj[in_site])
+    if remote_site is not None:
+        sites.append(proj[remote_site])
+
+    config = proj.config
+    dec_params = config.dec_setup.run(fs)
+    Selector().run(proj, sites, dec_params)
