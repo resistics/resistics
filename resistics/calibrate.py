@@ -12,6 +12,7 @@ Calibration data for induction coils is given in mV/nT. Because this is
 deconvolved from magnetic time data, which is in mV, the resultant magnetic
 time data is in nT.
 """
+from resistics.spectra import SpectraData
 from loguru import logger
 from typing import Optional, Any, List, Tuple, Union, Dict
 from pathlib import Path
@@ -21,7 +22,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from resistics.common import ResisticsProcess, WriteableMetadata
-from resistics.time import TimeMetadata, TimeData
+from resistics.spectra import SpectraMetadata
 from resistics.errors import CalibrationFileNotFound
 
 
@@ -145,7 +146,7 @@ class CalibrationReader(ResisticsProcess):
 class InstrumentCalibrationReader(CalibrationReader):
     """Parent class for reading instrument calibration files"""
 
-    def run(self, metadata: TimeMetadata) -> CalibrationData:
+    def run(self, metadata: SpectraMetadata) -> CalibrationData:
         raise NotImplementedError("To be implemented in child classes")
 
 
@@ -158,7 +159,9 @@ class SensorCalibrationReader(CalibrationReader):
 
     file_str: str = "IC_$sensor$extension"
 
-    def run(self, dir_path: Path, metadata: TimeMetadata, chan: str) -> CalibrationData:
+    def run(
+        self, dir_path: Path, metadata: SpectraMetadata, chan: str
+    ) -> CalibrationData:
         """
         Run the calibration file reader
 
@@ -166,7 +169,7 @@ class SensorCalibrationReader(CalibrationReader):
         ----------
         dir_path : Path
             The directory with calibration files
-        metadata : TimeMetadata
+        metadata : SpectraMetadata
             TimeData metadata
         chan : str
             The channel for which to search for a calibration file
@@ -178,7 +181,7 @@ class SensorCalibrationReader(CalibrationReader):
         """
         raise NotImplementedError("To be implemented in child classes")
 
-    def _get_path(self, dir_path: Path, metadata: TimeMetadata, chan: str) -> Path:
+    def _get_path(self, dir_path: Path, metadata: SpectraMetadata, chan: str) -> Path:
         """Get the expected Path to the calibration file"""
         chan_metadata = metadata.chans_metadata[chan]
         name = self.file_str.replace("$sensor", chan_metadata.sensor)
@@ -192,7 +195,9 @@ class SensorCalibrationJSON(SensorCalibrationReader):
 
     extension: str = ".json"
 
-    def run(self, dir_path: Path, metadata: TimeMetadata, chan: str) -> CalibrationData:
+    def run(
+        self, dir_path: Path, metadata: SpectraMetadata, chan: str
+    ) -> CalibrationData:
         """
         Get sensor calibration data from JSON file
 
@@ -200,7 +205,7 @@ class SensorCalibrationJSON(SensorCalibrationReader):
         ----------
         dir_path : Path
             The directory to search for a calibration file
-        metadata : TimeMetadata
+        metadata : SpectraMetadata
             The time data metadata
         chan : str
             The channel to get calibration data for
@@ -230,7 +235,9 @@ class SensorCalibrationTXT(SensorCalibrationReader):
 
     extension = ".TXT"
 
-    def run(self, dir_path: Path, metadata: TimeMetadata, chan: str) -> CalibrationData:
+    def run(
+        self, dir_path: Path, metadata: SpectraMetadata, chan: str
+    ) -> CalibrationData:
         """
         Get sensor calibration data
 
@@ -238,7 +245,7 @@ class SensorCalibrationTXT(SensorCalibrationReader):
         ----------
         dir_path : Path
             The directory to search for a calibration file
-        metadata : TimeMetadata
+        metadata : SpectraMetadata
             The time data metadata
         chan : str
             The channel to get calibration data for
@@ -361,94 +368,14 @@ class Calibrator(ResisticsProcess):
     chans: Optional[List[str]] = None
     """List of channels to calibrate"""
 
-
-class InstrumentCalibrator(Calibrator):
-    """
-    Apply instrument calibration
-
-    .. warning::
-
-        Not yet implemented
-    """
-
-    readers: List[InstrumentCalibrationReader]
-    """List of readers for reading in instrument calibration files"""
-
-
-class SensorCalibrator(Calibrator):
-    """
-    Calibrate sensors
-
-    This should typically be used for removing induction coil transfer functions
-
-    Parameters
-    ----------
-    readers : List[SensorCalibrationReader]
-        A list of sensor calibration readers that will be used to try and find a
-        suitable calibration file
-    """
-
-    readers: List[SensorCalibrationReader]
-    """List of readers for reading in sensor calibration files"""
-
-    def run(self, dir_path: Path, time_data: TimeData) -> TimeData:
-        """
-        Run the sensor calibrator
-
-        Parameters
-        ----------
-        dir_path : Path
-            The directory path to search for calibration files
-        time_data : TimeData
-            The time data to calibrate
-
-        Returns
-        -------
-        TimeData
-            Calibrated time data
-        """
-        from resistics.time import new_time_data
-
-        chans = self._get_chans(time_data.metadata.chans)
-        logger.info(f"Calibrating channels {chans}")
-        messages = [f"Calibrating channels {chans}"]
-        data = np.array(time_data.data)
-        for chan in chans:
-            cal_data = self._get_cal_data(dir_path, time_data.metadata, chan)
-            if cal_data is None:
-                logger.info(f"No calibration data for channel {chan}")
-                messages.append(f"No calibration data for channel {chan}")
-                continue
-            logger.info(f"Calibrating {chan} with data from {cal_data.file_path}")
-            idx = time_data.get_chan_index(chan)
-            data[idx] = self._calibrate(time_data.metadata.fs, data[idx], cal_data)
-            messages.append(f"Calibrated {chan} with data from {cal_data.file_path}")
-        record = self._get_record(messages)
-        return new_time_data(time_data, data=data, record=record)
-
     def _get_chans(self, chans: List[str]) -> List[str]:
         """Get the channels to calibrate"""
         if self.chans is None:
             return chans
         return [x for x in self.chans if x in chans]
 
-    def _get_cal_data(
-        self, dir_path: Path, metadata: TimeMetadata, chan: str
-    ) -> Union[CalibrationData, None]:
-        """Get the calibration data"""
-        cal_data = None
-        for reader in self.readers:
-            try:
-                cal_data = reader.run(dir_path, metadata, chan)
-                break
-            except CalibrationFileNotFound:
-                logger.warning(f"Calibration reader {reader.name} did not find file")
-            except Exception:
-                logger.warning(f"Calibration reader {reader.name} failed reading file")
-        return cal_data
-
     def _calibrate(
-        self, fs: float, chan_data: np.ndarray, cal_data: CalibrationData
+        self, freqs: List[float], chan_data: np.ndarray, cal_data: CalibrationData
     ) -> np.ndarray:
         """
         Calibrate a channel
@@ -456,13 +383,10 @@ class SensorCalibrator(Calibrator):
         This is essentially a deconvolution, which means a division in frequency
         domain.
 
-        The data is padded to a power of 2 size before calibration as this
-        results in faster fourier transform
-
         Parameters
         ----------
-        fs : float
-            The sampling frequency
+        freqs : List[float]
+            List of frequencies to interpolate calibration data to
         chan_data : np.ndarray
             Channel data
         cal_data : CalibrationData
@@ -473,18 +397,9 @@ class SensorCalibrator(Calibrator):
         np.ndarray
             Calibrated data
         """
-        import numpy.fft as fft
-
-        size_data = chan_data.size
-        pow2 = int(np.ceil(np.log2(size_data)))
-        size_pow2 = np.power(2, pow2)
-        logger.debug(f"Padding data of size {size_data} to {size_pow2}")
-        fft_data = fft.rfft(chan_data, n=size_pow2, norm="ortho", axis=0)
-        freqs = fft.rfftfreq(n=size_pow2, d=1.0 / fs)
-        transfunc = self._interpolate(freqs, cal_data)
-        fft_data = fft_data / transfunc
-        new_chan_data = fft.irfft(fft_data, n=size_pow2, norm="ortho", axis=0)
-        return new_chan_data.astype(chan_data.dtype)[:size_data]
+        transfunc = self._interpolate(np.array(freqs), cal_data)
+        chan_data = chan_data[:, np.newaxis, :] / transfunc[np.newaxis, :]
+        return np.squeeze(chan_data)
 
     def _interpolate(
         self, freqs: np.ndarray, cal_data: CalibrationData
@@ -513,3 +428,60 @@ class SensorCalibrator(Calibrator):
         mag = np.interp(freqs, cal_data.frequency, cal_data.magnitude)
         phs = np.interp(freqs, cal_data.frequency, cal_data.phase)
         return mag * np.exp(1j * phs)
+
+
+class InstrumentCalibrator(Calibrator):
+
+    readers: List[InstrumentCalibrationReader]
+    """List of readers for reading in instrument calibration files"""
+
+    def run(self, dir_path, spec_data: SpectraData) -> SpectraData:
+        """Run the instrument calibration"""
+        raise NotImplementedError("To be implemented")
+
+
+class SensorCalibrator(Calibrator):
+
+    readers: List[SensorCalibrationReader]
+    """List of readers for reading in sensor calibration files"""
+
+    def run(self, dir_path: Path, spec_data: SpectraData) -> SpectraData:
+        """Calibrate Spectra data"""
+        chans = self._get_chans(spec_data.metadata.chans)
+        logger.info(f"Calibrating channels {chans}")
+        messages = [f"Calibrating channels {chans}"]
+        data = {}
+        for ilevel in range(spec_data.metadata.n_levels):
+            data[ilevel] = np.array(spec_data.data[ilevel], dtype=np.complex64)
+        for chan in chans:
+            cal_data = self._get_cal_data(dir_path, spec_data.metadata, chan)
+            if cal_data is None:
+                logger.info(f"No calibration data for channel {chan}")
+                messages.append(f"No calibration data for channel {chan}")
+                continue
+            logger.info(f"Calibrating {chan} with data from {cal_data.file_path}")
+            idx = spec_data.metadata.chans.index(chan)
+            for ilevel in range(spec_data.metadata.n_levels):
+                level_metadata = spec_data.metadata.levels_metadata[ilevel]
+                data[ilevel][:, idx] = self._calibrate(
+                    level_metadata.freqs, data[ilevel][:, idx], cal_data
+                )
+            messages.append(f"Calibrated {chan} with data from {cal_data.file_path}")
+        metadata = SpectraMetadata(**spec_data.metadata.dict())
+        metadata.history.add_record(self._get_record(messages))
+        return SpectraData(metadata, data)
+
+    def _get_cal_data(
+        self, dir_path: Path, metadata: SpectraMetadata, chan: str
+    ) -> Union[CalibrationData, None]:
+        """Get the calibration data"""
+        cal_data = None
+        for reader in self.readers:
+            try:
+                cal_data = reader.run(dir_path, metadata, chan)
+                break
+            except CalibrationFileNotFound:
+                logger.warning(f"Calibration reader {reader.name} did not find file")
+            except Exception:
+                logger.warning(f"Calibration reader {reader.name} failed reading file")
+        return cal_data
