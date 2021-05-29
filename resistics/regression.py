@@ -5,19 +5,18 @@ TO BE IMPLEMENTED
 """
 from loguru import logger
 from typing import List, Optional, Dict, Tuple, Any, Union
-import attr
+from pydantic import validator
+from tqdm import tqdm
 import numpy as np
 import statsmodels.api as sm
 from statsmodels.regression.linear_model import RegressionResultsWrapper
 from statsmodels.robust.scale import HuberScale
-from sklearn.linear_model._base import LinearModel
 
-from resistics.common import ResisticsData, ResisticsProcess
-from resistics.spectra import SpectraTimeData, SpectraDecimatedData
-from resistics.project import Project
+from resistics.common import ResisticsData, ResisticsProcess, Metadata
+from resistics.spectra import SpectraData
 
 
-class TransferFunction(ResisticsData):
+class TransferFunction(Metadata):
     """
     Define the transfer function
 
@@ -62,20 +61,42 @@ class TransferFunction(ResisticsData):
     | ciao     |   | ciao_hello        ciao_hi_there     |
     """
 
-    def __init__(
-        self,
-        in_chans: List[str],
-        out_chans: List[str],
-        cross_chans: Optional[List[str]] = None,
-    ):
-        self.in_chans = in_chans
-        self.out_chans = out_chans
-        if cross_chans is None:
-            logger.info(f"Setting cross chans to in_chans {in_chans}")
-            self.cross_chans = in_chans
-        self.n_in = len(self.in_chans)
-        self.n_out = len(self.out_chans)
-        self.n_cross = len(self.cross_chans)
+    in_chans: List[str]
+    out_chans: List[str]
+    cross_chans: Optional[List[str]] = None
+    n_in: Optional[int] = None
+    n_out: Optional[int] = None
+    n_cross: Optional[int] = None
+
+    @validator("cross_chans", always=True)
+    def validate_cross_chans(
+        cls, value: Union[None, List[str]], values: Dict[str, Any]
+    ) -> List[str]:
+        """Validate cross spectra channels"""
+        if value is None:
+            return values["in_chans"]
+        return value
+
+    @validator("n_in", always=True)
+    def validate_n_in(cls, value: Union[None, int], values: Dict[str, Any]) -> int:
+        """Validate number of input channels"""
+        if value is None:
+            return len(values["in_chans"])
+        return value
+
+    @validator("n_out", always=True)
+    def validate_n_out(cls, value: Union[None, int], values: Dict[str, Any]) -> int:
+        """Validate number of output channels"""
+        if value is None:
+            return len(values["in_chans"])
+        return value
+
+    @validator("n_cross", always=True)
+    def validate_n_cross(cls, value: Union[None, int], values: Dict[str, Any]) -> int:
+        """Validate number of cross channels"""
+        if value is None:
+            return len(values["cross_chans"])
+        return value
 
     def n_eqns_per_output(self) -> int:
         return len(self.cross_chans)
@@ -83,19 +104,12 @@ class TransferFunction(ResisticsData):
     def n_regressors(self) -> int:
         return self.n_in
 
-    def to_dict(self):
-        return {
-            "in_chans": self.in_chans,
-            "out_chans": self.out_chans,
-            "cross_chans": self.cross_chans,
-        }
-
     def to_string(self):
         n_lines = max(len(self.in_chans), len(self.out_chans))
         lens = [len(x) for x in self.in_chans] + [len(x) for x in self.out_chans]
         max_len = max(lens)
         line_equals = (n_lines - 1) // 2
-        outstr = f"{self.type_to_string()}\n"
+        outstr = ""
         for il in range(n_lines):
             out_chan = self._out_chan_string(il, max_len)
             in_chan = self._in_chan_string(il, max_len)
@@ -141,8 +155,8 @@ class ImpedanceTensor(TransferFunction):
     | Ey |   | Ey_Hx Ey_Hy | | Hy |
     """
 
-    def __init__(self, cross_chans: Optional[List[str]] = None):
-        super().__init__(["Hx", "Hy"], ["Ex", "Ey"], cross_chans)
+    in_chans: List[str] = ["Hx", "Hy"]
+    out_chans: List[str] = ["Ex", "Ey"]
 
 
 class Tipper(TransferFunction):
@@ -159,30 +173,30 @@ class Tipper(TransferFunction):
                              | Hy |
     """
 
-    def __init__(self, cross_chans: Optional[List[str]] = None):
-        super().__init__(["Hx", "Hy"], ["Hz"], cross_chans)
+    in_chans: List[str] = ["Hx", "Hy"]
+    out_chans: List[str] = ["Hz"]
 
 
-@attr.s(slots=True, auto_attribs=True)
 class SiteSelector(ResisticsData):
     in_site: str = ""
+    out_site: str = ""
     remote_site: str = ""
 
 
-class WindowDataFetcher(ResisticsData):
-    # class to get the windows we need for the processing
-    def __init__(self):
-        pass
+# class WindowDataFetcher(ResisticsData):
+#     # class to get the windows we need for the processing
+#     def __init__(self):
+#         pass
 
 
-class WindowSelector(ResisticsProcess):
-    def __init__(self, proj: Project, sites: SiteSelector):
-        self.proj = proj
-        self.sites = sites
+# class WindowSelector(ResisticsProcess):
+#     def __init__(self, proj: Project, sites: SiteSelector):
+#         self.proj = proj
+#         self.sites = sites
 
-    def run(self, out_site: str):
-        # select the windows
-        pass
+#     def run(self, out_site: str):
+#         # select the windows
+#         pass
 
 
 class RegressionInputData(ResisticsData):
@@ -208,32 +222,30 @@ class RegressionInputData(ResisticsData):
 
 
 class RegressionPreparer(ResisticsProcess):
-    def __init__(
-        self,
-        tf: TransferFunction,
-        coh_thresh: Optional[float] = None,
-        coh_chans: Optional[List[str]] = None,
-    ):
-        self.tf = tf
-        self.coh_thresh = coh_thresh
-        self.coh_chans = coh_chans
 
-    def run(self, evalspec_data: SpectraDecimatedData) -> RegressionInputData:
+    tf: TransferFunction
+    coh_thresh: Optional[float] = None
+    coh_chans: Optional[List[str]] = None
+
+    def run(self, spec_data: SpectraData) -> RegressionInputData:
         """Construct the linear equation for solving"""
         freqs = []
         obs = []
         preds = []
-        for ilevel in range(evalspec_data.n_levels):
-            spec_data = evalspec_data.get_level(ilevel)
-            out_powers, in_powers = self._get_cross_powers(self.tf, spec_data)
-            for idx, freq in enumerate(spec_data.freqs):
+        for ilevel in range(spec_data.metadata.n_levels):
+            level_metadata = spec_data.metadata.levels_metadata[ilevel]
+            out_powers, in_powers = self._get_cross_powers(self.tf, spec_data, ilevel)
+            for idx, freq in enumerate(level_metadata.freqs):
+                logger.info(
+                    f"Preparing regression data: level {ilevel}, freq. {idx} = {freq}"
+                )
                 freqs.append(freq)
                 obs.append(self._get_obs(self.tf, out_powers[..., idx]))
                 preds.append(self._get_preds(self.tf, in_powers[..., idx]))
         return RegressionInputData(self.tf, freqs, obs, preds)
 
     def _get_cross_powers(
-        self, tf: TransferFunction, spec_data: SpectraTimeData
+        self, tf: TransferFunction, spec_data: SpectraData, level: int
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Get cross powers
@@ -263,6 +275,8 @@ class RegressionPreparer(ResisticsProcess):
             Definition of transfer function
         spec_data : SpectraTimeData
             Spectra data for a decimation level
+        level : int
+            The decimation level
 
         Returns
         -------
@@ -271,9 +285,9 @@ class RegressionPreparer(ResisticsProcess):
             channels
         """
         # what cross powers do we need
-        out_data = spec_data.get_chans(tf.out_chans)
-        in_data = spec_data.get_chans(tf.in_chans)
-        cross_data = spec_data.get_chans(tf.cross_chans)
+        out_data = spec_data.get_chans(level, tf.out_chans)
+        in_data = spec_data.get_chans(level, tf.in_chans)
+        cross_data = spec_data.get_chans(level, tf.cross_chans)
         cross_data = np.conj(cross_data[:, np.newaxis, ...])
 
         # multiply using broadcasting
@@ -389,6 +403,7 @@ class RegressionPreparer(ResisticsProcess):
         return preds
 
     def _get_preds_win(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
+        """Get predictors for a window"""
         preds_win = np.empty((tf.n_cross * 2, tf.n_in * 2), dtype=float)
         in_powers = np.swapaxes(in_powers, 0, 1)
         in_real = np.real(in_powers)
@@ -441,12 +456,17 @@ class Solution(ResisticsData):
 
 
 class Solver(ResisticsProcess):
+    """General resistics solver"""
+
     def run(self, regression_input: RegressionInputData):
         raise NotImplementedError("run should only be called from child classes")
 
 
 class SolverStandard(Solver):
+    """Standard linear solver"""
+
     def _get_tensor(self, tf: TransferFunction, params: np.ndarray):
+        """Rearrange parameters into to help shape a tensor"""
         values = np.empty((tf.n_in), dtype=np.complex128)
         for iin in range(tf.n_in):
             idx_param = iin * 2
@@ -455,11 +475,14 @@ class SolverStandard(Solver):
 
 
 class SolverStatsmodels(SolverStandard):
+    """Statsmodels solver"""
+
     def run(self, regression_input: RegressionInputData):
         n_freqs = regression_input.n_freqs
         tf = regression_input.tf
         tensors = np.ndarray((n_freqs, tf.n_out, tf.n_in), dtype=np.complex128)
-        for ifreq in range(n_freqs):
+        logger.info("Running solver over evaluation frequencies")
+        for ifreq in tqdm(range(n_freqs)):
             for iout, out_chan in enumerate(tf.out_chans):
                 obs, preds = regression_input.get_inputs(ifreq, out_chan)
                 result = self.run_kernel(obs, preds)
@@ -473,6 +496,8 @@ class SolverStatsmodels(SolverStandard):
 
 
 class OLSSolver(SolverStatsmodels):
+    """Statsmodels Ordinary Least Squares solver"""
+
     def run_kernel(
         self, obs: np.ndarray, preds: np.ndarray
     ) -> RegressionResultsWrapper:
@@ -481,69 +506,42 @@ class OLSSolver(SolverStatsmodels):
 
 
 class RLMSolver(SolverStatsmodels):
-    def __init__(
-        self,
-        M: Optional[sm.robust.norms.RobustNorm] = None,
-        cov: str = "H1",
-        scale_est: str = "mad",
-    ):
-        self.M = sm.robust.norms.HuberT() if M is None else M
-        self.cov = cov
-        self.scale_est = scale_est
+    """Statsmodels Robust Least Squares solver"""
 
-    def parameters(self) -> Dict[str, Any]:
-        return {
-            "M": type(self.M).__name__,
-            "cov": self.cov,
-            "scale_est": self.scale_est,
-        }
+    cov: str = "H1"
+    scale_est: str = "mad"
 
     def run_kernel(
         self, obs: np.ndarray, preds: np.ndarray
     ) -> RegressionResultsWrapper:
-        model = sm.RLM(obs, preds, M=self.M)
-        return model.fit()
+        model = sm.RLM(obs, preds, M=sm.robust.norms.HuberT())
+        return model.fit(cov=self.cov, scale_est=HuberScale())
 
 
 class MMSolver(SolverStatsmodels):
-    def __init__(
-        self,
-        M1: Optional[sm.robust.norms.RobustNorm] = None,
-        M2: Optional[sm.robust.norms.RobustNorm] = None,
-        scale_est: Union[str, HuberScale] = "mad",
-        cov: str = "H1",
-    ):
-        self.M1 = sm.robust.norms.HuberT() if M1 is None else M1
-        self.M2 = sm.robust.norms.TukeyBiweight() if M2 is None else M2
-        self.scale_est = scale_est
-        self.cov = cov
+    """Statsmodels MM estimates solver"""
 
-    def parameters(self) -> Dict[str, Any]:
-        if isinstance(self.scale_est, str):
-            scale_est = self.scale_est
-        else:
-            scale_est = type(self.scale_est).__name__
-        return {
-            "M1": type(self.M1).__name__,
-            "M2": type(self.M2).__name__,
-            "scale_est": scale_est,
-            "cov": self.cov,
-        }
+    cov: str = "H1"
+    scale_est: str = "mad"
 
     def run_kernel(
         self, obs: np.ndarray, preds: np.ndarray
     ) -> RegressionResultsWrapper:
-        model1 = sm.RLM(obs, preds, M=self.M1)
-        result = model1.fit(cov=self.cov, scale_est=HuberScale())
-        model2 = sm.RLM(obs, preds, M=self.M2)
+        model1 = sm.RLM(obs, preds, M=sm.robust.norms.HuberT())
+        result = model1.fit(cov=self.cov, scale_est=self.scale_est)
+        model2 = sm.RLM(obs, preds, M=sm.robust.norms.TukeyBiweight())
         return model2.fit(
             cov=self.cov, scale_est=self.scale_est, start_params=result.params
         )
 
 
 class SolverScikitLinear(SolverStandard):
-    def __init__(self, model: LinearModel):
-        self.model = model
+    """General solver for Scikit linear models"""
+
+    model: Any
+
+    # def __init__(self, model: LinearModel):
+    #     self.model = model
 
     def parameters(self) -> Dict[str, Any]:
         params = {"model": type(self.model).__name__}
@@ -554,7 +552,7 @@ class SolverScikitLinear(SolverStandard):
         n_freqs = regression_input.n_freqs
         tf = regression_input.tf
         tensors = np.ndarray((n_freqs, tf.n_out, tf.n_in), dtype=np.complex128)
-        for ifreq in range(n_freqs):
+        for ifreq in tqdm(range(n_freqs)):
             for iout, out_chan in enumerate(tf.out_chans):
                 obs, preds = regression_input.get_inputs(ifreq, out_chan)
                 params = self.run_kernel(obs, preds)
@@ -576,14 +574,24 @@ class SolverScikitRANSAC(SolverScikitLinear):
 
 
 class SolverScikitMCD(SolverScikitLinear):
+
+    max_iter: int = 2
+
     def run_kernel(self, obs: np.ndarray, preds: np.ndarray) -> np.ndarray:
         from sklearn.covariance import MinCovDet
+        from sklearn.linear_model import LinearRegression
 
+        model = LinearRegression()
         mcd = MinCovDet()
-        mcd.fit(np.hstack((preds, obs.reshape(len(obs), 1))))
-        mask = mcd.support_
-        self.model.fit(preds[mask], obs[mask])
-        return self.model.coef_
+        weights = np.ones_like(obs)
+        for it in range(self.max_iter):
+            logger.info(f"Running iteration {it}")
+            model.fit(preds, obs, sample_weight=weights)
+            resids = np.absolute(obs - model.predict(preds))
+            R = np.array((resids[0::2], resids[1::2])).T
+            mcd.fit(R)
+            weights = np.repeat(mcd.support_.astype(float), 2)
+        return model.coef_
 
     # def __init__(
     #     self,
