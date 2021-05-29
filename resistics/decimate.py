@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 from resistics.sampling import HighResDateTime
 from resistics.common import ResisticsProcess, ResisticsModel, ResisticsData
 from resistics.common import ResisticsWriter, History, Metadata, WriteableMetadata
-from resistics.time import TimeData
+from resistics.time import ChanMetadata, TimeData
 
 
 class DecimationParameters(ResisticsModel):
@@ -391,7 +391,8 @@ class DecimatedMetadata(WriteableMetadata):
     easting: float = -999.0
     northing: float = -999.0
     elevation: float = -999.0
-    levels_metadata: List[DecimatedLevelMetadata] = []
+    chans_metadata: Dict[str, ChanMetadata]
+    levels_metadata: List[DecimatedLevelMetadata]
     history: History = History()
 
     class Config:
