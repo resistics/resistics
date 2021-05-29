@@ -177,28 +177,6 @@ class Tipper(TransferFunction):
     out_chans: List[str] = ["Hz"]
 
 
-class SiteSelector(ResisticsData):
-    in_site: str = ""
-    out_site: str = ""
-    remote_site: str = ""
-
-
-# class WindowDataFetcher(ResisticsData):
-#     # class to get the windows we need for the processing
-#     def __init__(self):
-#         pass
-
-
-# class WindowSelector(ResisticsProcess):
-#     def __init__(self, proj: Project, sites: SiteSelector):
-#         self.proj = proj
-#         self.sites = sites
-
-#     def run(self, out_site: str):
-#         # select the windows
-#         pass
-
-
 class RegressionInputData(ResisticsData):
     def __init__(
         self,
