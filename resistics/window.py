@@ -33,6 +33,7 @@ import pandas as pd
 from resistics.common import History, ResisticsModel, ResisticsData, ResisticsProcess
 from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
 from resistics.sampling import RSDateTime, RSTimeDelta
+from resistics.time import ChanMetadata
 from resistics.decimate import DecimatedLevelMetadata, DecimatedData
 
 
@@ -734,7 +735,8 @@ class WindowedMetadata(WriteableMetadata):
     easting: float = -999.0
     northing: float = -999.0
     elevation: float = -999.0
-    levels_metadata: List[WindowedLevelMetadata] = []
+    chans_metadata: Dict[str, ChanMetadata]
+    levels_metadata: List[WindowedLevelMetadata]
     history: History = History()
 
     class Config:
@@ -745,8 +747,6 @@ class WindowedMetadata(WriteableMetadata):
 class WindowedData(ResisticsData):
     """
     Windows of a DecimatedData object
-
-
     """
 
     def __init__(
@@ -1119,6 +1119,105 @@ class Windower(ResisticsProcess):
         metadata_dict["n_levels"] = len(levels_metadata)
         metadata_dict["levels_metadata"] = levels_metadata
         return WindowedMetadata(**metadata_dict)
+
+
+class WindowerTarget(Windower):
+    """
+    Windower that selects window sizes to meet a target number of windows
+
+    The minimum window size in window parameters will be respected even if the
+    generated number of windows is below the target. This is to avoid situations
+    where excessively small windows sizes are selected.
+
+    Parameters
+    ----------
+    target : int
+        The target number of windows for each decimation level
+    olap_proportion : float
+        The overlap proportion of the window size
+    """
+
+    target: int = 1000
+    min_size: int = 64
+    olap_proportion: float = 0.25
+
+    def run(
+        self,
+        ref_time: RSDateTime,
+        win_params: WindowParameters,
+        dec_data: DecimatedData,
+    ) -> WindowedData:
+        metadata_dict = dec_data.metadata.dict()
+        data = {}
+        win_levels_metadata = []
+        messages = []
+        for ilevel in range(0, dec_data.metadata.n_levels):
+            level_metadata = dec_data.metadata.levels_metadata[ilevel]
+            win_size = self._get_win_size(level_metadata)
+            olap_size = int(np.floor(self.olap_proportion * win_size))
+            logger.info(f"Windowing decimation level {ilevel}")
+            logger.info(f"Window size {win_size}, overlap size {olap_size}")
+            win_table = get_win_table(ref_time, level_metadata, win_size, olap_size)
+            n_wins = len(win_table.index)
+            messages.append(f"Level {ilevel}, generated {n_wins} windows")
+            messages.append(f"Window size {win_size}, olap_size {olap_size}")
+            if n_wins < win_params.min_n_wins:
+                logger.debug(f"Number windows {n_wins} < min. {win_params.min_n_wins}")
+                messages.append(f"Num. windows {n_wins} < min. {win_params.min_n_wins}")
+                messages.append(f"Level {ilevel} incomplete, terminating windowing")
+                break
+            win_level_data = self._get_level_data(
+                dec_data.get_level(ilevel),
+                win_table,
+                dec_data.metadata.n_chans,
+                win_size,
+                olap_size,
+            )
+            win_level_metadata = self._get_level_metadata(
+                level_metadata,
+                win_table,
+                win_size,
+                olap_size,
+            )
+            data[ilevel] = win_level_data
+            win_levels_metadata.append(win_level_metadata)
+        metadata = self._get_metadata(metadata_dict, win_levels_metadata)
+        metadata.history.add_record(self._get_record(messages))
+        logger.info("Windowing completed")
+        return WindowedData(metadata, data)
+
+    def _get_win_size(self, level_metadata: DecimatedLevelMetadata) -> int:
+        r"""
+        Get window size that gives close to the target number of windows
+
+        The window size increments by (window size - overlap size), therefore the
+        follwing equation is solved,
+
+        .. math::
+
+            n_samples / ((1 - overlap)*window_size) = 1000
+
+        Rearrangning, get,
+
+        .. math::
+
+            window_size = n_samples / ((1 - overlap)*1000)
+
+        Parameters
+        ----------
+        level_metadata : DecimatedLevelMetadata
+            The metadata for the decimation level
+
+        Returns
+        -------
+        int
+            The window size
+        """
+        win_size = level_metadata.n_samples / ((1 - self.olap_proportion) * self.target)
+        win_size = int(np.floor(win_size))
+        if win_size < self.min_size:
+            return self.min_size
+        return win_size
 
 
 class WindowedDataWriter(ResisticsWriter):
