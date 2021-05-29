@@ -712,10 +712,15 @@ class WindowedLevelMetadata(Metadata):
     """Metadata for a windowed level"""
 
     fs: float
+    """The sampling frequency for the decimation level"""
     n_wins: int
+    """The number of windows"""
     win_size: PositiveInt
+    """The window size in samples"""
     olap_size: PositiveInt
+    """The overlap size in samples"""
     index_offset: int
+    """The global window offset for local window 0"""
 
     @property
     def dt(self):
@@ -1018,20 +1023,22 @@ class Windower(ResisticsProcess):
         win_levels_metadata = []
         messages = []
         for ilevel in range(0, dec_data.metadata.n_levels):
+            logger.info(f"Windowing decimation level {ilevel}")
             win_size = win_params.get_win_size(ilevel)
             olap_size = win_params.get_olap_size(ilevel)
-            logger.info(f"Windowing decimation level {ilevel}")
-            logger.info(f"Window size {win_size}, overlap size {olap_size}")
             level_metadata = dec_data.metadata.levels_metadata[ilevel]
             win_table = get_win_table(ref_time, level_metadata, win_size, olap_size)
             n_wins = len(win_table.index)
+            logger.info(f"{n_wins} windows, size {win_size}, overlap {olap_size}")
             messages.append(f"Level {ilevel}, generated {n_wins} windows")
             messages.append(f"Window size {win_size}, olap_size {olap_size}")
+
             if n_wins < win_params.min_n_wins:
                 logger.debug(f"Number windows {n_wins} < min. {win_params.min_n_wins}")
                 messages.append(f"Num. windows {n_wins} < min. {win_params.min_n_wins}")
                 messages.append(f"Level {ilevel} incomplete, terminating windowing")
                 break
+
             win_level_data = self._get_level_data(
                 dec_data.get_level(ilevel),
                 win_table,
@@ -1152,20 +1159,22 @@ class WindowerTarget(Windower):
         win_levels_metadata = []
         messages = []
         for ilevel in range(0, dec_data.metadata.n_levels):
+            logger.info(f"Windowing decimation level {ilevel}")
             level_metadata = dec_data.metadata.levels_metadata[ilevel]
             win_size = self._get_win_size(level_metadata)
             olap_size = int(np.floor(self.olap_proportion * win_size))
-            logger.info(f"Windowing decimation level {ilevel}")
-            logger.info(f"Window size {win_size}, overlap size {olap_size}")
             win_table = get_win_table(ref_time, level_metadata, win_size, olap_size)
             n_wins = len(win_table.index)
+            logger.info(f"{n_wins} windows, size {win_size}, overlap {olap_size}")
             messages.append(f"Level {ilevel}, generated {n_wins} windows")
             messages.append(f"Window size {win_size}, olap_size {olap_size}")
+
             if n_wins < win_params.min_n_wins:
                 logger.debug(f"Number windows {n_wins} < min. {win_params.min_n_wins}")
                 messages.append(f"Num. windows {n_wins} < min. {win_params.min_n_wins}")
                 messages.append(f"Level {ilevel} incomplete, terminating windowing")
                 break
+
             win_level_data = self._get_level_data(
                 dec_data.get_level(ilevel),
                 win_table,
@@ -1190,18 +1199,18 @@ class WindowerTarget(Windower):
         r"""
         Get window size that gives close to the target number of windows
 
-        The window size increments by (window size - overlap size), therefore the
+        Windows increment by (window size - overlap size), therefore the
         follwing equation is solved,
 
         .. math::
 
-            n_samples / ((1 - overlap)*window_size) = 1000
+            n_{samples} / ((1 - n_{overlap})*n_{window}) = target
 
         Rearrangning, get,
 
         .. math::
 
-            window_size = n_samples / ((1 - overlap)*1000)
+            n_{window} = n_{samples} / ((1 - n_{overlap})*target)
 
         Parameters
         ----------
