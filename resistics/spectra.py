@@ -10,6 +10,7 @@ import numpy as np
 
 from resistics.common import ResisticsData, ResisticsProcess, History
 from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
+from resistics.time import ChanMetadata
 from resistics.decimate import DecimationParameters
 from resistics.window import WindowedData, WindowedLevelMetadata
 
@@ -58,7 +59,8 @@ class SpectraMetadata(WriteableMetadata):
     easting: float = -999.0
     northing: float = -999.0
     elevation: float = -999.0
-    levels_metadata: List[SpectraLevelMetadata] = []
+    chans_metadata: Dict[str, ChanMetadata]
+    levels_metadata: List[SpectraLevelMetadata]
     history: History = History()
 
     class Config:
@@ -160,10 +162,10 @@ class FourierTransform(ResisticsProcess):
         from scipy import signal
         from scipy.fft import rfft
 
+        # detrend and apply window
         if self.detrend is not None:
             data = signal.detrend(data, axis=-1, type=self.detrend)
-        # apply window
-        win_coeffs = self._get_window(metadata.win_size)
+        win_coeffs = self._get_window(metadata.win_size).astype(data.dtype)
         data = data * win_coeffs
         # perform the fft on the last axis
         return rfft(
@@ -244,58 +246,6 @@ class EvaluationFreqs(ResisticsProcess):
         metadata_dict.pop("file_info")
         metadata_dict["levels_metadata"] = levels_metadata
         return SpectraMetadata(**metadata_dict)
-
-
-# class SpectraSmoother(ResisticsProcess):
-#     def __init__(self, sigma: int = 1):
-#         self.sigma = sigma
-
-#     def run(self, decspec_data: SpectraDecimatedData) -> SpectraDecimatedData:
-#         from scipy.ndimage import gaussian_filter1d
-
-#         smoothspec = {}
-#         messages = []
-#         for ilevel in range(decspec_data.n_levels):
-#             spec_data = decspec_data.get_level(ilevel)
-#             mag, phs = spec_data.get_mag_phs(unwrap=True)
-#             new_mag = gaussian_filter1d(mag, self.sigma, axis=-1)
-#             new_phs = gaussian_filter1d(phs, self.sigma, axis=-1)
-#             new_phs = (new_phs + np.pi) % (2 * np.pi) - np.pi
-#             data = new_mag * np.exp(1j * new_phs)
-#             smoothspec[ilevel] = SpectraTimeData(
-#                 spec_data.metadata, spec_data.chans, spec_data.freqs, data
-#             )
-
-#             # import matplotlib.pyplot as plt
-
-#             # spec_data = decspec_data.get_level(ilevel)
-#             # n_chans = data.shape[-2]
-#             # print(n_chans)
-#             # window = 0
-#             # plt.figure(figsize=(12,20))
-#             # share_ax = None
-#             # for idx in range(0, n_chans):
-#             #     if idx == 0:
-#             #         share_ax = plt.subplot(n_chans, 2, 2*idx + 1)
-#             #     else:
-#             #         ax = plt.subplot(n_chans, 2, 2*idx + 1, sharex=share_ax)
-#             #     plt.semilogy(freqs, mag[window, idx], "bo-", label=f"FFT")
-#             #     plt.semilogy(freqs, new_mag[window, idx], "rs", label=f"Smooth")
-#             #     plt.title(f"{idx}")
-#             #     plt.legend(loc=1)
-#             #     ax = plt.subplot(n_chans, 2, 2*(idx + 1), sharex=share_ax)
-#             #     plt.plot(freqs, phs[window, idx], "bo-", label=f"FFT")
-#             #     plt.plot(freqs, new_phs[window, idx], "rs", label=f"Smooth")
-#             #     plt.title(f"{idx}")
-#             #     plt.legend(loc=1)
-#             # plt.tight_layout()
-#             # plt.show()
-
-#         messages.append("Spectra smooth using a 1-D spline")
-#         history = decspec_data.history.copy()
-#         history.add_record(self._get_process_record(messages))
-#         logger.info("Smoothing completed")
-#         return SpectraDecimatedData(decspec_data.chans, smoothspec, history)
 
 
 class SpectraDataWriter(ResisticsWriter):
