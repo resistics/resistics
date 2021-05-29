@@ -5,7 +5,7 @@ manipulation
 from loguru import logger
 from pathlib import Path
 from typing import Union, Tuple, Dict, List, Any, Optional
-from pydantic import validator
+from pydantic import PositiveInt
 import numpy as np
 
 from resistics.common import ResisticsData, ResisticsProcess, History
@@ -19,31 +19,24 @@ class SpectraLevelMetadata(Metadata):
     """Metadata for spectra of a windowed decimation level"""
 
     fs: float
-    nyquist: Optional[float] = None
-    win_size: int
-    olap_size: int
+    """The sampling frequency of the decimation level"""
+    n_wins: int
+    """The number of windows"""
+    win_size: PositiveInt
+    """The window size in samples"""
+    olap_size: PositiveInt
+    """The overlap size in samples"""
+    index_offset: int
+    """The global window offset for local window 0"""
     n_freqs: int
+    """The number of frequencies in the frequency data"""
     freqs: Optional[List[float]] = None
+    """List of frequencies"""
 
-    @validator("nyquist", always=True)
-    def validate_nyquist(cls, value: float, values: Dict[str, Any]) -> float:
-        """Validate nyquist frequency"""
-        if value is None:
-            return values["fs"] / 2
-        return value
-
-    @validator("freqs", always=True)
-    def validate_freqs(
-        cls, value: Union[List[float], None], values: Dict[str, Any]
-    ) -> List[float]:
-        """Validate frequencies list"""
-        from numpy.fft import rfftfreq
-
-        if value is None:
-            value = rfftfreq(n=values["win_size"], d=1.0 / values["fs"]).tolist()
-        if len(value) != values["n_freqs"]:
-            raise ValueError(f"Num. freqs {len(value)} != n_freqs {values['n_freqs']}")
-        return value
+    @property
+    def nyquist(self) -> float:
+        """Get the nyquist frequency"""
+        return self.fs / 2
 
 
 class SpectraMetadata(WriteableMetadata):
@@ -134,6 +127,8 @@ class FourierTransform(ResisticsProcess):
     workers: int = -2
 
     def run(self, win_data: WindowedData) -> SpectraData:
+        from scipy.fft import next_fast_len, rfftfreq
+
         metadata_dict = win_data.metadata.dict()
         data = {}
         spectra_levels_metadata = []
@@ -142,12 +137,13 @@ class FourierTransform(ResisticsProcess):
         for ilevel in range(win_data.metadata.n_levels):
             logger.info(f"Transforming level {ilevel}")
             level_metadata = win_data.metadata.levels_metadata[ilevel]
+            n_transform = next_fast_len(level_metadata.win_size, real=True)
+            freqs = rfftfreq(n=n_transform, d=1.0 / level_metadata.fs).tolist()
             data[ilevel] = self._get_level_data(
-                level_metadata, win_data.get_level(ilevel)
+                level_metadata, win_data.get_level(ilevel), n_transform
             )
-            n_freqs = data[ilevel].shape[-1]
             spectra_levels_metadata.append(
-                self._get_level_metadata(level_metadata, n_freqs)
+                self._get_level_metadata(level_metadata, freqs)
             )
             messages.append(f"Calculated spectra for level {ilevel}")
         metadata = self._get_metadata(metadata_dict, spectra_levels_metadata)
@@ -156,7 +152,7 @@ class FourierTransform(ResisticsProcess):
         return SpectraData(metadata, data)
 
     def _get_level_data(
-        self, metadata: WindowedLevelMetadata, data: np.ndarray
+        self, metadata: WindowedLevelMetadata, data: np.ndarray, n_transform: int
     ) -> np.ndarray:
         """Run the spectra calculation for a single decimation level"""
         from scipy import signal
@@ -168,9 +164,7 @@ class FourierTransform(ResisticsProcess):
         win_coeffs = self._get_window(metadata.win_size).astype(data.dtype)
         data = data * win_coeffs
         # perform the fft on the last axis
-        return rfft(
-            data, n=metadata.win_size, axis=-1, norm="ortho", workers=self.workers
-        )
+        return rfft(data, n=n_transform, axis=-1, norm="ortho", workers=self.workers)
 
     def _get_window(self, win_size: int):
         """Get the window to apply to the data"""
@@ -182,15 +176,13 @@ class FourierTransform(ResisticsProcess):
         return get_window(self.win_fnc, win_size)
 
     def _get_level_metadata(
-        self, level_metadata: WindowedLevelMetadata, n_freqs: int
+        self, level_metadata: WindowedLevelMetadata, freqs: List[float]
     ) -> SpectraLevelMetadata:
         """Get the spectra metadata for a decimation level"""
-        return SpectraLevelMetadata(
-            fs=level_metadata.fs,
-            win_size=level_metadata.win_size,
-            olap_size=level_metadata.olap_size,
-            n_freqs=n_freqs,
-        )
+        metadata_dict = level_metadata.dict()
+        metadata_dict["n_freqs"] = len(freqs)
+        metadata_dict["freqs"] = freqs
+        return SpectraLevelMetadata(**metadata_dict)
 
     def _get_metadata(
         self,
