@@ -137,7 +137,9 @@ class FourierTransform(ResisticsProcess):
         for ilevel in range(win_data.metadata.n_levels):
             logger.info(f"Transforming level {ilevel}")
             level_metadata = win_data.metadata.levels_metadata[ilevel]
-            n_transform = next_fast_len(level_metadata.win_size, real=True)
+            win_size = level_metadata.win_size
+            n_transform = next_fast_len(win_size, real=True)
+            logger.debug(f"Padding size {win_size} to next fast len {n_transform}")
             freqs = rfftfreq(n=n_transform, d=1.0 / level_metadata.fs).tolist()
             data[ilevel] = self._get_level_data(
                 level_metadata, win_data.get_level(ilevel), n_transform
