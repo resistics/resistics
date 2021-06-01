@@ -543,75 +543,26 @@ class DecimatedData(ResisticsData):
         >>> from resistics.decimate import DecimationSetup, Decimator
         >>> time_data = time_data_random(fs=256, n_samples=10_000)
         >>> dec_params = DecimationSetup(n_levels=4, per_freq=4).run(time_data.metadata.fs)
-        >>> decimator = Decimator(**dec_params.dict())
-        >>> dec_data = decimator.run(time_data)
-        >>> dec_data.metadata.summary()
+        >>> dec_data = Decimator().run(dec_params, time_data)
+        >>> for level_metadata in dec_data.metadata.levels_metadata:
+        ...     level_metadata.summary()
         {
-            'file_info': None,
-            'fs': [256.0, 64.0, 8.0],
-            'chans': ['Ex', 'Ey', 'Hx', 'Hy'],
-            'n_chans': 4,
-            'n_levels': 3,
-            'system': '',
-            'wgs84_latitude': -999.0,
-            'wgs84_longitude': -999.0,
-            'easting': -999.0,
-            'northing': -999.0,
-            'elevation': -999.0,
-            'levels_metadata': [
-                {
-                    'fs': 256.0,
-                    'n_samples': 10000,
-                    'first_time': '2020-01-01 00:00:00.000000_000000_000000_000000',
-                    'last_time': '2020-01-01 00:00:39.058593_750000_000000_000000'
-                },
-                {
-                    'fs': 64.0,
-                    'n_samples': 2500,
-                    'first_time': '2020-01-01 00:00:00.000000_000000_000000_000000',
-                    'last_time': '2020-01-01 00:00:39.046875_000000_000000_000000'
-                },
-                {
-                    'fs': 8.0,
-                    'n_samples': 313,
-                    'first_time': '2020-01-01 00:00:00.000000_000000_000000_000000',
-                    'last_time': '2020-01-01 00:00:39.000000_000000_000000_000000'
-                }
-            ],
-            'history': {
-                'records': [
-                    {
-                        'time_local': '...',
-                        'time_utc': '...',
-                        'creator': {
-                            'name': 'time_data_random',
-                            'fs': 256,
-                            'first_time': '2020-01-01 00:00:00',
-                            'n_samples': 10000
-                        },
-                        'messages': ['Generated time data with random values'],
-                        'record_type': 'process'
-                    },
-                    {
-                        'time_local': '...',
-                        'time_utc': '...',
-                        'creator': {
-                            'name': 'Decimator',
-                            'n_levels': 4,
-                            'min_samples': 256,
-                            'dec_fs': [256.0, 64.0, 8.0, 2.0],
-                            'dec_increments': [1, 4, 8, 4]
-                        },
-                        'messages': [
-                            'Decimated level 0, inc. factor 1, fs 256.0',
-                            'Decimated level 1, inc. factor 4, fs 64.0',
-                            'Decimated level 2, inc. factor 8, fs 8.0',
-                            'Completed levels [0, 1, 2] out of [0, 1, 2, 3]'
-                        ],
-                        'record_type': 'process'
-                    }
-                ]
-            }
+            'fs': 256.0,
+            'n_samples': 10000,
+            'first_time': '2020-01-01 00:00:00.000000_000000_000000_000000',
+            'last_time': '2020-01-01 00:00:39.058593_750000_000000_000000'
+        }
+        {
+            'fs': 64.0,
+            'n_samples': 2500,
+            'first_time': '2020-01-01 00:00:00.000000_000000_000000_000000',
+            'last_time': '2020-01-01 00:00:39.046875_000000_000000_000000'
+        }
+        {
+            'fs': 8.0,
+            'n_samples': 313,
+            'first_time': '2020-01-01 00:00:00.000000_000000_000000_000000',
+            'last_time': '2020-01-01 00:00:39.000000_000000_000000_000000'
         }
         >>> for ilevel in range(0, dec_data.metadata.n_levels):
         ...     data = dec_data.get_level(ilevel)
