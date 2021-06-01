@@ -90,21 +90,6 @@ def test_strformat_fs(fs: float, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "lines, expected",
-    [
-        (["3 4 5 6", "4 5 6 7"], [[3, 4, 5, 6], [4, 5, 6, 7]]),
-    ],
-)
-def test_lines_to_array(lines: List[str], expected) -> None:
-    """Test array to string formatting"""
-    import numpy as np
-    from resistics.common import lines_to_array
-
-    expected = np.array(expected)
-    np.testing.assert_equal(lines_to_array(lines), expected)
-
-
-@pytest.mark.parametrize(
     "data, sep, precision, scientific, expected",
     [
         ([1, 2, 3, 4, 5], "\t", 8, False, "1\t2\t3\t4\t5"),
