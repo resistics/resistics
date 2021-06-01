@@ -30,6 +30,7 @@ from pydantic import PositiveInt
 import numpy as np
 import pandas as pd
 
+from resistics.errors import ProcessRunError
 from resistics.common import History, ResisticsModel, ResisticsData, ResisticsProcess
 from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
 from resistics.sampling import RSDateTime, RSTimeDelta
@@ -253,6 +254,15 @@ def get_first_and_last_win(
     """
     Get first and last window for a decimated data level
 
+    .. note::
+
+        For the last window, on initial calculation this may be one or a
+        maximum of two windows beyond the last time. The last window is adjusted
+        in this function.
+
+        Two windows may occur when the time of the last sample is in the overlap
+        of the final two windows.
+
     Parameters
     ----------
     ref_time : RSDateTime
@@ -269,6 +279,12 @@ def get_first_and_last_win(
     Tuple[int, int]
         First and last global windows. This is window indices relative to the
         reference time
+
+    Raises
+    ------
+    ValueError
+        If unable to calculate the last window correctly as this will result in
+        an incorrect number of windows
 
     Examples
     --------
@@ -316,13 +332,20 @@ def get_first_and_last_win(
     >>> level_metadata.last_time > last_win_start_time + increment
     True
     """
+    duration = win_duration(win_size, metadata.fs)
     increment = inc_duration(win_size, olap_size, metadata.fs)
     first_win = datetime_to_win(ref_time, metadata.first_time, increment, method="ceil")
     last_win = datetime_to_win(ref_time, metadata.last_time, increment, method="floor")
     # adjust if there is not enough date to complete the last window
     last_win_time = win_to_datetime(ref_time, last_win, increment)
-    if metadata.last_time < last_win_time + increment:
+    for attempt in range(2):
+        if metadata.last_time >= last_win_time + duration:
+            break
+        logger.debug(f"Adjusting last window attempt {attempt + 1}")
         last_win -= 1
+        last_win_time = win_to_datetime(ref_time, last_win, increment)
+    if metadata.last_time < last_win_time + duration:
+        raise ValueError("Unable to correctly get the last window")
     return first_win, last_win
 
 
@@ -1017,6 +1040,12 @@ class Windower(ResisticsProcess):
         -------
         WindowedData
             Windows for decimated data
+
+        Raises
+        ------
+        ProcessRunError
+            If the number of windows calculated in the window table does not
+            match the size of the array views
         """
         metadata_dict = dec_data.metadata.dict()
         data = {}
@@ -1046,6 +1075,11 @@ class Windower(ResisticsProcess):
                 win_size,
                 olap_size,
             )
+            if win_level_data.shape[0] != n_wins:
+                raise ProcessRunError(
+                    self.name,
+                    f"Num. windows mismatch {win_level_data.shape[0]} != {n_wins}",
+                )
             win_level_metadata = self._get_level_metadata(
                 level_metadata,
                 win_table,
