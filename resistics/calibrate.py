@@ -450,10 +450,9 @@ class SensorCalibrator(Calibrator):
         chans = self._get_chans(spec_data.metadata.chans)
         logger.info(f"Calibrating channels {chans}")
         messages = [f"Calibrating channels {chans}"]
-        data = {}
-        for ilevel in range(spec_data.metadata.n_levels):
-            data[ilevel] = np.array(spec_data.data[ilevel], dtype=np.complex64)
+        data = {x: np.array(y) for x, y in spec_data.data.items()}
         for chan in chans:
+            logger.info(f"Looking for sensor calibration data for channel {chan}")
             cal_data = self._get_cal_data(dir_path, spec_data.metadata, chan)
             if cal_data is None:
                 logger.info(f"No calibration data for channel {chan}")
@@ -481,7 +480,7 @@ class SensorCalibrator(Calibrator):
                 cal_data = reader.run(dir_path, metadata, chan)
                 break
             except CalibrationFileNotFound:
-                logger.warning(f"Calibration reader {reader.name} did not find file")
+                logger.debug(f"Calibration reader {reader.name} did not find file")
             except Exception:
-                logger.warning(f"Calibration reader {reader.name} failed reading file")
+                logger.debug(f"Calibration reader {reader.name} failed reading file")
         return cal_data
