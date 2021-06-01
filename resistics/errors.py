@@ -150,7 +150,7 @@ class ChannelNotFoundError(Exception):
 
 
 ###
-# time data errors
+# calibration data errors
 ###
 class CalibrationFileNotFound(Exception):
     """Use when calibration files are not found"""
@@ -165,6 +165,20 @@ class CalibrationFileNotFound(Exception):
     def __str__(self) -> str:
         outstr = f"Failed to find calibration files {self.file_paths}"
         outstr += f" in calibration data folder {self.dir_path}."
+        if self.message != "":
+            outstr += f" {self.message}"
+        return outstr
+
+
+class CalibrationFileReadError(Exception):
+    """Use if encounter an error reading a calibration file"""
+
+    def __init__(self, calibration_path: Path, message: str = ""):
+        self.calibration_path = calibration_path
+        self.message = message
+
+    def __str__(self) -> str:
+        outstr = f"Failed to read calibration file {self.calibration_path}."
         if self.message != "":
             outstr += f" {self.message}"
         return outstr
