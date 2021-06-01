@@ -433,8 +433,8 @@ class TimeData(ResisticsData):
         fig: Optional[go.Figure] = None,
         subplots: Optional[List[str]] = None,
         subplot_columns: Optional[Dict[str, List[str]]] = None,
-        max_pts=10_000,
-        label_prefix="",
+        max_pts: int = 10_000,
+        label_prefix: str = "",
     ) -> go.Figure:
         """
         Plot time data
