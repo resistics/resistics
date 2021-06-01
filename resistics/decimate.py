@@ -674,6 +674,7 @@ class DecimatedData(ResisticsData):
                 fig = time_data.plot(
                     subplots=subplots,
                     subplot_columns=subplot_columns,
+                    max_pts=max_pts,
                     label_prefix=f"Level {ilevel}",
                 )
             else:
@@ -681,6 +682,7 @@ class DecimatedData(ResisticsData):
                     fig=fig,
                     subplots=subplots,
                     subplot_columns=subplot_columns,
+                    max_pts=max_pts,
                     label_prefix=f"Level {ilevel}",
                 )
         return fig
