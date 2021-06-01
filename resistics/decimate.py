@@ -711,16 +711,27 @@ class DecimatedData(ResisticsData):
             logger.error("Data is empty, no decimation levels to plot")
 
         fig = None
+        subplots = self.metadata.chans
+        subplot_columns = {x: [x] for x in subplots}
         for ilevel in range(0, self.metadata.n_levels):
             logger.info(f"Plotting decimation level {ilevel}")
             metadata_dict = self.metadata.levels_metadata[ilevel].dict()
             metadata_dict["chans"] = self.metadata.chans
-            metadata_dict["chans_metadata"] = []
+            metadata_dict["chans_metadata"] = self.metadata.chans_metadata
             time_data = TimeData(TimeMetadata(**metadata_dict), self.data[ilevel])
             if fig is None:
-                fig = time_data.plot(label_prefix=f"Level {ilevel}")
+                fig = time_data.plot(
+                    subplots=subplots,
+                    subplot_columns=subplot_columns,
+                    label_prefix=f"Level {ilevel}",
+                )
             else:
-                time_data.plot(fig=fig, label_prefix=f"Level {ilevel}")
+                time_data.plot(
+                    fig=fig,
+                    subplots=subplots,
+                    subplot_columns=subplot_columns,
+                    label_prefix=f"Level {ilevel}",
+                )
         return fig
 
     def x_size(self, level: int) -> int:
@@ -863,10 +874,9 @@ class DecimatedDataWriter(ResisticsWriter):
             WriteError(dir_path, "Unable to write to directory, check logs")
         logger.info(f"Writing decimated data to {dir_path}")
         metadata_path = dir_path / "metadata.json"
+        data_path = dir_path / "data"
+        np.savez_compressed(data_path, **{str(x): y for x, y in dec_data.data.items()})
         metadata = dec_data.metadata.copy()
-        for ilevel in range(dec_data.metadata.n_levels):
-            level_path = dir_path / f"level_{ilevel:03d}.npy"
-            np.save(level_path, dec_data.get_level(ilevel))
         metadata.history.add_record(self._get_record(dir_path, type(dec_data)))
         metadata.write(metadata_path)
 
@@ -906,10 +916,9 @@ class DecimatedDataReader(ResisticsProcess):
         metadata = DecimatedMetadata.parse_file(metadata_path)
         if metadata_only:
             return metadata
-        data = {}
-        for ilevel in range(metadata.n_levels):
-            level_path = dir_path / f"level_{ilevel:03d}.npy"
-            data[ilevel] = np.load(level_path)
+        data_path = dir_path / "data.npz"
+        npz_file = np.load(data_path)
+        data = {int(level): npz_file[level] for level in npz_file.files}
         messages = [f"Decimated data read from {dir_path}"]
         metadata.history.add_record(self._get_record(messages))
         return DecimatedData(metadata, data)
