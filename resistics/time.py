@@ -11,7 +11,7 @@ from typing import List, Dict, Union, Any, Tuple
 from typing import Optional, Callable
 import types
 from pathlib import Path
-from pydantic import validator, conint, PositiveInt
+from pydantic import validator, conint, PositiveFloat
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -1954,7 +1954,7 @@ class ShiftTimestamps(ResisticsProcess):
         >>> plt.show() # doctest: +SKIP
     """
 
-    shift: PositiveInt
+    shift: PositiveFloat
 
     def run(self, time_data: TimeData) -> TimeData:
         """
@@ -1991,10 +1991,12 @@ class ShiftTimestamps(ResisticsProcess):
         first_time = metadata.first_time + delta
         last_time = metadata.last_time - to_timedelta(1 / metadata.fs) + delta
 
-        logger.info(f"TimeData covers {metadata.first_time} to {metadata.last_time}")
-        logger.info(f"Interpolating timestamps to between {first_time} and {last_time}")
-        messages = [f"First time adjusted from {metadata.first_time} to {first_time}"]
-        messages.append(f"Last time adjusted from {metadata.last_time} to {last_time}")
+        logger.info(
+            f"Data covers {str(metadata.first_time)} to {str(metadata.last_time)}"
+        )
+        logger.info(f"New data covers {str(first_time)} to {str(last_time)}")
+        messages = [f"First time: {str(metadata.first_time)} -> {str(first_time)}"]
+        messages.append(f"Last time: {str(metadata.last_time)} -> {str(last_time)}")
 
         # shift data
         x = np.arange(0, metadata.n_samples)
