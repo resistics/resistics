@@ -1254,10 +1254,9 @@ class WindowedDataWriter(ResisticsWriter):
             WriteError(dir_path, "Unable to write to directory, check logs")
         logger.info(f"Writing windowed data to {dir_path}")
         metadata_path = dir_path / "metadata.json"
+        data_path = dir_path / "data"
+        np.savez_compressed(data_path, **{str(x): y for x, y in win_data.data.items()})
         metadata = win_data.metadata.copy()
-        for ilevel in range(win_data.metadata.n_levels):
-            level_path = dir_path / f"level_{ilevel:03d}.npy"
-            np.save(level_path, win_data.get_level(ilevel))
         metadata.history.add_record(self._get_record(dir_path, type(win_data)))
         metadata.write(metadata_path)
 
@@ -1297,10 +1296,9 @@ class WindowedDataReader(ResisticsProcess):
         metadata = WindowedMetadata.parse_file(metadata_path)
         if metadata_only:
             return metadata
-        data = {}
-        for ilevel in range(metadata.n_levels):
-            level_path = dir_path / f"level_{ilevel:03d}.npy"
-            data[ilevel] = np.load(level_path)
+        data_path = dir_path / "data.npz"
+        npz_file = np.load(data_path)
+        data = {int(level): npz_file[level] for level in npz_file.files}
         messages = [f"Windowed data read from {dir_path}"]
         metadata.history.add_record(self._get_record(messages))
         return WindowedData(metadata, data)
