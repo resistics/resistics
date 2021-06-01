@@ -356,14 +356,28 @@ def time_data_with_offset(
 def decimated_data_random(
     fs: float = 10, first_time: str = "2021-01-01 00:00:00", n_samples=10_000
 ) -> DecimatedData:
-    """Get random decimated data"""
+    """
+    Get random decimated data
+
+    Parameters
+    ----------
+    fs : float, optional
+        Sampling frequency, by default 10
+    first_time : str, optional
+        The time of the first sample, by default "2021-01-01 00:00:00"
+    n_samples : [type], optional
+        The number of samples, by default 10_000
+
+    Returns
+    -------
+    DecimatedData
+        The decimated data
+    """
     from resistics.decimate import DecimationSetup, Decimator
 
     time_data = time_data_random(fs=fs, first_time=first_time, n_samples=n_samples)
     dec_params = DecimationSetup(n_levels=5).run(fs)
-    decimator = Decimator(**dec_params.dict())
-    dec_data = decimator.run(time_data)
-    return dec_data
+    return Decimator().run(dec_params, time_data)
 
 
 # def test_measurement(self) -> Measurement:
