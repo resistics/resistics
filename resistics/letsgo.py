@@ -5,461 +5,22 @@ This module is the main interface to resistics and includes:
 - Functions for processing data
 """
 from loguru import logger
-from typing import Iterator, Union, Optional, List, Dict, Any
+from typing import Optional, Dict, Union, Any
 from pathlib import Path
 from datetime import datetime
-import pandas as pd
-import plotly.graph_objects as go
-import plotly.express as px
 
 from resistics.errors import MetadataReadError, TimeDataReadError
-from resistics.common import ResisticsModel, WriteableMetadata, ResisticsProcess
-from resistics.sampling import HighResDateTime
-from resistics.time import TimeMetadata, TimeData
-from resistics.time import TimeReader, TimeReaderNumpy, TimeReaderAscii
-from resistics.time import InterpolateNans, RemoveMean
-from resistics.calibrate import SensorCalibrationJSON, SensorCalibrator
-from resistics.decimate import DecimationParameters, DecimationSetup
-from resistics.decimate import Decimator, DecimatedData
-from resistics.window import WindowSetup, Windower, WindowedData
-from resistics.spectra import FourierTransform, EvaluationFreqs, SpectraData
-from resistics.regression import ImpedanceTensor, RegressionPreparer
+from resistics.common import ResisticsProcess, ResisticsModel
+from resistics.config import Configuration, get_default_configuration
+from resistics.project import PROJ_FILE, PROJ_DIRS, ProjectMetadata, Project
+from resistics.project import Site, Measurement
+from resistics.sampling import DateTimeLike, HighResDateTime
+from resistics.time import TimeData
+from resistics.decimate import DecimationParameters
+from resistics.decimate import DecimatedData
+from resistics.window import WindowedData
+from resistics.spectra import SpectraData
 from resistics.regression import RegressionInputData
-
-
-PROJ_FILE = "resistics.json"
-PROJ_DIRS = {
-    "time": "time",
-    "calibration": "calibrate",
-    "spectra": "spectra",
-    "features": "features",
-    "masks": "masks",
-    "results": "results",
-    "images": "images",
-}
-
-
-def get_calibration_path(proj_dir: Path) -> Path:
-    """Get the path to the calibration data"""
-    return proj_dir / PROJ_DIRS["calibration"]
-
-
-def get_meas_time_path(proj_dir: Path, site_name: str, meas_name: str) -> Path:
-    """Get path to measurement time data"""
-    return proj_dir / PROJ_DIRS["time"] / site_name / meas_name
-
-
-def get_meas_spectra_path(
-    proj_dir: Path, site_name: str, meas_name: str, config_name: str
-) -> Path:
-    """Get path to measurement spectra data"""
-    return proj_dir / PROJ_DIRS["spectra"] / site_name / meas_name / config_name
-
-
-def get_meas_features_path(
-    proj_dir: Path, site_name: str, meas_name: str, config_name: str
-) -> Path:
-    """Get path to measurement features data"""
-    return proj_dir / PROJ_DIRS["features"] / site_name / meas_name / config_name
-
-
-def get_fs_mask_path(
-    proj_dir: Path, site_name: str, config_name: str, fs: float
-) -> Path:
-    """Get path to sampling frequency mask data"""
-    from resistics.common import fs_to_string
-
-    mask_name = f"{fs_to_string(fs)}.pkl"
-    return proj_dir / PROJ_DIRS["masks"] / site_name / config_name / mask_name
-
-
-def get_fs_results_path(
-    proj_dir: Path, site_name: str, config_name: str, fs: float
-) -> Path:
-    """Get path to sampling frequency results"""
-    from resistics.common import fs_to_string
-
-    results_name = f"{fs_to_string(fs)}.json"
-    return proj_dir / PROJ_DIRS["results"] / site_name / config_name / results_name
-
-
-class Configuration(ResisticsModel):
-    """
-    The resistics configuration
-
-    Configuration can be customised by users who wish to use their own custom
-    processes for certain steps. In most cases, customisation will be for:
-
-    - Implementing new time data readers
-    - Implementing readers for specific calibration formats
-    - Adding new features to extract from the data
-
-    Examples
-    --------
-    Frequently, configuration will be used to change data readers.
-
-    >>> from resistics.letsgo import get_default_configuration
-    >>> config = get_default_configuration()
-    >>> config.name
-    'default'
-    >>> for tr in config.time_readers:
-    ...     tr.summary()
-    {
-        'name': 'TimeReaderAscii',
-        'apply_scalings': True,
-        'extension': '.ascii'
-    }
-    {
-        'name': 'TimeReaderNumpy',
-        'apply_scalings': True,
-        'extension': '.npy'
-    }
-    >>> config.sensor_calibrator.summary()
-    {
-        'name': 'SensorCalibrator',
-        'chans': None,
-        'readers': [
-            {
-                'name': 'SensorCalibrationJSON',
-                'extension': '.json',
-                'file_str': 'IC_$sensor$extension'
-            }
-        ]
-    }
-
-    To change these, it's best to make a new configuration with a different name
-
-    >>> from resistics.letsgo import Configuration
-    >>> from resistics.time import TimeReaderNumpy
-    >>> config = Configuration(name="myconfig", time_readers=[TimeReaderNumpy(apply_scalings=False)])
-    >>> for tr in config.time_readers:
-    ...     tr.summary()
-    {
-        'name': 'TimeReaderNumpy',
-        'apply_scalings': False,
-        'extension': '.npy'
-    }
-
-    Or for the sensor calibration
-
-    >>> from resistics.calibrate import SensorCalibrator, SensorCalibrationTXT
-    >>> calibration_reader = SensorCalibrationTXT(file_str="lemi120_IC_$serial$extension")
-    >>> calibrator = SensorCalibrator(chans=["Hx", "Hy", "Hz"], readers=[calibration_reader])
-    >>> config = Configuration(name="myconfig", sensor_calibrator=calibrator)
-    >>> config.sensor_calibrator.summary()
-    {
-        'name': 'SensorCalibrator',
-        'chans': ['Hx', 'Hy', 'Hz'],
-        'readers': [
-            {
-                'name': 'SensorCalibrationTXT',
-                'extension': '.TXT',
-                'file_str': 'lemi120_IC_$serial$extension'
-            }
-        ]
-    }
-
-    As a final example, create a configuration which used targetted windowing
-    instead of specified window sizes
-
-    >>> from resistics.letsgo import Configuration
-    >>> from resistics.window import WindowerTarget
-    >>> config = Configuration(name="window_target", windower=WindowerTarget(target=500))
-    >>> config.name
-    'window_target'
-    >>> config.windower.summary()
-    {
-        'name': 'WindowerTarget',
-        'target': 500,
-        'min_size': 64,
-        'olap_proportion': 0.25
-    }
-    """
-
-    name: str
-    """The name of the configuration"""
-    time_readers: List[TimeReader] = [TimeReaderAscii(), TimeReaderNumpy()]
-    """Time readers in the configuration"""
-    time_processors: List[ResisticsProcess] = [InterpolateNans(), RemoveMean()]
-    """List of time processors to run"""
-    dec_setup: ResisticsProcess = DecimationSetup()
-    """Process to calculate decimation parameters"""
-    decimator: ResisticsProcess = Decimator()
-    """Process to decimate time data"""
-    win_setup: ResisticsProcess = WindowSetup()
-    """Process to calculate windowing parameters"""
-    windower: ResisticsProcess = Windower()
-    """Process to window the decimated data"""
-    fourier: ResisticsProcess = FourierTransform()
-    """Process to perform the fourier transform"""
-    evals: ResisticsProcess = EvaluationFreqs()
-    """Process to get the spectra data at the evaluation frequencies"""
-    sensor_calibrator: ResisticsProcess = SensorCalibrator(
-        readers=[SensorCalibrationJSON()]
-    )
-    """The sensor calibrator and associated calibration file readers"""
-    regression_preparer: ResisticsProcess = RegressionPreparer(tf=ImpedanceTensor())
-    """Process to prepare linear equations"""
-
-
-def get_default_configuration():
-    """Get the default configuration"""
-    return Configuration(name="default")
-
-
-class Measurement(ResisticsModel):
-    """
-    Class for interfacing with a measurement
-
-    The class holds the original time series metadata and can provide
-    information about other types of data
-    """
-
-    site_name: str
-    dir_path: Path
-    metadata: TimeMetadata
-    reader: TimeReader
-    config: Configuration
-
-    @property
-    def name(self) -> str:
-        """Get the name of the measurement"""
-        return self.dir_path.name
-
-
-class Site(ResisticsModel):
-    """
-    Class for describing Sites
-
-    .. note::
-
-        This should essentially describe a single instrument setup. If the same
-        site is re-occupied later with a different instrument setup, it is
-        suggested to split this into a different site.
-    """
-
-    dir_path: Path
-    measurements: Dict[str, Measurement]
-    begin_time: HighResDateTime
-    end_time: HighResDateTime
-    config: Configuration
-
-    def __iter__(self) -> Iterator:
-        """Iterator over measurements"""
-        return self.measurements.values().__iter__()
-
-    def __getitem__(self, meas_name: str) -> Measurement:
-        """Get a measurement"""
-        return self.get_measurement(meas_name)
-
-    @property
-    def name(self) -> str:
-        """The Site name"""
-        return self.dir_path.name
-
-    @property
-    def n_meas(self) -> int:
-        """Get the number of measurements"""
-        return len(self.measurements)
-
-    def fs(self) -> List[float]:
-        """Get the sampling frequencies in the Site"""
-        fs = [x.metadata.fs for x in self.measurements.values()]
-        return sorted(list(set(fs)))
-
-    def get_measurement(self, meas_name: str) -> Measurement:
-        """Get a measurement"""
-        from resistics.errors import MeasurementNotFoundError
-
-        if meas_name not in self.measurements:
-            raise MeasurementNotFoundError(self.name, meas_name)
-        return self.measurements[meas_name]
-
-    def get_measurements(self, fs: Optional[float] = None) -> Dict[str, Measurement]:
-        """Get dictionary of measurements with optional filter by sampling frequency"""
-        if fs is None:
-            return self.measurements
-        return {
-            name: meas
-            for name, meas in self.measurements.items()
-            if meas.metadata.fs == fs
-        }
-
-    def plot(self) -> go.Figure:
-        """Plot the site timeline"""
-        df = self.to_dataframe()
-        if len(df.index) == 0:
-            logger.error("No measurements found to plot")
-            return
-        fig = px.timeline(
-            df,
-            x_start="first_time",
-            x_end="last_time",
-            y="name",
-            color="fs",
-            title=self.name,
-        )
-        return fig
-
-    def to_dataframe(self) -> pd.DataFrame:
-        """
-        Get measurements list in a pandas DataFrame
-
-        .. note::
-
-            Measurement first and last times are converted to pandas Timestamps
-            as these are more universally useful in a pandas DataFrame. However,
-            this may result in a loss of precision, especially at high sampling
-            frequencies.
-
-        Returns
-        -------
-        pd.DataFrame
-            Site measurement DataFrame
-        """
-        data = [
-            [
-                x.name,
-                x.metadata.fs,
-                x.metadata.first_time.isoformat(),
-                x.metadata.last_time.isoformat(),
-            ]
-            for x in self.measurements.values()
-        ]
-        df = pd.DataFrame(data=data, columns=["name", "fs", "first_time", "last_time"])
-        df["first_time"] = pd.to_datetime(df["first_time"])
-        df["last_time"] = pd.to_datetime(df["last_time"])
-        df["site"] = self.name
-        return df
-
-
-class ProjectMetadata(WriteableMetadata):
-    """Project metadata"""
-
-    ref_time: HighResDateTime
-    location: str = ""
-    country: str = ""
-    year: int = -999
-    description: str = ""
-    contributors: List[str] = []
-
-
-class Project(ResisticsModel):
-    """
-    Class to describe a resistics project
-
-    The resistics Project Class connects all resistics data. It is an essential
-    part of processing data with resistics.
-
-    Resistics projects are in directory with several sub-directories. Project
-    metadata is saved in the resistics.json file at the top level directory.
-    """
-
-    dir_path: Path
-    begin_time: HighResDateTime
-    end_time: HighResDateTime
-    metadata: ProjectMetadata
-    sites: Dict[str, Site] = {}
-    config: Configuration
-
-    def __iter__(self) -> Iterator:
-        """Iterator over sites"""
-        return self.sites.values().__iter__()
-
-    def __getitem__(self, site_name: str) -> Site:
-        """Get a Site instance given the name of the Site"""
-        return self.get_site(site_name)
-
-    @property
-    def n_sites(self) -> int:
-        """The number of sites"""
-        return len(self.sites)
-
-    def fs(self) -> List[float]:
-        """Get sampling frequencies in the Project"""
-        fs = set()
-        for site in self.sites.values():
-            fs = fs.union(set(site.fs()))
-        return sorted(list(fs))
-
-    def get_site(self, site_name: str) -> Site:
-        """Get a Site object given the Site name"""
-        from resistics.errors import SiteNotFoundError
-
-        if site_name not in self.sites:
-            raise SiteNotFoundError(site_name)
-        return self.sites[site_name]
-
-    def get_sites(self, fs: Optional[float] = None) -> Dict[str, Site]:
-        """
-        Get sites
-
-        Parameters
-        ----------
-        fs : Optional[float], optional
-            Filter by sites which have at least a single recording at a
-            specified sampling frequency, by default None
-
-        Returns
-        -------
-        Dict[str, Site]
-            Dictionary of site name to Site
-        """
-        if fs is None:
-            return self.sites
-        return {name: site for name, site in self.sites.items() if fs in site.fs()}
-
-    def get_concurrent(self, site_name: str) -> List[str]:
-        """
-        Find sites that recorded conscurrently to a specified site
-
-        Parameters
-        ----------
-        site_name : str
-            Search for sites recording concurrently to this site
-
-        Returns
-        -------
-        List[str]
-            List of site names which were recording concurrently
-        """
-        site_start = self.sites[site_name].begin_time
-        site_end = self.sites[site_name].end_time
-        concurrent = []
-        for site in self.sites.values():
-            if site.name == site_name:
-                continue
-            if site.end_time < site_start:
-                continue
-            if site.begin_time > site_end:
-                continue
-            concurrent.append(site)
-        return concurrent
-
-    def plot(self) -> go.Figure:
-        """Plot a timeline of the project"""
-        df = self.to_dataframe()
-        df["Site"] = df["site"]
-        df["Sampling frequency, Hz"] = df["fs"].values.astype(str)
-        if len(df.index) == 0:
-            logger.error("No measurements found to plot")
-            return
-        fig = px.timeline(
-            df,
-            x_start="first_time",
-            x_end="last_time",
-            y="Site",
-            color="Sampling frequency, Hz",
-            title=str(self.dir_path),
-        )
-        return fig
-
-    def to_dataframe(self) -> pd.DataFrame:
-        """Detail Project recordings in a DataFrame"""
-        df = pd.DataFrame(columns=["name", "first_time", "last_time", "fs", "site"])
-        for site in self.sites.values():
-            df = df.append(site.to_dataframe())
-        return df
 
 
 class ProjectCreator(ResisticsProcess):
@@ -504,15 +65,42 @@ class ProjectCreator(ResisticsProcess):
                 subdir_path.mkdir()
 
 
+def new(dir_path: Union[Path, str], proj_info: Dict[str, Any]) -> bool:
+    """
+    Create a new project
+
+    Parameters
+    ----------
+    dir_path : Union[Path, str]
+        The directory to create the project in
+    proj_info : Dict[str, Any]
+        Any project details
+
+    Returns
+    -------
+    bool
+        True if the creator was successful
+    """
+    if isinstance(dir_path, str):
+        dir_path = Path(dir_path)
+    metadata = ProjectMetadata(**proj_info)
+    ProjectCreator(dir_path=dir_path, metadata=metadata).run()
+    return True
+
+
 class ProjectLoader(ResisticsProcess):
     """Project loader"""
 
     dir_path: Path
-    config: Configuration
 
-    def run(self) -> Project:
+    def run(self, config: Configuration) -> Project:
         """
         Load a project
+
+        Parameters
+        ----------
+        config : Configuration
+            The configuration for the purposes of getting the time readers
 
         Returns
         -------
@@ -539,7 +127,7 @@ class ProjectLoader(ResisticsProcess):
         time_subdirs = dir_subdirs(self.dir_path / PROJ_DIRS["time"])
         sites = {}
         for site_dir in time_subdirs:
-            site = self._load_site(site_dir)
+            site = self._load_site(site_dir, config)
             sites[site_dir.name] = site
         if len(sites) > 0:
             begin_time = min([x.begin_time for x in sites.values()])
@@ -553,7 +141,6 @@ class ProjectLoader(ResisticsProcess):
             begin_time=begin_time,
             end_time=end_time,
             sites=sites,
-            config=self.config,
         )
 
     def _check_subdirs(self) -> bool:
@@ -566,14 +153,14 @@ class ProjectLoader(ResisticsProcess):
             return False
         return True
 
-    def _load_site(self, site_dir: Path) -> Site:
+    def _load_site(self, site_dir: Path, config: Configuration) -> Site:
         """Load a Site"""
         from resistics.common import dir_subdirs
 
         subdirs = dir_subdirs(site_dir)
         measurements = {}
         for meas_dir in subdirs:
-            meas = self._load_measurement(site_dir.name, meas_dir)
+            meas = self._load_measurement(site_dir.name, meas_dir, config)
             if meas is not None:
                 measurements[meas_dir.name] = meas
         if len(measurements) > 0:
@@ -587,11 +174,10 @@ class ProjectLoader(ResisticsProcess):
             begin_time=begin_time,
             end_time=end_time,
             measurements=measurements,
-            config=self.config,
         )
 
     def _load_measurement(
-        self, site_name: str, meas_dir: Path
+        self, site_name: str, meas_dir: Path, config: Configuration
     ) -> Union[Measurement, None]:
         """
         Load a measurement
@@ -606,13 +192,15 @@ class ProjectLoader(ResisticsProcess):
             The name of the Site
         meas_dir : Path
             The measurement subdirectory in the site time directory
+        config : Configuration
+            Configuration which is used for the time readers
 
         Returns
         -------
         Union[Measurement, None]
             Measurement if reading was successful, else None
         """
-        for reader in self.config.time_readers:
+        for reader in config.time_readers:
             try:
                 metadata = reader.run(dir_path=meas_dir, metadata_only=True)
                 logger.info(f"Read measurement {meas_dir} with {reader.name}")
@@ -621,19 +209,31 @@ class ProjectLoader(ResisticsProcess):
                     dir_path=meas_dir,
                     metadata=metadata,
                     reader=reader,
-                    config=self.config,
                 )
             except Exception:
-                logger.warning(
+                logger.debug(
                     f"Failed to read measurement {meas_dir} with {reader.name}"
                 )
         logger.error(f"No reader found for measurement {meas_dir}")
         return None
 
 
-def load(dir_path: Union[Path, str], config: Optional[Configuration] = None) -> Project:
+class ResisticsEnvironment(ResisticsModel):
     """
-    Load an existing project
+    A Resistics environment which combines a project and a configuration
+    """
+
+    proj: Project
+    """The project"""
+    config: Configuration
+    """The configuration for processing"""
+
+
+def load(
+    dir_path: Union[Path, str], config: Optional[Configuration] = None
+) -> ResisticsEnvironment:
+    """
+    Load an existing project into a ResisticsEnvironment
 
     Parameters
     ----------
@@ -644,60 +244,37 @@ def load(dir_path: Union[Path, str], config: Optional[Configuration] = None) -> 
 
     Returns
     -------
-    Project
-        A project instance
+    ResisticsEnvironment
+        The ResisticsEnvironment combining a project and a configuration
 
     Raises
     ------
     ProjectLoadError
         If the loading failed
     """
-    if isinstance(dir_path, str):
-        dir_path = Path(dir_path)
     if config is None:
         config = get_default_configuration()
-    loader = ProjectLoader(dir_path=dir_path, config=config)
-    return loader.run()
-
-
-def reload(proj: Project):
-    """
-    Reload a project
-
-    Parameters
-    ----------
-    proj : Project
-        The project to reload
-
-    Returns
-    -------
-    Project
-        The reloaded project
-    """
-    return load(dir_path=proj.dir_path, config=proj.config)
-
-
-def new(dir_path: Union[Path, str], proj_info: Dict[str, Any]) -> bool:
-    """
-    Create a new project
-
-    Parameters
-    ----------
-    dir_path : Union[Path, str]
-        The directory to create the project in
-    proj_info : Dict[str, Any]
-        Any project details
-
-    Returns
-    -------
-    bool
-        True if the creator was successful
-    """
     if isinstance(dir_path, str):
         dir_path = Path(dir_path)
-    metadata = ProjectMetadata(**proj_info)
-    ProjectCreator(dir_path=dir_path, metadata=metadata).run()
-    return True
+    proj = ProjectLoader(dir_path=dir_path).run(config)
+    return ResisticsEnvironment(proj=proj, config=config)
+
+
+def reload(resenv: ResisticsEnvironment) -> ResisticsEnvironment:
+    """
+    Reload the project in the ResisticsEnvironment
+
+    Parameters
+    ----------
+    resenv : ResisticsEnvironment
+        The current resistics environment
+
+    Returns
+    -------
+    ResisticsEnvironment
+        The resistics environment with the project reloaded
+    """
+    return load(dir_path=resenv.proj.dir_path, config=resenv.config)
 
 
 def run_time_processors(config: Configuration, time_data: TimeData) -> TimeData:
@@ -862,10 +439,46 @@ def run_regression_preparer(
         Regression inputs for all evaluation frequencies
     """
     logger.info("Preparing regression input data")
-    return config.regression_preparer.run(spec_data)
+    return config.regression_preparer.run(config.tf, spec_data)
 
 
-def quick(
+def quick_read(config: Configuration, dir_path: Path) -> Union[None, TimeData]:
+    """Read time data for quick methods"""
+    for reader in config.time_readers:
+        logger.info(f"Attempting to read data with reader {reader.name}")
+        try:
+            return reader.run(dir_path)
+        except MetadataReadError:
+            logger.debug(f"Unable to read metadata with reader {reader.name}")
+        except TimeDataReadError:
+            logger.debug(f"Failed reading time data with reader {reader.name}")
+        except Exception:
+            logger.debug("Unknown problem reading time data")
+    return None
+
+
+def quick_view(
+    dir_path: Path,
+    config: Optional[Configuration] = None,
+    decimate: bool = False,
+    max_pts: Optional[int] = 10_000,
+):
+    """Quick plotting of time series data"""
+    logger.info(f"Plotting data in {dir_path}")
+    if config is None:
+        config = get_default_configuration()
+    time_data = quick_read(config, dir_path)
+    if time_data is None:
+        raise ValueError("Failed to read time data")
+    if not decimate:
+        time_data.plot(max_pts=max_pts).show()
+        return
+    dec_params = config.dec_setup.run(time_data.metadata.fs)
+    dec_data = run_decimation(config, time_data, dec_params=dec_params)
+    dec_data.plot(max_pts=max_pts).show()
+
+
+def quick_tf(
     dir_path: Path,
     config: Optional[Configuration] = None,
     calibration_path: Optional[Path] = None,
@@ -876,18 +489,9 @@ def quick(
         config = get_default_configuration()
 
     logger.info("Reading time data")
-    time_data = None
-    for reader in config.time_readers:
-        try:
-            time_data = reader.run(dir_path)
-        except MetadataReadError:
-            logger.error(f"Unable to read metadata with reader {type(reader)}")
-        except TimeDataReadError:
-            logger.error("Failed reading time data")
-        except Exception:
-            logger.error("Unknown problem reading time data")
+    time_data = quick_read(config, dir_path)
     if time_data is None:
-        raise ValueError("Time data was not read")
+        raise ValueError("Failed to read time data")
 
     ref_time = time_data.metadata.first_time
     time_data = run_time_processors(config, time_data)
@@ -902,25 +506,53 @@ def quick(
     return reg_data
 
 
-def process_time_to_spectra(proj: Project, site_name: str, meas_name: str) -> None:
+def process_time(
+    resenv: ResisticsEnvironment,
+    site_name: str,
+    meas_name: str,
+    out_site: str,
+    out_meas: str,
+    from_time: Optional[DateTimeLike] = None,
+    to_time: Optional[DateTimeLike] = None,
+) -> None:
+    """Process time data to a new site and measurement"""
+    from resistics.time import TimeWriterNumpy
+    from resistics.project import get_meas_time_path
+
+    logger.info(f"Running time processors on meas {meas_name} from site {site_name}")
+    meas = resenv.proj[site_name][meas_name]
+    time_data = meas.reader.run(
+        meas.dir_path, metadata=meas.metadata, from_time=from_time, to_time=to_time
+    )
+    time_data = run_time_processors(resenv.config, time_data)
+    out_path = get_meas_time_path(resenv.proj.dir_path, out_site, out_meas)
+    writer = TimeWriterNumpy()
+    writer.run(out_path, time_data)
+
+
+def process_time_to_spectra(
+    resenv: ResisticsEnvironment, site_name: str, meas_name: str
+) -> None:
     """
     Process from time data to Fourier spectra
 
     Parameters
     ----------
-    proj : Project
-        The project
+    resenv : ResisticsEnvironment
+        The resistics environment containing the project and configuration
     site_name : str
         The name of the site
     meas_name : str
         The name of the measurement to process
     """
+    from resistics.project import get_calibration_path, get_meas_spectra_path
     from resistics.spectra import SpectraDataWriter
 
-    logger.info(f"Processing measurement {site_name}, {meas_name}")
-    config = proj.config
+    proj = resenv.proj
+    config = resenv.config
     calibration_path = get_calibration_path(proj.dir_path)
 
+    logger.info(f"Processing measurement {site_name}, {meas_name}")
     meas = proj[site_name][meas_name]
     time_data = meas.reader.run(meas.dir_path, metadata=meas.metadata)
     time_data = run_time_processors(config, time_data)
@@ -938,21 +570,38 @@ def process_time_to_spectra(proj: Project, site_name: str, meas_name: str) -> No
 
 
 def process_spectra_to_tf(
-    proj: Project,
+    resenv: ResisticsEnvironment,
     fs: float,
-    out_site: str,
-    in_site: Optional[str] = None,
-    remote_site: Optional[str] = None,
+    out_name: str,
+    in_name: Optional[str] = None,
+    remote_name: Optional[str] = None,
     masks: Optional[Dict[str, str]] = None,
 ):
-    from resistics.gather import Selector
+    from resistics.gather import Selector, Gather
 
-    sites = [proj[out_site]]
+    proj = resenv.proj
+    config = resenv.config
+
+    out_site = proj[out_name]
+    in_site = None if in_name is None else proj[in_name]
+    remote_site = None if remote_name is None else proj[remote_name]
+
+    sites = [out_site]
     if in_site is not None:
-        sites.append(proj[in_site])
+        sites.append(in_site)
     if remote_site is not None:
-        sites.append(proj[remote_site])
+        sites.append(remote_site)
 
-    config = proj.config
     dec_params = config.dec_setup.run(fs)
-    Selector().run(proj, sites, dec_params)
+    selection = Selector().run(config.name, proj, sites, dec_params)
+    gathered_data = Gather().run(
+        config.name,
+        proj,
+        selection,
+        config.tf,
+        out_site,
+        in_site=in_site,
+        cross_site=remote_site,
+    )
+    regression_data = config.regression_preparer.run(config.tf, gathered_data)
+    return regression_data
