@@ -938,7 +938,7 @@ class ResisticsProcess(ResisticsModel):
 
         >>> from resistics.common import ResisticsProcess
         >>> from resistics.letsgo import Configuration
-        >>> config = Configuration()
+        >>> config = Configuration(name="example1")
         >>> config.dec_setup
         DecimationSetup(name='DecimationSetup', n_levels=8, per_level=5, min_samples=256, div_factor=2, eval_freqs=None)
 
@@ -950,7 +950,7 @@ class ResisticsProcess(ResisticsModel):
         >>> test_dict = setup.dict()
         >>> test_dict
         {'name': 'DecimationSetup', 'n_levels': 4, 'per_level': 3, 'min_samples': 256, 'div_factor': 2, 'eval_freqs': None}
-        >>> config2 = Configuration(dec_setup=test_dict)
+        >>> config2 = Configuration(name="example2", dec_setup=test_dict)
         >>> config2.dec_setup
         DecimationSetup(name='DecimationSetup', n_levels=4, per_level=3, min_samples=256, div_factor=2, eval_freqs=None)
 
