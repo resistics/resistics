@@ -266,11 +266,10 @@ class EvaluationFreqs(ResisticsProcess):
             logger.info(f"Reducing freqs to evaluation freqs for level {ilevel}")
             level_metadata = spec_data.metadata.levels_metadata[ilevel]
             freqs = np.array(level_metadata.freqs)
-            index = np.arange(level_metadata.n_freqs)
-            eval_freqs = dec_params.get_eval_freqs(ilevel)
-            eval_index = np.round(np.interp(eval_freqs, freqs, index)).astype(int)
-            eval_freqs = freqs[eval_index]
-            data[ilevel] = spec_data.get_level(ilevel)[..., eval_index]
+            eval_freqs = np.array(dec_params.get_eval_freqs(ilevel))
+            data[ilevel] = self._get_level_data(
+                freqs, spec_data.get_level(ilevel), eval_freqs
+            )
             spectra_levels_metadata.append(
                 self._get_level_metadata(level_metadata, eval_freqs)
             )
@@ -283,7 +282,47 @@ class EvaluationFreqs(ResisticsProcess):
     def _get_level_data(
         self, freqs: np.ndarray, data: np.ndarray, eval_freqs: np.ndarray
     ) -> np.ndarray:
-        pass
+        """
+        Interpolate the spectra data to the evaluation frequencies
+
+        The input data for a level has shape:
+
+        n_wins x n_chans x n_freqs
+
+        The new output data will have size:
+
+        n_wins x n_chans x n_eval_freqs
+
+        This process is doing a linear interpolation. As this is complex data
+        and numpy does not have an interpolation along axis option,
+        interpolation is done manually.
+
+        First the evaluation frequencies are interpolated to their indices given
+        the current frequencies and indices.
+
+        Then these float indices are used to do the interpolation.
+
+        Parameters
+        ----------
+        freqs : np.ndarray
+            The input data frequencies
+        data : np.ndarray
+            The input spectra data
+        eval_freqs : List[float]
+            The evaluation frequencies
+
+        Returns
+        -------
+        np.ndarray
+            Output level data
+        """
+        index = np.arange(len(freqs))
+        eval_indices = np.interp(eval_freqs, freqs, index)
+        floors = np.floor(eval_indices).astype(int)
+        ceils = np.floor(eval_indices).astype(int)
+        portions = eval_indices - floors
+        diffs = data[..., ceils] - data[..., floors]
+        return data[..., floors] + np.squeeze(diffs[..., np.newaxis, :] * portions)
 
     def _get_level_metadata(
         self, level_metadata: SpectraLevelMetadata, eval_freqs: np.ndarray
