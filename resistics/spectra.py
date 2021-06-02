@@ -66,7 +66,14 @@ class SpectraMetadata(WriteableMetadata):
 
 
 class SpectraData(ResisticsData):
-    """Class for holding spectra data"""
+    """
+    Class for holding spectra data
+
+    The spectra data is stored in the class as a dictionary mapping decimation
+    level to numpy array. The shape of the array for each decimation level is:
+
+    n_wins x n_chans x n_freqs
+    """
 
     def __init__(self, metadata: SpectraMetadata, data: Dict[int, np.ndarray]):
         """
@@ -123,10 +130,10 @@ class SpectraData(ResisticsData):
             return np.absolute(spec), np.unwrap(np.angle(spec))
         return np.absolute(spec), np.angle(spec)
 
-    def stack(self):
+    def plot_stack(self):
         pass
 
-    def section(self):
+    def plot_section(self):
         pass
 
 
