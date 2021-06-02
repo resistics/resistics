@@ -244,6 +244,11 @@ class TimeData(ResisticsData):
     """
     Class for holding time data
 
+    The data values are stored in an numpy array attribute named data. This has
+    shape:
+
+    n_chans x n_samples
+
     Parameters
     ----------
     metadata : TimeMetadata
