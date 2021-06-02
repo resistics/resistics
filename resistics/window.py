@@ -844,6 +844,12 @@ class WindowedMetadata(WriteableMetadata):
 class WindowedData(ResisticsData):
     """
     Windows of a DecimatedData object
+
+    The windowed data is stored in a dictionary attribute named data. This is
+    a dictionary with an entry for each decimation level. The shape for a single
+    decimation level is as follows:
+
+    n_wins x n_chans x n_samples
     """
 
     def __init__(
