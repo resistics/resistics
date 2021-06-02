@@ -22,6 +22,77 @@ The window module includes functionality to do the following:
 - Windowing utility functions to calculate window and overlap sizes
 - Functions to map windows to samples in TimeData
 - Converting a global index array to datetime
+
+Usually with windowing, there is a window size and windows overlap with each
+other for a set number of samples. As an illustrative examples, consider a
+signal sampled at 10 Hz (dt=0.1 seconds) with 24 samples. This will be windowed
+using a window size of 8 samples per window and a 2 sample overlap.
+
+.. plot::
+
+    >>> import numpy as np
+    >>> import matplotlib.pyplot as plt
+    >>> fs = 10
+    >>> n_samples = 24
+    >>> win_size = 8
+    >>> olap_size = 2
+    >>> times = np.arange(0, n_samples) * (1/fs)
+
+    The first window
+
+    >>> start_win1 = 0
+    >>> end_win1 = win_size
+    >>> win1_times = times[start_win1:end_win1]
+
+    The second window
+
+    >>> start_win2 = end_win1 - olap_size
+    >>> end_win2 = start_win2 + win_size
+    >>> win2_times = times[start_win2:end_win2]
+
+    The third window
+
+    >>> start_win3 = end_win2 - olap_size
+    >>> end_win3 = start_win3 + win_size
+    >>> win3_times = times[start_win3:end_win3]
+
+    The fourth window
+
+    >>> start_win4= end_win3 - olap_size
+    >>> end_win4 = start_win4 + win_size
+    >>> win4_times = times[start_win4:end_win4]
+
+    Let's look at the actual window times for each window
+
+    >>> win1_times
+    array([0. , 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
+    >>> win2_times
+    array([0.6, 0.7, 0.8, 0.9, 1. , 1.1, 1.2, 1.3])
+    >>> win3_times
+    array([1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9])
+    >>> win4_times
+    array([1.8, 1.9, 2. , 2.1, 2.2, 2.3])
+
+    The duration and increments of windows can be calculated using provided
+    methods
+
+    >>> from resistics.window import win_duration, inc_duration
+    >>> print(win_duration(win_size, fs))
+    0:00:00.7
+    >>> print(inc_duration(win_size, olap_size, fs))
+    0:00:00.6
+
+    Plot the windows to give an illustration of how it works
+
+    >>> plt.plot(win1_times, np.ones_like(win1_times), "bo", label="window1") # doctest: +SKIP
+    >>> plt.plot(win2_times, np.ones_like(win2_times)*2, "ro", label="window2") # doctest: +SKIP
+    >>> plt.plot(win3_times, np.ones_like(win3_times)*3, "go", label="window3") # doctest: +SKIP
+    >>> plt.plot(win4_times, np.ones_like(win4_times)*4, "co", label="window4") # doctest: +SKIP
+    >>> plt.xlabel("Time [s]") # doctest: +SKIP
+    >>> plt.legend() # doctest: +SKIP
+    >>> plt.grid() # doctest: +SKIP
+    >>> plt.tight_layout() # doctest: +SKIP
+    >>> plt.show() # doctest: +SKIP
 """
 from loguru import logger
 from pathlib import Path
@@ -61,22 +132,20 @@ def win_duration(win_size: int, fs: float) -> RSTimeDelta:
     >>> from resistics.window import win_duration
     >>> duration = win_duration(512, 512)
     >>> print(duration)
-    0:00:01
+    0:00:00.998046875
     >>> duration = win_duration(520, 512)
     >>> print(duration)
-    0:00:01.015625
+    0:00:01.013671875
     >>> duration = win_duration(4096, 16_384)
     >>> print(duration)
-    0:00:00.25
+    0:00:00.24993896484375
     >>> duration = win_duration(200, 0.05)
     >>> print(duration)
-    1:06:40
-    >>> (200 * 20) - (3600 + 6 * 60 + 40)
-    0
+    1:06:20
     """
     from resistics.sampling import to_timedelta
 
-    return to_timedelta(1 / fs) * float(win_size)
+    return to_timedelta(1 / fs) * float(win_size - 1)
 
 
 def inc_duration(win_size: int, olap_size: int, fs: float) -> RSTimeDelta:
@@ -933,88 +1002,76 @@ class Windower(ResisticsProcess):
     }
 
     Perform the windowing. This actually creates views into the decimated data
-    using the numpy.lib.stride_tricks.sliding_window_view function
+    using the numpy.lib.stride_tricks.sliding_window_view function.
 
     >>> win_data = Windower().run(ref_time, win_params, dec_data)
-    >>> win_data.metadata.summary()
+
+    Inspect the history of the data
+
+    >>> win_data.metadata.history.summary()
     {
-        'file_info': None,
-        'fs': [128.0, 32.0, 4.0],
-        'chans': ['Ex', 'Ey', 'Hx', 'Hy'],
-        'n_chans': 4,
-        'n_levels': 3,
-        'system': '',
-        'wgs84_latitude': -999.0,
-        'wgs84_longitude': -999.0,
-        'easting': -999.0,
-        'northing': -999.0,
-        'elevation': -999.0,
-        'levels_metadata': [
+        'records': [
             {
-                'fs': 128.0,
-                'n_wins': 52,
-                'win_size': 256,
-                'olap_size': 64,
-                'index_offset': 0
+                'time_local': '...',
+                'time_utc': '...',
+                'creator': {
+                    'name': 'time_data_random',
+                    'fs': 128,
+                    'first_time': '2021-01-01 00:00:00',
+                    'n_samples': 10000
+                },
+                'messages': ['Generated time data with random values'],
+                'record_type': 'process'
             },
             {
-                'fs': 32.0,
-                'n_wins': 13,
-                'win_size': 256,
-                'olap_size': 64,
-                'index_offset': 0
+                'time_local': '...',
+                'time_utc': '...',
+                'creator': {'name': 'Decimator'},
+                'messages': [
+                    'Decimated level 0, inc. factor 1, fs 128.0',
+                    'Decimated level 1, inc. factor 4, fs 32.0',
+                    'Decimated level 2, inc. factor 8, fs 4.0',
+                    'Completed levels [0, 1, 2] out of [0, 1, 2, 3, 4]'
+                ],
+                'record_type': 'process'
+            },
+            {
+                'time_local': '...',
+                'time_utc': '...',
+                'creator': {'name': 'Windower'},
+                'messages': [
+                    'Level 0, generated 51 windows',
+                    'Window size 256, olap_size 64',
+                    'Level 1, generated 12 windows',
+                    'Window size 256, olap_size 64',
+                    'Level 2, generated 1 windows',
+                    'Window size 256, olap_size 64',
+                    'Num. windows 1 < min. 5',
+                    'Level 2 incomplete, terminating windowing'
+                ],
+                'record_type': 'process'
             }
-        ],
-        'history': {
-            'records': [
-                {
-                    'time_local': '...',
-                    'time_utc': '...',
-                    'creator': {
-                        'name': 'time_data_random',
-                        'fs': 128,
-                        'first_time': '2021-01-01 00:00:00',
-                        'n_samples': 10000
-                    },
-                    'messages': ['Generated time data with random values'],
-                    'record_type': 'process'
-                },
-                {
-                    'time_local': '...',
-                    'time_utc': '...',
-                    'creator': {
-                        'name': 'Decimator',
-                        'n_levels': 5,
-                        'min_samples': 256,
-                        'dec_fs': [128.0, 32.0, 4.0, 1.0, 0.125],
-                        'dec_increments': [1, 4, 8, 4, 8]
-                    },
-                    'messages': [
-                        'Decimated level 0, inc. factor 1, fs 128.0',
-                        'Decimated level 1, inc. factor 4, fs 32.0',
-                        'Decimated level 2, inc. factor 8, fs 4.0',
-                        'Completed levels [0, 1, 2] out of [0, 1, 2, 3, 4]'
-                    ],
-                    'record_type': 'process'
-                },
-                {
-                    'time_local': '...',
-                    'time_utc': '...',
-                    'creator': {'name': 'Windower'},
-                    'messages': [
-                        'Level 0, generated 52 windows',
-                        'Window size 256, olap_size 64',
-                        'Level 1, generated 13 windows',
-                        'Window size 256, olap_size 64',
-                        'Level 2, generated 1 windows',
-                        'Window size 256, olap_size 64',
-                        'Num. windows 1 < min. 5',
-                        'Level 2 incomplete, terminating windowing'
-                    ],
-                    'record_type': 'process'
-                }
-            ]
-        }
+        ]
+    }
+
+    The history shows that only two levels completed successfully, that is level
+    0 and level 1. Let's have a look at the metadata for these levels.
+
+    >>> for level_metadata in win_data.metadata.levels_metadata:
+    ...     level_metadata.summary()
+    {
+        'fs': 128.0,
+        'n_wins': 51,
+        'win_size': 256,
+        'olap_size': 64,
+        'index_offset': 0
+    }
+    {
+        'fs': 32.0,
+        'n_wins': 12,
+        'win_size': 256,
+        'olap_size': 64,
+        'index_offset': 0
     }
     """
 
