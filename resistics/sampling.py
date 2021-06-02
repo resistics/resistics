@@ -190,7 +190,7 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
     .. warning::
 
         At high time resolutions, there are machine precision errors that
-        come into play. Therefore, if nanoseconds < 0.000001, it will be zeroed
+        come into play. Therefore, if nanoseconds < 0.0001, it will be zeroed
         out
 
     Parameters
@@ -253,7 +253,7 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
         delta = delta - microseconds
         nanoseconds = delta * 1_000
         if nanoseconds != 0 and nanoseconds < eps:
-            logger.debug("nanoseconds set to 0 as potential machine precision error")
+            logger.debug(f"Setting nanoseconds {nanoseconds} to 0")
             nanoseconds = 0
         return RSTimeDelta(
             seconds=seconds, microseconds=microseconds, nanoseconds=nanoseconds
