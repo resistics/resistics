@@ -526,6 +526,12 @@ class DecimatedData(ResisticsData):
     """
     Data class for storing decimated data
 
+    The data for is stored in a dictionary attribute named data. The indices are
+    integers representing the decimation level. Each decimation level is a
+    numpy array of shape:
+
+    n_chans x n_samples
+
     Parameters
     ----------
     metadata : DecimatedMetadata
