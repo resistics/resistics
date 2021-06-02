@@ -735,16 +735,29 @@ class WindowSetup(ResisticsProcess):
         WindowParameters
             The window parameters, the window sizes and overlaps for each
             decimation level
+
+        Raises
+        ------
+        ValueError
+            If the number of windows does not match the number of levels
+        ValueError
+            If the number of overlaps does not match the number of levels
         """
         if self.win_sizes is None:
             win_sizes = self._get_win_sizes(n_levels, dec_fs)
         else:
             win_sizes = list(self.win_sizes)
 
+        if len(win_sizes) != n_levels:
+            raise ValueError(f"Num. windows {len(win_sizes)} != n_levels {n_levels}")
+
         if self.olap_sizes is None:
             olap_sizes = self._get_olap_sizes(win_sizes)
         else:
             olap_sizes = self.olap_sizes
+
+        if len(olap_sizes) != n_levels:
+            raise ValueError(f"Num. overlmaps {len(olap_sizes)} != n_levels {n_levels}")
 
         return WindowParameters(
             n_levels=n_levels,
