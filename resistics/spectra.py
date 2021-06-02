@@ -1,6 +1,10 @@
 """
 Module containing functions and classes related to Spectra calculation and
 manipulation
+
+Spectra are calculated from the windowed, decimated time data. The inbuilt
+Fourier transform implementation is inspired by the implementation of the
+scipy stft function.
 """
 from loguru import logger
 from pathlib import Path
@@ -65,6 +69,16 @@ class SpectraData(ResisticsData):
     """Class for holding spectra data"""
 
     def __init__(self, metadata: SpectraMetadata, data: Dict[int, np.ndarray]):
+        """
+        Initialise spectra data
+
+        Parameters
+        ----------
+        metadata : SpectraMetadata
+            Metadata for the spectra data
+        data : Dict[int, np.ndarray]
+            Dictionary of data, one entry for each evaluation level
+        """
         self.metadata = metadata
         self.data = data
 
@@ -118,15 +132,46 @@ class SpectraData(ResisticsData):
 
 class FourierTransform(ResisticsProcess):
     """
+    Perform a Fourier transform of the windowed data
+
     The processor is inspired by the scipy.signal.stft function which performs
-    a similar process.
+    a similar process and involves a Fourier transform along the last axis of
+    the windowed data.
+
+    Parameters
+    ----------
+    win_fnc : Union[str, Tuple[str, float]]
+        The window to use before performing the FFT, by default ("kaiser", 14)
+    detrend : Union[str, None]
+        Type of detrending to apply before performing FFT, by default linear
+        detrend. Setting to None will not apply any detrending to the data prior
+        to the FFT
+    workers : int
+        The number of CPUs to use, by default max - 2
     """
 
     win_fnc: Union[str, Tuple[str, float]] = ("kaiser", 14)
-    detrend: str = "linear"
+    detrend: Union[str, None] = "linear"
     workers: int = -2
 
     def run(self, win_data: WindowedData) -> SpectraData:
+        """
+        Perform the FFT
+
+        Data is padded to the next fast length before performing the FFT to
+        speed up processing. Therefore, the output length may not be as
+        expected.
+
+        Parameters
+        ----------
+        win_data : WindowedData
+            The input windowed data
+
+        Returns
+        -------
+        SpectraData
+            The Fourier transformed output
+        """
         from scipy.fft import next_fast_len, rfftfreq
 
         metadata_dict = win_data.metadata.dict()
@@ -198,6 +243,10 @@ class FourierTransform(ResisticsProcess):
 
 
 class EvaluationFreqs(ResisticsProcess):
+    """
+    Calculate the spectra values at the evaluation frequencies
+    """
+
     def run(
         self, dec_params: DecimationParameters, spec_data: SpectraData
     ) -> SpectraData:
@@ -223,6 +272,11 @@ class EvaluationFreqs(ResisticsProcess):
         metadata.history.add_record(self._get_record(messages))
         logger.info("Fourier coefficients calculated at evaluation frequencies")
         return SpectraData(metadata, data)
+
+    def _get_level_data(
+        self, freqs: np.ndarray, data: np.ndarray, eval_freqs: np.ndarray
+    ) -> np.ndarray:
+        pass
 
     def _get_level_metadata(
         self, level_metadata: SpectraLevelMetadata, eval_freqs: np.ndarray
