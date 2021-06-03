@@ -1,16 +1,16 @@
 """
 A package for the processing of magnetotelluric data
-Resistics is a package for the robust processing of magnetotelluric data. It includes several features focussed on traceability and data investigation. For more information, visit the package website at:
-www.resistics.io
+Resistics is a package for the robust processing of magnetotelluric data. It
+includes several features focussed on traceability and data investigation. For
+more information, visit the package website at: www.resistics.io
 """
+from importlib.metadata import version, PackageNotFoundError
+
 __name__ = "resistics"
-# short X.Y version
-xyversion = "0.0.7"
-# release
-release = ".dev1"
-# combined version
-__version__ = "{}{}".format(xyversion, release)
+try:
+    __version__ = version(__name__)
+except PackageNotFoundError:  # pragma: no cover
+    __version__ = "unknown"
 
 
-from resistics.log import log_info, log_warning, log_debug
-from resistics.project import new, load, reload
+from resistics.letsgo import new, load  # noqa: F401
