@@ -257,7 +257,24 @@ class EvaluationFreqs(ResisticsProcess):
     def run(
         self, dec_params: DecimationParameters, spec_data: SpectraData
     ) -> SpectraData:
-        """Get values close to the evaluation frequencies"""
+        """
+        Interpolate spectra data to the evaluation frequencies
+
+        This is a simple linear interpolation.
+
+        Parameters
+        ----------
+        dec_params : DecimationParameters
+            The decimation parameters which have the evaluation frequencies for
+            each decimation level
+        spec_data : SpectraData
+            The spectra data
+
+        Returns
+        -------
+        SpectraData
+            The spectra data at the evaluation frequencies
+        """
         metadata_dict = spec_data.metadata.dict()
         data = {}
         spectra_levels_metadata = []
