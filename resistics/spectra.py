@@ -34,7 +34,7 @@ class SpectraLevelMetadata(Metadata):
     """The global window offset for local window 0"""
     n_freqs: int
     """The number of frequencies in the frequency data"""
-    freqs: Optional[List[float]] = None
+    freqs: List[float]
     """List of frequencies"""
 
     @property
