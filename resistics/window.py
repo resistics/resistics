@@ -761,7 +761,7 @@ class WindowSetup(ResisticsProcess):
             olap_sizes = self.olap_sizes
 
         if len(olap_sizes) < n_levels:
-            raise ValueError(f"Num. overlmaps {len(olap_sizes)} < n_levels {n_levels}")
+            raise ValueError(f"Num. overlaps {len(olap_sizes)} < n_levels {n_levels}")
         if len(olap_sizes) > n_levels:
             # this may happen with user input windows
             # but decimated data has fewer levels
