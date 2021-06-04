@@ -748,16 +748,24 @@ class WindowSetup(ResisticsProcess):
         else:
             win_sizes = list(self.win_sizes)
 
-        if len(win_sizes) != n_levels:
-            raise ValueError(f"Num. windows {len(win_sizes)} != n_levels {n_levels}")
+        if len(win_sizes) < n_levels:
+            raise ValueError(f"Num. windows {len(win_sizes)} < n_levels {n_levels}")
+        if len(win_sizes) > n_levels:
+            # this may happen with user input windows
+            # but decimated data has fewer levels
+            win_sizes = win_sizes[:n_levels]
 
         if self.olap_sizes is None:
             olap_sizes = self._get_olap_sizes(win_sizes)
         else:
             olap_sizes = self.olap_sizes
 
-        if len(olap_sizes) != n_levels:
-            raise ValueError(f"Num. overlmaps {len(olap_sizes)} != n_levels {n_levels}")
+        if len(olap_sizes) < n_levels:
+            raise ValueError(f"Num. overlmaps {len(olap_sizes)} < n_levels {n_levels}")
+        if len(olap_sizes) > n_levels:
+            # this may happen with user input windows
+            # but decimated data has fewer levels
+            olap_sizes = olap_sizes[:n_levels]
 
         return WindowParameters(
             n_levels=n_levels,
