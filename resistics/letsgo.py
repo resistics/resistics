@@ -20,6 +20,7 @@ from resistics.decimate import DecimationParameters
 from resistics.decimate import DecimatedData
 from resistics.window import WindowedData
 from resistics.spectra import SpectraData
+from resistics.gather import GatheredData
 from resistics.regression import RegressionInputData
 
 
@@ -421,7 +422,7 @@ def run_sensor_calibration(
 
 
 def run_regression_preparer(
-    config: Configuration, spec_data: SpectraData
+    config: Configuration, gathered_data: GatheredData
 ) -> RegressionInputData:
     """
     Prepare linear regression data
@@ -430,8 +431,8 @@ def run_regression_preparer(
     ----------
     config : Configuration
         The configuration
-    spec_data : SpectraData
-        Spectra data
+    gathered_data : GatheredData
+        Gathered data to input into the regression
 
     Returns
     -------
@@ -439,11 +440,30 @@ def run_regression_preparer(
         Regression inputs for all evaluation frequencies
     """
     logger.info("Preparing regression input data")
-    return config.regression_preparer.run(config.tf, spec_data)
+    return config.regression_preparer.run(config.tf, gathered_data)
 
 
-def quick_read(config: Configuration, dir_path: Path) -> Union[None, TimeData]:
-    """Read time data for quick methods"""
+def quick_read(config: Configuration, dir_path: Path) -> TimeData:
+    """
+    Read time data folder
+
+    Parameters
+    ----------
+    config : Configuration
+        Configuration with appropriate readers, otherwise returns None
+    dir_path : Path
+        The directory path to read
+
+    Returns
+    -------
+    TimeData
+        The read TimeData
+
+    Raises
+    ------
+    TimeDataReadError
+        If unable to read data
+    """
     for reader in config.time_readers:
         logger.info(f"Attempting to read data with reader {reader.name}")
         try:
@@ -454,7 +474,10 @@ def quick_read(config: Configuration, dir_path: Path) -> Union[None, TimeData]:
             logger.debug(f"Failed reading time data with reader {reader.name}")
         except Exception:
             logger.debug("Unknown problem reading time data")
-    return None
+    reader_names = [reader.name for reader in config.time_readers]
+    raise TimeDataReadError(
+        dir_path, f"Unable to read time data with readers {reader_names}"
+    )
 
 
 def quick_view(
@@ -463,13 +486,30 @@ def quick_view(
     decimate: bool = False,
     max_pts: Optional[int] = 10_000,
 ):
-    """Quick plotting of time series data"""
+    """
+    Quick plotting of time data
+
+    Parameters
+    ----------
+    dir_path : Path
+        The directory path
+    config : Optional[Configuration], optional
+        The configuration with the required time readers, by default None
+    decimate : bool, optional
+        Boolean flag for decimating, by default False
+    max_pts : Optional[int], optional
+        Max points in lttb decimation, by default 10_000
+
+    Raises
+    ------
+    ValueError
+        If time data fails reading
+    """
     logger.info(f"Plotting data in {dir_path}")
     if config is None:
         config = get_default_configuration()
+
     time_data = quick_read(config, dir_path)
-    if time_data is None:
-        raise ValueError("Failed to read time data")
     if not decimate:
         time_data.plot(max_pts=max_pts).show()
         return
@@ -483,16 +523,30 @@ def quick_tf(
     config: Optional[Configuration] = None,
     calibration_path: Optional[Path] = None,
 ) -> RegressionInputData:
-    """Quick processing of a single data directory"""
+    """
+    Quickly calculate out a transfer function for time data in its own directory
+
+    Parameters
+    ----------
+    dir_path : Path
+        The directory path
+    config : Optional[Configuration], optional
+        A configuration instance, by default None
+    calibration_path : Optional[Path], optional
+        The path to the calibration data, by default None
+
+    Returns
+    -------
+    RegressionInputData
+        RegressionInputData
+    """
+    from resistics.gather import QuickGather
+
     logger.info(f"Processing data in {dir_path}")
     if config is None:
         config = get_default_configuration()
 
-    logger.info("Reading time data")
     time_data = quick_read(config, dir_path)
-    if time_data is None:
-        raise ValueError("Failed to read time data")
-
     ref_time = time_data.metadata.first_time
     time_data = run_time_processors(config, time_data)
     dec_params = config.dec_setup.run(time_data.metadata.fs)
@@ -502,7 +556,8 @@ def quick_tf(
     eval_data = run_evals(config, dec_params, spec_data)
     if calibration_path is not None:
         eval_data = run_sensor_calibration(config, calibration_path, eval_data)
-    reg_data = run_regression_preparer(config, eval_data)
+    gathered_data = QuickGather().run(dir_path, dec_params, config.tf, eval_data)
+    reg_data = run_regression_preparer(config, gathered_data)
     return reg_data
 
 
@@ -515,7 +570,28 @@ def process_time(
     from_time: Optional[DateTimeLike] = None,
     to_time: Optional[DateTimeLike] = None,
 ) -> None:
-    """Process time data to a new site and measurement"""
+    """
+    Process time data and save as a new measurement
+
+    This is useful when resampling data to use with other measurements
+
+    Parameters
+    ----------
+    resenv : ResisticsEnvironment
+        The resistics environment
+    site_name : str
+        The name of the site with the data to process
+    meas_name : str
+        The name of the measurement to process
+    out_site : str
+        The site to output the data to
+    out_meas : str
+        The name of the measurement to output the data to
+    from_time : Optional[DateTimeLike], optional
+        Time to get the time data from, by default None
+    to_time : Optional[DateTimeLike], optional
+        Time to get the time data up to, by default None
+    """
     from resistics.time import TimeWriterNumpy
     from resistics.project import get_meas_time_path
 
@@ -576,7 +652,30 @@ def process_spectra_to_tf(
     in_name: Optional[str] = None,
     remote_name: Optional[str] = None,
     masks: Optional[Dict[str, str]] = None,
-):
+) -> RegressionInputData:
+    """
+    Process spectra to transfer functions
+
+    Parameters
+    ----------
+    resenv : ResisticsEnvironment
+        The resistics environment
+    fs : float
+        The sampling frequency to process
+    out_name : str
+        The name of the output site
+    in_name : Optional[str], optional
+        The name of the input site, by default None
+    remote_name : Optional[str], optional
+        The name of the remote site, by default None
+    masks : Optional[Dict[str, str]], optional
+        Any masks to apply, by default None
+
+    Returns
+    -------
+    RegressionInputData
+        Data to input into a solver
+    """
     from resistics.gather import Selector, Gather
 
     proj = resenv.proj
