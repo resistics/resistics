@@ -484,7 +484,7 @@ def quick_view(
     dir_path: Path,
     config: Optional[Configuration] = None,
     decimate: bool = False,
-    max_pts: Optional[int] = 10_000,
+    max_pts: int = 10_000,
 ):
     """
     Quick plotting of time data
@@ -648,9 +648,9 @@ def process_time_to_spectra(
 def process_spectra_to_tf(
     resenv: ResisticsEnvironment,
     fs: float,
-    out_name: str,
-    in_name: Optional[str] = None,
-    remote_name: Optional[str] = None,
+    out_site: str,
+    in_site: Optional[str] = None,
+    cross_site: Optional[str] = None,
     masks: Optional[Dict[str, str]] = None,
 ) -> RegressionInputData:
     """
@@ -662,12 +662,14 @@ def process_spectra_to_tf(
         The resistics environment
     fs : float
         The sampling frequency to process
-    out_name : str
+    out_site : str
         The name of the output site
-    in_name : Optional[str], optional
-        The name of the input site, by default None
-    remote_name : Optional[str], optional
-        The name of the remote site, by default None
+    in_site : Optional[str], optional
+        The name of the input site, by default None. This should be used for
+        intersite processing
+    cross_site : Optional[str], optional
+        The name of the cross site, by default None. This is usually the site to
+        use as the remote reference.
     masks : Optional[Dict[str, str]], optional
         Any masks to apply, by default None
 
@@ -676,31 +678,27 @@ def process_spectra_to_tf(
     RegressionInputData
         Data to input into a solver
     """
-    from resistics.gather import Selector, Gather
+    from resistics.gather import Selector, ProjectGather
 
     proj = resenv.proj
     config = resenv.config
 
-    out_site = proj[out_name]
-    in_site = None if in_name is None else proj[in_name]
-    remote_site = None if remote_name is None else proj[remote_name]
-
     sites = [out_site]
     if in_site is not None:
         sites.append(in_site)
-    if remote_site is not None:
-        sites.append(remote_site)
+    if cross_site is not None:
+        sites.append(cross_site)
 
     dec_params = config.dec_setup.run(fs)
     selection = Selector().run(config.name, proj, sites, dec_params)
-    gathered_data = Gather().run(
+    gathered_data = ProjectGather().run(
         config.name,
         proj,
         selection,
         config.tf,
-        out_site,
-        in_site=in_site,
-        cross_site=remote_site,
+        out_name=out_site,
+        in_name=in_site,
+        cross_name=cross_site,
     )
     regression_data = config.regression_preparer.run(config.tf, gathered_data)
     return regression_data
