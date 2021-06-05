@@ -346,6 +346,137 @@ class FourierTransform(ResisticsProcess):
         return SpectraMetadata(**metadata_dict)
 
 
+class SpectraSmootherUniform(ResisticsProcess):
+    """
+    Smooth a spectra with a uniform filter
+
+    For more information, please refer to:
+    https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.uniform_filter1d.html
+
+    Examples
+    --------
+    Smooth a simple spectra data instance
+
+    >>> from resistics.spectra import SpectraSmootherUniform
+    >>> from resistics.testing import spectra_data_basic
+    >>> spec_data = spectra_data_basic()
+    >>> smooth_data = SpectraSmootherUniform(length_proportion=0.5).run(spec_data)
+
+    Look at the results for the two windows
+
+    >>> spec_data.data[0][0,0]
+    array([0.+0.j, 1.+1.j, 2.+2.j, 3.+3.j, 4.+4.j, 5.+5.j, 6.+6.j, 7.+7.j,
+           8.+8.j, 9.+9.j])
+    >>> smooth_data.data[0][0,0]
+    array([0.8+0.8j, 1.2+1.2j, 2. +2.j , 3. +3.j , 4. +4.j , 5. +5.j ,
+           6. +6.j , 7. +7.j , 7.8+7.8j, 8.2+8.2j])
+    """
+
+    length_proportion: float = 0.1
+
+    def run(self, spec_data: SpectraData) -> SpectraData:
+        """
+        Smooth spectra data with a uniform smoother
+
+        Parameters
+        ----------
+        spec_data : SpectraData
+            The input spectra data
+
+        Returns
+        -------
+        SpectraData
+            The output spectra data
+        """
+        import scipy.ndimage as ndimage
+
+        data = {}
+        logger.info("Smoothing frequencies with uniform filter")
+        messages = ["Smoothing frequencies with uniform filter"]
+        for ilevel in range(spec_data.metadata.n_levels):
+            n_freqs = spec_data.metadata.levels_metadata[ilevel].n_freqs
+            smooth_length = self._get_smooth_length(n_freqs)
+            logger.debug(f"Smoothing level {ilevel} with num points {smooth_length}")
+            data[ilevel] = ndimage.uniform_filter1d(
+                spec_data.get_level(ilevel), smooth_length, axis=-1
+            )
+            messages.append(f"Smoothed level {ilevel} with num points {smooth_length}")
+        metadata = SpectraMetadata(**spec_data.metadata.dict())
+        metadata.history.add_record(self._get_record(messages))
+        logger.info("Fourier coefficients calculated at evaluation frequencies")
+        return SpectraData(metadata, data)
+
+    def _get_smooth_length(self, data_size: int) -> int:
+        """Get the smoothing length given the size of the data"""
+        length = int(self.length_proportion * data_size)
+        if length % 2 == 0:
+            length += 1
+        if length < 1:
+            return 1
+        return length
+
+
+class SpectraSmootherGaussian(ResisticsProcess):
+    """
+    Smooth a spectra with a gaussian filter
+
+    For more information, please refer to:
+    https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter1d.html
+
+    Examples
+    --------
+    Smooth a simple spectra data instance
+
+    >>> from resistics.spectra import SpectraSmootherGaussian
+    >>> from resistics.testing import spectra_data_basic
+    >>> spec_data = spectra_data_basic()
+    >>> smooth_data = SpectraSmootherGaussian().run(spec_data)
+
+    Look at the results for the two windows
+
+    >>> spec_data.data[0][0,0]
+    array([0.+0.j, 1.+1.j, 2.+2.j, 3.+3.j, 4.+4.j, 5.+5.j, 6.+6.j, 7.+7.j,
+           8.+8.j, 9.+9.j])
+    >>> smooth_data.data[0][0,0]
+    array([0.42704095+0.42704095j, 1.06795587+1.06795587j,
+           2.00483335+2.00483335j, 3.00013383+3.00013383j,
+           4.        +4.j        , 5.        +5.j        ,
+           5.99986617+5.99986617j, 6.99516665+6.99516665j,
+           7.93204413+7.93204413j, 8.57295905+8.57295905j])
+    """
+
+    sigma: float = 3
+
+    def run(self, spec_data: SpectraData) -> SpectraData:
+        """
+        Run Gaussian filtering of spectra data
+
+        Parameters
+        ----------
+        spec_data : SpectraData
+            Input spectra data
+
+        Returns
+        -------
+        SpectraData
+            Output spectra data
+        """
+        import scipy.ndimage as ndimage
+
+        data = {}
+        logger.info(f"Smoothing frequencies with gaussian filter, sigma {self.sigma}")
+        messages = [f"Smoothing frequencies with gaussian filter, sigma {self.sigma}"]
+        for ilevel in range(spec_data.metadata.n_levels):
+            data[ilevel] = ndimage.gaussian_filter1d(
+                spec_data.get_level(ilevel), 1, axis=-1
+            )
+            messages.append(f"Smoothed level {ilevel} with gaussian filter")
+        metadata = SpectraMetadata(**spec_data.metadata.dict())
+        metadata.history.add_record(self._get_record(messages))
+        logger.info("Fourier coefficients calculated at evaluation frequencies")
+        return SpectraData(metadata, data)
+
+
 class EvaluationFreqs(ResisticsProcess):
     """
     Calculate the spectra values at the evaluation frequencies
