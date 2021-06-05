@@ -86,6 +86,7 @@ class SpectraData(ResisticsData):
         data : Dict[int, np.ndarray]
             Dictionary of data, one entry for each evaluation level
         """
+        logger.debug(f"Creating SpectraData with data type {data[0].dtype}")
         self.metadata = metadata
         self.data = data
 

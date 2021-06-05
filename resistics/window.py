@@ -888,6 +888,7 @@ class WindowedData(ResisticsData):
         data : Dict[int, WindowedTimeData]
             The windowed data
         """
+        logger.debug(f"Creating WindowedData with data type {data[0].dtype}")
         self.metadata = metadata
         self.data = data
 

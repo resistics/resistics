@@ -580,6 +580,7 @@ class DecimatedData(ResisticsData):
 
     def __init__(self, metadata: DecimatedMetadata, data: Dict[int, np.ndarray]):
         """Initialise decimated data"""
+        logger.debug(f"Creating DecimatedData with data type {data[0].dtype}")
         self.metadata = metadata
         self.data = data
 
