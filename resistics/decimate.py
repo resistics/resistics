@@ -381,7 +381,7 @@ class DecimationSetup(ResisticsProcess):
             Decimation parameterisation
         """
         eval_freqs = self._get_eval_freqs(fs)
-        factors = self._get_decimation_increments(fs, eval_freqs)
+        factors = self._get_factors(fs, eval_freqs)
         return DecimationParameters(
             fs=fs,
             n_levels=self.n_levels,
@@ -423,9 +423,7 @@ class DecimationSetup(ResisticsProcess):
             raise ValueError(f"Found frequencies {eval_freqs} > nyquist {nyquist}")
         return eval_freqs
 
-    def _get_decimation_increments(
-        self, fs: float, eval_freqs: np.ndarray
-    ) -> List[int]:
+    def _get_factors(self, fs: float, eval_freqs: np.ndarray) -> List[int]:
         """
         Calculate decimation factors
 
@@ -442,15 +440,15 @@ class DecimationSetup(ResisticsProcess):
 
         Returns
         -------
-        increments : List[int]
+        factors : List[int]
             The decimation factors referenced to the sampling frequency
         """
         eval_freqs = eval_freqs.reshape(self.n_levels, self.per_level)
-        increments = []
+        factors = []
         for ilevel in range(0, self.n_levels):
-            factor = self._get_decimation_factor(fs, eval_freqs[ilevel, 0])
-            increments.append(factor)
-        return increments
+            factor = self._get_decimation_factor(fs, np.max(eval_freqs[ilevel]))
+            factors.append(factor)
+        return factors
 
     def _get_decimation_factor(self, fs: float, f_max: float) -> int:
         """
@@ -461,7 +459,12 @@ class DecimationSetup(ResisticsProcess):
 
         - level sampling frequency >= 4 * max level evaluation frequency,
 
-        and returns the decimation factor for this suitable sampling frequency
+        and returns the decimation factor for this suitable sampling frequency.
+
+        .. note::
+
+            From an earlier check, know that all evaluation frequencies are less
+            than or equal to nyquist, so this does not have to be checked again.
 
         Parameters
         ----------
@@ -476,6 +479,10 @@ class DecimationSetup(ResisticsProcess):
             The decimation factor
         """
         target_fs = f_max * 4
+
+        if target_fs > fs:
+            return 1
+
         factor = 1
         while True:
             test_fs = fs / self.div_factor
