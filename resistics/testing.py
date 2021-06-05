@@ -1,12 +1,22 @@
-from typing import List
+"""
+Module for producing testing data for resistics
+
+This includes testing data for:
+
+- Record
+- History
+- TimeMetadata
+- TimeData
+- DecimatedData
+"""
+
+from typing import List, Dict
 import numpy as np
 import pandas as pd
 
 from resistics.common import Record, History, get_record
 from resistics.time import get_time_metadata, TimeMetadata, TimeData
 from resistics.decimate import DecimatedMetadata, DecimatedData
-
-# from resistics.project import Measurement, Site, Project
 
 
 def record_example1() -> Record:
@@ -563,6 +573,7 @@ def decimated_data_linear(
 
 
 def decimated_data_periodic(
+    frequencies: Dict[str, List[float]],
     fs: float = 0.25,
     first_time: str = "2021-01-01 00:00:00",
     n_samples: int = 1024,
@@ -574,6 +585,8 @@ def decimated_data_periodic(
 
     Parameters
     ----------
+    frequencies : Dict[str, List[float]]
+        Mapping from channel to list of frequencies to add
     fs : float, optional
         Sampling frequency, by default 10
     first_time : str, optional
@@ -598,12 +611,13 @@ def decimated_data_periodic(
         level_samples = metadata.levels_metadata[ilevel].n_samples
         level_fs = metadata.levels_metadata[ilevel].fs
         times = np.arange(0, level_samples) * (1 / level_fs)
-        frequencies = [[4, 7], [5, 8]]
         level_data = []
-        for i_chan in range(metadata.n_chans):
+        for chan in metadata.chans:
             chan_data = np.zeros(shape=(level_samples))
-            for freq in frequencies[i_chan]:
-                chan_data += np.sin(times * 2 * np.pi * (level_fs / freq))
+            for freq in frequencies[chan]:
+                if freq > level_fs / 2:
+                    continue
+                chan_data += np.sin(times * 2 * np.pi * freq)
             level_data.append(chan_data)
         data[ilevel] = np.array(level_data)
     creator = {
@@ -615,62 +629,3 @@ def decimated_data_periodic(
     record = get_record(creator, "Generated periodic decimated data")
     metadata.history.add_record(record)
     return DecimatedData(metadata, data)
-
-
-# def test_measurement(self) -> Measurement:
-
-
-# def calibration_headers(
-#     n_samples: int, serial: int = 10, sensor: str = "test sensor"
-# ) -> Headers:
-#     from resistics.calibrate import get_calibration_headers
-
-#     headers = {
-#         "data_file": "test.json",
-#         "n_samples": n_samples,
-#         "serial": serial,
-#         "sensor": sensor,
-#     }
-#     return get_calibration_headers(headers)
-
-
-# def calibration_data_ones(
-#     n_samples: int = 10, first_freq: float = 0.1, last_freq: float = 10
-# ) -> CalibrationData:
-#     from resistics.common import get_record
-
-#     headers = calibration_headers(n_samples)
-#     freqs = np.linspace(start=first_freq, stop=last_freq, num=n_samples)
-#     df = pd.DataFrame(data=freqs, columns=["frequencies"])
-#     df["magnitude"] = 1
-#     df["phase"] = 1
-#     df = df.set_index("frequencies")
-#     messages = ["Generating calibration data all 1s"]
-#     parameters = {
-#         "n_samples": n_samples,
-#         "first_freq": first_freq,
-#         "last_freq": last_freq,
-#     }
-#     record = get_record("calibration_data_ones", parameters, messages)
-#     return CalibrationData(headers, df, History([record]))
-
-
-# def calibration_data_linear(
-#     n_samples: int = 10, first_freq: float = 0.1, last_freq: float = 10
-# ) -> CalibrationData:
-#     from resistics.common import get_record
-
-#     headers = calibration_headers(n_samples)
-#     freqs = np.linspace(start=first_freq, stop=last_freq, num=n_samples)
-#     df = pd.DataFrame(data=freqs, columns=["frequencies"])
-#     df["magnitude"] = np.arange(0, n_samples)
-#     df["phase"] = np.arange(0, -n_samples, -1)
-#     df = df.set_index("frequencies")
-#     messages = ["Generating calibration with linear trends"]
-#     parameters = {
-#         "n_samples": n_samples,
-#         "first_freq": first_freq,
-#         "last_freq": last_freq,
-#     }
-#     record = get_record("calibration_data_ones", parameters, messages)
-#     return CalibrationData(headers, df, History([record]))
