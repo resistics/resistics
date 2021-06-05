@@ -338,7 +338,9 @@ class EvaluationFreqs(ResisticsProcess):
         eval_indices = np.interp(eval_freqs, freqs, index)
         floors = np.floor(eval_indices).astype(int)
         ceils = np.floor(eval_indices).astype(int)
-        portions = eval_indices - floors
+        # cast portions to preserve original data type
+        # otherwise, can expand complex64 to complex128
+        portions = (eval_indices - floors).astype(data.dtype)
         diffs = data[..., ceils] - data[..., floors]
         return data[..., floors] + np.squeeze(diffs[..., np.newaxis, :] * portions)
 
