@@ -36,6 +36,7 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.coverage",
     "sphinx.ext.viewcode",
+    "sphinx_copybutton",
     "sphinx.ext.autosectionlabel",
     "matplotlib.sphinxext.plot_directive",
 ]
@@ -58,7 +59,9 @@ napoleon_attr_annotations = False
 # other configuration
 plot_include_source = True
 todo_include_todos = True
-# pygments_style = "monokai"
+# copy button
+copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: "
+copybutton_prompt_is_regexp = True
 # pydantic configuration
 autodoc_pydantic_model_member_order = "bysource"
 autodoc_pydantic_model_show_field_summary = False
