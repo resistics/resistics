@@ -27,18 +27,31 @@ class ChanMetadata(Metadata):
     """Channel metadata"""
 
     data_files: Optional[List[str]] = None
+    """The data files"""
     sensor: str = ""
+    """The name of the sensor"""
     serial: str = ""
+    """The serial number of the sensor"""
     gain1: int = 1
+    """Primary channel gain"""
     gain2: int = 1
+    """Secondary channel gain"""
     scaling: float = 1
+    """Scaling to apply to the data. May include the gains and other scaling"""
     hchopper: bool = False
+    """Boolean flag for magnetic chopper on"""
     echopper: bool = False
+    """Boolean flag for electric chopper on"""
     dx: float = 1
+    """Dipole spacing x direction"""
     dy: float = 1
+    """Dipole spacing y direction"""
     dz: float = 1
+    """Dipole spacing z direction"""
     sensor_calibration_file: str = ""
+    """Explicit name of sensor calibration file"""
     instrument_calibration_file: str = ""
+    """Explicit name of instrument calibration file"""
 
     class Config:
         """pydantic configuration information"""
@@ -57,20 +70,35 @@ class TimeMetadata(WriteableMetadata):
     """Time metadata"""
 
     fs: float
+    """The sampling frequency"""
     chans: List[str]
+    """List of channels"""
     n_chans: Optional[int] = None
+    """The number of channels"""
     n_samples: int
+    """The number of samples"""
     first_time: HighResDateTime
+    """The datetime of the first sample"""
     last_time: HighResDateTime
+    """The datetime of the last sample"""
     system: str = ""
+    """The system used for recording"""
     serial: str = ""
+    """Serial number of the system"""
     wgs84_latitude: float = -999.0
+    """Latitude in WGS84"""
     wgs84_longitude: float = -999.0
+    """Longitude in WGS84"""
     easting: float = -999.0
+    """The easting of the site in local cartersian coordinates"""
     northing: float = -999.0
+    """The northing of the site in local cartersian coordinates"""
     elevation: float = -999.0
+    """The elevation of the site"""
     chans_metadata: Dict[str, ChanMetadata]
+    """List of channel metadata"""
     history: History = History()
+    """Processing history"""
 
     class Config:
         """pydantic configuration information"""
