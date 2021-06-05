@@ -358,13 +358,14 @@ def get_first_and_last_win(
     Examples
     --------
     Get the first and last window for the first decimation level in a decimated
-    data instance
+    data instance.
 
     >>> from resistics.testing import decimated_data_random
     >>> from resistics.sampling import to_datetime
-    >>> from resistics.window import get_first_and_last_win, win_to_datetime, inc_duration
+    >>> from resistics.window import get_first_and_last_win, win_to_datetime
+    >>> from resistics.window import win_duration, inc_duration
     >>> ref_time = to_datetime("2021-01-01 00:00:00")
-    >>> dec_data = decimated_data_random(fs=10, first_time="2021-01-01 00:05:10")
+    >>> dec_data = decimated_data_random(fs=0.1, first_time="2021-01-01 00:05:10", n_samples=100, factor=10)
 
     Get the metadata for decimation level 0
 
@@ -374,10 +375,20 @@ def get_first_and_last_win(
         'fs': 10.0,
         'n_samples': 10000,
         'first_time': '2021-01-01 00:05:10.000000_000000_000000_000000',
-        'last_time': '2021-01-01 00:21:49.900000_000000_000000_000000'
+        'last_time': '2021-01-01 00:21:49.899999_999999_977300_000000'
     }
 
-    Now calculate the first and last window, relative to the reference time
+    .. note::
+
+        As a point of interest, note how the last time is actually slightly
+        incorrect. This is due to machine precision issues described in more
+        detail here https://docs.python.org/3/tutorial/floatingpoint.html.
+        Whilst there is value in using the high resolution datetime format for
+        high sampling rates, there is a tradeoff. Such are the perils of
+        floating point arithmetic.
+
+    The next step is to calculate the first and last window, relative to the
+    reference time
 
     >>> win_size = 100
     >>> olap_size = 25
@@ -387,17 +398,25 @@ def get_first_and_last_win(
 
     These window indices can be converted to start times of the windows. The
     last window is checked to make sure it does not extend past the end of the
-    time data
+    time data. First get the window duration and increments.
 
+    >>> duration = win_duration(win_size, level_metadata.fs)
+    >>> print(duration)
+    0:00:09.9
     >>> increment = inc_duration(win_size, olap_size, level_metadata.fs)
+    >>> print(increment)
+    0:00:07.5
+
+    Now calculate the times of the windows
+
     >>> first_win_start_time = win_to_datetime(ref_time, 42, increment)
     >>> last_win_start_time = win_to_datetime(ref_time, 173, increment)
     >>> print(first_win_start_time, last_win_start_time)
     2021-01-01 00:05:15 2021-01-01 00:21:37.5
-    >>> print(last_win_start_time + increment)
-    2021-01-01 00:21:45
+    >>> print(last_win_start_time + duration)
+    2021-01-01 00:21:47.4
     >>> print(level_metadata.last_time)
-    2021-01-01 00:21:49.9
+    2021-01-01 00:21:49.8999999999999773
     >>> level_metadata.last_time > last_win_start_time + increment
     True
     """
@@ -1018,101 +1037,78 @@ class Windower(ResisticsProcess):
     imports, defining a reference time and generating random decimated data.
 
     >>> from resistics.sampling import to_datetime
-    >>> from resistics.testing import decimated_data_random
+    >>> from resistics.testing import decimated_data_linear
     >>> from resistics.window import WindowSetup, Windower
-    >>> ref_time = to_datetime("2021-01-01 00:00:00")
-    >>> dec_data = decimated_data_random(fs=128)
+    >>> dec_data = decimated_data_linear(fs=128)
+    >>> ref_time = dec_data.metadata.first_time
     >>> print(dec_data.to_string())
     <class 'resistics.decimate.DecimatedData'>
-              fs        dt  n_samples           first_time                    last_time
+               fs        dt  n_samples           first_time                        last_time
     level
-    0      128.0  0.007812      10000  2021-01-01 00:00:00  2021-01-01 00:01:18.1171875
-    1       32.0  0.031250       2500  2021-01-01 00:00:00    2021-01-01 00:01:18.09375
-    2        4.0  0.250000        313  2021-01-01 00:00:00          2021-01-01 00:01:18
+    0      2048.0  0.000488      16384  2021-01-01 00:00:00  2021-01-01 00:00:07.99951171875
+    1       512.0  0.001953       4096  2021-01-01 00:00:00    2021-01-01 00:00:07.998046875
+    2       128.0  0.007812       1024  2021-01-01 00:00:00      2021-01-01 00:00:07.9921875
 
-    Next, initialise the window parameters
+    Next, initialise the window parameters. For this example, use small windows,
+    which will make inspecting them easier.
 
-    >>> win_params = WindowSetup().run(dec_data.metadata.n_levels, dec_data.metadata.fs)
+    >>> win_params = WindowSetup(win_sizes=[16,16,16], min_olap=4).run(dec_data.metadata.n_levels, dec_data.metadata.fs)
     >>> win_params.summary()
     {
         'n_levels': 3,
         'min_n_wins': 5,
-        'win_sizes': [256, 256, 256],
-        'olap_sizes': [64, 64, 64]
+        'win_sizes': [16, 16, 16],
+        'olap_sizes': [4, 4, 4]
     }
 
     Perform the windowing. This actually creates views into the decimated data
-    using the numpy.lib.stride_tricks.sliding_window_view function.
+    using the numpy.lib.stride_tricks.sliding_window_view function. The shape
+    for a data array at a decimation level is: n_wins x n_chans x win_size. The
+    information about each level is also in the levels_metadata attribute of
+    WindowedMetadata.
 
     >>> win_data = Windower().run(ref_time, win_params, dec_data)
-
-    Inspect the history of the data
-
-    >>> win_data.metadata.history.summary()
-    {
-        'records': [
-            {
-                'time_local': '...',
-                'time_utc': '...',
-                'creator': {
-                    'name': 'time_data_random',
-                    'fs': 128,
-                    'first_time': '2021-01-01 00:00:00',
-                    'n_samples': 10000
-                },
-                'messages': ['Generated time data with random values'],
-                'record_type': 'process'
-            },
-            {
-                'time_local': '...',
-                'time_utc': '...',
-                'creator': {'name': 'Decimator'},
-                'messages': [
-                    'Decimated level 0, inc. factor 1, fs 128.0',
-                    'Decimated level 1, inc. factor 4, fs 32.0',
-                    'Decimated level 2, inc. factor 8, fs 4.0',
-                    'Completed levels [0, 1, 2] out of [0, 1, 2, 3, 4]'
-                ],
-                'record_type': 'process'
-            },
-            {
-                'time_local': '...',
-                'time_utc': '...',
-                'creator': {'name': 'Windower'},
-                'messages': [
-                    'Level 0, generated 51 windows',
-                    'Window size 256, olap_size 64',
-                    'Level 1, generated 12 windows',
-                    'Window size 256, olap_size 64',
-                    'Level 2, generated 1 windows',
-                    'Window size 256, olap_size 64',
-                    'Num. windows 1 < min. 5',
-                    'Level 2 incomplete, terminating windowing'
-                ],
-                'record_type': 'process'
-            }
-        ]
-    }
-
-    The history shows that only two levels completed successfully, that is level
-    0 and level 1. Let's have a look at the metadata for these levels.
-
+    >>> win_data.data[0].shape
+    (1365, 2, 16)
     >>> for level_metadata in win_data.metadata.levels_metadata:
     ...     level_metadata.summary()
     {
-        'fs': 128.0,
-        'n_wins': 51,
-        'win_size': 256,
-        'olap_size': 64,
+        'fs': 2048.0,
+        'n_wins': 1365,
+        'win_size': 16,
+        'olap_size': 4,
         'index_offset': 0
     }
     {
-        'fs': 32.0,
-        'n_wins': 12,
-        'win_size': 256,
-        'olap_size': 64,
+        'fs': 512.0,
+        'n_wins': 341,
+        'win_size': 16,
+        'olap_size': 4,
         'index_offset': 0
     }
+    {
+        'fs': 128.0,
+        'n_wins': 85,
+        'win_size': 16,
+        'olap_size': 4,
+        'index_offset': 0
+    }
+
+    Let's look at an example of data from the first decimation level for the
+    first channel. This is simply a linear set of data ranging from 0...16_383.
+
+    >>> dec_data.data[0][0]
+    array([    0,     1,     2, ..., 16381, 16382, 16383])
+
+    Inspecting the first few windows shows they are as expected including the
+    overlap.
+
+    >>> win_data.data[0][0, 0]
+    array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15])
+    >>> win_data.data[0][1, 0]
+    array([12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27])
+    >>> win_data.data[0][2, 0]
+    array([24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39])
     """
 
     def run(
