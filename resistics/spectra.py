@@ -349,6 +349,81 @@ class FourierTransform(ResisticsProcess):
 class EvaluationFreqs(ResisticsProcess):
     """
     Calculate the spectra values at the evaluation frequencies
+
+    This is done using linear interpolation in the complex domain
+
+    Example
+    -------
+    The example will show interpolation to evaluation frequencies on a very
+    simple example. Begin by generating some example spectra data.
+
+    >>> from resistics.decimate import DecimationSetup
+    >>> from resistics.spectra import EvaluationFreqs
+    >>> from resistics.testing import spectra_data_basic
+    >>> spec_data = spectra_data_basic()
+    >>> spec_data.metadata.n_levels
+    1
+    >>> spec_data.metadata.chans
+    ['chan1']
+    >>> spec_data.metadata.levels_metadata[0].summary()
+    {
+        'fs': 180.0,
+        'n_wins': 2,
+        'win_size': 20,
+        'olap_size': 5,
+        'index_offset': 0,
+        'n_freqs': 10,
+        'freqs': [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0]
+    }
+
+    The spectra data has only a single channel and a single level which has 2
+    windows. Now define our evaluation frequencies.
+
+    >>> eval_freqs = [1, 12, 23, 34, 45, 56, 67, 78, 89]
+    >>> dec_params = DecimationSetup(n_levels=1, per_level=9, eval_freqs=eval_freqs).run(spec_data.metadata.fs[0])
+    >>> dec_params.summary()
+    {
+        'fs': 180.0,
+        'n_levels': 1,
+        'per_level': 9,
+        'min_samples': 256,
+        'eval_freqs': [1.0, 12.0, 23.0, 34.0, 45.0, 56.0, 67.0, 78.0, 89.0],
+        'dec_factors': [1],
+        'dec_increments': [1],
+        'dec_fs': [180.0]
+    }
+
+    Now calculate the spectra at the evaluation frequencies
+
+    >>> eval_data = EvaluationFreqs().run(dec_params, spec_data)
+    >>> eval_data.metadata.levels_metadata[0].summary()
+    {
+        'fs': 180.0,
+        'n_wins': 2,
+        'win_size': 20,
+        'olap_size': 5,
+        'index_offset': 0,
+        'n_freqs': 9,
+        'freqs': [1.0, 12.0, 23.0, 34.0, 45.0, 56.0, 67.0, 78.0, 89.0]
+    }
+
+    To double check everything is as expected, let's compare the data. Comparing
+    window 1 gives
+
+    >>> print(spec_data.data[0][0, 0])
+    [0.+0.j 1.+1.j 2.+2.j 3.+3.j 4.+4.j 5.+5.j 6.+6.j 7.+7.j 8.+8.j 9.+9.j]
+    >>> print(eval_data.data[0][0, 0])
+    [0.1+0.1j 1.2+1.2j 2.3+2.3j 3.4+3.4j 4.5+4.5j 5.6+5.6j 6.7+6.7j 7.8+7.8j
+     8.9+8.9j]
+
+    And window 2
+
+    >>> print(spec_data.data[0][1, 0])
+    [-1. +1.j  0. +2.j  1. +3.j  2. +4.j  3. +5.j  4. +6.j  5. +7.j  6. +8.j
+      7. +9.j  8.+10.j]
+    >>> print(eval_data.data[0][1, 0])
+    [-0.9+1.1j  0.2+2.2j  1.3+3.3j  2.4+4.4j  3.5+5.5j  4.6+6.6j  5.7+7.7j
+      6.8+8.8j  7.9+9.9j]
     """
 
     def run(
