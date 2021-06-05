@@ -14,6 +14,7 @@ import numpy as np
 
 from resistics.common import ResisticsData, ResisticsProcess, History
 from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
+from resistics.sampling import HighResDateTime
 from resistics.time import ChanMetadata
 from resistics.decimate import DecimationParameters
 from resistics.window import WindowedData, WindowedLevelMetadata
@@ -50,6 +51,8 @@ class SpectraMetadata(WriteableMetadata):
     chans: List[str]
     n_chans: Optional[int] = None
     n_levels: int
+    first_time: HighResDateTime
+    last_time: HighResDateTime
     system: str = ""
     wgs84_latitude: float = -999.0
     wgs84_longitude: float = -999.0
