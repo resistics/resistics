@@ -996,6 +996,16 @@ class Windower(ResisticsProcess):
     """
     Windows DecimatedData
 
+    This is the primary window making process for resistics and should be used
+    when alignment of windows with a site or across sites is required.
+
+    This method uses numpy striding to produce window views into the decimated
+    data.
+
+    See Also
+    --------
+    WindowerTarget : A windower to make a target number of windows
+
     Examples
     --------
     The Windower windows a DecimatedData object given a reference time and some
@@ -1254,12 +1264,22 @@ class WindowerTarget(Windower):
     generated number of windows is below the target. This is to avoid situations
     where excessively small windows sizes are selected.
 
+    .. warning::
+
+        This process is mainly useful for quick processing of a single
+        measurement and should not be used when any alignment of windows is
+        required within a site or across sites.
+
     Parameters
     ----------
     target : int
         The target number of windows for each decimation level
     olap_proportion : float
         The overlap proportion of the window size
+
+    See Also
+    --------
+    Windower : The window making process to use when alignment is required
     """
 
     target: int = 1000
