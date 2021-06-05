@@ -498,9 +498,13 @@ class DecimatedLevelMetadata(Metadata):
     """Metadata for a decimation level"""
 
     fs: float
+    """The sampling frequency of the decimation level"""
     n_samples: int
+    """The number of samples in the decimation level"""
     first_time: HighResDateTime
+    """The first time in the decimation level"""
     last_time: HighResDateTime
+    """The last time in the decimation level"""
 
     @property
     def dt(self):
