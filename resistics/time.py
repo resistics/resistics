@@ -1801,7 +1801,7 @@ class Decimate(ResisticsProcess):
     """
 
     factor: conint(ge=1)
-    max_single_factor: conint(ge=1) = 4
+    max_single_factor: conint(ge=2) = 3
 
     def run(self, time_data: TimeData) -> TimeData:
         """
@@ -1877,7 +1877,7 @@ class Decimate(ResisticsProcess):
         >>> from resistics.time import Decimate
         >>> process = Decimate(factor=24)
         >>> process._get_downsample_factors(process.factor)
-        [4, 2, 3]
+        [2, 2, 2, 3]
         >>> process._prime_factorisation(process.factor)
         [2, 2, 2, 3]
 
