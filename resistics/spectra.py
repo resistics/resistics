@@ -159,6 +159,75 @@ class FourierTransform(ResisticsProcess):
         to the FFT
     workers : int
         The number of CPUs to use, by default max - 2
+
+    Examples
+    --------
+    This example will get periodic decimated data, perfrom windowing and run the
+    Fourier transform on the windowed data.
+
+    .. plot::
+        :width: 90%
+
+        >>> import matplotlib.pyplot as plt
+        >>> import numpy as np
+        >>> from resistics.testing import decimated_data_periodic
+        >>> from resistics.window import WindowSetup, Windower
+        >>> from resistics.spectra import FourierTransform
+        >>> frequencies = {"chan1": [870, 590, 110, 32, 12], "chan2": [480, 375, 210, 60, 45]}
+        >>> dec_data = decimated_data_periodic(frequencies, fs=128)
+        >>> dec_data.metadata.chans
+        ['chan1', 'chan2']
+        >>> print(dec_data.to_string())
+        <class 'resistics.decimate.DecimatedData'>
+                   fs        dt  n_samples           first_time                        last_time
+        level
+        0      2048.0  0.000488      16384  2021-01-01 00:00:00  2021-01-01 00:00:07.99951171875
+        1       512.0  0.001953       4096  2021-01-01 00:00:00    2021-01-01 00:00:07.998046875
+        2       128.0  0.007812       1024  2021-01-01 00:00:00      2021-01-01 00:00:07.9921875
+
+        Perform the windowing
+
+        >>> win_params = WindowSetup().run(dec_data.metadata.n_levels, dec_data.metadata.fs)
+        >>> win_data = Windower().run(dec_data.metadata.first_time, win_params, dec_data)
+
+        And then the Fourier transform. By default, the data will be (linearly)
+        detrended and mutliplied by a Kaiser window prior to the Fourier
+        transform
+
+        >>> spec_data = FourierTransform().run(win_data)
+
+        For plotting of magnitude, let's stack the spectra
+
+        >>> freqs_0 = spec_data.metadata.levels_metadata[0].freqs
+        >>> data_0 = np.absolute(spec_data.data[0]).mean(axis=0)
+        >>> freqs_1 = spec_data.metadata.levels_metadata[1].freqs
+        >>> data_1 = np.absolute(spec_data.data[1]).mean(axis=0)
+        >>> freqs_2 = spec_data.metadata.levels_metadata[2].freqs
+        >>> data_2 = np.absolute(spec_data.data[2]).mean(axis=0)
+
+        Now plot
+
+        >>> plt.subplot(3,1,1) # doctest: +SKIP
+        >>> plt.plot(freqs_0, data_0[0], label="chan1") # doctest: +SKIP
+        >>> plt.plot(freqs_0, data_0[1], label="chan2") # doctest: +SKIP
+        >>> plt.grid()
+        >>> plt.title("Decimation level 0") # doctest: +SKIP
+        >>> plt.legend() # doctest: +SKIP
+        >>> plt.subplot(3,1,2) # doctest: +SKIP
+        >>> plt.plot(freqs_1, data_1[0], label="chan1") # doctest: +SKIP
+        >>> plt.plot(freqs_1, data_1[1], label="chan2") # doctest: +SKIP
+        >>> plt.grid()
+        >>> plt.title("Decimation level 1") # doctest: +SKIP
+        >>> plt.legend() # doctest: +SKIP
+        >>> plt.subplot(3,1,3) # doctest: +SKIP
+        >>> plt.plot(freqs_2, data_2[0], label="chan1") # doctest: +SKIP
+        >>> plt.plot(freqs_2, data_2[1], label="chan2") # doctest: +SKIP
+        >>> plt.grid()
+        >>> plt.title("Decimation level 2") # doctest: +SKIP
+        >>> plt.legend() # doctest: +SKIP
+        >>> plt.xlabel("Frequency") # doctest: +SKIP
+        >>> plt.tight_layout() # doctest: +SKIP
+        >>> plt.show() # doctest: +SKIP
     """
 
     win_fnc: Union[str, Tuple[str, float]] = ("kaiser", 14)
@@ -212,7 +281,31 @@ class FourierTransform(ResisticsProcess):
     def _get_level_data(
         self, metadata: WindowedLevelMetadata, data: np.ndarray, n_transform: int
     ) -> np.ndarray:
-        """Run the spectra calculation for a single decimation level"""
+        """
+        Run the spectra calculation for a single decimation level
+
+        The input is an array with shape:
+
+        n_wins x n_chans x win_size
+
+        And the output has shape
+
+        n_wins x n_chans x n_transform
+
+        Parameters
+        ----------
+        metadata : WindowedLevelMetadata
+            Level metadata
+        data : np.ndarray
+            Data to transform
+        n_transform : int
+            Size of the transform
+
+        Returns
+        -------
+        np.ndarray
+            Transformed data for all windows
+        """
         from scipy import signal
         from scipy.fft import rfft
 
