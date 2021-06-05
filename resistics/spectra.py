@@ -511,7 +511,8 @@ class EvaluationFreqs(ResisticsProcess):
     windows. Now define our evaluation frequencies.
 
     >>> eval_freqs = [1, 12, 23, 34, 45, 56, 67, 78, 89]
-    >>> dec_params = DecimationSetup(n_levels=1, per_level=9, eval_freqs=eval_freqs).run(spec_data.metadata.fs[0])
+    >>> dec_setup = DecimationSetup(n_levels=1, per_level=9, eval_freqs=eval_freqs)
+    >>> dec_params = dec_setup.run(spec_data.metadata.fs[0])
     >>> dec_params.summary()
     {
         'fs': 180.0,
