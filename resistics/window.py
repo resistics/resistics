@@ -104,7 +104,7 @@ import pandas as pd
 from resistics.errors import ProcessRunError
 from resistics.common import History, ResisticsModel, ResisticsData, ResisticsProcess
 from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
-from resistics.sampling import RSDateTime, RSTimeDelta
+from resistics.sampling import RSDateTime, RSTimeDelta, HighResDateTime
 from resistics.time import ChanMetadata
 from resistics.decimate import DecimatedLevelMetadata, DecimatedData
 
@@ -847,6 +847,8 @@ class WindowedMetadata(WriteableMetadata):
     chans: List[str]
     n_chans: Optional[int] = None
     n_levels: int
+    first_time: HighResDateTime
+    last_time: HighResDateTime
     system: str = ""
     wgs84_latitude: float = -999.0
     wgs84_longitude: float = -999.0
