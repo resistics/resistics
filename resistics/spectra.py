@@ -433,12 +433,13 @@ class EvaluationFreqs(ResisticsProcess):
         index = np.arange(len(freqs))
         eval_indices = np.interp(eval_freqs, freqs, index)
         floors = np.floor(eval_indices).astype(int)
-        ceils = np.floor(eval_indices).astype(int)
+        ceils = np.ceil(eval_indices).astype(int)
         # cast portions to preserve original data type
         # otherwise, can expand complex64 to complex128
         portions = (eval_indices - floors).astype(data.dtype)
         diffs = data[..., ceils] - data[..., floors]
-        return data[..., floors] + np.squeeze(diffs[..., np.newaxis, :] * portions)
+        add = np.squeeze(diffs[..., np.newaxis, :] * portions, axis=-2)
+        return data[..., floors] + add
 
     def _get_level_metadata(
         self, level_metadata: SpectraLevelMetadata, eval_freqs: np.ndarray
