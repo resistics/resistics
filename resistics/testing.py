@@ -8,6 +8,7 @@ This includes testing data for:
 - TimeMetadata
 - TimeData
 - DecimatedData
+- SpectraData
 """
 
 from typing import List, Dict
@@ -17,6 +18,7 @@ import pandas as pd
 from resistics.common import Record, History, get_record
 from resistics.time import get_time_metadata, TimeMetadata, TimeData
 from resistics.decimate import DecimatedMetadata, DecimatedData
+from resistics.spectra import SpectraLevelMetadata, SpectraMetadata, SpectraData
 
 
 def record_example1() -> Record:
@@ -71,7 +73,7 @@ def time_metadata_1chan(
         "chans": ["chan1"],
         "fs": fs,
         "n_samples": n_samples,
-        "n_chans": 2,
+        "n_chans": 1,
         "first_time": first_time,
         "last_time": first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
     }
@@ -629,3 +631,45 @@ def decimated_data_periodic(
     record = get_record(creator, "Generated periodic decimated data")
     metadata.history.add_record(record)
     return DecimatedData(metadata, data)
+
+
+def spectra_data_basic() -> SpectraData:
+    """
+    Spectra data with a single decimation level
+
+    Returns
+    -------
+    SpectraData
+        Spectra data with a single level, a single channel and two windows
+    """
+
+    data = {}
+    # fmt:off
+    data[0] = np.array(
+        [
+            [[0 + 0j, 1 + 1j, 2 + 2j, 3 + 3j, 4 + 4j, 5 + 5j, 6 + 6j, 7 + 7j, 8 + 8j, 9 + 9j]],
+            [[-1 + 1j, 0 + 2j, 1 + 3j, 2 + 4j, 3 + 5j, 4 + 6j, 5 + 7j, 6 + 8j, 7 + 9j, 8 + 10j]],
+        ]
+    )
+    # fmt:on
+    freqs = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+    level_metadata = SpectraLevelMetadata(
+        fs=180,
+        n_wins=2,
+        win_size=20,
+        olap_size=5,
+        index_offset=0,
+        n_freqs=10,
+        freqs=freqs,
+    )
+    metadata_dict = time_metadata_1chan().dict()
+    metadata_dict["fs"] = [180]
+    metadata_dict["n_levels"] = 1
+    metadata_dict["levels_metadata"] = [level_metadata]
+    metadata = SpectraMetadata(**metadata_dict)
+    creator = {
+        "name": "spec_data_basic",
+    }
+    record = get_record(creator, "Generated spectra data with 1 channel and 1 level")
+    metadata.history.add_record(record)
+    return SpectraData(metadata, data)
