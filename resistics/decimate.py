@@ -12,9 +12,9 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from resistics.sampling import HighResDateTime
 from resistics.common import ResisticsProcess, ResisticsModel, ResisticsData
 from resistics.common import ResisticsWriter, History, Metadata, WriteableMetadata
+from resistics.sampling import HighResDateTime
 from resistics.time import ChanMetadata, TimeData
 
 
@@ -507,6 +507,8 @@ class DecimatedMetadata(WriteableMetadata):
     chans: List[str]
     n_chans: Optional[int] = None
     n_levels: int
+    first_time: HighResDateTime
+    last_time: HighResDateTime
     system: str = ""
     wgs84_latitude: float = -999.0
     wgs84_longitude: float = -999.0
