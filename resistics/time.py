@@ -894,7 +894,7 @@ class TimeReaderAscii(TimeReaderJSON):
         """
         dtype = np.float32
         n_samples = read_to - read_from + 1
-        data = np.empty(shape=(len(metadata.chans), n_samples))
+        data = np.empty(shape=(len(metadata.chans), n_samples), dtype=dtype)
 
         logger.info(f"Reading data from {dir_path}")
         messages = [f"Reading raw data from {dir_path}"]
