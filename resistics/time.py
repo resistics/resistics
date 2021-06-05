@@ -955,15 +955,10 @@ class TimeReaderNumpy(TimeReaderJSON):
         """
         import numpy as np
 
-        n_samples = read_to - read_from + 1
-        data = np.empty(shape=(len(metadata.chans), n_samples))
-
         messages = [f"Reading raw data from {dir_path}"]
         messages.append(f"Sampling frequency {metadata.fs} Hz")
-        for idx, chan in enumerate(metadata.chans):
-            chan_path = dir_path / metadata[chan].data_files[0]
-            messages.append(f"Reading data for {chan} from {chan_path}")
-            data[idx] = np.load(chan_path, mmap_mode="r")[read_from : read_to + 1]
+        data_path = dir_path / "data.npy"
+        data = np.load(data_path, mmap_mode="r")[:, read_from : read_to + 1]
         metadata = self._get_return_metadata(metadata, read_from, read_to)
         messages.append(f"From sample, time: {read_from}, {str(metadata.first_time)}")
         messages.append(f"To sample, time: {read_to}, {str(metadata.last_time)}")
@@ -999,11 +994,11 @@ class TimeWriterNumpy(ResisticsWriter):
             WriteError(dir_path, "Unable to write to directory, check logs")
         logger.info(f"Writing time numpy data to {dir_path}")
         metadata_path = dir_path / "metadata.json"
+        data_path = dir_path / "data.npy"
+        np.save(data_path, time_data.data)
         metadata = time_data.metadata.copy()
         for chan in time_data.metadata.chans:
-            chan_path = dir_path / f"{chan.lower()}.npy"
-            np.save(chan_path, time_data[chan])
-            metadata[chan].data_files = [chan_path.name]
+            metadata[chan].data_files = [data_path.name]
         metadata.history.add_record(self._get_record(dir_path, type(time_data)))
         metadata.write(metadata_path)
 
