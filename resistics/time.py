@@ -1763,6 +1763,18 @@ class Decimate(ResisticsProcess):
     """
     Decimate TimeData
 
+    .. warning::
+
+        The max_factor for a single decimation step is by default set as 4. For
+        np.float32 data, using decimation factors greater than this can cause
+        problems.
+
+        When using np.float64 data, it is possible to use a larger decimation
+        factor, up to 13.
+
+        For more information, see
+        https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.decimate.html
+
     Parameters
     ----------
     factor : int
@@ -1791,6 +1803,7 @@ class Decimate(ResisticsProcess):
     """
 
     factor: conint(ge=1)
+    max_single_factor: conint(ge=1) = 4
 
     def run(self, time_data: TimeData) -> TimeData:
         """
@@ -1841,7 +1854,7 @@ class Decimate(ResisticsProcess):
 
         - Perform a prime factorisation to get prime factors
         - Now want to combine factors to reduce the number of calls
-        - Each single downsample factor must be <= 13
+        - Each single downsample factor must be <= self.max_single_factor
 
         Parameters
         ----------
@@ -1856,8 +1869,8 @@ class Decimate(ResisticsProcess):
         Notes
         -----
         There's a few pathological cases here that are being ignored. For
-        example, what if the downsample factor is the product of two primes
-        greater than 13.
+        example, what if the downsample factor is the product of two large
+        primes.
 
         Examples
         --------
@@ -1866,26 +1879,27 @@ class Decimate(ResisticsProcess):
         >>> from resistics.time import Decimate
         >>> process = Decimate(factor=24)
         >>> process._get_downsample_factors(process.factor)
-        [8, 3]
+        [4, 2, 3]
         >>> process._prime_factorisation(process.factor)
         [2, 2, 2, 3]
 
-        An example with a higher value
+        An example with a higher value and a different maximum factor for any
+        single decimation step
 
-        >>> process = Decimate(factor=96)
+        >>> process = Decimate(factor=96, max_single_factor=13)
         >>> process._get_downsample_factors(process.factor)
         [8, 12]
         >>> process._prime_factorisation(process.factor)
         [2, 2, 2, 2, 2, 3]
         """
-        if downsample_factor <= 13:
+        if downsample_factor <= self.max_single_factor:
             return [downsample_factor]
 
         factors = self._prime_factorisation(downsample_factor)
         downsamples = []
         val = 1
         for factor in factors:
-            if val * factor > 13:
+            if val * factor > self.max_single_factor:
                 downsamples.append(val)
                 val = 1
             val *= factor
