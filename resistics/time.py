@@ -277,6 +277,7 @@ class TimeData(ResisticsData):
         data: np.ndarray,
     ) -> None:
         """Initialise time data"""
+        logger.debug(f"Creating TimeData with data type {data.dtype}")
         self.metadata = metadata
         self.data = data
         self._chan_to_idx: Dict[str, int] = {}
