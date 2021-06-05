@@ -1705,7 +1705,7 @@ class Resample(ResisticsProcess):
         >>> plt.show() # doctest: +SKIP
     """
 
-    new_fs: int
+    new_fs: float
 
     def run(self, time_data: TimeData) -> TimeData:
         r"""
