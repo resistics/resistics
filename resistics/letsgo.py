@@ -510,6 +510,7 @@ def quick_view(
         config = get_default_configuration()
 
     time_data = quick_read(config, dir_path)
+    time_data = run_time_processors(config, time_data)
     if not decimate:
         time_data.plot(max_pts=max_pts).show()
         return
