@@ -921,7 +921,8 @@ class TimeReaderNumpy(TimeReaderJSON):
     """
     Class for reading Numpy data
 
-    This is expected to be one file per channel and of data type float32
+    This is expected to be a single data file for all channels. The ordering is
+    assumed to be the same as the channels definition in the metadata.
     """
 
     extension: str = ".npy"
@@ -970,6 +971,8 @@ class TimeReaderNumpy(TimeReaderJSON):
 class TimeWriterNumpy(ResisticsWriter):
     """
     Write out time data in numpy binary format
+
+    Data is written out as a single data file including all channels
     """
 
     def run(self, dir_path: Path, time_data: TimeData) -> None:
