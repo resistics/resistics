@@ -1,3 +1,6 @@
+"""
+Test time data and processors
+"""
 from typing import Union, Dict
 import pytest
 import numpy as np
