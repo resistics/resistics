@@ -4,177 +4,22 @@ Includes collection of RegressionData and RegressionProcessors
 TO BE IMPLEMENTED
 """
 from loguru import logger
-from typing import List, Optional, Dict, Tuple, Any, Union
-from pydantic import validator
+from typing import List, Dict, Tuple, Any, Optional
 from tqdm import tqdm
 import numpy as np
-import statsmodels.api as sm
-from statsmodels.regression.linear_model import RegressionResultsWrapper
-from statsmodels.robust.scale import HuberScale
 
-from resistics.common import ResisticsData, ResisticsProcess, Metadata
+from resistics.common import ResisticsData, ResisticsProcess, WriteableMetadata, History
+from resistics.transfunc import TransferFunction
 from resistics.spectra import SpectraData
+from resistics.gather import SiteCombinedMetadata, GatheredData
 
 
-class TransferFunction(Metadata):
-    """
-    Define the transfer function
+class RegressionInputMetadata(WriteableMetadata):
 
-    This class has few methods and is a simple way of defining the transfer
-    input and output channels for which to calculate the transfer function
-
-    Examples
-    --------
-    A standard magnetotelluric transfer function
-
-    >>> from resistics.regression import TransferFunction
-    >>> tf = TransferFunction(["Hx", "Hy"], ["Ex", "Ey"])
-    >>> print(tf.to_string())
-    <class 'resistics.regression.TransferFunction'>
-    | Ex | = | Ex_Hx Ex_Hy | | Hx |
-    | Ey |   | Ey_Hx Ey_Hy | | Hy |
-
-    Additionally including the Hz component
-
-    >>> tf = TransferFunction(["Hx", "Hy", "Hz"], ["Ex", "Ey"])
-    >>> print(tf.to_string())
-    <class 'resistics.regression.TransferFunction'>
-    | Ex |   | Ex_Hx Ex_Hy Ex_Hz | | Hx |
-    | Ey | = | Ey_Hx Ey_Hy Ey_Hz | | Hy |
-                                   | Hz |
-
-    The magnetotelluric tipper
-
-    >>> tf = TransferFunction(["Hx", "Hy"], ["Hz"])
-    >>> print(tf.to_string())
-    <class 'resistics.regression.TransferFunction'>
-    | Hz | = | Hz_Hx Hz_Hy | | Hx |
-                             | Hy |
-
-    And a generic example
-
-    >>> tf = TransferFunction(["hello", "hi_there"], ["bye", "see you", "ciao"])
-    >>> print(tf.to_string())
-    <class 'resistics.regression.TransferFunction'>
-    | bye      |   | bye_hello         bye_hi_there      | | hello    |
-    | see you  | = | see you_hello     see you_hi_there  | | hi_there |
-    | ciao     |   | ciao_hello        ciao_hi_there     |
-    """
-
-    in_chans: List[str]
-    out_chans: List[str]
-    cross_chans: Optional[List[str]] = None
-    n_in: Optional[int] = None
-    n_out: Optional[int] = None
-    n_cross: Optional[int] = None
-
-    @validator("cross_chans", always=True)
-    def validate_cross_chans(
-        cls, value: Union[None, List[str]], values: Dict[str, Any]
-    ) -> List[str]:
-        """Validate cross spectra channels"""
-        if value is None:
-            return values["in_chans"]
-        return value
-
-    @validator("n_in", always=True)
-    def validate_n_in(cls, value: Union[None, int], values: Dict[str, Any]) -> int:
-        """Validate number of input channels"""
-        if value is None:
-            return len(values["in_chans"])
-        return value
-
-    @validator("n_out", always=True)
-    def validate_n_out(cls, value: Union[None, int], values: Dict[str, Any]) -> int:
-        """Validate number of output channels"""
-        if value is None:
-            return len(values["in_chans"])
-        return value
-
-    @validator("n_cross", always=True)
-    def validate_n_cross(cls, value: Union[None, int], values: Dict[str, Any]) -> int:
-        """Validate number of cross channels"""
-        if value is None:
-            return len(values["cross_chans"])
-        return value
-
-    def n_eqns_per_output(self) -> int:
-        return len(self.cross_chans)
-
-    def n_regressors(self) -> int:
-        return self.n_in
-
-    def to_string(self):
-        n_lines = max(len(self.in_chans), len(self.out_chans))
-        lens = [len(x) for x in self.in_chans] + [len(x) for x in self.out_chans]
-        max_len = max(lens)
-        line_equals = (n_lines - 1) // 2
-        outstr = ""
-        for il in range(n_lines):
-            out_chan = self._out_chan_string(il, max_len)
-            in_chan = self._in_chan_string(il, max_len)
-            tensor = self._tensor_string(il, max_len)
-            eq = "=" if il == line_equals else " "
-            outstr += f"{out_chan} {eq} {tensor} {in_chan}\n"
-        return outstr.rstrip("\n")
-
-    def _out_chan_string(self, il: int, max_len: int) -> str:
-        if il >= self.n_out:
-            empty_len = max_len + 4
-            return f"{'':{empty_len}s}"
-        return f"| { self.out_chans[il]:{max_len}s} |"
-
-    def _in_chan_string(self, il: int, max_len: int) -> str:
-        if il >= self.n_in:
-            return ""
-        return f"| { self.in_chans[il]:{max_len}s} |"
-
-    def _tensor_string(self, il: int, max_len: int) -> str:
-        if il >= self.n_out:
-            element_len = ((max_len * 2 + 1) + 1) * self.n_in + 3
-            return f"{'':{element_len}s}"
-        elements = "| "
-        for chan in self.in_chans:
-            component = f"{self.out_chans[il]}_{chan}"
-            elements += f"{component:{2*max_len + 1}s} "
-        elements += "|"
-        return elements
-
-
-class ImpedanceTensor(TransferFunction):
-    """
-    Standard magnetotelluric impedance tensor
-
-    Examples
-    --------
-    >>> from resistics.regression import ImpedanceTensor
-    >>> tf = ImpedanceTensor()
-    >>> print(tf.to_string())
-    <class 'resistics.regression.ImpedanceTensor'>
-    | Ex | = | Ex_Hx Ex_Hy | | Hx |
-    | Ey |   | Ey_Hx Ey_Hy | | Hy |
-    """
-
-    in_chans: List[str] = ["Hx", "Hy"]
-    out_chans: List[str] = ["Ex", "Ey"]
-
-
-class Tipper(TransferFunction):
-    """
-    Magnetotelluric tipper
-
-    Examples
-    --------
-    >>> from resistics.regression import Tipper
-    >>> tf = Tipper()
-    >>> print(tf.to_string())
-    <class 'resistics.regression.Tipper'>
-    | Hz | = | Hz_Hx Hz_Hy | | Hx |
-                             | Hy |
-    """
-
-    in_chans: List[str] = ["Hx", "Hy"]
-    out_chans: List[str] = ["Hz"]
+    out_data: SiteCombinedMetadata
+    in_data: Optional[SiteCombinedMetadata] = None
+    remote_data: Optional[SiteCombinedMetadata] = None
+    history: History
 
 
 class RegressionInputData(ResisticsData):
@@ -199,28 +44,29 @@ class RegressionInputData(ResisticsData):
         return self.obs[freq_idx][out_chan], self.preds[freq_idx]
 
 
-class RegressionPreparer(ResisticsProcess):
+class RegressionPreparerSpectra(ResisticsProcess):
+    """
+    Prepare regression data directly from spectra data
 
-    tf: TransferFunction
-    coh_thresh: Optional[float] = None
-    coh_chans: Optional[List[str]] = None
+    This can be useful for running a single measurement
+    """
 
-    def run(self, spec_data: SpectraData) -> RegressionInputData:
+    def run(self, tf: TransferFunction, spec_data: SpectraData) -> RegressionInputData:
         """Construct the linear equation for solving"""
         freqs = []
         obs = []
         preds = []
         for ilevel in range(spec_data.metadata.n_levels):
             level_metadata = spec_data.metadata.levels_metadata[ilevel]
-            out_powers, in_powers = self._get_cross_powers(self.tf, spec_data, ilevel)
+            out_powers, in_powers = self._get_cross_powers(tf, spec_data, ilevel)
             for idx, freq in enumerate(level_metadata.freqs):
                 logger.info(
                     f"Preparing regression data: level {ilevel}, freq. {idx} = {freq}"
                 )
                 freqs.append(freq)
-                obs.append(self._get_obs(self.tf, out_powers[..., idx]))
-                preds.append(self._get_preds(self.tf, in_powers[..., idx]))
-        return RegressionInputData(self.tf, freqs, obs, preds)
+                obs.append(self._get_obs(tf, out_powers[..., idx]))
+                preds.append(self._get_preds(tf, in_powers[..., idx]))
+        return RegressionInputData(tf, freqs, obs, preds)
 
     def _get_cross_powers(
         self, tf: TransferFunction, spec_data: SpectraData, level: int
@@ -393,6 +239,211 @@ class RegressionPreparer(ResisticsProcess):
         return preds_win
 
 
+class RegressionPreparerGathered(ResisticsProcess):
+    def run(
+        self, tf: TransferFunction, gathered_data: GatheredData
+    ) -> RegressionInputData:
+        """Construct the linear equation for solving"""
+        logger.info("Preparing regression data")
+        logger.info(f"Out channels site: {gathered_data.out_data.metadata.name}")
+        logger.info(f"Out channels: {gathered_data.out_data.metadata.chans}")
+        logger.info(f"In channels site: {gathered_data.in_data.metadata.name}")
+        logger.info(f"In channels: {gathered_data.in_data.metadata.chans}")
+        logger.info(f"Cross channels site: {gathered_data.cross_data.metadata.name}")
+        logger.info(f"Cross channels: {gathered_data.cross_data.metadata.chans}")
+        freqs = []
+        obs = []
+        preds = []
+        metadata = gathered_data.out_data.metadata
+        logger.info(f"Preparing regression data for {metadata.n_evals} frequencies")
+        for idx, freq in enumerate(tqdm(metadata.eval_freqs)):
+            out_powers, in_powers = self._get_cross_powers(tf, gathered_data, idx)
+            freqs.append(freq)
+            obs_freq = self._get_obs(tf, out_powers)
+            preds_freq = self._get_preds(tf, in_powers)
+            obs.append(obs_freq)
+            preds.append(preds_freq)
+        obs, preds = self._remove_nans(obs, preds)
+        return RegressionInputData(tf, freqs, obs, preds)
+
+    def _get_cross_powers(
+        self, tf: TransferFunction, gathered_data: GatheredData, eval_idx: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Get cross powers
+
+        Gathered data for an evaluation frequency is:
+
+        [n_wins, n_chans]
+
+        To multiply each in/out channel with the cross channels, broadcasting is
+        used. Using output channels as an example, this is what we have:
+
+        out_data = [n_wins, n_out_chans]
+        cross_data = [n_wins, n_cross_chans]
+
+        The aim is to achieve an array that looks like this:
+
+        cross_powers = [n_wins, n_out_chans, n_cross_chans]
+
+        This can be achieved by numpy broadcasting the two arrays as follows
+
+        out_data = [n_wins, n_out_chans, new_axis]
+        cross_data = [n_wins, new_axis, n_cross_chans]
+
+        Parameters
+        ----------
+        tf : TransferFunction
+            Definition of transfer function
+        gathered_data : GatheredData
+            All the gathered data
+        eval_idx : int
+            The evaluation frequency index
+
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray]
+            Cross powers with output channels and cross powers with input
+            channels
+        """
+        # what cross powers do we need
+        out_data = gathered_data.out_data.data[eval_idx]
+        in_data = gathered_data.in_data.data[eval_idx]
+        cross_data = gathered_data.cross_data.data[eval_idx]
+        cross_data = np.conj(cross_data[:, np.newaxis, ...])
+
+        # multiply using broadcasting
+        out_powers = out_data[..., np.newaxis] * cross_data
+        in_powers = in_data[..., np.newaxis] * cross_data
+        return out_powers, in_powers
+
+    def _get_obs(
+        self, tf: TransferFunction, out_powers: np.ndarray
+    ) -> Dict[str, np.ndarray]:
+        """
+        Get observations for an output channel
+
+        Parameters
+        ----------
+        tf : TransferFunction
+            Definition of transfer function
+        out_powers : np.ndarray
+            The cross powers for the output channels
+
+        Returns
+        -------
+        Dict[str, np.ndarray]
+            Dictionary with output channel as key and observations as value
+        """
+        obs = {}
+        for idx, out_chan in enumerate(tf.out_chans):
+            flattened = out_powers[:, idx, ...].flatten()
+            obs_chan = np.empty((flattened.size * 2), dtype=float)
+            obs_chan[0::2] = flattened.real
+            obs_chan[1::2] = flattened.imag
+            obs[out_chan] = obs_chan
+        return obs
+
+    def _get_obs_chan(self, tf: TransferFunction, out_powers: np.ndarray) -> np.ndarray:
+        """
+        Get observations for a single output channel
+
+        The data comes in as:
+
+        [n_wins, n_cross_chans]
+
+        The aim is to turn this into an array of obserations for this output
+        channel. The shape should be:
+
+        [n_wins * n_cross_chans]
+
+        Next, make everything floats to allow use of a wider range of open
+        source solvers. This means interleaving the real and imaginary
+        components into a longer single array, giving a final shape of:
+
+        [n_wins * n_cross_chans * 2 ]
+
+        Considering a concrete example for two windows:
+
+        [[<Ex1, Hx1>, <Ex1,Hy1>], [[<Ex2, Hx2>, <Ex2,Hy2>]]
+
+        Should become:
+
+        [<Ex1, Hx1>.Real, <Ex1, Hx1>.Imag, <Ex1,Hy1>.Real, <Ex1,Hy1>.Imag,
+        <Ex2, Hx2>.Real, <Ex2, Hx2>.Imag, <Ex2,Hy2>.Real, <Ex2,Hy2>.Imag]
+
+        Parameters
+        ----------
+        tf : TransferFunction
+            The transfer function definition
+        out_powers : np.ndarray
+            The cross powers for the a single output channel
+
+        Returns
+        -------
+        np.ndarray
+            The observations as a float
+        """
+        flattened = out_powers.flatten()
+        obs = np.empty((flattened.size * 2), dtype=float)
+        obs[0::2] = flattened.real
+        obs[1::2] = flattened.imag
+        return obs
+
+    def _get_preds(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
+        """
+        Construct the predictors
+
+        The in_powers is received with shape
+
+        [n_wins, n_in_chans, n_cross_chans]
+
+        The aim is to make this into
+
+        [n_wins * n_cross_chans * 2, n_in_chans * 2]
+
+        Parameters
+        ----------
+        tf : TransferFunction
+            Transfer function definition
+        in_powers : np.ndarray
+            The cross powers for the input channels
+
+        Returns
+        -------
+        np.ndarray
+            The predictors
+        """
+        np.swapaxes(in_powers, 1, 2)
+        n_wins = in_powers.shape[0]
+        entries_per_win = tf.n_cross * 2
+        preds = np.empty((n_wins * entries_per_win, tf.n_in * 2), dtype=float)
+        for iwin in range(0, n_wins):
+            idx_from = iwin * entries_per_win
+            idx_to = idx_from + entries_per_win
+            preds[idx_from:idx_to, :] = self._get_preds_win(tf, in_powers[iwin])
+        return preds
+
+    def _get_preds_win(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
+        """Get predictors for a window"""
+        preds_win = np.empty((tf.n_cross * 2, tf.n_in * 2), dtype=float)
+        in_powers = np.swapaxes(in_powers, 0, 1)
+        in_real = np.real(in_powers)
+        in_imag = np.imag(in_powers)
+        preds_win[0::2, 0::2] = in_real
+        preds_win[0::2, 1::2] = -in_imag
+        preds_win[1::2, 0::2] = in_imag
+        preds_win[1::2, 1::2] = in_real
+        return preds_win
+
+    def _remove_nans(self, obs, preds):
+        # for obs_freq, preds_freq in zip(obs, preds):
+        #     for vals in obs_freq.values():
+        #         print(np.any(np.isnan(vals)))
+        #     print(np.any(np.isnan(preds_freq)))
+        return obs, preds
+
+
 class Solution(ResisticsData):
     def __init__(self, tf: TransferFunction, freqs: List[float], tensors: np.ndarray):
         self.tf = tf
@@ -452,67 +503,6 @@ class SolverStandard(Solver):
         return values
 
 
-class SolverStatsmodels(SolverStandard):
-    """Statsmodels solver"""
-
-    def run(self, regression_input: RegressionInputData):
-        n_freqs = regression_input.n_freqs
-        tf = regression_input.tf
-        tensors = np.ndarray((n_freqs, tf.n_out, tf.n_in), dtype=np.complex128)
-        logger.info("Running solver over evaluation frequencies")
-        for ifreq in tqdm(range(n_freqs)):
-            for iout, out_chan in enumerate(tf.out_chans):
-                obs, preds = regression_input.get_inputs(ifreq, out_chan)
-                result = self.run_kernel(obs, preds)
-                tensors[ifreq, iout] = self._get_tensor(tf, result.params)
-        return Solution(tf, regression_input.freqs, tensors)
-
-    def run_kernel(
-        self, obs: np.ndarray, preds: np.ndarray
-    ) -> RegressionResultsWrapper:
-        raise NotImplementedError("run_kernel should be implemented in child classes")
-
-
-class OLSSolver(SolverStatsmodels):
-    """Statsmodels Ordinary Least Squares solver"""
-
-    def run_kernel(
-        self, obs: np.ndarray, preds: np.ndarray
-    ) -> RegressionResultsWrapper:
-        model = sm.OLS(obs, preds)
-        return model.fit()
-
-
-class RLMSolver(SolverStatsmodels):
-    """Statsmodels Robust Least Squares solver"""
-
-    cov: str = "H1"
-    scale_est: str = "mad"
-
-    def run_kernel(
-        self, obs: np.ndarray, preds: np.ndarray
-    ) -> RegressionResultsWrapper:
-        model = sm.RLM(obs, preds, M=sm.robust.norms.HuberT())
-        return model.fit(cov=self.cov, scale_est=HuberScale())
-
-
-class MMSolver(SolverStatsmodels):
-    """Statsmodels MM estimates solver"""
-
-    cov: str = "H1"
-    scale_est: str = "mad"
-
-    def run_kernel(
-        self, obs: np.ndarray, preds: np.ndarray
-    ) -> RegressionResultsWrapper:
-        model1 = sm.RLM(obs, preds, M=sm.robust.norms.HuberT())
-        result = model1.fit(cov=self.cov, scale_est=self.scale_est)
-        model2 = sm.RLM(obs, preds, M=sm.robust.norms.TukeyBiweight())
-        return model2.fit(
-            cov=self.cov, scale_est=self.scale_est, start_params=result.params
-        )
-
-
 class SolverScikitLinear(SolverStandard):
     """General solver for Scikit linear models"""
 
@@ -530,6 +520,7 @@ class SolverScikitLinear(SolverStandard):
         n_freqs = regression_input.n_freqs
         tf = regression_input.tf
         tensors = np.ndarray((n_freqs, tf.n_out, tf.n_in), dtype=np.complex128)
+        logger.info(f"Solving for {n_freqs} evaluation frequencies")
         for ifreq in tqdm(range(n_freqs)):
             for iout, out_chan in enumerate(tf.out_chans):
                 obs, preds = regression_input.get_inputs(ifreq, out_chan)
@@ -546,7 +537,7 @@ class SolverScikitRANSAC(SolverScikitLinear):
     def run_kernel(self, obs: np.ndarray, preds: np.ndarray) -> np.ndarray:
         from sklearn.linear_model import RANSACRegressor
 
-        ransac = RANSACRegressor(self.model)
+        ransac = RANSACRegressor(self.model, min_samples=0.05, max_trials=1000)
         ransac.fit(preds, obs)
         return ransac.estimator_.coef_
 
