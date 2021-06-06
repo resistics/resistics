@@ -1651,16 +1651,33 @@ class BandPass(ResisticsProcess):
         -------
         TimeData
             The band pass filtered TimeData
+
+        Raises
+        ------
+        ProcessRunError
+            If cutoff_low > cutoff_high
+        ProcessRunError
+            If cutoff_high > nyquist
         """
         from scipy.signal import butter, sosfiltfilt
 
+        nyquist = time_data.metadata.nyquist
+        if self.cutoff_low > self.cutoff_high:
+            raise ProcessRunError(
+                self.name, f"Cutoff low {self.cutoff_low} > high {self.cutoff_high}"
+            )
+        if self.cutoff_high > nyquist:
+            raise ProcessRunError(
+                self.name, f"Cutoff high {self.cutoff_high} > nyquist {nyquist}"
+            )
+
         logger.info(f"Band pass between {self.cutoff_low} and {self.cutoff_high} Hz")
-        low = self.cutoff_low / time_data.metadata.nyquist
-        high = self.cutoff_high / time_data.metadata.nyquist
+        low = self.cutoff_low / nyquist
+        high = self.cutoff_high / nyquist
         sos = butter(
             self.order, (low, high), btype="bandpass", analog=False, output="sos"
         )
-        data = sosfiltfilt(sos, time_data.data, axis=1)
+        data = sosfiltfilt(sos, time_data.data, axis=1).astype(time_data.data.dtype)
         messages = [f"Band pass with cutoffs {self.cutoff_low},{self.cutoff_high} Hz"]
         record = self._get_record(messages)
         return new_time_data(time_data, data=data, record=record)
