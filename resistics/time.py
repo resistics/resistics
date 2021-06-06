@@ -1260,6 +1260,8 @@ class RemoveMean(ResisticsProcess):
     """
     Remove channel mean value from each channel
 
+    Preserve the data type of the input time data
+
     Examples
     --------
     >>> import numpy as np
@@ -1270,11 +1272,11 @@ class RemoveMean(ResisticsProcess):
     >>> time_data_new = process.run(time_data)
     >>> time_data_new["Hx"]
     array([-2.5, -1.5, -0.5,  1.5, -2.5, -1.5, -0.5,  0.5, -1.5,  2.5,  3.5,
-        2.5,  1.5,  0.5, -0.5, -1.5])
+            2.5,  1.5,  0.5, -0.5, -1.5], dtype=float32)
     >>> hx_test = time_data["Hx"] - np.mean(time_data["Hx"])
     >>> hx_test
     array([-2.5, -1.5, -0.5,  1.5, -2.5, -1.5, -0.5,  0.5, -1.5,  2.5,  3.5,
-        2.5,  1.5,  0.5, -0.5, -1.5])
+            2.5,  1.5,  0.5, -0.5, -1.5], dtype=float32)
     >>> np.all(hx_test == time_data_new["Hx"])
     True
     """
