@@ -1837,6 +1837,7 @@ class Resample(ResisticsProcess):
         # get the resampling fraction in its simplest form
         frac = Fraction(self.new_fs / fs).limit_denominator()
         data = resample_poly(time_data.data, frac.numerator, frac.denominator, axis=1)
+        data = data.astype(time_data.data.dtype)
         # adjust headers and
         n_samples = data.shape[1]
         metadata = time_data.metadata.copy()
