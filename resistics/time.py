@@ -1191,6 +1191,8 @@ class InterpolateNans(ResisticsProcess):
     """
     Interpolate nan values in the data
 
+    Preserve the data type of the input time data
+
     Examples
     --------
     >>> from resistics.testing import time_data_with_nans
@@ -1198,11 +1200,12 @@ class InterpolateNans(ResisticsProcess):
     >>> time_data = time_data_with_nans()
     >>> time_data["Hx"]
     array([nan,  2.,  3.,  5.,  1.,  2.,  3.,  4.,  2.,  6.,  7., nan, nan,
-        4.,  3.,  2.])
+            4.,  3.,  2.], dtype=float32)
     >>> process = InterpolateNans()
     >>> time_data_new = process.run(time_data)
     >>> time_data_new["Hx"]
-    array([2., 2., 3., 5., 1., 2., 3., 4., 2., 6., 7., 6., 5., 4., 3., 2.])
+    array([2., 2., 3., 5., 1., 2., 3., 4., 2., 6., 7., 6., 5., 4., 3., 2.],
+          dtype=float32)
     """
 
     def run(self, time_data: TimeData) -> TimeData:
