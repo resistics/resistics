@@ -2087,7 +2087,7 @@ class ShiftTimestamps(ResisticsProcess):
 
         Raises
         ------
-        ValueError
+        ProcessRunError
             If the shift is greater than the sampling frequency. This method is
             not supposed to be used for resampling, but simply for removing an
             offset from timestamps
@@ -2097,7 +2097,9 @@ class ShiftTimestamps(ResisticsProcess):
 
         metadata = time_data.metadata
         if self.shift >= metadata.dt:
-            raise ValueError(f"Shift {self.shift} not < sample period {metadata.dt}")
+            raise ProcessRunError(
+                self.name, f"Shift {self.shift} not < sample period {metadata.dt}"
+            )
 
         # calculate properties of shifted data
         norm_shift = self.shift / metadata.dt
@@ -2114,8 +2116,8 @@ class ShiftTimestamps(ResisticsProcess):
         messages.append(f"Last time: {str(metadata.last_time)} -> {str(last_time)}")
 
         # shift data
-        x = np.arange(0, metadata.n_samples)
-        x_shift = np.arange(0, n_samples) + norm_shift
+        x = np.arange(0, metadata.n_samples, dtype=time_data.data.dtype)
+        x_shift = np.arange(0, n_samples, dtype=time_data.data.dtype) + norm_shift
         interp_fnc = interp1d(x, time_data.data, axis=1, copy=False)
         data = interp_fnc(x_shift)
         metadata = time_data.metadata.copy()
