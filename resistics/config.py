@@ -133,6 +133,8 @@ class Configuration(ResisticsModel):
     """Process to window the decimated data"""
     fourier: ResisticsProcess = FourierTransform()
     """Process to perform the fourier transform"""
+    spectra_processors: List[ResisticsProcess] = []
+    """List of processors to run on spectra data"""
     evals: ResisticsProcess = EvaluationFreqs()
     """Process to get the spectra data at the evaluation frequencies"""
     sensor_calibrator: ResisticsProcess = SensorCalibrator(
