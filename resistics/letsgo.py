@@ -373,6 +373,30 @@ def run_fft(config: Configuration, win_data: WindowedData) -> SpectraData:
     return config.fourier.run(win_data)
 
 
+def run_spectra_processors(
+    config: Configuration, spec_data: SpectraData
+) -> SpectraData:
+    """
+    Run any spectra processors
+
+    Parameters
+    ----------
+    config : Configuration
+        The configuration
+    spec_data : SpectraData
+        Spectra data
+
+    Returns
+    -------
+    SpectraData
+        Processed spectra data
+    """
+    for process in config.spectra_processors:
+        logger.info(f"Running processor {process.name}")
+        spec_data = process.run(spec_data)
+    return spec_data
+
+
 def run_evals(
     config: Configuration, dec_params: DecimationParameters, spec_data: SpectraData
 ) -> SpectraData:
@@ -554,6 +578,7 @@ def quick_tf(
     dec_data = run_decimation(config, time_data, dec_params=dec_params)
     win_data = run_windowing(config, ref_time, dec_data)
     spec_data = run_fft(config, win_data)
+    spec_data = run_spectra_processors(config, spec_data)
     eval_data = run_evals(config, dec_params, spec_data)
     if calibration_path is not None:
         eval_data = run_sensor_calibration(config, calibration_path, eval_data)
@@ -637,6 +662,7 @@ def process_time_to_spectra(
     dec_data = run_decimation(config, time_data, dec_params=dec_params)
     win_data = run_windowing(config, proj.metadata.ref_time, dec_data)
     spec_data = run_fft(config, win_data)
+    spec_data = run_spectra_processors(config, spec_data)
     eval_data = run_evals(config, dec_params, spec_data)
     eval_data = run_sensor_calibration(config, calibration_path, eval_data)
     spectra_path = get_meas_spectra_path(
