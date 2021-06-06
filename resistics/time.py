@@ -1698,7 +1698,7 @@ class Notch(ResisticsProcess):
 
     Examples
     --------
-    Notch to remove a 12 Hz signal
+    Notch to remove a 50 Hz signal, for example powerline noise
 
     .. plot::
         :width: 90%
@@ -1733,17 +1733,31 @@ class Notch(ResisticsProcess):
         -------
         TimeData
             Filtered TimeData
+
+        Raises
+        ------
+        ProcessRunError
+            If notch frequency > nyquist
         """
         from scipy.signal import butter, sosfiltfilt
 
+        nyquist = time_data.metadata.nyquist
+        if self.notch > nyquist:
+            raise ProcessRunError(
+                self.name, f"Notch frequency {self.notch} > nyquist {nyquist}"
+            )
+
         band = 0.1 * time_data.metadata.fs if self.band is None else self.band
-        low = (self.notch - (band / 2)) / time_data.metadata.nyquist
-        high = (self.notch + (band / 2)) / time_data.metadata.nyquist
+        low = (self.notch - (band / 2)) / nyquist
+        high = (self.notch + (band / 2)) / nyquist
+        if high > nyquist:
+            logger.debug("Band high {high} > nyquist {nyquist}. Setting to nyquist")
+            high = nyquist
         logger.info(f"Notch filtering at {self.notch} Hz with bandwidth {band} Hz")
         sos = butter(
             self.order, (low, high), btype="bandstop", analog=False, output="sos"
         )
-        data = sosfiltfilt(sos, time_data.data, axis=1)
+        data = sosfiltfilt(sos, time_data.data, axis=1).astype(time_data.data.dtype)
         messages = [f"Notch filtered at {self.notch} Hz with bandwidth {band} Hz"]
         record = self._get_record(messages)
         return new_time_data(time_data, data=data, record=record)
