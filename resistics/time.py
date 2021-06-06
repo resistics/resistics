@@ -1861,12 +1861,16 @@ class Decimate(ResisticsProcess):
 
     .. warning::
 
-        The max_factor for a single decimation step is by default set as 4. For
-        np.float32 data, using decimation factors greater than this can cause
-        problems.
+        Data is converted to np.float64 prior to decimation. This is going to
+        cause a temporary increase in memory usage, but decimating np.float64
+        delivers improved results.
 
+        The decimated data is converted back to its original data type prior
+        to being returned.
+
+        The max_factor for a single decimation step is by default set as 3.
         When using np.float64 data, it is possible to use a larger decimation
-        factor, up to 13.
+        factor, up to 13, but this does again have an impact on results.
 
         For more information, see
         https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.decimate.html
@@ -1925,12 +1929,14 @@ class Decimate(ResisticsProcess):
         messages = [
             f"Decimating by {self.factor} in {n_steps} step(s) with factors {factors}"
         ]
-        data = time_data.data
+        # convert to float64 for decimation to avoid significant numerical issues
+        data = time_data.data.astype(np.float64)
         for factor in factors:
             if factor == 1:
                 continue
             data = decimate(data, factor, axis=1, zero_phase=True)
             messages.append(f"Data decimated by factor of {factor}")
+        data = data.astype(time_data.data.dtype)
         # return new TimeData
         fs = time_data.metadata.fs
         new_fs = fs / self.factor
