@@ -7,7 +7,7 @@ Module for time data decimation including classes and for the following
 from loguru import logger
 from typing import Any, Optional, Tuple, Union, Dict, List
 from pathlib import Path
-from pydantic import validator, PositiveInt
+from pydantic import validator, PositiveInt, conint
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -761,6 +761,18 @@ class DecimatedData(ResisticsData):
 
 
 class Decimator(ResisticsProcess):
+    """
+    Decimate the time data into multiple levels
+
+    There are two options for decimation, using time data Resample or using
+    time data Decimate. The default is to use Resample.
+    """
+
+    resample: bool = True
+    """Boolean flag for using resampling instead of decimation"""
+    max_single_factor: conint(ge=3) = 3
+    """Maximum single decimation factor, only used if resample is False"""
+
     def run(
         self, dec_params: DecimationParameters, time_data: TimeData
     ) -> DecimatedData:
@@ -779,6 +791,7 @@ class Decimator(ResisticsProcess):
         DecimatedData
             DecimatedData instance with all the decimated data
         """
+        decimation_fnc = self._resample if self.resample else self._decimate
         metadata = time_data.metadata.dict()
         data = {}
         levels_metadata = []
@@ -786,7 +799,7 @@ class Decimator(ResisticsProcess):
         for ilevel in range(0, dec_params.n_levels):
             factor = dec_params.dec_increments[ilevel]
             logger.info(f"Decimating level {ilevel} with factor {factor}")
-            time_data_new = self._decimate(time_data.copy(), factor)
+            time_data_new = decimation_fnc(time_data, factor)
             if time_data_new.metadata.n_samples < dec_params.min_samples:
                 logger.warning(f"n_samples < min allowed {dec_params.min_samples}")
                 break
@@ -803,12 +816,21 @@ class Decimator(ResisticsProcess):
         return DecimatedData(metadata, data)
 
     def _decimate(self, time_data: TimeData, factor: int) -> TimeData:
-        """Decimate time data"""
+        """Decimate time data using decimate"""
         from resistics.time import Decimate
 
         if factor == 1:
             return time_data
-        return Decimate(factor=factor).run(time_data)
+        decimator = Decimate(factor=factor, max_single_factor=self.max_single_factor)
+        return decimator.run(time_data)
+
+    def _resample(self, time_data: TimeData, factor: int) -> TimeData:
+        """Decimate time data using resampling"""
+        from resistics.time import Resample
+
+        if factor == 1:
+            return time_data
+        return Resample(new_fs=time_data.metadata.fs / factor).run(time_data)
 
     def _get_metadata(
         self,
