@@ -11,7 +11,7 @@ This includes testing data for:
 - SpectraData
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional, Type
 import numpy as np
 import pandas as pd
 
@@ -19,6 +19,8 @@ from resistics.common import Record, History, get_record
 from resistics.time import get_time_metadata, TimeMetadata, TimeData
 from resistics.decimate import DecimatedMetadata, DecimatedData
 from resistics.spectra import SpectraLevelMetadata, SpectraMetadata, SpectraData
+
+DEFAULT_TIME_DATA_DTYPE = np.float32
 
 
 def record_example1() -> Record:
@@ -159,7 +161,10 @@ def time_metadata_mt(
 
 
 def time_data_ones(
-    fs: float = 10, first_time: str = "2020-01-01 00:00:00", n_samples: int = 10
+    fs: float = 10,
+    first_time: str = "2020-01-01 00:00:00",
+    n_samples: int = 10,
+    dtype: Optional[Type] = None,
 ) -> TimeData:
     """
     TimeData with all ones
@@ -172,14 +177,18 @@ def time_data_ones(
         The time of the first sample, by default "2020-01-01 00:00:00"
     n_samples : int, optional
         The number of samples, by default 10
+    dtype : Optional[Type], optional
+        The data type for the values, by default None
 
     Returns
     -------
     TimeData
         The TimeData
     """
+    if dtype is None:
+        dtype = DEFAULT_TIME_DATA_DTYPE
     metadata = time_metadata_mt(fs, first_time, n_samples)
-    data = np.ones(shape=(len(metadata.chans), n_samples), dtype=np.float32)
+    data = np.ones(shape=(len(metadata.chans), n_samples), dtype=dtype)
     creator = {
         "name": "time_data_ones",
         "fs": fs,
@@ -193,7 +202,9 @@ def time_data_ones(
 
 
 def time_data_simple(
-    fs: float = 10, first_time: str = "2020-01-01 00:00:00"
+    fs: float = 10,
+    first_time: str = "2020-01-01 00:00:00",
+    dtype: Optional[Type] = None,
 ) -> TimeData:
     """
     Time data with 16 samples
@@ -204,19 +215,24 @@ def time_data_simple(
         The sampling frequency, by default 10
     first_time : str, optional
         The time of the first sample, by default "2020-01-01 00:00:00"
+    dtype : Optional[Type], optional
+        The data type for the values, by default None
 
     Returns
     -------
     TimeData
         The TimeData
     """
+    if dtype is None:
+        dtype = DEFAULT_TIME_DATA_DTYPE
     data = np.array(
         [
             [1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1],
             [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7],
             [1, 2, 3, 5, 1, 2, 3, 4, 2, 6, 7, 6, 5, 4, 3, 2],
             [2, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 1, 3, 3, 3, 3],
-        ]
+        ],
+        dtype=dtype,
     )
     n_samples = data.shape[1]
     metadata = time_metadata_mt(fs, first_time, n_samples)
@@ -228,7 +244,9 @@ def time_data_simple(
 
 
 def time_data_with_nans(
-    fs: float = 10, first_time: str = "2020-01-01 00:00:00"
+    fs: float = 10,
+    first_time: str = "2020-01-01 00:00:00",
+    dtype: Optional[Type] = None,
 ) -> TimeData:
     """
     TimeData with 16 samples and some nan values
@@ -239,19 +257,24 @@ def time_data_with_nans(
         Sampling frequency, by default 10
     first_time : str, optional
         The time of the first sample, by default "2020-01-01 00:00:00"
+    dtype : Optional[Type], optional
+        The data type for the values, by default None
 
     Returns
     -------
     TimeData
         The TimeData
     """
+    if dtype is None:
+        dtype = DEFAULT_TIME_DATA_DTYPE
     data = np.array(
         [
             [1, 1, 1, 0, np.nan, 0, 1, 1, 1, np.nan, 0, 0, 0, 0, 1, 1],
             [1, 2, np.nan, np.nan, 5, 6, np.nan, 8, 9, 1, 2, 3, 4, 5, 6, 7],
             [np.nan, 2, 3, 5, 1, 2, 3, 4, 2, 6, 7, np.nan, np.nan, 4, 3, 2],
             [2, 0, 0, 1, 2, 3, np.nan, np.nan, np.nan, 0, 0, 1, 3, 3, 3, 3],
-        ]
+        ],
+        dtype=dtype,
     )
     n_samples = data.shape[1]
     metadata = time_metadata_mt(fs, first_time, n_samples)
@@ -263,7 +286,10 @@ def time_data_with_nans(
 
 
 def time_data_linear(
-    fs: float = 10, first_time: str = "2020-01-01 00:00:00", n_samples: int = 10
+    fs: float = 10,
+    first_time: str = "2020-01-01 00:00:00",
+    n_samples: int = 10,
+    dtype: Optional[Type] = None,
 ) -> TimeData:
     """
     Get TimeData with linear data
@@ -276,30 +302,37 @@ def time_data_linear(
         Time of first sample, by default "2020-01-01 00:00:00"
     n_samples : int, optional
         The number of samples, by default 10
+    dtype : Optional[Type], optional
+        The data type for the values, by default None
 
     Returns
     -------
     TimeData
         TimeData with linear values
     """
+    if dtype is None:
+        dtype = DEFAULT_TIME_DATA_DTYPE
     metadata = time_metadata_mt(fs, first_time, n_samples)
-    data = np.empty(shape=(metadata.n_chans, n_samples))
+    data = np.empty(shape=(metadata.n_chans, n_samples), dtype=dtype)
     for idx in range(metadata.n_chans):
         data[idx, :] = np.arange(n_samples)
     creator = {
-        "name": "time_data_random",
+        "name": "time_data_linear",
         "fs": fs,
         "first_time": first_time,
         "n_samples": n_samples,
     }
-    messages = ["Generated time data with random values"]
+    messages = ["Generated time data with linear values"]
     record = get_record(creator, messages)
     metadata.history.add_record(record)
     return TimeData(metadata, data)
 
 
 def time_data_random(
-    fs: float = 10, first_time: str = "2020-01-01 00:00:00", n_samples: int = 10
+    fs: float = 10,
+    first_time: str = "2020-01-01 00:00:00",
+    n_samples: int = 10,
+    dtype: Optional[Type] = None,
 ) -> TimeData:
     """
     TimeData with random values and specifiable number of samples
@@ -312,14 +345,18 @@ def time_data_random(
         Time of first sample, by default "2020-01-01 00:00:00"
     n_samples : int, optional
         The number of samples, by default 10
+    dtype : Optional[Type], optional
+        The data type for the values, by default None
 
     Returns
     -------
     TimeData
         The TimeData
     """
+    if dtype is None:
+        dtype = DEFAULT_TIME_DATA_DTYPE
     metadata = time_metadata_mt(fs, first_time, n_samples)
-    data = np.random.normal(0, 3, size=(metadata.n_chans, n_samples))
+    data = np.random.normal(0, 3, size=(metadata.n_chans, n_samples)).astype(dtype)
     creator = {
         "name": "time_data_random",
         "fs": fs,
@@ -337,6 +374,7 @@ def time_data_periodic(
     fs: float = 50,
     first_time: str = "2020-01-01 00:00:00",
     n_samples: int = 100,
+    dtype: Optional[Type] = None,
 ) -> TimeData:
     """
     Get period TimeData
@@ -351,15 +389,19 @@ def time_data_periodic(
         The first time, by default "2020-01-01 00:00:00"
     n_samples : int, optional
         The number of samples, by default 100
+    dtype : Optional[Type], optional
+        The data type for the values, by default None
 
     Returns
     -------
     TimeData
         Periodic TimeData
     """
+    if dtype is None:
+        dtype = DEFAULT_TIME_DATA_DTYPE
     metadata = time_metadata_1chan(fs, first_time, n_samples)
     times = np.arange(0, n_samples) * (1 / fs)
-    data = np.zeros(shape=(1, n_samples))
+    data = np.zeros(shape=(1, n_samples), dtype=dtype)
     for freq in frequencies:
         data += np.sin(times * 2 * np.pi * freq)
     creator = {
@@ -380,6 +422,7 @@ def time_data_with_offset(
     fs: float = 10,
     first_time: str = "2020-01-01 00:00:00",
     n_samples: int = 11,
+    dtype: Optional[Type] = None,
 ) -> TimeData:
     """
     Get TimeData with an offset on the sampling
@@ -394,12 +437,16 @@ def time_data_with_offset(
         The first time of the TimeData, by default "2020-01-01 00:00:00"
     n_samples : int, optional
         The number of samples, by default 11
+    dtype : Optional[Type], optional
+        The data type for the values, by default None
 
     Returns
     -------
     TimeData
         The TimeData
     """
+    if dtype is None:
+        dtype = DEFAULT_TIME_DATA_DTYPE
     first_time = (pd.to_datetime(first_time) + pd.Timedelta(offset, "s")).isoformat()
     metadata = time_metadata_1chan(fs, first_time, n_samples)
     data = np.arange(0, n_samples).reshape(1, n_samples)
