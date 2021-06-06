@@ -1767,6 +1767,10 @@ class Resample(ResisticsProcess):
     """
     Resample TimeData
 
+    Note that resampling is done on np.float64 data and this will lead to a
+    temporary increase in memory usage. Once resampling is complete, the data is
+    converted back to its original data type.
+
     Parameters
     ----------
     new_fs : int
@@ -1836,7 +1840,9 @@ class Resample(ResisticsProcess):
         logger.info(f"Resampling data from {fs} Hz to {self.new_fs} Hz")
         # get the resampling fraction in its simplest form
         frac = Fraction(self.new_fs / fs).limit_denominator()
-        data = resample_poly(time_data.data, frac.numerator, frac.denominator, axis=1)
+        data = resample_poly(
+            time_data.data.astype(np.float64), frac.numerator, frac.denominator, axis=1
+        )
         data = data.astype(time_data.data.dtype)
         # adjust headers and
         n_samples = data.shape[1]
