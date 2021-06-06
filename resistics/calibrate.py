@@ -139,6 +139,7 @@ class CalibrationData(WriteableMetadata):
 
 
 class CalibrationReader(ResisticsProcess):
+    """Parent class for reading calibration data"""
 
     extension: Optional[str] = None
 
@@ -155,6 +156,32 @@ class SensorCalibrationReader(CalibrationReader):
     Parent class for reading sensor calibration files
 
     Use this reader for induction coil calibration file readers
+
+    Examples
+    --------
+    A short example to show how naming substitution works
+
+    >>> from pathlib import Path
+    >>> from resistics.testing import time_metadata_1chan
+    >>> from resistics.calibrate import SensorCalibrationReader
+    >>> calibration_path = Path("test")
+    >>> metadata = time_metadata_1chan()
+    >>> metadata.chans_metadata["chan1"].sensor = "example"
+    >>> metadata.chans_metadata["chan1"].serial = "254"
+    >>> calibrator = SensorCalibrationReader(extension=".json")
+    >>> calibrator.file_str
+    'IC_$sensor$extension'
+    >>> file_path = calibrator._get_path(calibration_path, metadata, "chan1")
+    >>> file_path.name
+    'IC_example.json'
+
+    If the file name has a different pattern, the file_str can be changed as
+    required.
+
+    >>> calibrator = SensorCalibrationReader(file_str="$sensor_$serial$extension", extension=".json")
+    >>> file_path = calibrator._get_path(calibration_path, metadata, "chan1")
+    >>> file_path.name
+    'example_254.json'
     """
 
     file_str: str = "IC_$sensor$extension"
@@ -192,6 +219,13 @@ class SensorCalibrationReader(CalibrationReader):
 
 
 class SensorCalibrationJSON(SensorCalibrationReader):
+    """
+    Read in JSON formatted calibration data
+
+    Examples
+    --------
+
+    """
 
     extension: str = ".json"
 
@@ -232,6 +266,17 @@ class SensorCalibrationJSON(SensorCalibrationReader):
 
 
 class SensorCalibrationTXT(SensorCalibrationReader):
+    """
+    Read in calibration data from a TXT file
+
+    Use of this calibration reader is discouraged. Instead, where a choice is
+    available, users should try and format their calibration data in the JSON
+    format as this is immediately much more portable
+
+    See Also
+    --------
+    CalibrationReaderJSON : Reader for JSON calibration files
+    """
 
     extension = ".TXT"
 
