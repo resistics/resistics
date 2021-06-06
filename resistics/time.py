@@ -1313,6 +1313,8 @@ class Add(ResisticsProcess):
     Add can be used to add a constant value to all channels or values for
     specific channels can be provided.
 
+    Add preserves the data type of the original data
+
     Parameters
     ----------
     add : Union[float, Dict[str, float]]
@@ -1329,9 +1331,9 @@ class Add(ResisticsProcess):
     >>> process = Add(add=5)
     >>> time_data_new = process.run(time_data)
     >>> time_data_new["Ex"] - time_data["Ex"]
-    array([5., 5., 5., 5., 5., 5., 5., 5., 5., 5.])
+    array([5., 5., 5., 5., 5., 5., 5., 5., 5., 5.], dtype=float32)
     >>> time_data_new["Ey"] - time_data["Ey"]
-    array([5., 5., 5., 5., 5., 5., 5., 5., 5., 5.])
+    array([5., 5., 5., 5., 5., 5., 5., 5., 5., 5.], dtype=float32)
 
     Variable values for the channels provided as a dictionary
 
@@ -1339,11 +1341,11 @@ class Add(ResisticsProcess):
     >>> process = Add(add={"Ex": 3, "Hy": -7})
     >>> time_data_new = process.run(time_data)
     >>> time_data_new["Ex"] - time_data["Ex"]
-    array([3., 3., 3., 3., 3., 3., 3., 3., 3., 3.])
+    array([3., 3., 3., 3., 3., 3., 3., 3., 3., 3.], dtype=float32)
     >>> time_data_new["Hy"] - time_data["Hy"]
-    array([-7., -7., -7., -7., -7., -7., -7., -7., -7., -7.])
+    array([-7., -7., -7., -7., -7., -7., -7., -7., -7., -7.], dtype=float32)
     >>> time_data_new["Ey"] - time_data["Ey"]
-    array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0.])
+    array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], dtype=float32)
     """
 
     add: Union[float, Dict[str, float]]
@@ -1371,7 +1373,7 @@ class Add(ResisticsProcess):
 
     def _get_add(self, time_data: TimeData) -> np.ndarray:
         """Make an array to add to the data"""
-        add = np.zeros(shape=(time_data.metadata.n_chans))
+        add = np.zeros(shape=(time_data.metadata.n_chans), dtype=time_data.data.dtype)
         if isinstance(self.add, float) or isinstance(self.add, int):
             return add + self.add
         for chan in time_data.metadata.chans:
