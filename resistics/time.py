@@ -1838,10 +1838,15 @@ class Resample(ResisticsProcess):
 
         fs = time_data.metadata.fs
         logger.info(f"Resampling data from {fs} Hz to {self.new_fs} Hz")
-        # get the resampling fraction in its simplest form
+        # get the resampling fraction in its simplest form and resample
         frac = Fraction(self.new_fs / fs).limit_denominator()
         data = resample_poly(
-            time_data.data.astype(np.float64), frac.numerator, frac.denominator, axis=1
+            time_data.data.astype(np.float64),
+            frac.numerator,
+            frac.denominator,
+            axis=1,
+            window="hamming",
+            padtype="mean",
         )
         data = data.astype(time_data.data.dtype)
         # adjust headers and
