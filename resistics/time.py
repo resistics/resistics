@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
+from resistics.errors import ProcessRunError
 from resistics.common import ResisticsData, ResisticsProcess
 from resistics.common import Metadata, WriteableMetadata
 from resistics.common import History, Record, ResisticsWriter
@@ -1507,13 +1508,24 @@ class LowPass(ResisticsProcess):
         -------
         TimeData
             The low pass filtered TimeData
+
+        Raises
+        ------
+        ProcessRunError
+            If cutoff > nyquist
         """
         from scipy.signal import butter, sosfiltfilt
 
+        nyquist = time_data.metadata.nyquist
+        if self.cutoff > nyquist:
+            raise ProcessRunError(
+                self.name, f"Cutoff {self.cutoff} > nyquist {nyquist}"
+            )
+
         logger.info(f"Low pass filtering with cutoff {self.cutoff} Hz")
-        normed = self.cutoff / time_data.metadata.nyquist
+        normed = self.cutoff / nyquist
         sos = butter(self.order, normed, btype="lowpass", analog=False, output="sos")
-        data = sosfiltfilt(sos, time_data.data, axis=1)
+        data = sosfiltfilt(sos, time_data.data, axis=1).astype(time_data.data.dtype)
         messages = [f"Low pass filtered data with cutoff {self.cutoff} Hz"]
         record = self._get_record(messages)
         return new_time_data(time_data, data=data, record=record)
