@@ -682,8 +682,6 @@ class DecimatedData(ResisticsData):
             logger.error("Data is empty, no decimation levels to plot")
 
         fig = None
-        subplots = self.metadata.chans
-        subplot_columns = {x: [x] for x in subplots}
         for ilevel in range(0, self.metadata.n_levels):
             logger.info(f"Plotting decimation level {ilevel}")
             metadata_dict = self.metadata.levels_metadata[ilevel].dict()
@@ -692,16 +690,12 @@ class DecimatedData(ResisticsData):
             time_data = TimeData(TimeMetadata(**metadata_dict), self.data[ilevel])
             if fig is None:
                 fig = time_data.plot(
-                    subplots=subplots,
-                    subplot_columns=subplot_columns,
                     max_pts=max_pts,
                     label_prefix=f"Level {ilevel}",
                 )
             else:
                 time_data.plot(
                     fig=fig,
-                    subplots=subplots,
-                    subplot_columns=subplot_columns,
                     max_pts=max_pts,
                     label_prefix=f"Level {ilevel}",
                 )
