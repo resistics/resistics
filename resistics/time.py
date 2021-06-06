@@ -1390,6 +1390,8 @@ class Multiply(ResisticsProcess):
     Multiply can be used to add a constant value to all channels or values for
     specific channels can be provided.
 
+    Multiply preseves the original type of the time data
+
     Parameters
     ----------
     multiply : Union[Dict[str, float], float]
@@ -1406,9 +1408,9 @@ class Multiply(ResisticsProcess):
     >>> process = Multiply(multiplier=5)
     >>> time_data_new = process.run(time_data)
     >>> time_data_new["Ex"]/time_data["Ex"]
-    array([5., 5., 5., 5., 5., 5., 5., 5., 5., 5.])
+    array([5., 5., 5., 5., 5., 5., 5., 5., 5., 5.], dtype=float32)
     >>> time_data_new["Ey"]/time_data["Ey"]
-    array([5., 5., 5., 5., 5., 5., 5., 5., 5., 5.])
+    array([5., 5., 5., 5., 5., 5., 5., 5., 5., 5.], dtype=float32)
 
     Variable values for the channels provided as a dictionary
 
@@ -1416,11 +1418,11 @@ class Multiply(ResisticsProcess):
     >>> process = Multiply(multiplier={"Ex": 3, "Hy": -7})
     >>> time_data_new = process.run(time_data)
     >>> time_data_new["Ex"]/time_data["Ex"]
-    array([3., 3., 3., 3., 3., 3., 3., 3., 3., 3.])
+    array([3., 3., 3., 3., 3., 3., 3., 3., 3., 3.], dtype=float32)
     >>> time_data_new["Hy"]/time_data["Hy"]
-    array([-7., -7., -7., -7., -7., -7., -7., -7., -7., -7.])
+    array([-7., -7., -7., -7., -7., -7., -7., -7., -7., -7.], dtype=float32)
     >>> time_data_new["Ey"]/time_data["Ey"]
-    array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.])
+    array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.], dtype=float32)
     """
 
     multiplier: Union[float, Dict[str, float]]
@@ -1448,7 +1450,7 @@ class Multiply(ResisticsProcess):
 
     def _get_mult(self, time_data: TimeData) -> np.ndarray:
         """Make an array to multiply the data with"""
-        mult = np.ones(shape=(time_data.metadata.n_chans))
+        mult = np.ones(shape=(time_data.metadata.n_chans), dtype=time_data.data.dtype)
         if isinstance(self.multiplier, float) or isinstance(self.multiplier, int):
             return mult * self.multiplier
         for chan in time_data.metadata.chans:
