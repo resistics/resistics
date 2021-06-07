@@ -4,9 +4,14 @@ The regression module provides functions and classes for the following:
 - Preparing gathered data for regression
 - Performing the linear regression
 
-Resistics has built in solvers that require scikit learn models. These will
-perform well in many scenarios. However, the functionality available in
-resistics makes it possible to use custom solvers.
+Resistics has built in solvers that use scikit learn models, namely
+
+- Ordinary least squares
+- RANSAC
+- TheilSen
+
+These will perform well in many scenarios. However, the functionality available
+in resistics makes it possible to use custom solvers if required.
 """
 from loguru import logger
 from typing import List, Dict, Tuple, Union, Optional
@@ -650,7 +655,7 @@ class Solution(WriteableMetadata):
 
         Parameters
         ----------
-        ifreq : int
+        eval_idx : int
             The index of the evaluation frequency
 
         Returns
@@ -692,6 +697,8 @@ class SolverScikit(Solver):
         ----------
         regression_input : RegressionInputData
             The regression input data
+        model : BaseEstimator
+            The model to use to solve the linear regressions
 
         Returns
         -------
