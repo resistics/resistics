@@ -93,6 +93,45 @@ def get_site_level_wins(
     See Also
     --------
     get_site_wins : Get windows for all decimation levels
+
+    Examples
+    --------
+    An example getting the site windows for decimation level 0 when there are
+    three measurements in the site.
+
+    >>> from resistics.testing import spectra_metadata_multilevel
+    >>> from resistics.gather import get_site_level_wins
+    >>> meas_metadata = {}
+    >>> meas_metadata["meas1"] = spectra_metadata_multilevel(n_wins=[3, 2, 2], index_offset=[3, 2, 1])
+    >>> meas_metadata["meas2"] = spectra_metadata_multilevel(n_wins=[4, 3, 2], index_offset=[28, 25, 22])
+    >>> meas_metadata["meas3"] = spectra_metadata_multilevel(n_wins=[2, 2, 1], index_offset=[108, 104, 102])
+    >>> get_site_level_wins(meas_metadata, 0)
+    3      meas1
+    4      meas1
+    5      meas1
+    28     meas2
+    29     meas2
+    30     meas2
+    31     meas2
+    108    meas3
+    109    meas3
+    dtype: object
+    >>> get_site_level_wins(meas_metadata, 1)
+    2      meas1
+    3      meas1
+    25     meas2
+    26     meas2
+    27     meas2
+    104    meas3
+    105    meas3
+    dtype: object
+    >>> get_site_level_wins(meas_metadata, 2)
+    1      meas1
+    2      meas1
+    22     meas2
+    23     meas2
+    102    meas3
+    dtype: object
     """
     level_wins = pd.Series()
     for meas_name, metadata in meas_metadata.items():
