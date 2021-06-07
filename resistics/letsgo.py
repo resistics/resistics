@@ -21,7 +21,7 @@ from resistics.decimate import DecimatedData
 from resistics.window import WindowedData
 from resistics.spectra import SpectraData
 from resistics.gather import GatheredData
-from resistics.regression import RegressionInputData
+from resistics.regression import RegressionInputData, Solution
 
 
 class ProjectCreator(ResisticsProcess):
@@ -467,6 +467,26 @@ def run_regression_preparer(
     return config.regression_preparer.run(config.tf, gathered_data)
 
 
+def run_solver(config: Configuration, reg_data: RegressionInputData) -> Solution:
+    """
+    Run the regression solver
+
+    Parameters
+    ----------
+    config : Configuration
+        The configuration
+    reg_data : RegressionInputData
+        The regression input data
+
+    Returns
+    -------
+    Solution
+        Transfer function estimate
+    """
+    logger.info(f"Running solver {config.solver.name}")
+    return config.solver.run(reg_data)
+
+
 def quick_read(config: Configuration, dir_path: Path) -> TimeData:
     """
     Read time data folder
@@ -547,7 +567,7 @@ def quick_tf(
     dir_path: Path,
     config: Optional[Configuration] = None,
     calibration_path: Optional[Path] = None,
-) -> RegressionInputData:
+) -> Solution:
     """
     Quickly calculate out a transfer function for time data in its own directory
 
@@ -562,8 +582,8 @@ def quick_tf(
 
     Returns
     -------
-    RegressionInputData
-        RegressionInputData
+    Solution
+        Transfer function estimate
     """
     from resistics.gather import QuickGather
 
@@ -584,7 +604,7 @@ def quick_tf(
         eval_data = run_sensor_calibration(config, calibration_path, eval_data)
     gathered_data = QuickGather().run(dir_path, dec_params, config.tf, eval_data)
     reg_data = run_regression_preparer(config, gathered_data)
-    return reg_data
+    return run_solver(config, reg_data)
 
 
 def process_time(
@@ -679,7 +699,7 @@ def process_spectra_to_tf(
     in_site: Optional[str] = None,
     cross_site: Optional[str] = None,
     masks: Optional[Dict[str, str]] = None,
-) -> RegressionInputData:
+) -> Solution:
     """
     Process spectra to transfer functions
 
@@ -702,8 +722,8 @@ def process_spectra_to_tf(
 
     Returns
     -------
-    RegressionInputData
-        Data to input into a solver
+    Solution
+        Transfer function estimate
     """
     from resistics.gather import Selector, ProjectGather
 
@@ -727,5 +747,5 @@ def process_spectra_to_tf(
         in_name=in_site,
         cross_name=cross_site,
     )
-    regression_data = config.regression_preparer.run(config.tf, gathered_data)
-    return regression_data
+    reg_data = run_regression_preparer(config, gathered_data)
+    return run_solver(config, reg_data)
