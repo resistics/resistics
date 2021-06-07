@@ -11,7 +11,7 @@ This includes testing data for:
 - SpectraData
 """
 
-from typing import List, Dict, Optional, Type
+from typing import List, Dict, Optional, Type, Union
 import numpy as np
 import pandas as pd
 
@@ -678,6 +678,60 @@ def decimated_data_periodic(
     record = get_record(creator, "Generated periodic decimated data")
     metadata.history.add_record(record)
     return DecimatedData(metadata, data)
+
+
+def spectra_metadata_multilevel(
+    fs: float = 128,
+    n_levels: int = 3,
+    n_wins: Union[List[int], int] = 2,
+    index_offset: Union[List[int], int] = 0,
+) -> SpectraMetadata:
+    """
+    Get spectra metadata with multiple levels
+
+    Parameters
+    ----------
+    fs : float, optional
+        The original sampling frequency, by default 128
+    n_levels : int, optional
+        The number of levels, by default 3
+    n_wins: Union[List[int], int]
+        The number of windows for each level
+    index_offset : Union[List[int], int], optional
+        The index offset vs. the reference time, by default 0
+
+    Returns
+    -------
+    SpectraMetadata
+        SpectraMetadata with n_levels
+    """
+    if isinstance(n_wins, int):
+        n_wins = (n_wins * np.ones(shape=(n_levels))).tolist()
+    if isinstance(index_offset, int):
+        index_offset = (index_offset * np.ones(shape=(n_levels))).tolist()
+
+    levels_metadata = []
+    levels_fs = []
+    for ilevel, offset in zip(range(n_levels), index_offset):
+        factor = np.power(2, ilevel)
+        fs = fs / factor
+        levels_metadata.append(
+            SpectraLevelMetadata(
+                fs=fs,
+                n_wins=n_wins[ilevel],
+                win_size=20,
+                olap_size=5,
+                index_offset=offset,
+                n_freqs=2,
+                freqs=[fs / 4, fs / 8],
+            )
+        )
+        levels_fs.append(fs)
+    metadata_dict = time_metadata_1chan().dict()
+    metadata_dict["fs"] = levels_fs
+    metadata_dict["n_levels"] = len(levels_metadata)
+    metadata_dict["levels_metadata"] = levels_metadata
+    return SpectraMetadata(**metadata_dict)
 
 
 def spectra_data_basic() -> SpectraData:
