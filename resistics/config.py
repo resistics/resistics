@@ -21,7 +21,7 @@ from resistics.decimate import Decimator
 from resistics.window import WindowSetup, Windower
 from resistics.spectra import FourierTransform, EvaluationFreqs
 from resistics.transfunc import TransferFunction, ImpedanceTensor
-from resistics.regression import RegressionPreparerGathered
+from resistics.regression import RegressionPreparerGathered, SolverScikitTheilSen
 
 
 class Configuration(ResisticsModel):
@@ -145,6 +145,8 @@ class Configuration(ResisticsModel):
     """The transfer function to solve"""
     regression_preparer: ResisticsProcess = RegressionPreparerGathered()
     """Process to prepare linear equations"""
+    solver: ResisticsProcess = SolverScikitTheilSen()
+    """The solver to use to estimate the regression parameters"""
 
 
 def get_default_configuration() -> Configuration:
