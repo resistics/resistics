@@ -271,7 +271,7 @@ class Selection(ResisticsData):
         for level_table in self.tables.values():
             level_set = set(level_table[site.name].unique())
             measurements = measurements.union(level_set)
-        return list(measurements)
+        return sorted(list(measurements))
 
     def get_eval_freqs(self) -> List[float]:
         """
