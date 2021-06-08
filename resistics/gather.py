@@ -24,6 +24,7 @@ from resistics.common import ResisticsProcess, ResisticsData, WriteableMetadata,
 from resistics.project import Project, Site
 from resistics.decimate import DecimationParameters
 from resistics.spectra import SpectraLevelMetadata, SpectraMetadata, SpectraData
+from resistics.spectra import SpectraDataReader
 from resistics.regression import TransferFunction
 
 
@@ -50,7 +51,6 @@ def get_site_spectra_metadata(
         Dictionary of measurement name to SpectraMetadata
     """
     from resistics.project import get_meas_spectra_path
-    from resistics.spectra import SpectraDataReader
 
     site = proj[site_name]
     measurements = site.get_measurements(fs=fs)
@@ -570,7 +570,6 @@ class ProjectGather(ResisticsProcess):
             A combined data instance
         """
         from resistics.project import get_meas_spectra_path
-        from resistics.spectra import SpectraDataReader
 
         site = proj[site_name]
         measurements = selection.get_measurements(site)
