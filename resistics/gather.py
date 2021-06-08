@@ -363,6 +363,7 @@ class Selector(ResisticsProcess):
         # get the higest decimation level that all sites have
         n_levels = min([len(x) for x in sites_wins.values()])
         logger.info(f"Finding shared windows across {', '.join(sites_wins.keys())}")
+        logger.info(f"Maximum level across sites = {n_levels}")
         tables: Dict[int, pd.DataFrame] = {}
         for ilevel in range(n_levels):
             logger.info(f"Finding shared windows for decimation level {ilevel}")
