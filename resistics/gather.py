@@ -354,7 +354,7 @@ class Selector(ResisticsProcess):
             read for each site
         """
         # get unique sites
-        site_names = list(set(site_names))
+        site_names = sorted(list(set(site_names)))
         fs = dec_params.fs
         sites_wins = {
             site_name: get_site_wins(config_name, proj, site_name, fs)
