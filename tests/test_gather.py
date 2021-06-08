@@ -2,9 +2,23 @@
 Modules to test data gathering. This is quite complex testing as it requires
 mock projects, sites, spectra metadata and spectra data to appropriately test
 everything.
+
+The test works towards gathering data for three sites
+
+- site1: measurements meas1, meas2, meas3
+- site2: measurements run1, run2
+- site3: measurements data1
+
+The intention is to setup intersite processing with a remote reference. Each
+site will have two channels, namely,
+
+- site1: Ex, Ey (output site)
+- site2: Hx, Hy (input site)
+- site3: Hx, Hy (remote/cross site)
 """
 from typing import Dict
 from pathlib import Path
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -26,21 +40,21 @@ def get_spectra_metadata_site1(meas_name: str):
         # level 1 windows: 2, 3, 4, 5
         # level 3 windows: 1, 2, 3
         return spectra_metadata_multilevel(
-            n_levels=3, n_wins=[5, 4, 3], index_offset=[4, 2, 1]
+            n_levels=3, n_wins=[5, 4, 3], index_offset=[4, 2, 1], chans=["Ex", "Ey"]
         )
     if meas_name == "meas2":
         # level 0 windows: 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26
         # level 1 windows: 10, 11, 12, 13, 14, 15, 16, 17, 18
         # level 3 windows: 8, 9, 10, 11, 12, 13, 14
         return spectra_metadata_multilevel(
-            n_levels=3, n_wins=[12, 9, 7], index_offset=[15, 10, 8]
+            n_levels=3, n_wins=[12, 9, 7], index_offset=[15, 10, 8], chans=["Ex", "Ey"]
         )
     if meas_name == "meas3":
         # level 0 windows: 41, 42, 43, 44, 45, 46, 47
         # level 1 windows: 38, 39, 40, 41
         # level 3 windows: 35, 36
         return spectra_metadata_multilevel(
-            n_levels=3, n_wins=[7, 4, 2], index_offset=[41, 38, 35]
+            n_levels=3, n_wins=[7, 4, 2], index_offset=[41, 38, 35], chans=["Ex", "Ey"]
         )
     raise ValueError("Unknown measurement for site1")
 
@@ -51,13 +65,13 @@ def get_spectra_metadata_site2(meas_name: str):
         # level 0 windows: 3, 4, 5, 6, 7, 8
         # level 1 windows: 1, 2, 3
         return spectra_metadata_multilevel(
-            n_levels=3, n_wins=[6, 3], index_offset=[3, 1]
+            n_levels=3, n_wins=[6, 3], index_offset=[3, 1], chans=["Hx", "Hy"]
         )
     if meas_name == "run2":
         # level 0 windows: 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
         # level 1 windows: 9, 10, 11, 12, 13
         return spectra_metadata_multilevel(
-            n_levels=2, n_wins=[10, 5], index_offset=[16, 9]
+            n_levels=2, n_wins=[10, 5], index_offset=[16, 9], chans=["Hx", "Hy"]
         )
     raise ValueError("Unknown measurement for site2")
 
@@ -67,9 +81,9 @@ def get_spectra_metadata_site3(meas_name: str):
     if meas_name == "data1":
         # level 0 windows: 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28
         # level 1 windows: 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
-        # level 3 windows: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+        # level 2 windows: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
         return spectra_metadata_multilevel(
-            n_levels=2, n_wins=[25, 17, 12], index_offset=[4, 3, 1]
+            n_levels=2, n_wins=[25, 17, 12], index_offset=[4, 3, 1], chans=["Hx", "Hy"]
         )
     raise ValueError("Unknown measurement for site3")
 
@@ -169,6 +183,15 @@ def mock_spec_reader_metadata_only(monkeypatch):
     monkeypatch.setattr(SpectraDataReader, "run", mock_spectra_data_reader_run)
 
 
+def get_selection():
+    """Get a selection as it is used in multiple places"""
+    proj = get_test_project(TEST_PROJECT_PATH)
+    site_names = ["site1", "site2", "site3"]
+    dec_params = DecimationSetup(n_levels=4, per_level=2).run(128)
+    selection = gather.Selector().run(TEST_CONFIG_NAME, proj, site_names, dec_params)
+    return selection
+
+
 def test_get_site_spectra_metadata(mock_project_site, mock_spec_reader_metadata_only):
     """Test gathering of spectra metadata"""
     proj = get_test_project(TEST_PROJECT_PATH)
@@ -229,13 +252,11 @@ def test_get_site_wins(mock_project_site, mock_spec_reader_metadata_only):
 
 def test_selector(mock_project_site, mock_spec_reader_metadata_only):
     """Test the Selector"""
-    proj = get_test_project(TEST_PROJECT_PATH)
-    site_names = ["site1", "site2", "site3"]
-    dec_params = DecimationSetup(n_levels=4, per_level=2).run(128)
-    selection = gather.Selector().run(TEST_CONFIG_NAME, proj, site_names, dec_params)
-    selector_site_names = set([x.name for x in selection.sites])
+    selection = get_selection()
+    selector_site_names = [x.name for x in selection.sites]
+    expected_site_names = ["site1", "site2", "site3"]
 
-    assert set(site_names) == selector_site_names
+    assert set(expected_site_names) == set(selector_site_names)
     assert selection.n_levels == 2
     assert selection.get_n_evals() == 4
     assert selection.get_n_wins(0, 0) == 15
@@ -279,6 +300,114 @@ def test_selector(mock_project_site, mock_spec_reader_metadata_only):
     pd.testing.assert_frame_equal(eval_wins, selection.get_eval_wins(1, 1))
 
 
-def test_projectgather():
+def test_projectgather_get_empty_data(
+    mock_project_site, mock_spec_reader_metadata_only
+):
+    """Test creating empty data"""
+    selection = get_selection()
+    chans = ["Hx", "Hy"]
+    n_chans = len(chans)
+    # now test gatherer._get_empty_data
+    gatherer = gather.ProjectGather()
+    empty_data = gatherer._get_empty_data(selection, chans)
+    assert len(empty_data) == 4
+    assert sorted(list(empty_data.keys())) == [0, 1, 2, 3]
+    # check size of arrays
+    for eval_idx, data in empty_data.items():
+        # two decimation levels
+        level = eval_idx // 2
+        eval_level_idx = eval_idx - level * 2
+        n_wins = selection.get_n_wins(level, eval_level_idx)
+        assert data.shape == (n_wins, n_chans)
+        assert data.dtype == np.complex128
+
+
+def test_projectgather_get_indices_site1_meas1(
+    mock_project_site, mock_spec_reader_metadata_only
+):
     """Test project gathering of data"""
-    pass
+    # get required data
+    site = MockSite("site1")
+    meas_name = "meas1"
+    metadata = get_spectra_metadata(site.name, meas_name)
+    selection = get_selection()
+    # now test gatherer._get_indices
+    gatherer = gather.ProjectGather()
+    # site 1, meas1, level 0
+    eval_wins = selection.get_eval_wins(0, 0)
+    level_metadata = metadata.levels_metadata[0]
+    spectra_indices, combined_indices = gatherer._get_indices(
+        eval_wins, site, meas_name, level_metadata
+    )
+    np.testing.assert_array_equal(spectra_indices, np.array([0, 1, 2, 3, 4]))
+    np.testing.assert_array_equal(combined_indices, np.array([0, 1, 2, 3, 4]))
+    # site 1, meas1, level 1
+    eval_wins = selection.get_eval_wins(1, 0)
+    level_metadata = metadata.levels_metadata[1]
+    spectra_indices, combined_indices = gatherer._get_indices(
+        eval_wins, site, meas_name, level_metadata
+    )
+    np.testing.assert_array_equal(spectra_indices, np.array([1]))
+    np.testing.assert_array_equal(combined_indices, np.array([0]))
+
+
+def test_projectgather_get_indices_site2_run2(
+    mock_project_site, mock_spec_reader_metadata_only
+):
+    """Test project gathering of data"""
+    # get required data
+    site = MockSite("site2")
+    meas_name = "run2"
+    metadata = get_spectra_metadata(site.name, meas_name)
+    selection = get_selection()
+    # now test gatherer._get_indices
+    gatherer = gather.ProjectGather()
+    # site 2, run1, level 0
+    eval_wins = selection.get_eval_wins(0, 0)
+    level_metadata = metadata.levels_metadata[0]
+    spectra_indices, combined_indices = gatherer._get_indices(
+        eval_wins, site, meas_name, level_metadata
+    )
+    expected_spectra = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    expeceted_combined = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    np.testing.assert_array_equal(spectra_indices, np.array(expected_spectra))
+    np.testing.assert_array_equal(combined_indices, np.array(expeceted_combined))
+    # site 2, run1, level 1
+    eval_wins = selection.get_eval_wins(1, 0)
+    level_metadata = metadata.levels_metadata[1]
+    spectra_indices, combined_indices = gatherer._get_indices(
+        eval_wins, site, meas_name, level_metadata
+    )
+    np.testing.assert_array_equal(spectra_indices, np.array([1, 2, 3, 4]))
+    np.testing.assert_array_equal(combined_indices, np.array([1, 2, 3, 4]))
+
+
+def test_projectgather_get_indices_site3_data1(
+    mock_project_site, mock_spec_reader_metadata_only
+):
+    """Test project gathering of data"""
+    # get required data
+    site = MockSite("site3")
+    meas_name = "data1"
+    metadata = get_spectra_metadata(site.name, meas_name)
+    selection = get_selection()
+    # now test gatherer._get_indices
+    gatherer = gather.ProjectGather()
+    # site 3, data1, level 0
+    eval_wins = selection.get_eval_wins(0, 0)
+    level_metadata = metadata.levels_metadata[0]
+    spectra_indices, combined_indices = gatherer._get_indices(
+        eval_wins, site, meas_name, level_metadata
+    )
+    expected_spectra = [0, 1, 2, 3, 4, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+    expected_combined = np.arange(15)
+    np.testing.assert_array_equal(spectra_indices, np.array(expected_spectra))
+    np.testing.assert_array_equal(combined_indices, expected_combined)
+    # site 3, data1, level 1
+    eval_wins = selection.get_eval_wins(1, 0)
+    level_metadata = metadata.levels_metadata[1]
+    spectra_indices, combined_indices = gatherer._get_indices(
+        eval_wins, site, meas_name, level_metadata
+    )
+    np.testing.assert_array_equal(spectra_indices, np.array([0, 7, 8, 9, 10]))
+    np.testing.assert_array_equal(combined_indices, np.array([0, 1, 2, 3, 4]))
