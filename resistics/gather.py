@@ -133,7 +133,7 @@ def get_site_level_wins(
     102    meas3
     dtype: object
     """
-    level_wins = pd.Series()
+    level_wins = pd.Series(dtype=str)
     for meas_name, metadata in meas_metadata.items():
         if level >= metadata.n_levels:
             continue
