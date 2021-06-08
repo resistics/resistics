@@ -685,9 +685,10 @@ def spectra_metadata_multilevel(
     n_levels: int = 3,
     n_wins: Union[List[int], int] = 2,
     index_offset: Union[List[int], int] = 0,
+    chans: Optional[List[str]] = None,
 ) -> SpectraMetadata:
     """
-    Get spectra metadata with multiple levels
+    Get spectra metadata with multiple levels and two channels
 
     Parameters
     ----------
@@ -699,11 +700,19 @@ def spectra_metadata_multilevel(
         The number of windows for each level
     index_offset : Union[List[int], int], optional
         The index offset vs. the reference time, by default 0
+    chans : Optional[List[str]]
+        The channels in the data, by default None. If None, the channels will be
+        chan1 and chan2
 
     Returns
     -------
     SpectraMetadata
         SpectraMetadata with n_levels
+
+    Raises
+    ------
+    ValueError
+        If the number of user input channels does not equal two
     """
     if isinstance(n_wins, int):
         n_wins = (n_wins * np.ones(shape=(n_levels))).tolist()
@@ -727,7 +736,11 @@ def spectra_metadata_multilevel(
             )
         )
         levels_fs.append(fs)
-    metadata_dict = time_metadata_1chan().dict()
+    metadata_dict = time_metadata_2chan().dict()
+    if chans is not None:
+        if len(chans) != 2:
+            raise ValueError(f"More than two channels {chans}")
+        metadata_dict["chans"] = chans
     metadata_dict["fs"] = levels_fs
     metadata_dict["n_levels"] = len(levels_metadata)
     metadata_dict["levels_metadata"] = levels_metadata
