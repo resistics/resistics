@@ -15,6 +15,8 @@ site will have two channels, namely,
 - site1: Ex, Ey (output site)
 - site2: Hx, Hy (input site)
 - site3: Hx, Hy (remote/cross site)
+
+There are only two frequencies per decimation level, but multiple windows
 """
 from typing import Dict
 from pathlib import Path
@@ -25,67 +27,17 @@ import pytest
 from resistics.project import ProjectMetadata, Project
 from resistics.project import get_meas_spectra_path
 from resistics.decimate import DecimationSetup
-from resistics.spectra import SpectraDataReader, SpectraMetadata
-from resistics.testing import spectra_metadata_multilevel
+from resistics.spectra import SpectraData, SpectraDataReader, SpectraMetadata
 import resistics.gather as gather
+from testing_data_spectra import get_spectra_metadata_site1, get_spectra_data_site1
+from testing_data_spectra import get_spectra_metadata_site2, get_spectra_data_site2
+from testing_data_spectra import get_spectra_metadata_site3, get_spectra_data_site3
+from testing_data_spectra import SITE1_COMBINED_DATA, SITE2_COMBINED_DATA
+from testing_data_spectra import SITE3_COMBINED_DATA
+
 
 TEST_PROJECT_PATH = Path(".")
 TEST_CONFIG_NAME = "test"
-
-
-def get_spectra_metadata_site1(meas_name: str):
-    """Get spectra metadata for site1"""
-    if meas_name == "meas1":
-        # level 0 windows: 4, 5, 6, 7, 8
-        # level 1 windows: 2, 3, 4, 5
-        # level 3 windows: 1, 2, 3
-        return spectra_metadata_multilevel(
-            n_levels=3, n_wins=[5, 4, 3], index_offset=[4, 2, 1], chans=["Ex", "Ey"]
-        )
-    if meas_name == "meas2":
-        # level 0 windows: 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26
-        # level 1 windows: 10, 11, 12, 13, 14, 15, 16, 17, 18
-        # level 3 windows: 8, 9, 10, 11, 12, 13, 14
-        return spectra_metadata_multilevel(
-            n_levels=3, n_wins=[12, 9, 7], index_offset=[15, 10, 8], chans=["Ex", "Ey"]
-        )
-    if meas_name == "meas3":
-        # level 0 windows: 41, 42, 43, 44, 45, 46, 47
-        # level 1 windows: 38, 39, 40, 41
-        # level 3 windows: 35, 36
-        return spectra_metadata_multilevel(
-            n_levels=3, n_wins=[7, 4, 2], index_offset=[41, 38, 35], chans=["Ex", "Ey"]
-        )
-    raise ValueError("Unknown measurement for site1")
-
-
-def get_spectra_metadata_site2(meas_name: str):
-    """Get spectra metadata for site2"""
-    if meas_name == "run1":
-        # level 0 windows: 3, 4, 5, 6, 7, 8
-        # level 1 windows: 1, 2, 3
-        return spectra_metadata_multilevel(
-            n_levels=3, n_wins=[6, 3], index_offset=[3, 1], chans=["Hx", "Hy"]
-        )
-    if meas_name == "run2":
-        # level 0 windows: 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
-        # level 1 windows: 9, 10, 11, 12, 13
-        return spectra_metadata_multilevel(
-            n_levels=2, n_wins=[10, 5], index_offset=[16, 9], chans=["Hx", "Hy"]
-        )
-    raise ValueError("Unknown measurement for site2")
-
-
-def get_spectra_metadata_site3(meas_name: str):
-    """Get spectra metadata for site3"""
-    if meas_name == "data1":
-        # level 0 windows: 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28
-        # level 1 windows: 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
-        # level 2 windows: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
-        return spectra_metadata_multilevel(
-            n_levels=2, n_wins=[25, 17, 12], index_offset=[4, 3, 1], chans=["Hx", "Hy"]
-        )
-    raise ValueError("Unknown measurement for site3")
 
 
 def get_spectra_metadata(site_name: str, meas_name: str) -> SpectraMetadata:
@@ -119,6 +71,40 @@ def get_spectra_metadata_by_path(spectra_path: Path):
             TEST_PROJECT_PATH, "site3", meas_name, TEST_CONFIG_NAME
         ):
             return get_spectra_metadata("site3", meas_name)
+    raise ValueError("Spectra path not as expected")
+
+
+def get_spectra_data(site_name: str, meas_name: str) -> SpectraData:
+    """Get example spectra data for testing"""
+    if site_name == "site1":
+        return get_spectra_data_site1(meas_name)
+    if site_name == "site2":
+        return get_spectra_data_site2(meas_name)
+    if site_name == "site3":
+        return get_spectra_data_site3(meas_name)
+    raise ValueError(f"Site {site_name} not known")
+
+
+def get_spectra_data_by_path(spectra_path: Path):
+    """Get example spectra data for testing"""
+    # site 1
+    for meas_name in ["meas1", "meas2", "meas3"]:
+        if spectra_path == get_meas_spectra_path(
+            TEST_PROJECT_PATH, "site1", meas_name, TEST_CONFIG_NAME
+        ):
+            return get_spectra_data("site1", meas_name)
+    # site 2
+    for meas_name in ["run1", "run2"]:
+        if spectra_path == get_meas_spectra_path(
+            TEST_PROJECT_PATH, "site2", meas_name, TEST_CONFIG_NAME
+        ):
+            return get_spectra_data("site2", meas_name)
+    # site 3
+    for meas_name in ["data1"]:
+        if spectra_path == get_meas_spectra_path(
+            TEST_PROJECT_PATH, "site3", meas_name, TEST_CONFIG_NAME
+        ):
+            return get_spectra_data("site3", meas_name)
     raise ValueError("Spectra path not as expected")
 
 
@@ -178,7 +164,10 @@ def mock_spec_reader_metadata_only(monkeypatch):
     def mock_spectra_data_reader_run(*args, **kwargs):
         """Mock for reading spectra metadata"""
         spectra_path = args[1]
-        return get_spectra_metadata_by_path(spectra_path)
+        if "metadata_only" in kwargs:
+            return get_spectra_metadata_by_path(spectra_path)
+        else:
+            return get_spectra_data_by_path(spectra_path)
 
     monkeypatch.setattr(SpectraDataReader, "run", mock_spectra_data_reader_run)
 
@@ -411,3 +400,72 @@ def test_projectgather_get_indices_site3_data1(
     )
     np.testing.assert_array_equal(spectra_indices, np.array([0, 7, 8, 9, 10]))
     np.testing.assert_array_equal(combined_indices, np.array([0, 1, 2, 3, 4]))
+
+
+def test_projectgather_get_site_data_site1(
+    mock_project_site, mock_spec_reader_metadata_only
+):
+    """Test combining data for site1"""
+    # get required data
+    proj = get_test_project(TEST_PROJECT_PATH)
+    site_name = "site1"
+    selection = get_selection()
+    # now test gatherer._get_indices
+    gatherer = gather.ProjectGather()
+    combined_data = gatherer._get_site_data(
+        TEST_CONFIG_NAME, proj, selection, site_name, ["Ex", "Ey"]
+    )
+    assert len(combined_data.data) == 4
+    assert combined_data.metadata.chans == ["Ex", "Ey"]
+    assert combined_data.metadata.n_evals == 4
+    assert combined_data.metadata.measurements == ["meas1", "meas2"]
+    np.testing.assert_equal(combined_data.data[0], SITE1_COMBINED_DATA[0])
+    np.testing.assert_equal(combined_data.data[1], SITE1_COMBINED_DATA[1])
+    np.testing.assert_equal(combined_data.data[2], SITE1_COMBINED_DATA[2])
+    np.testing.assert_equal(combined_data.data[3], SITE1_COMBINED_DATA[3])
+
+
+def test_projectgather_get_site_data_site2(
+    mock_project_site, mock_spec_reader_metadata_only
+):
+    """Test combining data for site2"""
+    # get required data
+    proj = get_test_project(TEST_PROJECT_PATH)
+    site_name = "site2"
+    selection = get_selection()
+    # now test gatherer._get_indices
+    gatherer = gather.ProjectGather()
+    combined_data = gatherer._get_site_data(
+        TEST_CONFIG_NAME, proj, selection, site_name, ["Hx", "Hy"]
+    )
+    assert len(combined_data.data) == 4
+    assert combined_data.metadata.chans == ["Hx", "Hy"]
+    assert combined_data.metadata.n_evals == 4
+    assert combined_data.metadata.measurements == ["run1", "run2"]
+    np.testing.assert_equal(combined_data.data[0], SITE2_COMBINED_DATA[0])
+    np.testing.assert_equal(combined_data.data[1], SITE2_COMBINED_DATA[1])
+    np.testing.assert_equal(combined_data.data[2], SITE2_COMBINED_DATA[2])
+    np.testing.assert_equal(combined_data.data[3], SITE2_COMBINED_DATA[3])
+
+
+def test_projectgather_get_site_data_site3(
+    mock_project_site, mock_spec_reader_metadata_only
+):
+    """Test combining data for site1"""
+    # get required data
+    proj = get_test_project(TEST_PROJECT_PATH)
+    site_name = "site3"
+    selection = get_selection()
+    # now test gatherer._get_indices
+    gatherer = gather.ProjectGather()
+    combined_data = gatherer._get_site_data(
+        TEST_CONFIG_NAME, proj, selection, site_name, ["Hx", "Hy"]
+    )
+    assert len(combined_data.data) == 4
+    assert combined_data.metadata.chans == ["Hx", "Hy"]
+    assert combined_data.metadata.n_evals == 4
+    assert combined_data.metadata.measurements == ["data1"]
+    np.testing.assert_equal(combined_data.data[0], SITE3_COMBINED_DATA[0])
+    np.testing.assert_equal(combined_data.data[1], SITE3_COMBINED_DATA[1])
+    np.testing.assert_equal(combined_data.data[2], SITE3_COMBINED_DATA[2])
+    np.testing.assert_equal(combined_data.data[3], SITE3_COMBINED_DATA[3])
