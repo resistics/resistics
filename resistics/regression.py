@@ -827,11 +827,31 @@ class SolverScikitOLS(SolverScikit):
         return self._solve(regression_input, model)
 
 
+class SolverScikitHuber(SolverScikit):
+    """
+    Scikit Huber solver
+
+    This is simply a wrapper around the scikit learn Huber Regressor. For
+    more information, please see
+    https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.HuberRegressor.html
+    """
+
+    epsilon: float = 1
+    """The smaller the epsilon, the more robust it is to outliers."""
+
+    def run(self, regression_input: RegressionInputData) -> Solution:
+        """Run Huber Regressor regression on the RegressionInputData"""
+        from sklearn.linear_model import HuberRegressor
+
+        model = HuberRegressor(epsilon=self.epsilon)
+        return self._solve(regression_input, model)
+
+
 class SolverScikitTheilSen(SolverScikit):
     """
     Scikit Theil Sen solver
 
-    This is simply a wrapper around the scikit learn Theil Sen solver. For
+    This is simply a wrapper around the scikit learn Theil Sen Regressor. For
     more information, please see
     https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TheilSenRegressor.html
     """
