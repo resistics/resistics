@@ -24,16 +24,20 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from resistics.errors import ChannelNotFoundError
 from resistics.project import ProjectMetadata, Project
 from resistics.project import get_meas_spectra_path
 from resistics.decimate import DecimationSetup
 from resistics.spectra import SpectraData, SpectraDataReader, SpectraMetadata
 import resistics.gather as gather
+from resistics.transfunc import TransferFunction, ImpedanceTensor
 from testing_data_spectra import get_spectra_metadata_site1, get_spectra_data_site1
 from testing_data_spectra import get_spectra_metadata_site2, get_spectra_data_site2
 from testing_data_spectra import get_spectra_metadata_site3, get_spectra_data_site3
 from testing_data_spectra import SITE1_COMBINED_DATA, SITE2_COMBINED_DATA
 from testing_data_spectra import SITE3_COMBINED_DATA
+from testing_data_spectra import SITE2_RUN2_QUICK_OUT, SITE2_RUN2_QUICK_IN
+from testing_data_spectra import SITE2_RUN2_QUICK_CROSS
 
 
 TEST_PROJECT_PATH = Path(".")
@@ -469,3 +473,88 @@ def test_projectgather_get_site_data_site3(
     np.testing.assert_equal(combined_data.data[1], SITE3_COMBINED_DATA[1])
     np.testing.assert_equal(combined_data.data[2], SITE3_COMBINED_DATA[2])
     np.testing.assert_equal(combined_data.data[3], SITE3_COMBINED_DATA[3])
+
+
+def test_projectgather_run(mock_project_site, mock_spec_reader_metadata_only):
+    """Test gathering data for all sites"""
+    # get required data
+    proj = get_test_project(TEST_PROJECT_PATH)
+    tf = ImpedanceTensor()
+    selection = get_selection()
+    gathered_data = gather.ProjectGather().run(
+        TEST_CONFIG_NAME,
+        proj,
+        selection,
+        tf,
+        out_name="site1",
+        in_name="site2",
+        cross_name="site3",
+    )
+    # output data
+    assert gathered_data.out_data.metadata.name == "site1"
+    assert gathered_data.out_data.metadata.chans == ["Ex", "Ey"]
+    assert gathered_data.out_data.metadata.fs == 128
+    assert gathered_data.out_data.metadata.n_evals == 4
+    np.testing.assert_equal(gathered_data.out_data.data[0], SITE1_COMBINED_DATA[0])
+    np.testing.assert_equal(gathered_data.out_data.data[1], SITE1_COMBINED_DATA[1])
+    np.testing.assert_equal(gathered_data.out_data.data[2], SITE1_COMBINED_DATA[2])
+    np.testing.assert_equal(gathered_data.out_data.data[3], SITE1_COMBINED_DATA[3])
+    # input data
+    assert gathered_data.in_data.metadata.name == "site2"
+    assert gathered_data.in_data.metadata.chans == ["Hx", "Hy"]
+    assert gathered_data.in_data.metadata.fs == 128
+    assert gathered_data.in_data.metadata.n_evals == 4
+    np.testing.assert_equal(gathered_data.in_data.data[0], SITE2_COMBINED_DATA[0])
+    np.testing.assert_equal(gathered_data.in_data.data[1], SITE2_COMBINED_DATA[1])
+    np.testing.assert_equal(gathered_data.in_data.data[2], SITE2_COMBINED_DATA[2])
+    np.testing.assert_equal(gathered_data.in_data.data[3], SITE2_COMBINED_DATA[3])
+    # cross data
+    assert gathered_data.cross_data.metadata.name == "site3"
+    assert gathered_data.cross_data.metadata.chans == ["Hx", "Hy"]
+    assert gathered_data.cross_data.metadata.fs == 128
+    assert gathered_data.cross_data.metadata.n_evals == 4
+    np.testing.assert_equal(gathered_data.cross_data.data[0], SITE3_COMBINED_DATA[0])
+    np.testing.assert_equal(gathered_data.cross_data.data[1], SITE3_COMBINED_DATA[1])
+    np.testing.assert_equal(gathered_data.cross_data.data[2], SITE3_COMBINED_DATA[2])
+    np.testing.assert_equal(gathered_data.cross_data.data[3], SITE3_COMBINED_DATA[3])
+
+
+def test_quickgather_run():
+    """Test quick gathering with some spectra data"""
+    dir_path = Path("test")
+    dec_params = DecimationSetup(n_levels=4, per_level=2).run(128)
+    tf = TransferFunction(out_chans=["Hy"], in_chans=["Hx"], cross_chans=["Ex", "Ey"])
+    eval_data = get_spectra_data("site2", "run2")
+    with pytest.raises(ChannelNotFoundError):
+        # there are no electronic channels in the data
+        gathered_data = gather.QuickGather().run(dir_path, dec_params, tf, eval_data)
+
+    tf = TransferFunction(in_chans=["Hx"], out_chans=["Hy"], cross_chans=["Hx", "Hy"])
+    gathered_data = gather.QuickGather().run(dir_path, dec_params, tf, eval_data)
+    # output data
+    assert gathered_data.out_data.metadata.name == "test"
+    assert gathered_data.out_data.metadata.chans == ["Hy"]
+    assert gathered_data.out_data.metadata.fs == 128
+    assert gathered_data.out_data.metadata.n_evals == 4
+    np.testing.assert_equal(gathered_data.out_data.data[0], SITE2_RUN2_QUICK_OUT[0])
+    np.testing.assert_equal(gathered_data.out_data.data[1], SITE2_RUN2_QUICK_OUT[1])
+    np.testing.assert_equal(gathered_data.out_data.data[2], SITE2_RUN2_QUICK_OUT[2])
+    np.testing.assert_equal(gathered_data.out_data.data[3], SITE2_RUN2_QUICK_OUT[3])
+    # input data
+    assert gathered_data.in_data.metadata.name == "test"
+    assert gathered_data.in_data.metadata.chans == ["Hx"]
+    assert gathered_data.in_data.metadata.fs == 128
+    assert gathered_data.in_data.metadata.n_evals == 4
+    np.testing.assert_equal(gathered_data.in_data.data[0], SITE2_RUN2_QUICK_IN[0])
+    np.testing.assert_equal(gathered_data.in_data.data[1], SITE2_RUN2_QUICK_IN[1])
+    np.testing.assert_equal(gathered_data.in_data.data[2], SITE2_RUN2_QUICK_IN[2])
+    np.testing.assert_equal(gathered_data.in_data.data[3], SITE2_RUN2_QUICK_IN[3])
+    # cross data
+    assert gathered_data.cross_data.metadata.name == "test"
+    assert gathered_data.cross_data.metadata.chans == ["Hx", "Hy"]
+    assert gathered_data.cross_data.metadata.fs == 128
+    assert gathered_data.cross_data.metadata.n_evals == 4
+    np.testing.assert_equal(gathered_data.cross_data.data[0], SITE2_RUN2_QUICK_CROSS[0])
+    np.testing.assert_equal(gathered_data.cross_data.data[1], SITE2_RUN2_QUICK_CROSS[1])
+    np.testing.assert_equal(gathered_data.cross_data.data[2], SITE2_RUN2_QUICK_CROSS[2])
+    np.testing.assert_equal(gathered_data.cross_data.data[3], SITE2_RUN2_QUICK_CROSS[3])
