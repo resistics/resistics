@@ -1267,7 +1267,7 @@ class WindowerTarget(Windower):
 
     .. warning::
 
-        This process is mainly useful for quick processing of a single
+        This process is primarily useful for quick processing of a single
         measurement and should not be used when any alignment of windows is
         required within a site or across sites.
 
@@ -1329,6 +1329,7 @@ class WindowerTarget(Windower):
             )
             data[ilevel] = win_level_data
             win_levels_metadata.append(win_level_metadata)
+        metadata_dict["ref_time"] = metadata_dict["first_time"]
         metadata = self._get_metadata(metadata_dict, win_levels_metadata)
         metadata.history.add_record(self._get_record(messages))
         logger.info("Windowing completed")
