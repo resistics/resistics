@@ -42,7 +42,7 @@ class RegressionInputData(ResisticsData):
     The purpose of regression input data is to provision for many different
     solvers and user written solvers.
 
-    The regression input data has the following key attributes
+    The regression input data has the following key attributes:
 
     - freqs
     - obs
@@ -80,22 +80,27 @@ class RegressionInputData(ResisticsData):
 
     The below shows the arrays for the 0 index evaluation frequency:
 
-    obs[0]
-    {
-        "Ex": [w1_crossHx_RE, w1_crossHx_IM, w1_crossHy_RE, w1_crossHy_IM...]
-        "Ey": [w1_crossHx_RE, w1_crossHx_IM, w1_crossHy_RE, w1_crossHy_IM...]
-    }
-    preds[0]
-                  (for Ex)      Zxx_RE  Zxx_IM  Zxy_RE  Zxy_IM
-                  (for Ey)      Zyx_RE  Zyx_IM  Zyy_RE  Zyy_IM
-    w1_crossHx_RE               value   value   value   value
-    w1_crossHx_IM               value   value   value   value
-    w1_crossHy_RE               value   value   value   value
-    w1_crossHy_IM               value   value   value   value
-    ...
+    Observations
 
-    Note that the predictors are the same regardless of the output channel.
-    Only the observations change.
+    - Ex: [w1_crossHx_RE, w1_crossHx_IM, w1_crossHy_RE, w1_crossHy_IM]
+    - Ey: [w1_crossHx_RE, w1_crossHx_IM, w1_crossHy_RE, w1_crossHy_IM]
+
+    Predictors Ex
+
+    - w1_crossHx_RE:    Zxx_RE  Zxx_IM  Zxy_RE  Zxy_IM
+    - w1_crossHx_IM:    Zxx_RE  Zxx_IM  Zxy_RE  Zxy_IM
+    - w1_crossHy_RE:    Zxx_RE  Zxx_IM  Zxy_RE  Zxy_IM
+    - w1_crossHy_IM:    Zxx_RE  Zxx_IM  Zxy_RE  Zxy_IM
+
+    Predictors Ey
+
+    - w1_crossHx_RE:    Zyx_RE  Zyx_IM  Zyy_RE  Zyy_IM
+    - w1_crossHx_IM:    Zyx_RE  Zyx_IM  Zyy_RE  Zyy_IM
+    - w1_crossHy_RE:    Zyx_RE  Zyx_IM  Zyy_RE  Zyy_IM
+    - w1_crossHy_IM:    Zyx_RE  Zyx_IM  Zyy_RE  Zyy_IM
+
+    Note that the predictors are the same regardless of the output channel,
+    only the observations change.
     """
 
     def __init__(
