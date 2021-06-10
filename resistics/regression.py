@@ -52,16 +52,50 @@ class RegressionInputData(ResisticsData):
 
     The obs attribute is a dictionary of dictionaries. The parent dictionary has
     a key of the evaluation frequency index. The secondary dictionary has key of
-    output channel. The value in the secondary dictionary are the observations
-    for that output channel and have size (n_wins x 2). The reason this is
-    multiplied by 2 is because the real and complex parts of the equation are
-    separated into separate equations.
+    output channel. The values in the secondary dictionary are the observations
+    for that output channel and have 1-D size:
+
+    (n_wins x n_cross_chans x 2).
+
+    The factor of 2 is because the real and complex parts of each equation are
+    separated into two equations to allow use of solvers that work exclusively
+    on real data.
 
     The preds attribute is a single level dictionary with key of evaluation
     frequency index and value of the predictors for the evaluation frequency.
-    The predictors have shape (n_wins x 2) x n_input_channels. The reason for
-    the factor of 2 is the same as for the observations. The same predictors can
-    be used for all output channels.
+    The predictors have 2-D shape:
+
+    (n_wins x n_cross_chans x 2)  x (n_input_channels x 2).
+
+    The number of windows is multiplied by 2 for the same reason as the
+    observations. The doubling of the input channels is because one is the
+    predictor for the real part of that transfer function component and one is
+    the predictor for the complex part of the transfer function component.
+
+    Considering the impedance tensor as an example with:
+
+    - output channels Ex, Ey
+    - input channels Hx, Hy
+    - cross channels Hx, Hy
+
+    The below shows the arrays for the 0 index evaluation frequency:
+
+    obs[0]
+    {
+        "Ex": [w1_crossHx_RE, w1_crossHx_IM, w1_crossHy_RE, w1_crossHy_IM...]
+        "Ey": [w1_crossHx_RE, w1_crossHx_IM, w1_crossHy_RE, w1_crossHy_IM...]
+    }
+    preds[0]
+                  (for Ex)      Zxx_RE  Zxx_IM  Zxy_RE  Zxy_IM
+                  (for Ey)      Zyx_RE  Zyx_IM  Zyy_RE  Zyy_IM
+    w1_crossHx_RE               value   value   value   value
+    w1_crossHx_IM               value   value   value   value
+    w1_crossHy_RE               value   value   value   value
+    w1_crossHy_IM               value   value   value   value
+    ...
+
+    Note that the predictors are the same regardless of the output channel.
+    Only the observations change.
     """
 
     def __init__(
