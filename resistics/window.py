@@ -876,6 +876,7 @@ class WindowedMetadata(WriteableMetadata):
     elevation: float = -999.0
     chans_metadata: Dict[str, ChanMetadata]
     levels_metadata: List[WindowedLevelMetadata]
+    ref_time: HighResDateTime
     history: History = History()
 
     class Config:
@@ -1181,6 +1182,7 @@ class Windower(ResisticsProcess):
             )
             data[ilevel] = win_level_data
             win_levels_metadata.append(win_level_metadata)
+        metadata_dict["ref_time"] = ref_time
         metadata = self._get_metadata(metadata_dict, win_levels_metadata)
         metadata.history.add_record(self._get_record(messages))
         logger.info("Windowing completed")
