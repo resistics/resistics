@@ -437,11 +437,14 @@ class SiteCombinedData(ResisticsData):
     All of the data that is combined should have the same sampling frequency,
     same evaluation frequencies and some shared channels.
 
-    Data is stored in the data attribute of the class. This is a mapping from
-    evaluation frequency index to data for the evaluation frequency from all
-    windows in the site. The shape of data for a single evaluation frequency is:
+    Data is stored in the data attribute of the class. This is a dictionary
+    mapping evaluation frequency index to data for the evaluation frequency
+    from all windows in the site. The shape of data for a single evaluation
+    frequency is:
 
-    n_wins x n_chans x n_eval_freqs
+    n_wins x n_chans
+
+    The data is complex valued.
     """
 
     def __init__(self, metadata: SiteCombinedMetadata, data: Dict[int, np.ndarray]):
