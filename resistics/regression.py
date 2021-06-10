@@ -41,6 +41,27 @@ class RegressionInputData(ResisticsData):
 
     The purpose of regression input data is to provision for many different
     solvers and user written solvers.
+
+    The regression input data has the following key attributes
+
+    - freqs
+    - obs
+    - preds
+
+    The freqs attribute is a 1-D array of evaluation frequencies.
+
+    The obs attribute is a dictionary of dictionaries. The parent dictionary has
+    a key of the evaluation frequency index. The secondary dictionary has key of
+    output channel. The value in the secondary dictionary are the observations
+    for that output channel and have size (n_wins x 2). The reason this is
+    multiplied by 2 is because the real and complex parts of the equation are
+    separated into separate equations.
+
+    The preds attribute is a single level dictionary with key of evaluation
+    frequency index and value of the predictors for the evaluation frequency.
+    The predictors have shape (n_wins x 2) x n_input_channels. The reason for
+    the factor of 2 is the same as for the observations. The same predictors can
+    be used for all output channels.
     """
 
     def __init__(
