@@ -780,6 +780,7 @@ def spectra_data_basic() -> SpectraData:
     metadata_dict["fs"] = [180]
     metadata_dict["n_levels"] = 1
     metadata_dict["levels_metadata"] = [level_metadata]
+    metadata_dict["ref_time"] = metadata_dict["first_time"]
     metadata = SpectraMetadata(**metadata_dict)
     creator = {
         "name": "spec_data_basic",
