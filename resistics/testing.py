@@ -744,6 +744,7 @@ def spectra_metadata_multilevel(
     metadata_dict["fs"] = levels_fs
     metadata_dict["n_levels"] = len(levels_metadata)
     metadata_dict["levels_metadata"] = levels_metadata
+    metadata_dict["ref_time"] = metadata_dict["first_time"]
     return SpectraMetadata(**metadata_dict)
 
 
