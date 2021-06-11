@@ -503,9 +503,9 @@ class TimeData(ResisticsData):
         if subplot_columns is None:
             subplot_columns = self._get_subplot_chans(subplots)
         if fig is None:
-            ylabels = self._get_ylabels(subplot_columns)
+            y_labels = self._get_y_labels(subplot_columns)
             fig = figure_columns_as_lines(
-                subplots=subplots, y_labels=ylabels, x_label="Datetime"
+                subplots=subplots, y_labels=y_labels, x_label="Datetime"
             )
         plot_columns_1d(
             fig,
@@ -543,7 +543,7 @@ class TimeData(ResisticsData):
             ]
         return subplot_columns
 
-    def _get_ylabels(self, subplot_columns: Dict[str, List[str]]) -> Dict[str, str]:
+    def _get_y_labels(self, subplot_columns: Dict[str, List[str]]) -> Dict[str, str]:
         """Get subplot columns"""
         from resistics.common import is_electric, is_magnetic
 
