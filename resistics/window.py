@@ -464,6 +464,114 @@ def get_first_and_last_win(
     return first_win, last_win
 
 
+def get_win_starts(
+    ref_time: RSDateTime,
+    win_size: int,
+    olap_size: int,
+    fs: float,
+    n_wins: int,
+    index_offset: int,
+) -> pd.DatetimeIndex:
+    """
+    Get window start times
+
+    This is a useful for getting the timestamps for the windows in a dataset
+
+    Parameters
+    ----------
+    ref_time : RSDateTime
+        The reference time
+    win_size : int
+        The window size
+    olap_size : int
+        The overlap size
+    fs : float
+        The sampling frequency
+    n_wins : int
+        The number of windows
+    index_offset : int
+        The index offset from the reference time
+
+    Returns
+    -------
+    pd.DatetimeIndex
+        The start times of the windows
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from resistics.sampling import to_datetime
+    >>> from resistics.window import get_win_starts
+    >>> ref_time = to_datetime("2021-01-01 00:00:00")
+    >>> win_size = 100
+    >>> olap_size = 25
+    >>> fs = 10
+    >>> n_wins = 3
+    >>> index_offset = 480
+    >>> starts = get_win_starts(ref_time, win_size, olap_size, fs, n_wins, index_offset)
+    >>> pd.Series(starts)
+    0   2021-01-01 01:00:00.000
+    1   2021-01-01 01:00:07.500
+    2   2021-01-01 01:00:15.000
+    dtype: datetime64[ns]
+    """
+    from resistics.sampling import datetime_array_estimate
+
+    increment = inc_duration(win_size, olap_size, fs)
+    first_win_time = win_to_datetime(ref_time, index_offset, increment)
+    increment_size = win_size - olap_size
+    return datetime_array_estimate(first_win_time, fs / increment_size, n_wins)
+
+
+def get_win_ends(
+    starts: pd.DatetimeIndex,
+    win_size: int,
+    fs: float,
+) -> pd.DatetimeIndex:
+    """
+    Get window end times
+
+    Parameters
+    ----------
+    starts : RSDateTime
+        The start times of the windows
+    win_size : int
+        The window size
+    fs : float
+        The sampling frequency
+
+    Returns
+    -------
+    pd.DatetimeIndex
+        The end times of the windows
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from resistics.sampling import to_datetime
+    >>> from resistics.window import get_win_starts, get_win_ends
+    >>> ref_time = to_datetime("2021-01-01 00:00:00")
+    >>> win_size = 100
+    >>> olap_size = 25
+    >>> fs = 10
+    >>> n_wins = 3
+    >>> index_offset = 480
+    >>> starts = get_win_starts(ref_time, win_size, olap_size, fs, n_wins, index_offset)
+    >>> pd.Series(starts)
+    0   2021-01-01 01:00:00.000
+    1   2021-01-01 01:00:07.500
+    2   2021-01-01 01:00:15.000
+    dtype: datetime64[ns]
+    >>> ends = get_win_ends(starts, win_size, fs)
+    >>> pd.Series(ends)
+    0   2021-01-01 01:00:09.900
+    1   2021-01-01 01:00:17.400
+    2   2021-01-01 01:00:24.900
+    dtype: datetime64[ns]
+    """
+    return starts + pd.Timedelta((win_size - 1) * (1 / fs), "s")
+
+
 def get_win_table(
     ref_time: RSDateTime,
     metadata: DecimatedLevelMetadata,
@@ -553,7 +661,7 @@ def get_win_table(
     # samples
     first_sample = to_n_samples(first_win_time - first_time, fs, method="round") - 1
     starts = datetime_array_estimate(first_win_time, fs / increment_size, n_wins)
-    ends = starts + pd.Timedelta((win_size - 1) * (1 / fs), "s")
+    ends = get_win_ends(starts, win_size, fs)
     df_dict = {
         "global": np.arange(first_win, last_win + 1),
         "local": local_wins,
