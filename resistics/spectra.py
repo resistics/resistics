@@ -61,6 +61,7 @@ class SpectraMetadata(WriteableMetadata):
     elevation: float = -999.0
     chans_metadata: Dict[str, ChanMetadata]
     levels_metadata: List[SpectraLevelMetadata]
+    ref_time: HighResDateTime
     history: History = History()
 
     class Config:
