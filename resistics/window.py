@@ -204,6 +204,33 @@ def win_to_datetime(
     -------
     RSDateTime
         Start time of window
+
+    Examples
+    --------
+    An example with sampling at 1 Hz, a window size of 100 and an overlap size
+    of 25.
+
+    >>> from resistics.sampling import to_datetime
+    >>> from resistics.window import inc_duration, win_to_datetime
+    >>> ref_time = to_datetime("2021-01-01 00:00:00")
+    >>> fs = 1
+    >>> win_size = 60
+    >>> olap_size = 15
+    >>> increment = inc_duration(win_size, olap_size, fs)
+    >>> print(increment)
+    0:00:45
+
+    The increment is the time increment between the start of time one window and
+    the succeeding window.
+
+    >>> print(win_to_datetime(ref_time, 0, increment))
+    2021-01-01 00:00:00
+    >>> print(win_to_datetime(ref_time, 1, increment))
+    2021-01-01 00:00:45
+    >>> print(win_to_datetime(ref_time, 2, increment))
+    2021-01-01 00:01:30
+    >>> print(win_to_datetime(ref_time, 3, increment))
+    2021-01-01 00:02:15
     """
     return ref_time + (global_win * increment)
 
