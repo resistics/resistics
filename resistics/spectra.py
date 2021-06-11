@@ -12,6 +12,7 @@ from typing import Union, Tuple, Dict, List, Any, Optional
 from pydantic import PositiveInt
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 
 from resistics.common import ResisticsData, ResisticsProcess, History
 from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
@@ -157,27 +158,49 @@ class SpectraData(ResisticsData):
         ValueError
             If the level is out of range
         """
-        from resistics.sampling import datetime_array_estimate
-        from resistics.window import win_to_datetime, inc_duration
+        from resistics.window import get_win_starts
 
         if level >= self.metadata.n_levels:
             raise ValueError(f"Level {level} not <= max {self.metadata.n_levels - 1}")
         level_metadata = self.metadata.levels_metadata[level]
-        increment = inc_duration(
-            level_metadata.win_size, level_metadata.olap_size, level_metadata.fs
-        )
-        first_win_time = win_to_datetime(
+        return get_win_starts(
             self.metadata.ref_time,
-            self.metadata.levels_metadata[level].index_offset,
-            increment,
-        )
-        increment_size = level_metadata.win_size - level_metadata.olap_size
-        return datetime_array_estimate(
-            first_win_time, level_metadata.fs / increment_size, level_metadata.n_wins
+            level_metadata.win_size,
+            level_metadata.olap_size,
+            level_metadata.fs,
+            level_metadata.n_wins,
+            level_metadata.index_offset,
         )
 
-    def plot_stack(self, level: int, grouping: Optional[str] = "2h"):
-        """Stack the spectra in groups specified by the grouping"""
+    def plot_stack(
+        self,
+        level: int,
+        max_pts: int = 10_000,
+        grouping: str = "12h",
+        offset: str = "0h",
+    ) -> go.Figure:
+        """
+        Stack the spectra with optional time grouping
+
+        Parameters
+        ----------
+        level : int
+            The decimation level
+        max_pts : int, optional
+            The maximum number of points in any individual plot before applying
+            lttbc downsampling, by default 10_000
+        grouping : str, optional
+            A grouping interval as a pandas freq string, by default "6h"
+        offset : str, optional
+            A time offset to add to the grouping, by default "0h". For instance,
+            to plot night time and day time spectra, set grouping to "12h" and
+            offset to "6h"
+
+        Returns
+        -------
+        go.Figure
+            The plotly figure
+        """
         from resistics.plot import PlotData1D, figure_columns_as_lines, plot_columns_1d
 
         if grouping is None:
@@ -197,8 +220,9 @@ class SpectraData(ResisticsData):
         fig = figure_columns_as_lines(
             subplots=subplots, y_labels=y_labels, x_label="Frequency"
         )
+        fig.update_yaxes(type="log")
         # group by the grouping frequency, iterate over the groups and plot
-        for idx, group in df.groupby(pd.Grouper(freq=grouping)):
+        for idx, group in df.groupby(pd.Grouper(freq=grouping, offset=offset)):
             stack = np.mean(np.absolute(self.data[level][group["local"]]), axis=0)
             plot_data = PlotData1D(
                 x=np.array(level_metadata.freqs), data=stack, rows=self.metadata.chans
@@ -208,10 +232,10 @@ class SpectraData(ResisticsData):
                 plot_data,
                 subplots,
                 subplot_columns,
-                max_pts=500,
+                max_pts=max_pts,
                 label_prefix=str(idx),
             )
-        fig.show()
+        return fig
 
     def plot_section(self):
         pass
