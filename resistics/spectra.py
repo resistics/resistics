@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Union, Tuple, Dict, List, Any, Optional
 from pydantic import PositiveInt
 import numpy as np
+import pandas as pd
 
 from resistics.common import ResisticsData, ResisticsProcess, History
 from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
@@ -135,8 +136,82 @@ class SpectraData(ResisticsData):
             return np.absolute(spec), np.unwrap(np.angle(spec))
         return np.absolute(spec), np.angle(spec)
 
-    def plot_stack(self):
-        pass
+    def get_timestamps(self, level: int) -> pd.DatetimeIndex:
+        """
+        Get the start time of each window
+
+        Note that this does not use high resolution timestamps
+
+        Parameters
+        ----------
+        level : int
+            The decimation level
+
+        Returns
+        -------
+        pd.DatetimeIndex
+            The starts of each window
+
+        Raises
+        ------
+        ValueError
+            If the level is out of range
+        """
+        from resistics.sampling import datetime_array_estimate
+        from resistics.window import win_to_datetime, inc_duration
+
+        if level >= self.metadata.n_levels:
+            raise ValueError(f"Level {level} not <= max {self.metadata.n_levels - 1}")
+        level_metadata = self.metadata.levels_metadata[level]
+        increment = inc_duration(
+            level_metadata.win_size, level_metadata.olap_size, level_metadata.fs
+        )
+        first_win_time = win_to_datetime(
+            self.metadata.ref_time,
+            self.metadata.levels_metadata[level].index_offset,
+            increment,
+        )
+        increment_size = level_metadata.win_size - level_metadata.olap_size
+        return datetime_array_estimate(
+            first_win_time, level_metadata.fs / increment_size, level_metadata.n_wins
+        )
+
+    def plot_stack(self, level: int, grouping: Optional[str] = "2h"):
+        """Stack the spectra in groups specified by the grouping"""
+        from resistics.plot import PlotData1D, figure_columns_as_lines, plot_columns_1d
+
+        if grouping is None:
+            first_date = pd.Timestamp(self.metadata.first_time.isoformat()).floor("D")
+            last_date = pd.Timestamp(self.metadata.last_time.isoformat()).ceil("D")
+            grouping = last_date - first_date
+        level_metadata = self.metadata.levels_metadata[level]
+        df = pd.DataFrame(
+            data=np.arange(level_metadata.n_wins),
+            index=self.get_timestamps(level),
+            columns=["local"],
+        )
+        # prepare the plot
+        subplots = self.metadata.chans
+        subplot_columns = {x: [x] for x in subplots}
+        y_labels = {x: "Magnitude" for x in subplots}
+        fig = figure_columns_as_lines(
+            subplots=subplots, y_labels=y_labels, x_label="Frequency"
+        )
+        # group by the grouping frequency, iterate over the groups and plot
+        for idx, group in df.groupby(pd.Grouper(freq=grouping)):
+            stack = np.mean(np.absolute(self.data[level][group["local"]]), axis=0)
+            plot_data = PlotData1D(
+                x=np.array(level_metadata.freqs), data=stack, rows=self.metadata.chans
+            )
+            plot_columns_1d(
+                fig,
+                plot_data,
+                subplots,
+                subplot_columns,
+                max_pts=500,
+                label_prefix=str(idx),
+            )
+        fig.show()
 
     def plot_section(self):
         pass
