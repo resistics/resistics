@@ -1,4 +1,7 @@
-from typing import Union, List, Dict, Tuple
+"""
+Module to help plotting various data
+"""
+from typing import List, Dict, Union, Tuple, Optional
 import numpy as np
 import plotly.graph_objects as go
 
@@ -46,6 +49,47 @@ def lttb_downsample(
         max_pts,
     )
     return nx.astype(x_dtype), ny.astype(y_dtype)
+
+
+class PlotData1D(ResisticsData):
+    """
+    Class to help plot various 1-D data
+
+    As this takes a full instance of x, it is not recommended for long time
+    series as this will have a memory impact
+    """
+
+    def __init__(self, x: np.ndarray, data: np.ndarray, rows: List[str]):
+        """
+        Initialise
+
+        Parameters
+        ----------
+        x : np.ndarray
+            The x array
+        data : np.ndarray
+            The data, which is n_rows x n_x
+        rows : List[str]
+            The name of each row
+        """
+        self.x = x
+        self.data = data
+        self.rows = rows
+
+    def __getitem__(self, row: str) -> np.ndarray:
+        """Get data for a row by name"""
+        index = self.rows.index(row)
+        return self.data[index, :]
+
+    def x_size(self) -> int:
+        """Get the x size"""
+        return len(self.x)
+
+    def get_x(self, samples: Optional[np.ndarray] = None) -> np.ndarray:
+        """Get x values"""
+        if samples is None:
+            return self.x
+        self.x[samples]
 
 
 def figure_columns_as_lines(
