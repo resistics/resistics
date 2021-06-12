@@ -56,6 +56,7 @@ class SpectraMetadata(WriteableMetadata):
     first_time: HighResDateTime
     last_time: HighResDateTime
     system: str = ""
+    serial: str = ""
     wgs84_latitude: float = -999.0
     wgs84_longitude: float = -999.0
     easting: float = -999.0
