@@ -1,7 +1,9 @@
 """
 Modules to test data gathering. This is quite complex testing as it requires
-mock projects, sites, spectra metadata and spectra data to appropriately test
-everything.
+mock projects, sites, evals metadata and evals data to appropriately test
+everything. Recall that evals data is simply spectra data reduced to the
+evaluation frequencies. It is, however, separated into its own data folder to
+avoid in potential future ambiguity in which data is being fetched.
 
 The test works towards gathering data for three sites
 
@@ -26,89 +28,89 @@ import pytest
 
 from resistics.errors import ChannelNotFoundError
 from resistics.project import ProjectMetadata, Project
-from resistics.project import get_meas_spectra_path
+from resistics.project import get_meas_evals_path
 from resistics.decimate import DecimationSetup
 from resistics.spectra import SpectraData, SpectraDataReader, SpectraMetadata
 import resistics.gather as gather
 from resistics.transfunc import TransferFunction, ImpedanceTensor
-from testing_data_spectra import get_spectra_metadata_site1, get_spectra_data_site1
-from testing_data_spectra import get_spectra_metadata_site2, get_spectra_data_site2
-from testing_data_spectra import get_spectra_metadata_site3, get_spectra_data_site3
-from testing_data_spectra import SITE1_COMBINED_DATA, SITE2_COMBINED_DATA
-from testing_data_spectra import SITE3_COMBINED_DATA
-from testing_data_spectra import SITE2_RUN2_QUICK_OUT, SITE2_RUN2_QUICK_IN
-from testing_data_spectra import SITE2_RUN2_QUICK_CROSS
+from testing_data_evals import get_evals_metadata_site1, get_evals_data_site1
+from testing_data_evals import get_evals_metadata_site2, get_evals_data_site2
+from testing_data_evals import get_evals_metadata_site3, get_evals_data_site3
+from testing_data_evals import SITE1_COMBINED_DATA, SITE2_COMBINED_DATA
+from testing_data_evals import SITE3_COMBINED_DATA
+from testing_data_evals import SITE2_RUN2_QUICK_OUT, SITE2_RUN2_QUICK_IN
+from testing_data_evals import SITE2_RUN2_QUICK_CROSS
 
 
 TEST_PROJECT_PATH = Path(".")
 TEST_CONFIG_NAME = "test"
 
 
-def get_spectra_metadata(site_name: str, meas_name: str) -> SpectraMetadata:
-    """Get example spectra metadata for testing"""
+def get_evals_metadata(site_name: str, meas_name: str) -> SpectraMetadata:
+    """Get example evals metadata for testing"""
     if site_name == "site1":
-        return get_spectra_metadata_site1(meas_name)
+        return get_evals_metadata_site1(meas_name)
     if site_name == "site2":
-        return get_spectra_metadata_site2(meas_name)
+        return get_evals_metadata_site2(meas_name)
     if site_name == "site3":
-        return get_spectra_metadata_site3(meas_name)
+        return get_evals_metadata_site3(meas_name)
     raise ValueError(f"Site {site_name} not known")
 
 
-def get_spectra_metadata_by_path(spectra_path: Path):
-    """Get example spectra metadata for testing"""
+def get_evals_metadata_by_path(spectra_path: Path):
+    """Get example evals metadata for testing"""
     # site 1
     for meas_name in ["meas1", "meas2", "meas3"]:
-        if spectra_path == get_meas_spectra_path(
+        if spectra_path == get_meas_evals_path(
             TEST_PROJECT_PATH, "site1", meas_name, TEST_CONFIG_NAME
         ):
-            return get_spectra_metadata("site1", meas_name)
+            return get_evals_metadata("site1", meas_name)
     # site 2
     for meas_name in ["run1", "run2"]:
-        if spectra_path == get_meas_spectra_path(
+        if spectra_path == get_meas_evals_path(
             TEST_PROJECT_PATH, "site2", meas_name, TEST_CONFIG_NAME
         ):
-            return get_spectra_metadata("site2", meas_name)
+            return get_evals_metadata("site2", meas_name)
     # site 3
     for meas_name in ["data1"]:
-        if spectra_path == get_meas_spectra_path(
+        if spectra_path == get_meas_evals_path(
             TEST_PROJECT_PATH, "site3", meas_name, TEST_CONFIG_NAME
         ):
-            return get_spectra_metadata("site3", meas_name)
+            return get_evals_metadata("site3", meas_name)
     raise ValueError("Spectra path not as expected")
 
 
-def get_spectra_data(site_name: str, meas_name: str) -> SpectraData:
-    """Get example spectra data for testing"""
+def get_evals_data(site_name: str, meas_name: str) -> SpectraData:
+    """Get example evals data for testing"""
     if site_name == "site1":
-        return get_spectra_data_site1(meas_name)
+        return get_evals_data_site1(meas_name)
     if site_name == "site2":
-        return get_spectra_data_site2(meas_name)
+        return get_evals_data_site2(meas_name)
     if site_name == "site3":
-        return get_spectra_data_site3(meas_name)
+        return get_evals_data_site3(meas_name)
     raise ValueError(f"Site {site_name} not known")
 
 
-def get_spectra_data_by_path(spectra_path: Path):
-    """Get example spectra data for testing"""
+def get_evals_data_by_path(evals_path: Path):
+    """Get example evals data for testing"""
     # site 1
     for meas_name in ["meas1", "meas2", "meas3"]:
-        if spectra_path == get_meas_spectra_path(
+        if evals_path == get_meas_evals_path(
             TEST_PROJECT_PATH, "site1", meas_name, TEST_CONFIG_NAME
         ):
-            return get_spectra_data("site1", meas_name)
+            return get_evals_data("site1", meas_name)
     # site 2
     for meas_name in ["run1", "run2"]:
-        if spectra_path == get_meas_spectra_path(
+        if evals_path == get_meas_evals_path(
             TEST_PROJECT_PATH, "site2", meas_name, TEST_CONFIG_NAME
         ):
-            return get_spectra_data("site2", meas_name)
+            return get_evals_data("site2", meas_name)
     # site 3
     for meas_name in ["data1"]:
-        if spectra_path == get_meas_spectra_path(
+        if evals_path == get_meas_evals_path(
             TEST_PROJECT_PATH, "site3", meas_name, TEST_CONFIG_NAME
         ):
-            return get_spectra_data("site3", meas_name)
+            return get_evals_data("site3", meas_name)
     raise ValueError("Spectra path not as expected")
 
 
@@ -167,11 +169,11 @@ def mock_spec_reader_metadata_only(monkeypatch):
 
     def mock_spectra_data_reader_run(*args, **kwargs):
         """Mock for reading spectra metadata"""
-        spectra_path = args[1]
+        evals_path = args[1]
         if "metadata_only" in kwargs:
-            return get_spectra_metadata_by_path(spectra_path)
+            return get_evals_metadata_by_path(evals_path)
         else:
-            return get_spectra_data_by_path(spectra_path)
+            return get_evals_data_by_path(evals_path)
 
     monkeypatch.setattr(SpectraDataReader, "run", mock_spectra_data_reader_run)
 
@@ -185,23 +187,21 @@ def get_selection():
     return selection
 
 
-def test_get_site_spectra_metadata(mock_project_site, mock_spec_reader_metadata_only):
+def test_get_site_evals_metadata(mock_project_site, mock_spec_reader_metadata_only):
     """Test gathering of spectra metadata"""
     proj = get_test_project(TEST_PROJECT_PATH)
-    meas_metadata = gather.get_site_spectra_metadata(
-        TEST_CONFIG_NAME, proj, "site1", 128
-    )
+    meas_metadata = gather.get_site_evals_metadata(TEST_CONFIG_NAME, proj, "site1", 128)
 
     assert len(meas_metadata) == 3
     for meas_name, metadata in meas_metadata.items():
-        assert get_spectra_metadata("site1", meas_name) == metadata
+        assert get_evals_metadata("site1", meas_name) == metadata
 
 
 def test_get_site_level_wins():
     """Test getting site level windows for decimation level 0"""
     meas_metadata = {}
     for meas_name in ["meas1", "meas2", "meas3"]:
-        meas_metadata[meas_name] = get_spectra_metadata("site1", meas_name)
+        meas_metadata[meas_name] = get_evals_metadata("site1", meas_name)
 
     table = gather.get_site_level_wins(meas_metadata, 0)
     # fmt:off
@@ -322,7 +322,7 @@ def test_projectgather_get_indices_site1_meas1(
     # get required data
     site = MockSite("site1")
     meas_name = "meas1"
-    metadata = get_spectra_metadata(site.name, meas_name)
+    metadata = get_evals_metadata(site.name, meas_name)
     selection = get_selection()
     # now test gatherer._get_indices
     gatherer = gather.ProjectGather()
@@ -351,7 +351,7 @@ def test_projectgather_get_indices_site2_run2(
     # get required data
     site = MockSite("site2")
     meas_name = "run2"
-    metadata = get_spectra_metadata(site.name, meas_name)
+    metadata = get_evals_metadata(site.name, meas_name)
     selection = get_selection()
     # now test gatherer._get_indices
     gatherer = gather.ProjectGather()
@@ -382,7 +382,7 @@ def test_projectgather_get_indices_site3_data1(
     # get required data
     site = MockSite("site3")
     meas_name = "data1"
-    metadata = get_spectra_metadata(site.name, meas_name)
+    metadata = get_evals_metadata(site.name, meas_name)
     selection = get_selection()
     # now test gatherer._get_indices
     gatherer = gather.ProjectGather()
@@ -524,7 +524,7 @@ def test_quickgather_run():
     dir_path = Path("test")
     dec_params = DecimationSetup(n_levels=4, per_level=2).run(128)
     tf = TransferFunction(out_chans=["Hy"], in_chans=["Hx"], cross_chans=["Ex", "Ey"])
-    eval_data = get_spectra_data("site2", "run2")
+    eval_data = get_evals_data("site2", "run2")
     with pytest.raises(ChannelNotFoundError):
         # there are no electronic channels in the data
         gathered_data = gather.QuickGather().run(dir_path, dec_params, tf, eval_data)
