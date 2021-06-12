@@ -237,8 +237,68 @@ class SpectraData(ResisticsData):
             )
         return fig
 
-    def plot_section(self):
-        pass
+    def plot_section(self, level: int, grouping="30T") -> go.Figure:
+        """
+        Plot a spectra section
+
+        Parameters
+        ----------
+        level : int
+            The decimation level to plot
+        grouping : str, optional
+            The time domain resolution, by default "30T"
+
+        Returns
+        -------
+        go.Figure
+            A plotly figure
+        """
+        from resistics.plot import figure_columns_as_lines
+
+        level_metadata = self.metadata.levels_metadata[level]
+        df = pd.DataFrame(
+            data=np.arange(level_metadata.n_wins),
+            index=self.get_timestamps(level),
+            columns=["local"],
+        )
+        # create the figure
+        subplots = self.metadata.chans
+        y_labels = {x: "Frequency Hz" for x in subplots}
+        fig = figure_columns_as_lines(
+            subplots=subplots, y_labels=y_labels, x_label="Date"
+        )
+        colorbar_len = 0.90 / self.metadata.n_chans
+        colorbar_inc = 0.83 / (self.metadata.n_chans - 1)
+        # group by the grouping frequency, iterate over the groups and plot
+        data = {}
+        for idx, group in df.groupby(pd.Grouper(freq=grouping)):
+            data[idx] = np.mean(np.absolute(self.data[level][group["local"]]), axis=0)
+        for idx, chan in enumerate(self.metadata.chans):
+            df_data = pd.DataFrame(
+                data={k: v[idx] for k, v in data.items()}, index=level_metadata.freqs
+            )
+            z = np.log10(df_data.values)
+            z_min = np.ceil(z.min())
+            z_max = np.floor(z.max())
+            z_range = np.arange(z_min, z_max + 1)
+            colorbar = dict(
+                title=f"Amplitude {chan}",
+                tickvals=z_range,
+                ticktext=[f"10^{int(x)}" for x in z_range],
+                y=0.92 - idx * colorbar_inc,
+                len=colorbar_len,
+            )
+            heatmap = go.Heatmap(
+                z=z,
+                x=pd.to_datetime(df_data.columns) + pd.Timedelta(grouping) / 2,
+                y=df_data.index,
+                zmin=z_min,
+                zmax=z_max,
+                colorscale="viridis",
+                colorbar=colorbar,
+            )
+            fig.append_trace(heatmap, row=idx + 1, col=1)
+        return fig
 
 
 class FourierTransform(ResisticsProcess):
