@@ -33,11 +33,18 @@ jobs:
       - run: poetry --version
       - name: Install dependencies
         run: poetry install
-      - name: Lint with flake8
-        run: poetry run flake8 resistics
-      - name: Check docstrings
-        run: poetry run darglint resistics
       - name: Test with pytest
         run: |
           poetry run coverage run -m pytest
           poetry run coverage report
+      - name: Lint with flake8
+        run: poetry run flake8 resistics
+        if: matrix.platform == 'ubuntu-latest' && matrix.python-version == 3.9
+      - name: Check docstrings
+        run: poetry run darglint resistics
+        if: matrix.platform == 'ubuntu-latest' && matrix.python-version == 3.9
+      - name: "Upload coverage to Codecov"
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: true
+        if: ${{ github.ref == 'refs/heads/master' }} && matrix.platform == "ubuntu-latest" && matrix.python-version == 3.9
