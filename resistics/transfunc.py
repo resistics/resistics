@@ -73,41 +73,49 @@ class TransferFunction(Metadata):
     A standard magnetotelluric transfer function
 
     >>> from resistics.transfunc import TransferFunction
-    >>> tf = TransferFunction(out_chans=["Ex", "Ey"], in_chans=["Hx", "Hy"])
+    >>> tf = TransferFunction(name="impedancetensor", out_chans=["Ex", "Ey"], in_chans=["Hx", "Hy"])
     >>> print(tf.to_string())
     | Ex | = | Ex_Hx Ex_Hy | | Hx |
     | Ey |   | Ey_Hx Ey_Hy | | Hy |
 
-    Additionally including the Hz component
+    The magnetotelluric tipper
 
-    >>> tf = TransferFunction(out_chans=["Ex", "Ey"], in_chans=["Hx", "Hy", "Hz"])
+    >>> tf = TransferFunction(name="tipper", out_chans=["Hz"], in_chans=["Hx", "Hy"])
+    >>> print(tf.to_string())
+    | Hz | = | Hz_Hx Hz_Hy | | Hx |
+                             | Hy |
+
+    Combining the impedance tensor and the tipper
+
+    >>> tf = TransferFunction(name="combined", out_chans=["Ex", "Ey"], in_chans=["Hx", "Hy", "Hz"])
     >>> print(tf.to_string())
     | Ex |   | Ex_Hx Ex_Hy Ex_Hz | | Hx |
     | Ey | = | Ey_Hx Ey_Hy Ey_Hz | | Hy |
                                    | Hz |
 
-    The magnetotelluric tipper
-
-    >>> tf = TransferFunction(out_chans=["Hz"], in_chans=["Hx", "Hy"])
-    >>> print(tf.to_string())
-    | Hz | = | Hz_Hx Hz_Hy | | Hx |
-                             | Hy |
-
     And a generic example
 
-    >>> tf = TransferFunction(out_chans=["bye", "see you", "ciao"], in_chans=["hello", "hi_there"])
+    >>> tf = TransferFunction(name="example", out_chans=["bye", "see you", "ciao"], in_chans=["hello", "hi_there"])
     >>> print(tf.to_string())
     | bye      |   | bye_hello         bye_hi_there      | | hello    |
     | see you  | = | see you_hello     see you_hi_there  | | hi_there |
     | ciao     |   | ciao_hello        ciao_hi_there     |
     """
 
+    name: str
+    """The name of the transfer function"""
     out_chans: List[str]
+    """The output channels"""
     in_chans: List[str]
+    """The input channels"""
     cross_chans: Optional[List[str]] = None
+    """The channels to use for calculating the cross spectra"""
     n_out: Optional[int] = None
+    """The number of output channels"""
     n_in: Optional[int] = None
+    """The number of input channels"""
     n_cross: Optional[int] = None
+    """The number of cross power channels"""
 
     @validator("cross_chans", always=True)
     def validate_cross_chans(
@@ -201,6 +209,7 @@ class ImpedanceTensor(TransferFunction):
     | Ey |   | Ey_Hx Ey_Hy | | Hy |
     """
 
+    name = "impedancetensor"
     out_chans: List[str] = ["Ex", "Ey"]
     in_chans: List[str] = ["Hx", "Hy"]
 
@@ -218,5 +227,6 @@ class Tipper(TransferFunction):
                              | Hy |
     """
 
+    name = "tipper"
     out_chans: List[str] = ["Hz"]
     in_chans: List[str] = ["Hx", "Hy"]

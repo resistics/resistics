@@ -523,13 +523,17 @@ def test_quickgather_run():
     """Test quick gathering with some spectra data"""
     dir_path = Path("test")
     dec_params = DecimationSetup(n_levels=4, per_level=2).run(128)
-    tf = TransferFunction(out_chans=["Hy"], in_chans=["Hx"], cross_chans=["Ex", "Ey"])
+    tf = TransferFunction(
+        name="quick", out_chans=["Hy"], in_chans=["Hx"], cross_chans=["Ex", "Ey"]
+    )
     eval_data = get_evals_data("site2", "run2")
     with pytest.raises(ChannelNotFoundError):
         # there are no electronic channels in the data
         gathered_data = gather.QuickGather().run(dir_path, dec_params, tf, eval_data)
 
-    tf = TransferFunction(in_chans=["Hx"], out_chans=["Hy"], cross_chans=["Hx", "Hy"])
+    tf = TransferFunction(
+        name="quick2", in_chans=["Hx"], out_chans=["Hy"], cross_chans=["Hx", "Hy"]
+    )
     gathered_data = gather.QuickGather().run(dir_path, dec_params, tf, eval_data)
     # output data
     assert gathered_data.out_data.metadata.name == "test"
