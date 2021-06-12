@@ -429,7 +429,7 @@ class SiteCombinedMetadata(WriteableMetadata):
     a single site.
     """
 
-    name: str
+    site_name: str
     """The name of the site"""
     fs: float
     """Recording sampling frequency"""
@@ -603,7 +603,7 @@ class ProjectGather(ResisticsProcess):
             self._populate_data(selection, site, meas, eval_data, chans, data)
             histories[meas] = eval_data.metadata.history
         combined_metadata = SiteCombinedMetadata(
-            name=site.name,
+            site_name=site.name,
             fs=selection.dec_params.fs,
             measurements=measurements,
             chans=chans,
@@ -849,7 +849,7 @@ class QuickGather(ResisticsProcess):
     ) -> SiteCombinedData:
         """Get the combined metadata"""
         metadata = SiteCombinedMetadata(
-            name=meas,
+            site_name=meas,
             fs=fs,
             measurements=[meas],
             chans=chans,
