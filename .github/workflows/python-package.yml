@@ -38,4 +38,6 @@ jobs:
       - name: Check docstrings
         run: poetry run darglint resistics
       - name: Test with pytest
-        run: poetry run pytest
+        run: |
+          poetry run coverage run -m pytest
+          poetry run coverage report -m
