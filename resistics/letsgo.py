@@ -652,7 +652,7 @@ def process_time(
     writer.run(out_path, time_data)
 
 
-def process_time_to_spectra(
+def process_time_to_evals(
     resenv: ResisticsEnvironment, site_name: str, meas_name: str
 ) -> None:
     """
@@ -667,7 +667,7 @@ def process_time_to_spectra(
     meas_name : str
         The name of the measurement to process
     """
-    from resistics.project import get_calibration_path, get_meas_spectra_path
+    from resistics.project import get_calibration_path, get_meas_evals_path
     from resistics.spectra import SpectraDataWriter
 
     proj = resenv.proj
@@ -685,14 +685,14 @@ def process_time_to_spectra(
     spec_data = run_spectra_processors(config, spec_data)
     eval_data = run_evals(config, dec_params, spec_data)
     eval_data = run_sensor_calibration(config, calibration_path, eval_data)
-    spectra_path = get_meas_spectra_path(
+    evals_path = get_meas_evals_path(
         proj.dir_path, meas.site_name, meas.name, config.name
     )
-    logger.info(f"Saving evaluation frequency data to {spectra_path}")
-    SpectraDataWriter().run(spectra_path, eval_data)
+    logger.info(f"Saving evaluation frequency data to {evals_path}")
+    SpectraDataWriter().run(evals_path, eval_data)
 
 
-def process_spectra_to_tf(
+def process_evals_to_tf(
     resenv: ResisticsEnvironment,
     fs: float,
     out_site: str,

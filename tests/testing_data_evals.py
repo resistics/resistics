@@ -1,12 +1,15 @@
 """
 These are spectra data dictionaries and metadata for testing of combining data
+
+Whilst the data is generally called eval(uation frequency) data, it is in
+reality the same as spectra data.
 """
 import numpy as np
 
 from resistics.testing import spectra_metadata_multilevel
 from resistics.spectra import SpectraMetadata, SpectraData
 
-# spectra data dictionarys
+# eval data dictionarys
 # each level should be an array with shape n_wins * n_chans (2) * n_freqs (2)
 
 # level 0 windows: 5
@@ -575,8 +578,8 @@ SITE2_RUN2_QUICK_CROSS = {
 }
 
 
-def get_spectra_metadata_site1(meas_name: str) -> SpectraMetadata:
-    """Get spectra metadata for site1"""
+def get_evals_metadata_site1(meas_name: str) -> SpectraMetadata:
+    """Get evals metadata for site1"""
     if meas_name == "meas1":
         # level 0 windows: 4, 5, 6, 7, 8
         # level 1 windows: 2, 3, 4, 5
@@ -601,8 +604,8 @@ def get_spectra_metadata_site1(meas_name: str) -> SpectraMetadata:
     raise ValueError("Unknown measurement for site1")
 
 
-def get_spectra_metadata_site2(meas_name: str) -> SpectraMetadata:
-    """Get spectra metadata for site2"""
+def get_evals_metadata_site2(meas_name: str) -> SpectraMetadata:
+    """Get evals metadata for site2"""
     if meas_name == "run1":
         # level 0 windows: 3, 4, 5, 6, 7, 8
         # level 1 windows: 1, 2, 3
@@ -618,8 +621,8 @@ def get_spectra_metadata_site2(meas_name: str) -> SpectraMetadata:
     raise ValueError("Unknown measurement for site2")
 
 
-def get_spectra_metadata_site3(meas_name: str) -> SpectraMetadata:
-    """Get spectra metadata for site3"""
+def get_evals_metadata_site3(meas_name: str) -> SpectraMetadata:
+    """Get evals metadata for site3"""
     if meas_name == "data1":
         # level 0 windows: 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28
         # level 1 windows: 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
@@ -630,9 +633,9 @@ def get_spectra_metadata_site3(meas_name: str) -> SpectraMetadata:
     raise ValueError("Unknown measurement for site3")
 
 
-def get_spectra_data_site1(meas_name: str) -> SpectraData:
-    """Get spectra data for site 1"""
-    metadata = get_spectra_metadata_site1(meas_name)
+def get_evals_data_site1(meas_name: str) -> SpectraData:
+    """Get evals data for site 1"""
+    metadata = get_evals_metadata_site1(meas_name)
     data = None
     if meas_name == "meas1":
         data = SITE1_MEAS1_DATA
@@ -645,9 +648,9 @@ def get_spectra_data_site1(meas_name: str) -> SpectraData:
     return SpectraData(metadata, data)
 
 
-def get_spectra_data_site2(meas_name: str) -> SpectraData:
-    """Get spectra data for site 2"""
-    metadata = get_spectra_metadata_site2(meas_name)
+def get_evals_data_site2(meas_name: str) -> SpectraData:
+    """Get evals data for site 2"""
+    metadata = get_evals_metadata_site2(meas_name)
     data = None
     if meas_name == "run1":
         data = SITE2_RUN1_DATA
@@ -658,9 +661,9 @@ def get_spectra_data_site2(meas_name: str) -> SpectraData:
     return SpectraData(metadata, data)
 
 
-def get_spectra_data_site3(meas_name: str) -> SpectraData:
-    """Get spectra data for site 3"""
-    metadata = get_spectra_metadata_site3(meas_name)
+def get_evals_data_site3(meas_name: str) -> SpectraData:
+    """Get evals data for site 3"""
+    metadata = get_evals_metadata_site3(meas_name)
     data = None
     if meas_name == "data1":
         data = SITE3_DATA1_DATA

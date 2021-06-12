@@ -12,7 +12,23 @@ When inside the project environment, regardless of whether it is single site or
 multi site processing, the workflow follows:
 
 - Selector to select shared windows across all sites for a sampling frequency
-- Gather to gather the combined out_data, in_data and cross_data
+- Gather to gather the combined evaluation frequency data
+
+.. warning::
+
+    There may be some confusion in the code with many references to spectra data
+    and evaluation frequency data. Evaluation frequency data, referred to below
+    as eval_data is actually an instance of Spectra data. However, it is named
+    differently to highlight the fact that it is not the complete spectra data,
+    but is actually spectra data at a reduced set of frequencies corresponding
+    to the evaluation frequncies.
+
+    Within a project instance, they have separate folders for users who want to
+    save both the full spectra data with all the frequencies as well as the
+    evaluation frequency spectra data with the smaller subset of frequencies.
+    Only the evaluation frequency data is required to calculate the transfer
+    function, but the full spectral data might be useful for visualisation and
+    analysis reasons.
 """
 from loguru import logger
 from typing import List, Dict, Optional, Tuple
@@ -28,7 +44,7 @@ from resistics.spectra import SpectraDataReader
 from resistics.regression import TransferFunction
 
 
-def get_site_spectra_metadata(
+def get_site_evals_metadata(
     config_name: str, proj: Project, site_name: str, fs: float
 ) -> Dict[str, SpectraMetadata]:
     """
@@ -50,22 +66,22 @@ def get_site_spectra_metadata(
     Dict[str, SpectraMetadata]
         Dictionary of measurement name to SpectraMetadata
     """
-    from resistics.project import get_meas_spectra_path
+    from resistics.project import get_meas_evals_path
 
     site = proj[site_name]
     measurements = site.get_measurements(fs=fs)
     meas_metadata = {}
     for meas_name in measurements:
         meas = site[meas_name]
-        spectra_path = get_meas_spectra_path(
+        evals_path = get_meas_evals_path(
             proj.dir_path, site.name, meas.name, config_name
         )
         try:
-            metadata = SpectraDataReader().run(spectra_path, metadata_only=True)
+            metadata = SpectraDataReader().run(evals_path, metadata_only=True)
         except Exception:
-            logger.error(f"No spectra data found in path {spectra_path}")
+            logger.error(f"No evals data found in path {evals_path}")
             continue
-        logger.info(f"Found spectra data for {site.name}, {meas.name}, {config_name}")
+        logger.info(f"Found evals data for {site.name}, {meas.name}, {config_name}")
         meas_metadata[meas.name] = metadata
     return meas_metadata
 
@@ -175,7 +191,7 @@ def get_site_wins(
         If no matching spectra metadata is found
     """
     logger.debug(f"Getting windows for site {site_name}")
-    meas_metadata = get_site_spectra_metadata(config_name, proj, site_name, fs)
+    meas_metadata = get_site_evals_metadata(config_name, proj, site_name, fs)
     if len(meas_metadata) == 0:
         raise ValueError(f"No measurements for site {site_name}, sample frequency {fs}")
     n_levels = max([x.n_levels for x in meas_metadata.values()])
@@ -508,7 +524,7 @@ class ProjectGather(ResisticsProcess):
         Parameters
         ----------
         config_name : str
-            The config name for getting the correct spectra data
+            The config name for getting the correct evals data
         proj : Project
             The project instance
         selection : Selection
@@ -553,7 +569,7 @@ class ProjectGather(ResisticsProcess):
         chans: List[str],
     ) -> SiteCombinedData:
         """
-        Collect the spectra data for the site
+        Collect the evals data for the site
 
         Parameters
         ----------
@@ -573,19 +589,19 @@ class ProjectGather(ResisticsProcess):
         SiteCombinedData
             A combined data instance
         """
-        from resistics.project import get_meas_spectra_path
+        from resistics.project import get_meas_evals_path
 
         site = proj[site_name]
         measurements = selection.get_measurements(site)
         data = self._get_empty_data(selection, chans)
         histories = {}
         for meas in measurements:
-            spectra_path = get_meas_spectra_path(
+            evals_path = get_meas_evals_path(
                 proj.dir_path, site.name, meas, config_name
             )
-            spec_data = SpectraDataReader().run(spectra_path)
-            self._populate_data(selection, site, meas, spec_data, chans, data)
-            histories[meas] = spec_data.metadata.history
+            eval_data = SpectraDataReader().run(evals_path)
+            self._populate_data(selection, site, meas, eval_data, chans, data)
+            histories[meas] = eval_data.metadata.history
         combined_metadata = SiteCombinedMetadata(
             name=site.name,
             fs=selection.dec_params.fs,
@@ -619,7 +635,7 @@ class ProjectGather(ResisticsProcess):
         -------
         Dict[int, np.ndarray]
             Dictionary mapping evaluation frequency index to the combined
-            spectra data for the evaluation frequency
+            evaluation frequency data
         """
         per_level = selection.dec_params.per_level
         empty_data = {}
@@ -637,12 +653,12 @@ class ProjectGather(ResisticsProcess):
         selection: Selection,
         site: Site,
         meas: str,
-        spec_data: SpectraData,
+        eval_data: SpectraData,
         chans: List[str],
         data: Dict[int, np.ndarray],
     ) -> Dict[int, np.ndarray]:
         """
-        Populate a measurement spectra data into the data
+        Populate a measurement's evaluation frequency data into combined data
 
         There is some complexity here regarding mapping of the right windows to
         the correct indices for the site.
@@ -655,8 +671,8 @@ class ProjectGather(ResisticsProcess):
             The site
         meas : str
             The name of the measurement
-        spec_data : SpectraData
-            The spectra data for the measurement
+        eval_data : SpectraData
+            The evaluation frequency data for the measurement
         chans : List[str]
             The channels to get from the data
         data : Dict[int, np.ndarray]
@@ -669,17 +685,17 @@ class ProjectGather(ResisticsProcess):
         """
         per_level = selection.dec_params.per_level
         for ilevel in range(selection.n_levels):
-            if ilevel >= spec_data.metadata.n_levels:
+            if ilevel >= eval_data.metadata.n_levels:
                 logger.debug(f"Measurement {meas} has no level {ilevel}")
                 break
-            level_data = spec_data.get_chans(ilevel, chans)
+            level_data = eval_data.get_chans(ilevel, chans)
             for ifreq in range(per_level):
                 key = per_level * ilevel + ifreq
                 eval_wins = selection.get_eval_wins(ilevel, ifreq)
-                spec_data_indices, combined_indices = self._get_indices(
-                    eval_wins, site, meas, spec_data.metadata.levels_metadata[ilevel]
+                eval_data_indices, combined_indices = self._get_indices(
+                    eval_wins, site, meas, eval_data.metadata.levels_metadata[ilevel]
                 )
-                data[key][combined_indices] = level_data[spec_data_indices, ..., ifreq]
+                data[key][combined_indices] = level_data[eval_data_indices, ..., ifreq]
         return data
 
     def _get_indices(
@@ -692,7 +708,7 @@ class ProjectGather(ResisticsProcess):
         """
         Get two arrays to help align windows
 
-        - spec_data_indices are the the global indices relative to measurement
+        - eval_data_indices are the the global indices relative to measurement
         - combined_indices are indices relative to the combined data
 
         Breaking this down even more, suppose there are three measurements in
@@ -741,9 +757,9 @@ class ProjectGather(ResisticsProcess):
         """
         eval_wins["combined_index"] = np.arange(len(eval_wins))
         eval_meas_wins = eval_wins[eval_wins[site.name] == meas_name]
-        spec_data_indices = eval_meas_wins.index.values - level_metadata.index_offset
+        eval_data_indices = eval_meas_wins.index.values - level_metadata.index_offset
         combined_indices = eval_meas_wins["combined_index"].values
-        return spec_data_indices, combined_indices
+        return eval_data_indices, combined_indices
 
 
 class QuickGather(ResisticsProcess):
