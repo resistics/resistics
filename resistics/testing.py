@@ -878,4 +878,10 @@ def solution_mt() -> Solution:
     freqs = [10.0, 20.0, 30.0, 40.0, 50.0]
     components = components_mt()
     metadata = regression_input_metadata_mt(fs, freqs)
-    return Solution(tf=tf, freqs=freqs, components=components, source=metadata)
+    return Solution(
+        tf=tf,
+        freqs=freqs,
+        components=components,
+        history=History(),
+        contributors=metadata.contributors,
+    )
