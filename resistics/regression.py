@@ -653,8 +653,10 @@ class Solution(WriteableMetadata):
     """The evaluation frequencies"""
     components: Dict[str, Component]
     """The solution"""
-    source: RegressionInputMetadata
-    """The regression input metadata to provide traceability"""
+    history: History
+    """The processing history"""
+    contributors: Dict[str, Union[SiteCombinedMetadata, SpectraMetadata]]
+    """The contributors to the solution with their respective details"""
 
     def __getitem__(self, key: str) -> np.ndarray:
         """
@@ -864,11 +866,15 @@ class SolverScikit(Solver):
                 components[key] = Component(
                     real=values.real.tolist(), imag=values.imag.tolist()
                 )
+        history = History(**regression_input.metadata.history.dict())
+        message = f"Solved {len(regression_input.freqs)} evaluation frequencies"
+        history.add_record(self._get_record(message))
         return Solution(
             tf=tf,
             freqs=regression_input.freqs,
             components=components,
-            source=regression_input.metadata,
+            history=history,
+            contributors=regression_input.metadata.contributors,
         )
 
 
