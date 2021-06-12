@@ -32,14 +32,10 @@ jobs:
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
       - run: poetry --version
       - name: Install dependencies
-        run: |
-          poetry install
+        run: poetry install
       - name: Lint with flake8
-        run: |
-          poetry run flake8 resistics
+        run: poetry run flake8 resistics
       - name: Check docstrings
-        run: |
-          poetry run darglint resistics
+        run: poetry run darglint resistics
       - name: Test with pytest
-        run: |
-          poetry run pytest
+        run: poetry run pytest
