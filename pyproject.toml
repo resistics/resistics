@@ -58,6 +58,12 @@ safety="^1.10.3"
 pre-commit="^2.12.0"
 autodoc-pydantic = "^1.1.2"
 sphinx-copybutton = "^0.3.1"
+flake8-builtins = "^1.5.3"
+flake8-docstrings = "^1.6.0"
+flake8-bandit = "^2.1.2"
+flake8-pytest-style = "^1.4.2"
+flake8-cognitive-complexity = "^0.1.0"
+flake8-expression-complexity = "^0.0.9"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
