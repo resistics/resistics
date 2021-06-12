@@ -814,7 +814,7 @@ def regression_input_metadata_mt(
         frequencies
     """
     out_site = SiteCombinedMetadata(
-        name="site1",
+        site_name="site1",
         fs=fs,
         measurements=["run1", "run2"],
         chans=["Ex", "Ey"],
@@ -823,7 +823,7 @@ def regression_input_metadata_mt(
         histories={"run1": History(), "run2": History()},
     )
     in_site = SiteCombinedMetadata(
-        name="site1",
+        site_name="site1",
         fs=fs,
         measurements=["run1", "run2"],
         chans=["Hx", "Hy"],
