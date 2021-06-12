@@ -93,7 +93,7 @@ def get_combined_metadata(
     """Get metadata for SiteCombinedData"""
     histories = {x: History() for x in measurements}
     return SiteCombinedMetadata(
-        name=site_name,
+        site_name=site_name,
         fs=128,
         measurements=measurements,
         chans=chans,

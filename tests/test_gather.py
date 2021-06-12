@@ -491,7 +491,7 @@ def test_projectgather_run(mock_project_site, mock_spec_reader_metadata_only):
         cross_name="site3",
     )
     # output data
-    assert gathered_data.out_data.metadata.name == "site1"
+    assert gathered_data.out_data.metadata.site_name == "site1"
     assert gathered_data.out_data.metadata.chans == ["Ex", "Ey"]
     assert gathered_data.out_data.metadata.fs == 128
     assert gathered_data.out_data.metadata.n_evals == 4
@@ -500,7 +500,7 @@ def test_projectgather_run(mock_project_site, mock_spec_reader_metadata_only):
     np.testing.assert_equal(gathered_data.out_data.data[2], SITE1_COMBINED_DATA[2])
     np.testing.assert_equal(gathered_data.out_data.data[3], SITE1_COMBINED_DATA[3])
     # input data
-    assert gathered_data.in_data.metadata.name == "site2"
+    assert gathered_data.in_data.metadata.site_name == "site2"
     assert gathered_data.in_data.metadata.chans == ["Hx", "Hy"]
     assert gathered_data.in_data.metadata.fs == 128
     assert gathered_data.in_data.metadata.n_evals == 4
@@ -509,7 +509,7 @@ def test_projectgather_run(mock_project_site, mock_spec_reader_metadata_only):
     np.testing.assert_equal(gathered_data.in_data.data[2], SITE2_COMBINED_DATA[2])
     np.testing.assert_equal(gathered_data.in_data.data[3], SITE2_COMBINED_DATA[3])
     # cross data
-    assert gathered_data.cross_data.metadata.name == "site3"
+    assert gathered_data.cross_data.metadata.site_name == "site3"
     assert gathered_data.cross_data.metadata.chans == ["Hx", "Hy"]
     assert gathered_data.cross_data.metadata.fs == 128
     assert gathered_data.cross_data.metadata.n_evals == 4
@@ -536,7 +536,7 @@ def test_quickgather_run():
     )
     gathered_data = gather.QuickGather().run(dir_path, dec_params, tf, eval_data)
     # output data
-    assert gathered_data.out_data.metadata.name == "test"
+    assert gathered_data.out_data.metadata.site_name == "test"
     assert gathered_data.out_data.metadata.chans == ["Hy"]
     assert gathered_data.out_data.metadata.fs == 128
     assert gathered_data.out_data.metadata.n_evals == 4
@@ -545,7 +545,7 @@ def test_quickgather_run():
     np.testing.assert_equal(gathered_data.out_data.data[2], SITE2_RUN2_QUICK_OUT[2])
     np.testing.assert_equal(gathered_data.out_data.data[3], SITE2_RUN2_QUICK_OUT[3])
     # input data
-    assert gathered_data.in_data.metadata.name == "test"
+    assert gathered_data.in_data.metadata.site_name == "test"
     assert gathered_data.in_data.metadata.chans == ["Hx"]
     assert gathered_data.in_data.metadata.fs == 128
     assert gathered_data.in_data.metadata.n_evals == 4
@@ -554,7 +554,7 @@ def test_quickgather_run():
     np.testing.assert_equal(gathered_data.in_data.data[2], SITE2_RUN2_QUICK_IN[2])
     np.testing.assert_equal(gathered_data.in_data.data[3], SITE2_RUN2_QUICK_IN[3])
     # cross data
-    assert gathered_data.cross_data.metadata.name == "test"
+    assert gathered_data.cross_data.metadata.site_name == "test"
     assert gathered_data.cross_data.metadata.chans == ["Hx", "Hy"]
     assert gathered_data.cross_data.metadata.fs == 128
     assert gathered_data.cross_data.metadata.n_evals == 4
