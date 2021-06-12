@@ -27,7 +27,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - uses: Gr1N/setup-poetry@v4
         env:
-          POETRY_VIRTUALENVS_IN_PROJECT: true
+          POETRY_VIRTUALENVS_PATH: .venv
       - uses: actions/cache@v2
         with:
           path: .venv
