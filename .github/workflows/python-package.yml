@@ -26,15 +26,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - uses: Gr1N/setup-poetry@v4
-      - run: poetry --version
-        env:
-          POETRY_VIRTUALENVS_PATH: .venv
+      - run: |
+          poetry --version
+          poetry config virtualenvs.in-project true
+          poetry config --list
       - uses: actions/cache@v2
         with:
           path: .venv
           key: ${{ runner.os }}-${{ matrix.python-version }}-poetry-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
-        run: poetry install
+        run: |
+          poetry config --list
+          poetry install
       - name: Test with pytest
         run: |
           poetry run coverage run -m pytest
