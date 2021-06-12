@@ -25,6 +25,7 @@ PROJ_DIRS = {
     "time": "time",
     "calibration": "calibrate",
     "spectra": "spectra",
+    "evals": "evals",
     "features": "features",
     "masks": "masks",
     "results": "results",
@@ -46,14 +47,21 @@ def get_meas_spectra_path(
     proj_dir: Path, site_name: str, meas_name: str, config_name: str
 ) -> Path:
     """Get path to measurement spectra data"""
-    return proj_dir / PROJ_DIRS["spectra"] / site_name / meas_name / config_name
+    return proj_dir / PROJ_DIRS["spectra"] / site_name / config_name / meas_name
+
+
+def get_meas_evals_path(
+    proj_dir: Path, site_name: str, meas_name: str, config_name: str
+) -> Path:
+    """Get path to measurement evaluation frequency spectra data"""
+    return proj_dir / PROJ_DIRS["evals"] / site_name / config_name / meas_name
 
 
 def get_meas_features_path(
     proj_dir: Path, site_name: str, meas_name: str, config_name: str
 ) -> Path:
     """Get path to measurement features data"""
-    return proj_dir / PROJ_DIRS["features"] / site_name / meas_name / config_name
+    return proj_dir / PROJ_DIRS["features"] / site_name / config_name / meas_name
 
 
 def get_fs_mask_path(
@@ -62,8 +70,8 @@ def get_fs_mask_path(
     """Get path to sampling frequency mask data"""
     from resistics.common import fs_to_string
 
-    mask_name = f"{fs_to_string(fs)}.pkl"
-    return proj_dir / PROJ_DIRS["masks"] / site_name / config_name / mask_name
+    mask_dir = f"{fs_to_string(fs)}"
+    return proj_dir / PROJ_DIRS["masks"] / site_name / config_name / mask_dir
 
 
 def get_fs_results_path(
@@ -72,8 +80,8 @@ def get_fs_results_path(
     """Get path to sampling frequency results"""
     from resistics.common import fs_to_string
 
-    results_name = f"{fs_to_string(fs)}.json"
-    return proj_dir / PROJ_DIRS["results"] / site_name / config_name / results_name
+    results_dir = f"{fs_to_string(fs)}"
+    return proj_dir / PROJ_DIRS["results"] / site_name / config_name / results_dir
 
 
 class Measurement(ResisticsModel):
