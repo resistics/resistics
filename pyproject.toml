@@ -64,7 +64,7 @@ build-backend = "poetry.core.masonry.api"
 requires = ["poetry-core>=1.0.0"]
 
 [tool.pytest.ini_options]
-addopts = "--doctest-modules --cov --cov-report html --cov-report xml --junitxml=artifacts/test.xml --html=artifacts/test_html/report.html"
+addopts = "--doctest-modules"
 doctest_optionflags = "NORMALIZE_WHITESPACE ELLIPSIS"
 minversion = "6.0"
 testpaths = ["resistics", "tests"]
