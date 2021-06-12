@@ -21,7 +21,7 @@ from sklearn.base import BaseEstimator
 
 from resistics.common import Metadata, WriteableMetadata, History
 from resistics.common import ResisticsData, ResisticsProcess
-from resistics.transfunc import TransferFunction
+from resistics.transfunc import Component, get_component_key, TransferFunction
 from resistics.spectra import SpectraMetadata, SpectraData
 from resistics.gather import SiteCombinedMetadata, GatheredData
 
@@ -607,53 +607,44 @@ class RegressionPreparerGathered(ResisticsProcess):
         return preds_win
 
 
-class Component(Metadata):
-    """
-    Data class for a single component
-    """
-
-    real: List[float]
-    """The real part of the component"""
-    imag: List[float]
-    """The complex part of the component"""
-
-    def get_value(self, eval_idx: int) -> complex:
-        """Get the value for an evaluation frequency"""
-        return self.real[eval_idx] + 1j * self.imag[eval_idx]
-
-    def to_array(self) -> np.array:
-        """Get the component as a numpy complex array"""
-        return np.array(self.real) + 1j * np.array(self.imag)
-
-
-def get_component_key(out_chan: str, in_chan: str) -> str:
-    """
-    Get key for out channel and in channel combination in the solution
-
-    Parameters
-    ----------
-    out_chan : str
-        The output channel
-    in_chan : str
-        The input channel
-
-    Returns
-    -------
-    str
-        The component key
-
-    Examples
-    --------
-    >>> from resistics.regression import get_component_key
-    >>> get_component_key("Ex", "Hy")
-    'ExHy'
-    """
-    return f"{out_chan}{in_chan}"
-
-
 class Solution(WriteableMetadata):
     """
     Class to hold a transfer function solution
+
+    Examples
+    --------
+    >>> from resistics.testing import solution_mt
+    >>> solution = solution_mt()
+    >>> print(solution.tf.to_string())
+    | Ex | = | Ex_Hx Ex_Hy | | Hx |
+    | Ey |   | Ey_Hx Ey_Hy | | Hy |
+    >>> solution.n_freqs
+    5
+    >>> solution.freqs
+    [10.0, 20.0, 30.0, 40.0, 50.0]
+    >>> solution.periods.tolist()
+    [0.1, 0.05, 0.03333333333333333, 0.025, 0.02]
+    >>> solution.components["ExHx"]
+    Component(real=[1.0, 1.0, 2.0, 2.0, 3.0], imag=[5.0, 5.0, 4.0, 4.0, 3.0])
+    >>> solution.components["ExHy"]
+    Component(real=[1.0, 2.0, 3.0, 4.0, 5.0], imag=[-5.0, -4.0, -3.0, -2.0, -1.0])
+
+    To get the components as an array, the either get_component or subscripting
+    be used
+
+    >>> solution["ExHy"]
+    array([1.-5.j, 2.-4.j, 3.-3.j, 4.-2.j, 5.-1.j])
+    >>> solution["ab"]
+    Traceback (most recent call last):
+    ...
+    ValueError: Component ab not found in ['ExHx', 'ExHy', 'EyHx', 'EyHy']
+
+    It is also possible to get the tensor values at a particular evaluation
+    frequency
+
+    >>> solution.get_tensor(2)
+    array([[ 2.+4.j,  3.-3.j],
+           [-3.+3.j, -2.-4.j]])
     """
 
     tf: TransferFunction
@@ -665,9 +656,30 @@ class Solution(WriteableMetadata):
     source: RegressionInputMetadata
     """The regression input metadata to provide traceability"""
 
-    def __getitem___(self, out_chan: str, in_chan: str) -> np.ndarray:
-        """Solution for a single component for all evaluation frequencies"""
-        return self.get_component(out_chan, in_chan)
+    def __getitem__(self, key: str) -> np.ndarray:
+        """
+        Solution for a single component for all evaluation frequencies
+
+        The arguments should be output channel followed by input channel
+
+        Parameters
+        ----------
+        key : str
+            The component key
+
+        Returns
+        -------
+        np.ndarray
+            The component values as an array
+
+        Raises
+        ------
+        ValueError
+            If incorrect number of arguments
+        """
+        if not isinstance(key, str):
+            raise ValueError("Subscripting takes only 1 argument != {len(arg)}")
+        return self.get_component(key)
 
     @property
     def n_freqs(self):
@@ -679,35 +691,31 @@ class Solution(WriteableMetadata):
         """Get the periods"""
         return np.reciprocal(self.freqs)
 
-    def get_component(self, out_chan: str, in_chan: str) -> np.ndarray:
+    def get_component(self, key: str) -> np.ndarray:
         """
         Get the solution for a single component for all the evaluation
         frequencies
 
         Parameters
         ----------
-        out_chan : str
-            The output channel
-        in_chan : str
-            The input channel
+        key : str
+            The component key
 
         Returns
         -------
         np.ndarray
+            The component data in an array
 
         Raises
         ------
         ValueError
-            out_chan not in the transfer function
-        ValueError
-            in_chan not in the transfer function
+            If the component does not exist in the solution
         """
-        if out_chan not in self.tf.out_chans:
-            raise ValueError(f"Out channel {out_chan} not in tf {self.tf.out_chans}")
-        if in_chan not in self.tf.in_chans:
-            raise ValueError(f"In channel {in_chan} not in tf {self.tf.in_chans}")
-        key = get_component_key(out_chan, in_chan)
-        return self.components[key].to_array()
+        if key not in self.components:
+            raise ValueError(
+                f"Component {key} not found in {list(self.components.keys())}"
+            )
+        return self.components[key].to_numpy()
 
     def get_tensor(self, eval_idx: int) -> np.ndarray:
         """
@@ -723,11 +731,11 @@ class Solution(WriteableMetadata):
         np.ndarray
             The tensor as a numpy array
         """
-        tensor = np.array(shape=(self.tf.n_out, self.tf.n_in), dtype=np.complex128)
+        tensor = np.zeros(shape=(self.tf.n_out, self.tf.n_in), dtype=np.complex128)
         for out_idx, out_chan in enumerate(self.tf.out_chans):
             for in_idx, in_chan in enumerate(self.tf.in_chans):
                 key = get_component_key(out_chan, in_chan)
-                tensor[out_idx, in_idx] = self.solution[key].get_value(eval_idx)
+                tensor[out_idx, in_idx] = self.components[key].get_value(eval_idx)
         return tensor
 
 

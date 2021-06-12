@@ -3,8 +3,62 @@ Module defining transfer functions
 """
 from typing import List, Optional, Dict, Any, Union
 from pydantic import validator
+import numpy as np
 
 from resistics.common import Metadata
+
+
+class Component(Metadata):
+    """
+    Data class for a single component in a Transfer function
+
+    Example
+    -------
+    >>> from resistics.transfunc import Component
+    >>> component = Component(real=[1, 2, 3, 4, 5], imag=[-5, -4, -3, -2 , -1])
+    >>> component.get_value(0)
+    (1-5j)
+    >>> component.to_numpy()
+    array([1.-5.j, 2.-4.j, 3.-3.j, 4.-2.j, 5.-1.j])
+    """
+
+    real: List[float]
+    """The real part of the component"""
+    imag: List[float]
+    """The complex part of the component"""
+
+    def get_value(self, eval_idx: int) -> complex:
+        """Get the value for an evaluation frequency"""
+        return self.real[eval_idx] + 1j * self.imag[eval_idx]
+
+    def to_numpy(self) -> np.ndarray:
+        """Get the component as a numpy complex array"""
+        return np.array(self.real) + 1j * np.array(self.imag)
+
+
+def get_component_key(out_chan: str, in_chan: str) -> str:
+    """
+    Get key for out channel and in channel combination in the solution
+
+    Parameters
+    ----------
+    out_chan : str
+        The output channel
+    in_chan : str
+        The input channel
+
+    Returns
+    -------
+    str
+        The component key
+
+    Examples
+    --------
+    >>> from resistics.regression import get_component_key
+    >>> get_component_key("Ex", "Hy")
+    'ExHy'
+    """
+    return f"{out_chan}{in_chan}"
 
 
 class TransferFunction(Metadata):
