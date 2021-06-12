@@ -19,6 +19,9 @@ from resistics.common import Record, History, get_record
 from resistics.time import get_time_metadata, TimeMetadata, TimeData
 from resistics.decimate import DecimatedMetadata, DecimatedData
 from resistics.spectra import SpectraLevelMetadata, SpectraMetadata, SpectraData
+from resistics.gather import SiteCombinedMetadata
+from resistics.transfunc import Component, ImpedanceTensor
+from resistics.regression import RegressionInputMetadata, Solution
 
 DEFAULT_TIME_DATA_DTYPE = np.float32
 
@@ -789,3 +792,90 @@ def spectra_data_basic() -> SpectraData:
     record = get_record(creator, "Generated spectra data with 1 channel and 1 level")
     metadata.history.add_record(record)
     return SpectraData(metadata, data)
+
+
+def regression_input_metadata_mt(
+    fs: float, freqs: List[float]
+) -> RegressionInputMetadata:
+    """
+    Get example regression input metadata for single site mt
+
+    Parameters
+    ----------
+    fs : float
+        The sampling frequency
+    freqs : List[float]
+        The evaluation frequencies
+
+    Returns
+    -------
+    RegressionInputMetadata
+        Example regression input metadata with fs=128 and 5 evaluation
+        frequencies
+    """
+    out_site = SiteCombinedMetadata(
+        name="site1",
+        fs=fs,
+        measurements=["run1", "run2"],
+        chans=["Ex", "Ey"],
+        n_evals=len(freqs),
+        eval_freqs=freqs,
+        histories={"run1": History(), "run2": History()},
+    )
+    in_site = SiteCombinedMetadata(
+        name="site1",
+        fs=fs,
+        measurements=["run1", "run2"],
+        chans=["Hx", "Hy"],
+        n_evals=len(freqs),
+        eval_freqs=freqs,
+        histories={"run1": History(), "run2": History()},
+    )
+    cross_site = SiteCombinedMetadata(**in_site.dict())
+    creator = {
+        "name": "regression_input_metadata_mt",
+    }
+    record = get_record(creator, "Generated testing regression input metadata for MT")
+    return RegressionInputMetadata(
+        contributors={
+            "out_data": out_site,
+            "in_data": in_site,
+            "cross_data": cross_site,
+        },
+        history=History(records=[record]),
+    )
+
+
+def components_mt() -> Dict[str, Component]:
+    """
+    Get example components for the Impedance Tensor
+
+    Returns
+    -------
+    Dict[str, Component]
+        Dictionary of component values (ExHx, ExHy, EyHx, EyHy)
+    """
+    components = {
+        "ExHx": Component(real=[1, 1, 2, 2, 3], imag=[5, 5, 4, 4, 3]),
+        "ExHy": Component(real=[1, 2, 3, 4, 5], imag=[-5, -4, -3, -2, -1]),
+        "EyHx": Component(real=[-1, -2, -3, -4, -5], imag=[5, 4, 3, 2, 1]),
+        "EyHy": Component(real=[-1, -1, -2, -2, -3], imag=[-5, -5, -4, -4, -3]),
+    }
+    return components
+
+
+def solution_mt() -> Solution:
+    """
+    Get an example impedance tensor solution
+
+    Returns
+    -------
+    Solution
+        The solution
+    """
+    tf = ImpedanceTensor()
+    fs = 128
+    freqs = [10.0, 20.0, 30.0, 40.0, 50.0]
+    components = components_mt()
+    metadata = regression_input_metadata_mt(fs, freqs)
+    return Solution(tf=tf, freqs=freqs, components=components, source=metadata)
