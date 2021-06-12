@@ -83,13 +83,13 @@ branch = true
 source = ["resistics"]
 
 [tool.coverage.report]
-show_missing = true
+show_missing = false
 
 [tool.coverage.html]
 directory = "artifacts/coverage_html"
 
 [tool.coverage.xml]
-output = "artifacts/coverage.xml"
+output = "coverage.xml"
 
 [tool.black]
 line-length = 88
