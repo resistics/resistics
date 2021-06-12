@@ -699,6 +699,7 @@ def process_evals_to_tf(
     in_site: Optional[str] = None,
     cross_site: Optional[str] = None,
     masks: Optional[Dict[str, str]] = None,
+    postfix: Optional[str] = None,
 ) -> Solution:
     """
     Process spectra to transfer functions
@@ -719,6 +720,8 @@ def process_evals_to_tf(
         use as the remote reference.
     masks : Optional[Dict[str, str]], optional
         Any masks to apply, by default None
+    postfix : Optional[str]
+        String to add to the end of solution, by default None
 
     Returns
     -------
@@ -726,6 +729,7 @@ def process_evals_to_tf(
         Transfer function estimate
     """
     from resistics.gather import Selector, ProjectGather
+    from resistics.project import get_results_path, get_solution_name
 
     proj = resenv.proj
     config = resenv.config
@@ -748,4 +752,10 @@ def process_evals_to_tf(
         cross_name=cross_site,
     )
     reg_data = run_regression_preparer(config, gathered_data)
-    return run_solver(config, reg_data)
+    solution = run_solver(config, reg_data)
+    solution_path = get_results_path(proj.dir_path, out_site, config.name)
+    if not solution_path.exists():
+        solution_path.mkdir(parents=True)
+    solution_name = get_solution_name(fs, solution.tf.name, postfix)
+    solution.write(solution_path / solution_name)
+    return solution

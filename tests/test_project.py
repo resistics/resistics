@@ -7,8 +7,7 @@ import pytest
 
 from resistics.project import PROJ_DIRS
 from resistics.project import get_meas_spectra_path, get_meas_evals_path
-from resistics.project import get_meas_features_path, get_fs_mask_path
-from resistics.project import get_fs_results_path
+from resistics.project import get_meas_features_path, get_mask_path, get_results_path
 
 
 @pytest.mark.parametrize(
@@ -66,31 +65,61 @@ def test_meas_other_data_paths(
 
 
 @pytest.mark.parametrize(
-    "fnc, data_type, proj_dir, site_name, config_name, fs",
+    "fnc, data_type, proj_dir, site_name, config_name",
     [
-        (get_fs_mask_path, "masks", Path("test"), "site1", "example", 65536.0),
-        (get_fs_mask_path, "masks", Path("test"), "site1", "example", 4096),
-        (get_fs_mask_path, "masks", Path("test"), "site1", "example", 128.0),
-        (get_fs_mask_path, "masks", Path("myproj"), "my-site", "my_ex", 0.0004),
-        (get_fs_results_path, "results", Path("test"), "site1", "example", 65536.0),
-        (get_fs_results_path, "results", Path("test"), "site1", "example", 4096),
-        (get_fs_results_path, "results", Path("test"), "site1", "example", 128),
-        (get_fs_results_path, "results", Path("myproj"), "my-site", "my_ex", 0.0004),
+        (get_mask_path, "masks", Path("test"), "site1", "example"),
+        (get_mask_path, "masks", Path("myproj"), "my-site", "my_ex"),
+        (get_results_path, "results", Path("test"), "site1", "example"),
+        (get_results_path, "results", Path("myproj"), "my-site", "my_ex"),
     ],
 )
-def test_fs_data_paths(
+def test_masks_results_data_paths(
     fnc: Callable,
     data_type: str,
     proj_dir: Path,
     site_name: str,
     config_name: str,
-    fs: Union[float, int],
 ):
     """Test getting paths related to sampling frequencies"""
+    assert (
+        fnc(proj_dir, site_name, config_name)
+        == proj_dir / PROJ_DIRS[data_type] / site_name / config_name
+    )
+
+
+@pytest.mark.parametrize(
+    "fs, mask_name, expected",
+    [
+        (65536.0, "test_mask1", "test_mask1.dat"),
+        (4096, "example", "example.dat"),
+        (128, "this-is-a-mask", "this-is-a-mask.dat"),
+        (0.0004, "what_a_mask", "what_a_mask.dat"),
+    ],
+)
+def test_get_mask_name(fs: float, mask_name: str, expected: str):
+    """Test getting the mask name"""
+    from resistics.project import get_mask_name
     from resistics.common import fs_to_string
 
-    data_dir = fs_to_string(fs)
-    assert (
-        fnc(proj_dir, site_name, config_name, fs)
-        == proj_dir / PROJ_DIRS[data_type] / site_name / config_name / data_dir
-    )
+    fs_str = fs_to_string(fs)
+    assert get_mask_name(fs, mask_name) == fs_str + "_" + expected
+
+
+@pytest.mark.parametrize(
+    "fs, tf_name, postfix, expected",
+    [
+        (65536.0, "impedancetensor", None, "impedancetensor.json"),
+        (4096, "impedancetensor", "with_mask", "impedancetensor_with_mask.json"),
+        (128, "tipper", None, "tipper.json"),
+        (0.0004, "tipper", "with_mask", "tipper_with_mask.json"),
+    ],
+)
+def test_get_solution_name(
+    fs: float, tf_name: str, postfix: Union[str, None], expected
+):
+    """Test getting the solution name"""
+    from resistics.project import get_solution_name
+    from resistics.common import fs_to_string
+
+    fs_str = fs_to_string(fs)
+    assert get_solution_name(fs, tf_name, postfix) == fs_str + "_" + expected

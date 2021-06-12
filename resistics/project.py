@@ -64,24 +64,31 @@ def get_meas_features_path(
     return proj_dir / PROJ_DIRS["features"] / site_name / config_name / meas_name
 
 
-def get_fs_mask_path(
-    proj_dir: Path, site_name: str, config_name: str, fs: float
-) -> Path:
-    """Get path to sampling frequency mask data"""
+def get_mask_path(proj_dir: Path, site_name: str, config_name: str) -> Path:
+    """Get path to mask data"""
+    return proj_dir / PROJ_DIRS["masks"] / site_name / config_name
+
+
+def get_mask_name(fs: float, mask_name: str) -> str:
+    """Get the name of a mask file"""
     from resistics.common import fs_to_string
 
-    mask_dir = f"{fs_to_string(fs)}"
-    return proj_dir / PROJ_DIRS["masks"] / site_name / config_name / mask_dir
+    return f"{fs_to_string(fs)}_{mask_name}.dat"
 
 
-def get_fs_results_path(
-    proj_dir: Path, site_name: str, config_name: str, fs: float
-) -> Path:
-    """Get path to sampling frequency results"""
+def get_results_path(proj_dir: Path, site_name: str, config_name: str) -> Path:
+    """Get path to solutions"""
+    return proj_dir / PROJ_DIRS["results"] / site_name / config_name
+
+
+def get_solution_name(fs: float, tf_name: str, postfix: Optional[str] = None) -> str:
+    """Get the name of a solution file"""
     from resistics.common import fs_to_string
 
-    results_dir = f"{fs_to_string(fs)}"
-    return proj_dir / PROJ_DIRS["results"] / site_name / config_name / results_dir
+    solution_name = f"{fs_to_string(fs)}_{tf_name.lower()}"
+    if postfix is None:
+        return solution_name + ".json"
+    return solution_name + "_" + postfix + ".json"
 
 
 class Measurement(ResisticsModel):
