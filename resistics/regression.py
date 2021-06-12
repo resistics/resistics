@@ -385,12 +385,12 @@ class RegressionPreparerGathered(ResisticsProcess):
             Data that can be used as input into a solver
         """
         logger.info("Preparing regression data")
-        logger.info(f"Out channels site: {gathered_data.out_data.metadata.name}")
-        logger.info(f"Out channels: {gathered_data.out_data.metadata.chans}")
-        logger.info(f"In channels site: {gathered_data.in_data.metadata.name}")
-        logger.info(f"In channels: {gathered_data.in_data.metadata.chans}")
-        logger.info(f"Cross channels site: {gathered_data.cross_data.metadata.name}")
-        logger.info(f"Cross channels: {gathered_data.cross_data.metadata.chans}")
+        logger.info(f"Out chans site: {gathered_data.out_data.metadata.site_name}")
+        logger.info(f"Out chans: {gathered_data.out_data.metadata.chans}")
+        logger.info(f"In chans site: {gathered_data.in_data.metadata.site_name}")
+        logger.info(f"In chans: {gathered_data.in_data.metadata.chans}")
+        logger.info(f"Cross chans site: {gathered_data.cross_data.metadata.site_name}")
+        logger.info(f"Cross chans: {gathered_data.cross_data.metadata.chans}")
         return self._get_regression_data(tf, gathered_data)
 
     def _get_regression_data(
