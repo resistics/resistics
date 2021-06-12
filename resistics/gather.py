@@ -36,7 +36,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from resistics.common import ResisticsProcess, ResisticsData, WriteableMetadata, History
+from resistics.common import ResisticsProcess, ResisticsData
+from resistics.common import WriteableMetadata, History
 from resistics.project import Project, Site
 from resistics.decimate import DecimationParameters
 from resistics.spectra import SpectraLevelMetadata, SpectraMetadata, SpectraData
@@ -433,8 +434,22 @@ class SiteCombinedMetadata(WriteableMetadata):
     """The name of the site"""
     fs: float
     """Recording sampling frequency"""
+    system: str = ""
+    """The system used for recording"""
+    serial: str = ""
+    """Serial number of the system"""
+    wgs84_latitude: float = -999.0
+    """Latitude in WGS84"""
+    wgs84_longitude: float = -999.0
+    """Longitude in WGS84"""
+    easting: float = -999.0
+    """The easting of the site in local cartersian coordinates"""
+    northing: float = -999.0
+    """The northing of the site in local cartersian coordinates"""
+    elevation: float = -999.0
+    """The elevation of the site"""
     measurements: Optional[List[str]] = None
-    """List of measurement names"""
+    """List of measurement names that were included in the combined data"""
     chans: List[str]
     """List of channels, these are common amongst all the measurements"""
     n_evals: int
@@ -595,6 +610,7 @@ class ProjectGather(ResisticsProcess):
         measurements = selection.get_measurements(site)
         data = self._get_empty_data(selection, chans)
         histories = {}
+        metadata = None
         for meas in measurements:
             evals_path = get_meas_evals_path(
                 proj.dir_path, site.name, meas, config_name
@@ -602,9 +618,18 @@ class ProjectGather(ResisticsProcess):
             eval_data = SpectraDataReader().run(evals_path)
             self._populate_data(selection, site, meas, eval_data, chans, data)
             histories[meas] = eval_data.metadata.history
+            if metadata is None:
+                metadata = eval_data.metadata
         combined_metadata = SiteCombinedMetadata(
             site_name=site.name,
             fs=selection.dec_params.fs,
+            system=metadata.system,
+            serial=metadata.serial,
+            wgs84_latitude=metadata.wgs84_latitude,
+            wgs84_longitude=metadata.wgs84_longitude,
+            easting=metadata.easting,
+            northing=metadata.northing,
+            elevation=metadata.elevation,
             measurements=measurements,
             chans=chans,
             n_evals=len(data),
@@ -806,13 +831,14 @@ class QuickGather(ResisticsProcess):
         GatheredData
             GatheredData for regression preparer
         """
+        metadata = eval_data.metadata
         out_data = {}
         in_data = {}
         cross_data = {}
         eval_freqs = []
         logger.info("Quick gathering data for regression prepartion")
-        for ilevel in range(eval_data.metadata.n_levels):
-            level_metadata = eval_data.metadata.levels_metadata[ilevel]
+        for ilevel in range(metadata.n_levels):
+            level_metadata = metadata.levels_metadata[ilevel]
             eval_freqs = eval_freqs + level_metadata.freqs
             out_level = eval_data.get_chans(ilevel, tf.out_chans)
             in_level = eval_data.get_chans(ilevel, tf.in_chans)
@@ -824,15 +850,14 @@ class QuickGather(ResisticsProcess):
                 cross_data[key] = cross_level[..., ifreq]
         # make combined data
         fs = dec_params.fs
-        history = eval_data.metadata.history
         out_combined = self._get_combined_data(
-            dir_path.name, fs, tf.out_chans, eval_freqs, out_data, history
+            dir_path.name, fs, tf.out_chans, eval_freqs, metadata, out_data
         )
         in_combined = self._get_combined_data(
-            dir_path.name, fs, tf.in_chans, eval_freqs, in_data, history
+            dir_path.name, fs, tf.in_chans, eval_freqs, metadata, in_data
         )
         cross_combined = self._get_combined_data(
-            dir_path.name, fs, tf.cross_chans, eval_freqs, cross_data, history
+            dir_path.name, fs, tf.cross_chans, eval_freqs, metadata, cross_data
         )
         return GatheredData(
             out_data=out_combined, in_data=in_combined, cross_data=cross_combined
@@ -844,17 +869,24 @@ class QuickGather(ResisticsProcess):
         fs: float,
         chans: List[str],
         eval_freqs: List[float],
+        metadata: SpectraMetadata,
         data: Dict[int, np.ndarray],
-        history,
     ) -> SiteCombinedData:
         """Get the combined metadata"""
-        metadata = SiteCombinedMetadata(
+        combined_metadata = SiteCombinedMetadata(
             site_name=meas,
             fs=fs,
+            system=metadata.system,
+            serial=metadata.serial,
+            wgs84_latitude=metadata.wgs84_latitude,
+            wgs84_longitude=metadata.wgs84_longitude,
+            easting=metadata.easting,
+            northing=metadata.northing,
+            elevation=metadata.elevation,
             measurements=[meas],
             chans=chans,
             n_evals=len(eval_freqs),
             eval_freqs=eval_freqs,
-            histories={meas: history},
+            histories={meas: metadata.history},
         )
-        return SiteCombinedData(metadata, data)
+        return SiteCombinedData(combined_metadata, data)
