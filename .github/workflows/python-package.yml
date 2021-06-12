@@ -34,12 +34,12 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install
-      - name: Lint with flake8
-        run: |
-          flake8 resistics
-      - name: Check docstrings
-        run: |
-          darglint resistics
+      # - name: Lint with flake8
+      #   run: |
+      #     flake8 resistics
+      # - name: Check docstrings
+      #   run: |
+      #     darglint resistics
       - name: Test with pytest
         run: |
           pytest
