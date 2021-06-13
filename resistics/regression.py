@@ -22,7 +22,7 @@ from sklearn.base import BaseEstimator
 from resistics.common import Metadata, WriteableMetadata, History
 from resistics.common import ResisticsData, ResisticsProcess
 from resistics.transfunc import Component, get_component_key
-from resistics.transfunc import ResisticsTransferFunction, TransferFunction
+from resistics.transfunc import TransferFunction
 from resistics.spectra import SpectraMetadata, SpectraData
 from resistics.gather import SiteCombinedMetadata, GatheredData
 
@@ -648,7 +648,7 @@ class Solution(WriteableMetadata):
            [-3.+3.j, -2.-4.j]])
     """
 
-    tf: ResisticsTransferFunction
+    tf: TransferFunction
     """The transfer function that was solved"""
     freqs: List[float]
     """The evaluation frequencies"""
