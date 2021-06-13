@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "resistics"
-version = "0.0.7"
+version = "1.0.0-alpha.0"
 description = "Python package for processing magnetotelluric data"
 license = "MIT"
 authors = ["Neeraj Shah <resistics@outlook.com>"]
