@@ -21,7 +21,8 @@ from sklearn.base import BaseEstimator
 
 from resistics.common import Metadata, WriteableMetadata, History
 from resistics.common import ResisticsData, ResisticsProcess
-from resistics.transfunc import Component, get_component_key, ResisticsTransferFunction
+from resistics.transfunc import Component, get_component_key
+from resistics.transfunc import ResisticsTransferFunction, TransferFunction
 from resistics.spectra import SpectraMetadata, SpectraData
 from resistics.gather import SiteCombinedMetadata, GatheredData
 
@@ -106,7 +107,7 @@ class RegressionInputData(ResisticsData):
     def __init__(
         self,
         metadata: RegressionInputMetadata,
-        tf: ResisticsTransferFunction,
+        tf: TransferFunction,
         freqs: List[float],
         obs: List[Dict[str, np.ndarray]],
         preds: List[np.ndarray],
@@ -119,7 +120,7 @@ class RegressionInputData(ResisticsData):
         metadata : RegressionInputMetadata
             The metadata, mainly to hold the various processing histories that
             have been combined to produce the data
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             The transfer function that is to be solver
         freqs : List[float]
             The evaluation frequencies
@@ -167,9 +168,7 @@ class RegressionPreparerSpectra(ResisticsProcess):
     This can be useful for running a single measurement
     """
 
-    def run(
-        self, tf: ResisticsTransferFunction, spec_data: SpectraData
-    ) -> RegressionInputData:
+    def run(self, tf: TransferFunction, spec_data: SpectraData) -> RegressionInputData:
         """Construct the linear equation for solving"""
         freqs = []
         obs = []
@@ -190,7 +189,7 @@ class RegressionPreparerSpectra(ResisticsProcess):
         return RegressionInputData(tf, freqs, obs, preds)
 
     def _get_cross_powers(
-        self, tf: ResisticsTransferFunction, spec_data: SpectraData, level: int
+        self, tf: TransferFunction, spec_data: SpectraData, level: int
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Get cross powers
@@ -216,7 +215,7 @@ class RegressionPreparerSpectra(ResisticsProcess):
 
         Parameters
         ----------
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             Definition of transfer function
         spec_data : SpectraTimeData
             Spectra data for a decimation level
@@ -241,14 +240,14 @@ class RegressionPreparerSpectra(ResisticsProcess):
         return out_powers, in_powers
 
     def _get_obs(
-        self, tf: ResisticsTransferFunction, out_powers: np.ndarray
+        self, tf: TransferFunction, out_powers: np.ndarray
     ) -> Dict[str, np.ndarray]:
         """
         Get observations for an output channel
 
         Parameters
         ----------
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             Definition of transfer function
         out_powers : np.ndarray
             The cross powers for the output channels
@@ -267,9 +266,7 @@ class RegressionPreparerSpectra(ResisticsProcess):
             obs[out_chan] = obs_chan
         return obs
 
-    def _get_obs_chan(
-        self, tf: ResisticsTransferFunction, out_powers: np.ndarray
-    ) -> np.ndarray:
+    def _get_obs_chan(self, tf: TransferFunction, out_powers: np.ndarray) -> np.ndarray:
         """
         Get observations for a single output channel
 
@@ -299,7 +296,7 @@ class RegressionPreparerSpectra(ResisticsProcess):
 
         Parameters
         ----------
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             The transfer function definition
         out_powers : np.ndarray
             The cross powers for the a single output channel
@@ -315,9 +312,7 @@ class RegressionPreparerSpectra(ResisticsProcess):
         obs[1::2] = flattened.imag
         return obs
 
-    def _get_preds(
-        self, tf: ResisticsTransferFunction, in_powers: np.ndarray
-    ) -> np.ndarray:
+    def _get_preds(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
         """
         Construct the predictors
 
@@ -331,7 +326,7 @@ class RegressionPreparerSpectra(ResisticsProcess):
 
         Parameters
         ----------
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             Transfer function definition
         in_powers : np.ndarray
             The cross powers for the input channels
@@ -351,9 +346,7 @@ class RegressionPreparerSpectra(ResisticsProcess):
             preds[idx_from:idx_to, :] = self._get_preds_win(tf, in_powers[iwin])
         return preds
 
-    def _get_preds_win(
-        self, tf: ResisticsTransferFunction, in_powers: np.ndarray
-    ) -> np.ndarray:
+    def _get_preds_win(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
         """Get predictors for a window"""
         preds_win = np.empty((tf.n_cross * 2, tf.n_in * 2), dtype=float)
         in_powers = np.swapaxes(in_powers, 0, 1)
@@ -375,14 +368,14 @@ class RegressionPreparerGathered(ResisticsProcess):
     """
 
     def run(
-        self, tf: ResisticsTransferFunction, gathered_data: GatheredData
+        self, tf: TransferFunction, gathered_data: GatheredData
     ) -> RegressionInputData:
         """
         Create the RegressionInputData
 
         Parameters
         ----------
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             The transfer function
         gathered_data : GatheredData
             The gathered data
@@ -402,14 +395,14 @@ class RegressionPreparerGathered(ResisticsProcess):
         return self._get_regression_data(tf, gathered_data)
 
     def _get_regression_data(
-        self, tf: ResisticsTransferFunction, gathered_data: GatheredData
+        self, tf: TransferFunction, gathered_data: GatheredData
     ) -> RegressionInputData:
         """
         Get the regression input data
 
         Parameters
         ----------
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             The transfer function
         gathered_data : GatheredData
             The gathered data
@@ -445,7 +438,7 @@ class RegressionPreparerGathered(ResisticsProcess):
         return RegressionInputData(metadata, tf, freqs, obs, preds)
 
     def _get_cross_powers(
-        self, tf: ResisticsTransferFunction, gathered_data: GatheredData, eval_idx: int
+        self, tf: TransferFunction, gathered_data: GatheredData, eval_idx: int
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Get cross powers
@@ -471,7 +464,7 @@ class RegressionPreparerGathered(ResisticsProcess):
 
         Parameters
         ----------
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             Definition of transfer function
         gathered_data : GatheredData
             All the gathered data
@@ -496,14 +489,14 @@ class RegressionPreparerGathered(ResisticsProcess):
         return out_powers, in_powers
 
     def _get_obs(
-        self, tf: ResisticsTransferFunction, out_powers: np.ndarray
+        self, tf: TransferFunction, out_powers: np.ndarray
     ) -> Dict[str, np.ndarray]:
         """
         Get observations for an output channel
 
         Parameters
         ----------
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             Definition of transfer function
         out_powers : np.ndarray
             The cross powers for the output channels
@@ -522,9 +515,7 @@ class RegressionPreparerGathered(ResisticsProcess):
             obs[out_chan] = obs_chan
         return obs
 
-    def _get_obs_chan(
-        self, tf: ResisticsTransferFunction, out_powers: np.ndarray
-    ) -> np.ndarray:
+    def _get_obs_chan(self, tf: TransferFunction, out_powers: np.ndarray) -> np.ndarray:
         """
         Get observations for a single output channel
 
@@ -554,7 +545,7 @@ class RegressionPreparerGathered(ResisticsProcess):
 
         Parameters
         ----------
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             The transfer function definition
         out_powers : np.ndarray
             The cross powers for the a single output channel
@@ -570,9 +561,7 @@ class RegressionPreparerGathered(ResisticsProcess):
         obs[1::2] = flattened.imag
         return obs
 
-    def _get_preds(
-        self, tf: ResisticsTransferFunction, in_powers: np.ndarray
-    ) -> np.ndarray:
+    def _get_preds(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
         """
         Construct the predictors
 
@@ -586,7 +575,7 @@ class RegressionPreparerGathered(ResisticsProcess):
 
         Parameters
         ----------
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             Transfer function definition
         in_powers : np.ndarray
             The cross powers for the input channels
@@ -606,9 +595,7 @@ class RegressionPreparerGathered(ResisticsProcess):
             preds[idx_from:idx_to, :] = self._get_preds_win(tf, in_powers[iwin])
         return preds
 
-    def _get_preds_win(
-        self, tf: ResisticsTransferFunction, in_powers: np.ndarray
-    ) -> np.ndarray:
+    def _get_preds_win(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
         """Get predictors for a window"""
         preds_win = np.empty((tf.n_cross * 2, tf.n_in * 2), dtype=float)
         in_powers = np.swapaxes(in_powers, 0, 1)
@@ -823,9 +810,7 @@ class SolverScikit(Solver):
         model.fit(preds, obs)
         return model.coef_
 
-    def _get_tensor(
-        self, tf: ResisticsTransferFunction, coef: np.ndarray
-    ) -> np.ndarray:
+    def _get_tensor(self, tf: TransferFunction, coef: np.ndarray) -> np.ndarray:
         """
         Rearrange the coefficients into a tensor
 
@@ -835,7 +820,7 @@ class SolverScikit(Solver):
 
         Parameters
         ----------
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             The transfer fuction
         coef : np.ndarray
             The coefficients
@@ -853,7 +838,7 @@ class SolverScikit(Solver):
 
     def _get_solution(
         self,
-        tf: ResisticsTransferFunction,
+        tf: TransferFunction,
         regression_input: RegressionInputData,
         tensors: np.ndarray,
     ) -> Solution:
@@ -862,7 +847,7 @@ class SolverScikit(Solver):
 
         Parameters
         ----------
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             The transfer function
         regression_input : RegressionInputData
             The regression input data
