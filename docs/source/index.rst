@@ -6,12 +6,12 @@
 Welcome to resistics's documentation!
 =====================================
 
-Soon resistics will be upgrading to version 0.1.0. This will be a breaking
+Soon resistics will be upgrading to version 1.0.0. This will be a breaking
 change versus version 0.0.6. Currently, the newest version is available as a
 development release for those who are intersted in experimenting with its
 updated feature set.
 
-Until version 0.1.0 is released as a stable version, the existing
+Until version 1.0.0 is released as a stable version, the existing
 documentation for 0.0.6 will remain at resistics.io.
 
 Why?
