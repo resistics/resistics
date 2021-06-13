@@ -137,3 +137,39 @@ def test_list_to_ranges(lst: List, expected: str) -> None:
 
     testlist = [1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 26, 35, 40, 45]
     assert list_to_ranges(testlist) == "1-4:1,6-12:2,15-24:3,26,35-45:5"
+
+
+def test_resistics_process():
+    """Test initialising a resistics process"""
+    from resistics.common import ResisticsProcess
+    from resistics.decimate import DecimationSetup
+
+    process = {
+        "name": "DecimationSetup",
+        "n_levels": 8,
+        "per_level": 5,
+        "min_samples": 256,
+        "div_factor": 2,
+        "eval_freqs": None,
+    }
+    assert ResisticsProcess.validate(process) == DecimationSetup(**process)
+
+
+def test_resistics_process_errors():
+    """Test errors when initialising a resistics process"""
+    from resistics.common import ResisticsProcess
+
+    process = {
+        "n_levels": 8,
+        "per_level": 5,
+        "min_samples": 256,
+        "div_factor": 2,
+        "eval_freqs": None,
+    }
+    with pytest.raises(KeyError):
+        ResisticsProcess.validate(process)
+    with pytest.raises(ValueError):
+        ResisticsProcess.validate(5)
+    process["name"] = "Unknown"
+    with pytest.raises(ValueError):
+        ResisticsProcess.validate(process)

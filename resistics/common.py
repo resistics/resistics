@@ -932,20 +932,44 @@ class ResisticsProcess(ResisticsModel):
         Examples
         --------
         The following example will show how a generic ResisticsProcess child
-        class can be instantiated from a ResisticsProcess. This example will
-        use the resistics configuration with default processes as a starting
-        point and then change the parameters of the DecimationSetup.
+        class can be instantiated from ResisticsProcess using a dictionary,
+        which might be read in from a JSON configuration file.
 
         >>> from resistics.common import ResisticsProcess
+        >>> from resistics.decimate import DecimationSetup
+        >>> process = {"name": 'DecimationSetup', "n_levels": 8, "per_level": 5, "min_samples": 256, "div_factor": 2, "eval_freqs": None}
+        >>> ResisticsProcess(**process)
+        ResisticsProcess(name='DecimationSetup')
+
+        This is not what was expected. To get the right result, the class
+        validate method needs to be used. This is done automatically by
+        pydantic.
+
+        >>> ResisticsProcess.validate(process)
+        DecimationSetup(name='DecimationSetup', n_levels=8, per_level=5, min_samples=256, div_factor=2, eval_freqs=None)
+
+        That's better. Note that errors will be raised if the dictionary is not
+        formatted as expected.
+
+        >>> process = {"n_levels": 8, "per_level": 5, "min_samples": 256, "div_factor": 2, "eval_freqs": None}
+        >>> ResisticsProcess.validate(process)
+        Traceback (most recent call last):
+        ...
+        KeyError: 'No name provided for initialisation of process'
+
+        This functionality is most useful in the resistics configurations which
+        can be saved as JSON files. The default configuration uses the default
+        parameterisation of DecimationSetup.
+
         >>> from resistics.letsgo import Configuration
         >>> config = Configuration(name="example1")
         >>> config.dec_setup
         DecimationSetup(name='DecimationSetup', n_levels=8, per_level=5, min_samples=256, div_factor=2, eval_freqs=None)
 
         Now create another configuration with a different setup by passing a
-        dictionary.
+        dictionary. In practise, this dictionary will most likely be read in
+        from a configuration file.
 
-        >>> from resistics.decimate import DecimationSetup
         >>> setup = DecimationSetup(n_levels=4, per_level=3)
         >>> test_dict = setup.dict()
         >>> test_dict
