@@ -195,18 +195,6 @@ def dir_subdirs(dir_path: Path) -> List[Path]:
     return dirs
 
 
-def data_dir_names() -> List[str]:
-    """
-    Get list of data directory names
-
-    Returns
-    -------
-    List[str]
-        A list of allowable data directory names
-    """
-    return ["meas", "run", "phnx", "lemi"]
-
-
 def electric_chans() -> List[str]:
     """
     List of acceptable electric channels
