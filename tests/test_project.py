@@ -106,20 +106,32 @@ def test_get_mask_name(fs: float, mask_name: str, expected: str):
 
 
 @pytest.mark.parametrize(
-    "fs, tf_name, postfix, expected",
+    "fs, tf_name, tf_var, postfix, expected",
     [
-        (65536.0, "impedancetensor", None, "impedancetensor.json"),
-        (4096, "impedancetensor", "with_mask", "impedancetensor_with_mask.json"),
-        (128, "tipper", None, "tipper.json"),
-        (0.0004, "tipper", "with_mask", "tipper_with_mask.json"),
+        (65536.0, "impedancetensor", "", None, "impedancetensor.json"),
+        (
+            4096,
+            "impedancetensor",
+            "var",
+            "with_mask",
+            "impedancetensor_var_with_mask.json",
+        ),
+        (128, "tipper", "", None, "tipper.json"),
+        (
+            0.0004,
+            "tipper",
+            "i am different",
+            "with_mask",
+            "tipper_i_am_different_with_mask.json",
+        ),
     ],
 )
 def test_get_solution_name(
-    fs: float, tf_name: str, postfix: Union[str, None], expected
+    fs: float, tf_name: str, tf_var: str, postfix: Union[str, None], expected
 ):
     """Test getting the solution name"""
     from resistics.project import get_solution_name
     from resistics.common import fs_to_string
 
     fs_str = fs_to_string(fs)
-    assert get_solution_name(fs, tf_name, postfix) == fs_str + "_" + expected
+    assert get_solution_name(fs, tf_name, tf_var, postfix) == fs_str + "_" + expected

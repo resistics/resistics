@@ -81,11 +81,16 @@ def get_results_path(proj_dir: Path, site_name: str, config_name: str) -> Path:
     return proj_dir / PROJ_DIRS["results"] / site_name / config_name
 
 
-def get_solution_name(fs: float, tf_name: str, postfix: Optional[str] = None) -> str:
+def get_solution_name(
+    fs: float, tf_name: str, tf_var: str, postfix: Optional[str] = None
+) -> str:
     """Get the name of a solution file"""
     from resistics.common import fs_to_string
 
     solution_name = f"{fs_to_string(fs)}_{tf_name.lower()}"
+    if tf_var != "":
+        tf_var = tf_var.replace(" ", "_")
+        solution_name = solution_name + f"_{tf_var}"
     if postfix is None:
         return solution_name + ".json"
     return solution_name + "_" + postfix + ".json"

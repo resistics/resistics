@@ -388,7 +388,6 @@ class ImpedanceTensor(TransferFunction):
     | Ey |   | Ey_Hx Ey_Hy | | Hy |
     """
 
-    name = "impedancetensor"
     out_chans: List[str] = ["Ex", "Ey"]
     in_chans: List[str] = ["Hx", "Hy"]
 
@@ -406,6 +405,5 @@ class Tipper(TransferFunction):
                              | Hy |
     """
 
-    name = "tipper"
     out_chans: List[str] = ["Hz"]
     in_chans: List[str] = ["Hx", "Hy"]
