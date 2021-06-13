@@ -1,4 +1,4 @@
 Tutorial
 ========
 
-This is a tutorial for resistics
+Tutorial coming soon
