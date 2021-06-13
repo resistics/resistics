@@ -354,6 +354,16 @@ class ImpedanceTensor(TransferFunction):
     """
     Standard magnetotelluric impedance tensor
 
+    Notes
+    -----
+    Information about data units
+
+    - Magnetic permeability in nT . m / A
+    - Electric (E) data is in mV/m
+    - Magnetic (H) data is in nT
+    - Z = E/H is in mV / m . nT
+    - Units of resistance = Ohm = V / A
+
     Examples
     --------
     >>> from resistics.transfunc import ImpedanceTensor
@@ -367,13 +377,128 @@ class ImpedanceTensor(TransferFunction):
     out_chans: List[str] = ["Ex", "Ey"]
     in_chans: List[str] = ["Hx", "Hy"]
 
-    def plot(self, freqs: List[float], components: Dict[str, Component]) -> go.Figure:
-        raise NotImplementedError("Coming...")
+    def get_resistivity(self, periods: np.ndarray, component: Component) -> np.ndarray:
+        """Get the apparent resistivity for a component"""
+        squared = np.power(np.absolute(component.to_numpy()), 2)
+        return 0.2 * periods * squared
+
+    def get_phase(self, key: str, component: Component) -> np.ndarray:
+        """Get the phase for a component"""
+        phase = np.angle(component.to_numpy())
+        # unwrap into specific quadrant and convert to degrees
+        phase = np.unwrap(phase) * 180 / np.pi
+        if key == "ExHx" or key == "ExHy":
+            phase = np.mod(phase, 360) - 180
+        return phase
+
+    def plot(
+        self,
+        freqs: List[float],
+        components: Dict[str, Component],
+        to_plot: Optional[List[str]] = None,
+        x_lim: Optional[List[float]] = None,
+        res_lim: Optional[List[float]] = None,
+        phs_lim: Optional[List[float]] = None,
+    ) -> go.Figure:
+        """
+        Plot the impedance tensor
+
+        Parameters
+        ----------
+        freqs : List[float]
+            The x axis frequencies
+        components : Dict[str, Component]
+            The component data
+        to_plot : Optional[List[str]], optional
+            The components of the impedance tensor to plot, by default None,
+            which will plot all of them
+        x_lim : Optional[List[float]], optional
+            The x limits, to be provided as powers of 10, by default None. For
+            example, for 0.001, use -3
+        res_lim : Optional[List[float]], optional
+            The y limits for resistivity, to be provided as powers of 10, by
+            default None. For example, for 1000, use 3
+        phs_lim : Optional[List[float]], optional
+            The phase limits, by default None
+
+        Returns
+        -------
+        go.Figure
+            Plotly figure
+        """
+        from plotly.subplots import make_subplots
+
+        periods = np.reciprocal(freqs)
+        if to_plot is None:
+            to_plot = ["ExHy", "EyHx", "ExHx", "EyHy"]
+        if x_lim is None:
+            x_lim = [-3, 5]
+        if res_lim is None:
+            res_lim = [-2, 6]
+        if phs_lim is None:
+            phs_lim = [-10, 100]
+
+        colors = {"ExHx": "orange", "EyHy": "green", "ExHy": "red", "EyHx": "blue"}
+        fig = make_subplots(
+            rows=2,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.08,
+            subplot_titles=["Apparent resistivity", "Phase"],
+        )
+        fig.update_layout(width=1000, autosize=True)
+        # x axes
+        fig.update_xaxes(title_text="Period (s)", type="log", range=x_lim, row=1, col=1)
+        fig.update_xaxes(showticklabels=True, row=1, col=1)
+        fig.update_xaxes(title_text="Period (s)", type="log", range=x_lim, row=2, col=1)
+        fig.update_xaxes(showticklabels=True, row=2, col=1)
+        # y axes
+        fig.update_yaxes(title_text="App. resistivity (Ohm m)", row=1, col=1)
+        fig.update_yaxes(type="log", range=res_lim, row=1, col=1)
+        fig.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
+        fig.update_yaxes(title_text="Phase (degrees)", range=phs_lim, row=2, col=1)
+        for comp in to_plot:
+            res = self.get_resistivity(periods, components[comp])
+            phs = self.get_phase(comp, components[comp])
+            scatter = go.Scatter(
+                x=periods,
+                y=res,
+                mode="lines+markers",
+                marker=dict(color=colors[comp]),
+                line=dict(color=colors[comp]),
+                legendgroup=comp,
+                name=comp,
+            )
+            fig.add_trace(scatter, row=1, col=1)
+            scatter = go.Scatter(
+                x=periods,
+                y=phs,
+                mode="lines+markers",
+                marker=dict(color=colors[comp]),
+                line=dict(color=colors[comp]),
+                legendgroup=comp,
+                name=comp,
+                showlegend=False,
+            )
+            fig.add_trace(scatter, row=2, col=1)
+        return fig
 
 
 class Tipper(TransferFunction):
     """
     Magnetotelluric tipper
+
+    The tipper components are Tx = HzHx and Ty = HzHy
+
+    The tipper length is sqrt(Re(Tx)^2 + Re(Ty)^2)
+
+    The tipper angle is arctan (Re(Ty)/Re(Tx))
+
+    Notes
+    -----
+    Information about units
+
+    - Tipper T = H/H is dimensionless
 
     Examples
     --------
@@ -388,5 +513,118 @@ class Tipper(TransferFunction):
     out_chans: List[str] = ["Hz"]
     in_chans: List[str] = ["Hx", "Hy"]
 
-    def plot(self, freqs: List[float], components: Dict[str, Component]) -> go.Figure:
-        raise NotImplementedError("Coming...")
+    def get_length(self, components: Dict[str, Component]) -> np.ndarray:
+        """Get the tipper length"""
+        txRe = components["HzHx"].real
+        tyRe = components["HzHy"].real
+        return np.sqrt(np.power(txRe, 2) + np.power(tyRe, 2))
+
+    def get_real_angle(self, components: Dict[str, Component]) -> np.ndarray:
+        """Get the real angle"""
+        txRe = np.array(components["HzHx"].real)
+        tyRe = np.array(components["HzHy"].real)
+        return np.arctan(tyRe / txRe) * 180 / np.pi
+
+    def get_imag_angle(self, components: Dict[str, Component]) -> np.ndarray:
+        """Get the imaginary angle"""
+        txIm = np.array(components["HzHx"].imag)
+        tyIm = np.array(components["HzHy"].imag)
+        return np.arctan(tyIm / txIm) * 180 / np.pi
+
+    def plot(
+        self,
+        freqs: List[float],
+        components: Dict[str, Component],
+        x_lim: Optional[List[float]] = None,
+        len_lim: Optional[List[float]] = None,
+        ang_lim: Optional[List[float]] = None,
+    ) -> go.Figure:
+        """
+        Plot the impedance tensor
+
+        .. warning::
+
+            This probably needs further checking and verification
+
+        Parameters
+        ----------
+        freqs : List[float]
+            The x axis frequencies
+        components : Dict[str, Component]
+            The component data
+        x_lim : Optional[List[float]], optional
+            The x limits, to be provided as powers of 10, by default None. For
+            example, for 0.001, use -3
+        len_lim : Optional[List[float]], optional
+            The y limits for tipper length, to be provided as powers of 10, by
+            default None. For example, for 1000, use 3
+        ang_lim : Optional[List[float]], optional
+            The angle limits, by default None
+
+        Returns
+        -------
+        go.Figure
+            Plotly figure
+        """
+        import warnings
+        from plotly.subplots import make_subplots
+
+        warnings.warn("Plotting of tippers needs further verification")
+
+        periods = np.reciprocal(freqs)
+        if x_lim is None:
+            x_lim = [-3, 5]
+        if len_lim is None:
+            len_lim = [-2, 6]
+        if ang_lim is None:
+            ang_lim = [-10, 100]
+
+        fig = make_subplots(
+            rows=2,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.08,
+            subplot_titles=["Length", "Angles"],
+        )
+        fig.update_layout(width=1000, autosize=True)
+        # x axes
+        fig.update_xaxes(title_text="Period (s)", type="log", range=x_lim, row=1, col=1)
+        fig.update_xaxes(showticklabels=True, row=1, col=1)
+        fig.update_xaxes(title_text="Period (s)", type="log", range=x_lim, row=2, col=1)
+        fig.update_xaxes(showticklabels=True, row=2, col=1)
+        # y axes
+        fig.update_yaxes(title_text="Tipper length", row=1, col=1)
+        # fig.update_yaxes(type="log", row=1, col=1)
+        # fig.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
+        fig.update_yaxes(title_text="Angle (degrees)", row=2, col=1)
+        # plot the tipper length
+        scatter = go.Scatter(
+            x=periods,
+            y=self.get_length(components),
+            mode="lines+markers",
+            marker=dict(color="red"),
+            line=dict(color="red"),
+            name="Tipper length",
+        )
+        fig.add_trace(scatter, row=1, col=1)
+        # plot the real angle
+        scatter = go.Scatter(
+            x=periods,
+            y=self.get_real_angle(components),
+            mode="lines+markers",
+            marker=dict(color="green"),
+            line=dict(color="green"),
+            name="Real angle",
+        )
+        fig.add_trace(scatter, row=2, col=1)
+        # plot the imag angle
+        scatter = go.Scatter(
+            x=periods,
+            y=self.get_imag_angle(components),
+            mode="lines+markers",
+            marker=dict(color="blue"),
+            line=dict(color="blue"),
+            name="Imag angle",
+        )
+        fig.add_trace(scatter, row=2, col=1)
+        return fig
