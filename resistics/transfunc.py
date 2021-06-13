@@ -61,12 +61,172 @@ def get_component_key(out_chan: str, in_chan: str) -> str:
     return f"{out_chan}{in_chan}"
 
 
-class TransferFunction(Metadata):
-    """
-    Define the transfer function
+class ResisticsTransferFunction(Metadata):
 
-    This class has few methods and is a simple way of defining the transfer
-    input and output channels for which to calculate the transfer function
+    _types: Dict[str, type] = {}
+    """Store types which will help automatic instantiation"""
+    name: Optional[str] = None
+    """The name of the transfer function, this will be set automatically"""
+
+    def __init_subclass__(cls) -> None:
+        """
+        Used to automatically register child transfer functions in `_types`
+
+        When a ResisticsTransferFunction child class is imported, it is added
+        to the base ResisticsTransferFunction _types variable. Later, this
+        dictionary of class types can be used to initialise a specific
+        child transfer function from a dictonary as long as that specific child
+        transfer fuction has already been imported and it is called from a
+        pydantic class that will validate the inputs.
+
+        The intention of this method is to support initialising transfer
+        functions from JSON files.
+
+        This is a similar approach to ResisticsProcess.
+        """
+        cls._types[cls.__name__] = cls
+
+    @classmethod
+    def __get_validators__(cls):
+        """Get the validators that will be used by pydantic"""
+        yield cls.validate
+
+    @classmethod
+    def validate(
+        cls, value: Union["ResisticsTransferFunction", Dict[str, Any]]
+    ) -> "ResisticsTransferFunction":
+        """
+        Validate a ResisticsTransferFunction in another pydantic class which
+        will use the validate function in instantiation
+
+        Parameters
+        ----------
+        value : Union[ResisticsTransferFunction, Dict[str, Any]]
+            A ResisticsTransferFunction child class or a dictionary
+
+        Returns
+        -------
+        ResisticsTransferFunction
+            A ResisticsTransferFunction child class
+
+        Raises
+        ------
+        ValueError
+            If the value is neither a ResisticsTransferFunction or a dictionary
+        KeyError
+            If name is not in the dictionary
+        ValueError
+            If initialising from dictionary fails
+
+        Examples
+        --------
+        The following example will show how a child ResisticsTransferFunction
+        class can be instantiated using a dictionary and the parent
+        ResisticsTransferFunction (but only as long as that child class has been
+        imported).
+
+        >>> from resistics.transfunc import ResisticsTransferFunction
+
+        Show known ResisticsTransferFunction types in built into resistics
+
+        >>> for entry in ResisticsTransferFunction._types.items():
+        ...     print(entry)
+        ('TransferFunction', <class 'resistics.transfunc.TransferFunction'>)
+        ('ImpedanceTensor', <class 'resistics.transfunc.ImpedanceTensor'>)
+        ('Tipper', <class 'resistics.transfunc.Tipper'>)
+
+        Now let's initialise an ImpedanceTensor from the base
+        ResisticsTransferFunction and a dictionary.
+
+        >>> mytf = {"name": "ImpedanceTensor", "cross_chans": ["Ex", "Ey"]}
+        >>> test = ResisticsTransferFunction(**mytf)
+        >>> test.summary()
+        {'name': 'ImpedanceTensor'}
+
+        This is not quite what we were expecting. The reason is because the
+        validate method of the class was not used. This method is used by
+        pydantic.
+
+        >>> mytf = {"name": "ImpedanceTensor", "cross_chans": ["Ex", "Ey"]}
+        >>> test = ResisticsTransferFunction.validate(mytf)
+        >>> test.summary()
+        {
+            'name': 'impedancetensor',
+            'out_chans': ['Ex', 'Ey'],
+            'in_chans': ['Hx', 'Hy'],
+            'cross_chans': ['Ex', 'Ey'],
+            'n_out': 2,
+            'n_in': 2,
+            'n_cross': 2
+        }
+
+        That's more like it. This will raise errors if an unknown type of
+        ResisticsTransferFunction is received.
+
+        >>> mytf = {"name": "NewTF", "cross_chans": ["Ex", "Ey"]}
+        >>> test = ResisticsTransferFunction.validate(mytf)
+        Traceback (most recent call last):
+        ...
+        ValueError: Unable to initialise NewTF from dictionary
+
+        Or if the dictionary does not have a name key
+
+        >>> mytf = {"cross_chans": ["Ex", "Ey"]}
+        >>> test = ResisticsTransferFunction.validate(mytf)
+        Traceback (most recent call last):
+        ...
+        KeyError: 'No name provided for initialisation of transfer function'
+
+        Unexpected inputs will also raise an error
+
+        >>> test = ResisticsTransferFunction.validate(5)
+        Traceback (most recent call last):
+        ...
+        ValueError: ResisticsTransferFunction unable to initialise from <class 'int'>
+        """
+        if isinstance(value, ResisticsTransferFunction):
+            return value
+        if not isinstance(value, dict):
+            raise ValueError(
+                f"ResisticsTransferFunction unable to initialise from {type(value)}"
+            )
+        if "name" not in value:
+            raise KeyError("No name provided for initialisation of transfer function")
+        name = value.pop("name")
+        try:
+            return cls._types[name](**value)
+        except Exception:
+            raise ValueError(f"Unable to initialise {name} from dictionary")
+
+    @validator("name", always=True)
+    def validate_name(cls, value: Union[str, None]) -> str:
+        """Inialise the name attribute of the transfer function"""
+        if value is None:
+            return cls.__name__
+        return value
+
+
+class TransferFunction(ResisticsTransferFunction):
+    """
+    Define a generic transfer function
+
+    This class is a describes generic transfer function, including:
+
+    - The output channels for the transfer function
+    - The input channels for the transfer function
+    - The cross channels for the transfer function
+
+    The cross channels are the channels that will be used to calculate out the
+    cross powers for the regression.
+
+    This general parent class has no plotting function. However, child classes
+    may have a plotting function as different transfer functions may need
+    different types of plots.
+
+    See Also
+    --------
+    ImpandanceTensor : Transfer function for the MT impedance tensor
+    Tipper : Transfer function for the MT tipper
 
     Examples
     --------
@@ -102,8 +262,6 @@ class TransferFunction(Metadata):
     | ciao     |   | ciao_hello        ciao_hi_there     |
     """
 
-    name: str
-    """The name of the transfer function"""
     out_chans: List[str]
     """The output channels"""
     in_chans: List[str]
