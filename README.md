@@ -1,6 +1,6 @@
 ## Welcome
 
-Resistics is a native Python 3 package for the processing of magnetotelluric (MT) data. It incorporates standard robust processing methods and adopts a modular approach to processing which allows for customisation and future improvements to be quickly adopted. 
+Resistics is a native Python 3 package for the processing of magnetotelluric (MT) data. It incorporates standard robust processing methods and adopts a modular approach to processing which allows for customisation and future improvements to be quickly adopted.
 
 ## About
 
@@ -18,7 +18,7 @@ Resistics can be installed using pip,
 python -m pip install --user resistics
 ```
 
-or possibly, 
+or possibly,
 
 ```
 python3 -m pip install --user resistics
@@ -30,10 +30,8 @@ The next step after installing is to visit www.resistics.io and read the documen
 
 ## Open-source
 
-Resistics is available for free under the MIT licence. The resistics source code can be found in the [GitHub repository](https://github.com/resistics/resistics). Contributors are welcome. 
+Resistics is available for free under the MIT licence. The resistics source code can be found in the [GitHub repository](https://github.com/resistics/resistics). Contributors are welcome.
 
 ## Support and feature requests
 
 Support and feature requests can be submitted on the in the [GitHub repository](https://github.com/resistics/resistics) page.
-
-
