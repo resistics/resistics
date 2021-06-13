@@ -761,3 +761,45 @@ def process_evals_to_tf(
     )
     solution.write(solution_path / solution_name)
     return solution
+
+
+def get_solution(
+    resenv: ResisticsEnvironment,
+    site_name: str,
+    config_name: str,
+    fs: float,
+    tf_name: str,
+    tf_var: str,
+    postfix: Optional[str] = None,
+) -> Solution:
+    """
+    Get a solution
+
+    Parameters
+    ----------
+    resenv : ResisticsEnvironment
+        The resistics environment
+    site_name : str
+        The site for which to get the solution
+    config_name : str
+        The configuration that was used
+    fs : float
+        The sampling frequency
+    tf_name : str
+        The transfer function name
+    tf_var : str
+        The transfer function variation
+    postfix : Optional[str], optional
+        Any postfix on the solution, by default None
+
+    Returns
+    -------
+    Solution
+        The solution
+    """
+    from resistics.project import get_results_path, get_solution_name
+
+    proj = resenv.proj
+    solution_path = get_results_path(proj.dir_path, site_name, config_name)
+    solution_name = get_solution_name(fs, tf_name, tf_var, postfix)
+    return Solution.parse_file(solution_path / solution_name)
