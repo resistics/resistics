@@ -1,8 +1,10 @@
 """Tests for resistics.common"""
-from typing import List
+from typing import List, Callable
+from pathlib import Path
 import pytest
 import pandas as pd
 
+from resistics.errors import NotFileError, NotDirectoryError
 from resistics.sampling import datetime_to_string, datetime_from_string
 
 Timestamp = pd.Timestamp
@@ -11,11 +13,118 @@ rstime = datetime_from_string("2021-01-01 00:33:24.543443_457873_000000_000000")
 rstime_str = datetime_to_string(rstime)
 
 
-def test_dir_formats() -> None:
-    """Test data directory formats"""
-    from resistics.common import data_dir_names
+def mock_return_true(*args):
+    """A mock function to return True"""
+    return True
 
-    assert data_dir_names() == ["meas", "run", "phnx", "lemi"]
+
+def mock_return_false(*args):
+    """A mock function to return False"""
+    return False
+
+
+def test_get_version():
+    """Test getting the resistics version"""
+    import resistics as rs
+    from resistics.common import get_version
+
+    assert get_version() == rs.__version__
+
+
+@pytest.mark.parametrize(
+    "fnc_exists, fnc_is_file, expected",
+    [
+        (mock_return_true, mock_return_true, True),
+        (mock_return_true, mock_return_false, False),
+        (mock_return_false, mock_return_true, False),
+        (mock_return_false, mock_return_false, False),
+    ],
+)
+def test_is_file(
+    monkeypatch, fnc_exists: Callable, fnc_is_file: Callable, expected: bool
+):
+    """Test checking if a path is a file"""
+    from resistics.common import is_file
+
+    monkeypatch.setattr(Path, "exists", fnc_exists)
+    monkeypatch.setattr(Path, "is_file", fnc_is_file)
+    assert is_file(Path("test")) == expected
+
+
+@pytest.mark.parametrize(
+    "fnc_exists, fnc_is_file, file_not_found, not_file_error",
+    [
+        (mock_return_true, mock_return_true, False, False),
+        (mock_return_true, mock_return_false, False, True),
+        (mock_return_false, mock_return_true, True, False),
+        (mock_return_false, mock_return_false, True, False),
+    ],
+)
+def test_assert_file(
+    monkeypatch, fnc_exists, fnc_is_file, file_not_found, not_file_error
+):
+    """Test assert_file raises errors if Path is not a file"""
+    from resistics.common import assert_file
+
+    monkeypatch.setattr(Path, "exists", fnc_exists)
+    monkeypatch.setattr(Path, "is_file", fnc_is_file)
+    if file_not_found:
+        with pytest.raises(FileNotFoundError):
+            assert_file(Path("test"))
+        return
+    if not_file_error:
+        with pytest.raises(NotFileError):
+            assert_file(Path("test"))
+        return
+    assert assert_file(Path("test")) is None
+
+
+@pytest.mark.parametrize(
+    "fnc_exists, fnc_is_dir, expected",
+    [
+        (mock_return_true, mock_return_true, True),
+        (mock_return_true, mock_return_false, False),
+        (mock_return_false, mock_return_true, False),
+        (mock_return_false, mock_return_false, False),
+    ],
+)
+def test_is_dir(
+    monkeypatch, fnc_exists: Callable, fnc_is_dir: Callable, expected: bool
+):
+    """Test checking if a path is a directory"""
+    from resistics.common import is_dir
+
+    monkeypatch.setattr(Path, "exists", fnc_exists)
+    monkeypatch.setattr(Path, "is_dir", fnc_is_dir)
+    assert is_dir(Path("test")) == expected
+
+
+@pytest.mark.parametrize(
+    "fnc_exists, fnc_is_dir, file_not_found, not_directory_error",
+    [
+        (mock_return_true, mock_return_true, False, False),
+        (mock_return_true, mock_return_false, False, True),
+        (mock_return_false, mock_return_true, True, False),
+        (mock_return_false, mock_return_false, True, False),
+    ],
+)
+def test_assert_dir(
+    monkeypatch, fnc_exists, fnc_is_dir, file_not_found, not_directory_error
+):
+    """Test assert_dir raises errors if Path is not a directory"""
+    from resistics.common import assert_dir
+
+    monkeypatch.setattr(Path, "exists", fnc_exists)
+    monkeypatch.setattr(Path, "is_dir", fnc_is_dir)
+    if file_not_found:
+        with pytest.raises(FileNotFoundError):
+            assert_dir(Path("test"))
+        return
+    if not_directory_error:
+        with pytest.raises(NotDirectoryError):
+            assert_dir(Path("test"))
+        return
+    assert assert_dir(Path("test")) is None
 
 
 def test_electric_chans() -> None:
@@ -107,36 +216,6 @@ def test_array_to_string(
 
     data = np.array(data)
     assert array_to_string(data, sep, precision, scientific) == expected
-
-
-@pytest.mark.parametrize(
-    "lst, expected",
-    [
-        ([1, 2, 4, 6, "mixed"], "1, 2, 4, 6, mixed"),
-        ([1, 2, 4, 6], "1, 2, 4, 6"),
-        (["hello", 2, 3.16, 6], "hello, 2, 3.16, 6"),
-    ],
-)
-def test_list_to_string(lst: List, expected: str) -> None:
-    from resistics.common import list_to_string
-
-    assert list_to_string(lst) == expected
-
-
-@pytest.mark.parametrize(
-    "lst, expected",
-    [
-        (
-            [1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 26, 35, 40, 45],
-            "1-4:1,6-12:2,15-24:3,26,35-45:5",
-        ),
-    ],
-)
-def test_list_to_ranges(lst: List, expected: str) -> None:
-    from resistics.common import list_to_ranges
-
-    testlist = [1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 26, 35, 40, 45]
-    assert list_to_ranges(testlist) == "1-4:1,6-12:2,15-24:3,26,35-45:5"
 
 
 def test_resistics_process():

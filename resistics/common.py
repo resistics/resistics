@@ -2,7 +2,7 @@
 Common resistics functions and classes used throughout the package
 """
 from loguru import logger
-from typing import List, Tuple, Union, Dict, Set
+from typing import List, Tuple, Union, Dict
 from typing import Any, Collection, Optional, Type
 from pathlib import Path
 from pydantic import BaseModel, Field, validator
@@ -466,85 +466,6 @@ def array_to_string(
         formatter={"float_kind": lambda x: f"{x:.{precision}{style}}"},
     )
     return output_str.lstrip("[").rstrip("]")
-
-
-def list_to_string(lst: List[Any]) -> str:
-    """
-    Convert a list to a comma separated string
-
-    Parameters
-    ----------
-    lst : List[Any]
-        Input list to convert to a string
-
-    Returns
-    -------
-    str
-        Output string
-
-    Examples
-    --------
-    >>> from resistics.common import list_to_string
-    >>> list_to_string(["a", "b", "c"])
-    'a, b, c'
-    >>> list_to_string([1,2,3])
-    '1, 2, 3'
-    """
-    output_str = ""
-    for value in lst:
-        output_str += f"{value}, "
-    return output_str.strip().rstrip(",")
-
-
-def list_to_ranges(data: Union[List, Set]) -> str:
-    """
-    Convert a list of numbers to a list of ranges
-
-    Parameters
-    ----------
-    data : Union[List, Set]
-        List or set of integers
-
-    Returns
-    -------
-    str
-        Formatted output string
-
-    Examples
-    --------
-    >>> from resistics.common import list_to_ranges
-    >>> data = [1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 26, 40, 45, 48, 49]
-    >>> list_to_ranges(data)
-    '1-4:1,6-12:2,15-24:3,26,40,45,48,49'
-    """
-    lst = sorted(list(data))
-    n = len(lst)
-
-    def formatter(start, stop, step):
-        return f"{start}-{stop}:{step}"
-
-    result = []
-    scan = 0
-    while n - scan > 2:
-        step = lst[scan + 1] - lst[scan]
-        if lst[scan + 2] - lst[scan + 1] != step:
-            result.append(str(lst[scan]))
-            scan += 1
-            continue
-
-        for jj in range(scan + 2, n - 1):
-            if lst[jj + 1] - lst[jj] != step:
-                result.append(formatter(lst[scan], lst[jj], step))
-                scan = jj + 1
-                break
-        else:
-            result.append(formatter(lst[scan], lst[-1], step))
-            return ",".join(result)
-
-    for jj in range(scan, n):
-        result.append(str(lst[jj]))
-
-    return ",".join(result)
 
 
 class ResisticsModel(BaseModel):
