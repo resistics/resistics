@@ -1,4 +1,5 @@
 Installation
 ============
 
-I'm wrinting something here as a place holder for things to come
+To install the development release of resistics 0.1.0, the exact version needs
+to be specified

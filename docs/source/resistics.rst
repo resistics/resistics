@@ -12,7 +12,6 @@ Submodules
    resistics.config
    resistics.decimate
    resistics.errors
-   resistics.features
    resistics.gather
    resistics.letsgo
    resistics.plot
