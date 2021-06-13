@@ -112,9 +112,7 @@ def test_regression_preparer_1chan():
     cross_metadata = get_combined_metadata("site3", ["data1"], ["Hx"])
     cross_data = SiteCombinedData(cross_metadata, TEST1_CROSS_DATA)
     # generate the gathered data
-    tf = TransferFunction(
-        name="test", out_chans=["Ex"], in_chans=["Hy"], cross_chans=["Hx"]
-    )
+    tf = TransferFunction(out_chans=["Ex"], in_chans=["Hy"], cross_chans=["Hx"])
     gathered_data = GatheredData(
         out_data=out_data, in_data=in_data, cross_data=cross_data
     )
