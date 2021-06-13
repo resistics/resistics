@@ -20,7 +20,7 @@ from resistics.decimate import DecimationSetup
 from resistics.decimate import Decimator
 from resistics.window import WindowSetup, Windower
 from resistics.spectra import FourierTransform, EvaluationFreqs
-from resistics.transfunc import TransferFunction, ImpedanceTensor
+from resistics.transfunc import ResisticsTransferFunction, ImpedanceTensor
 from resistics.regression import RegressionPreparerGathered, SolverScikitTheilSen
 
 
@@ -141,7 +141,7 @@ class Configuration(ResisticsModel):
         readers=[SensorCalibrationJSON()]
     )
     """The sensor calibrator and associated calibration file readers"""
-    tf: TransferFunction = ImpedanceTensor()
+    tf: ResisticsTransferFunction = ImpedanceTensor()
     """The transfer function to solve"""
     regression_preparer: ResisticsProcess = RegressionPreparerGathered()
     """Process to prepare linear equations"""
