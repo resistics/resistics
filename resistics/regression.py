@@ -985,3 +985,119 @@ class SolverScikitRANSAC(SolverScikit):
 
         model.fit(preds, obs)
         return model.estimator_.coef_
+
+
+class SolverScikitWLS(SolverScikitOLS):
+    """
+    Weighted least squares solver
+
+    .. warning::
+
+        This is homespun and is currently only experimental
+
+    This is simply a wrapper around the scikit learn least squares regression
+    using the sample_weight option
+    https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
+    """
+
+    n_jobs: int = -2
+    """Number of jobs to run"""
+    n_iter: int = 50
+
+    def _get_coef(
+        self, model: BaseEstimator, obs: np.ndarray, preds: np.ndarray
+    ) -> np.ndarray:
+        """
+        Get coefficients for a single evaluation frequency and output channel
+
+        Parameters
+        ----------
+        model : BaseEstimator
+            sklearn base estimator
+        obs : np.ndarray
+            The observations
+        preds : np.ndarray
+            The predictors
+
+        Returns
+        -------
+        np.ndarray
+            The coefficients
+        """
+        from sklearn.preprocessing import RobustScaler
+
+        weights = np.ones(shape=(obs.size))
+        scalar = RobustScaler()
+        iteration = 0
+        while iteration < self.n_iter:
+            model.fit(preds, obs, sample_weight=weights)
+            obs_pred = model.predict(preds)
+            resids = np.absolute(obs - obs_pred)
+            resids_scaled = scalar.fit_transform(resids.reshape(-1, 1))
+            weights = self.bisquare(resids_scaled)
+            iteration += 1
+        return model.coef_
+
+    def bisquare(self, r: np.ndarray, k: float = 4.685) -> np.ndarray:
+        """
+        Bisquare location weights
+
+        Parameters
+        ----------
+        r : np.ndarray
+            Residuals
+        k : float, None
+            Tuning parameter. If None, a standard value will be used.
+
+        Returns
+        -------
+        weights : np.ndarray
+            The robust weights
+        """
+        r = r.reshape((r.shape[0]))
+        ones = np.ones(shape=r.shape)
+        thresh = np.minimum(ones, r / k)
+        return np.power((1 - np.power(thresh, 2)), 2)
+
+    def huber(self, r: np.ndarray, k: float = 1.345) -> np.ndarray:
+        """Huber location weights
+
+        Parameters
+        ----------
+        r : np.ndarray
+            Residuals
+        k : float
+            Tuning parameter. If None, a standard value will be used.
+
+        Returns
+        -------
+        weights : np.ndarray
+            The robust weights
+        """
+        r = r.reshape((r.shape[0]))
+        indices = np.where(r > k)
+        weights = np.ones(shape=r.shape)
+        weights[indices] = k / r[indices]
+        return weights
+
+    def trimmed_mean(self, r: np.ndarray, k: float = 2) -> np.ndarray:
+        """
+        Trimmed mean location weights
+
+        Parameters
+        ----------
+        r : np.ndarray
+            Residuals
+        k : float
+            Tuning parameter. If None, a standard value will be used.
+
+        Returns
+        -------
+        weights : np.ndarray
+            The robust weights
+        """
+        r = r.reshape((r.shape[0]))
+        indices = np.where(r <= k)
+        weights = np.zeros(shape=r.shape)
+        weights[indices] = 1
+        return weights.real
