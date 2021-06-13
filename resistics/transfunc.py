@@ -4,6 +4,7 @@ Module defining transfer functions
 from typing import List, Optional, Dict, Any, Union
 from pydantic import validator, constr
 import numpy as np
+import plotly.graph_objects as go
 
 from resistics.common import Metadata
 
@@ -61,169 +62,7 @@ def get_component_key(out_chan: str, in_chan: str) -> str:
     return f"{out_chan}{in_chan}"
 
 
-class ResisticsTransferFunction(Metadata):
-    """
-    This is the resistics parent transfer function. It should not be used
-    directly but implements the logic for automatic re-initialization of the
-    correct transfer function from a JSON file or dictionary.
-
-    .. warning::
-
-        Users inheriting to define a custom transfer function should inherit
-        from TransferFunction instead.
-
-    See Also
-    --------
-    TransferFunction : The class to use for a generic transfer function
-    ImpedanceTensor: The class to use for the impedance tensor
-    Tipper: The class to use for the tipper
-    """
-
-    _types: Dict[str, type] = {}
-    """Store types which will help automatic instantiation"""
-    name: Optional[str] = None
-    """The name of the transfer function, this will be set automatically"""
-
-    def __init_subclass__(cls) -> None:
-        """
-        Used to automatically register child transfer functions in `_types`
-
-        When a ResisticsTransferFunction child class is imported, it is added
-        to the base ResisticsTransferFunction _types variable. Later, this
-        dictionary of class types can be used to initialise a specific
-        child transfer function from a dictonary as long as that specific child
-        transfer fuction has already been imported and it is called from a
-        pydantic class that will validate the inputs.
-
-        The intention of this method is to support initialising transfer
-        functions from JSON files.
-
-        This is a similar approach to ResisticsProcess.
-        """
-        cls._types[cls.__name__] = cls
-
-    @classmethod
-    def __get_validators__(cls):
-        """Get the validators that will be used by pydantic"""
-        yield cls.validate
-
-    @classmethod
-    def validate(
-        cls, value: Union["ResisticsTransferFunction", Dict[str, Any]]
-    ) -> "ResisticsTransferFunction":
-        """
-        Validate a ResisticsTransferFunction in another pydantic class which
-        will use the validate function in instantiation
-
-        Parameters
-        ----------
-        value : Union[ResisticsTransferFunction, Dict[str, Any]]
-            A ResisticsTransferFunction child class or a dictionary
-
-        Returns
-        -------
-        ResisticsTransferFunction
-            A ResisticsTransferFunction child class
-
-        Raises
-        ------
-        ValueError
-            If the value is neither a ResisticsTransferFunction or a dictionary
-        KeyError
-            If name is not in the dictionary
-        ValueError
-            If initialising from dictionary fails
-
-        Examples
-        --------
-        The following example will show how a child ResisticsTransferFunction
-        class can be instantiated using a dictionary and the parent
-        ResisticsTransferFunction (but only as long as that child class has been
-        imported).
-
-        >>> from resistics.transfunc import ResisticsTransferFunction
-
-        Show known ResisticsTransferFunction types in built into resistics
-
-        >>> for entry in ResisticsTransferFunction._types.items():
-        ...     print(entry)
-        ('TransferFunction', <class 'resistics.transfunc.TransferFunction'>)
-        ('ImpedanceTensor', <class 'resistics.transfunc.ImpedanceTensor'>)
-        ('Tipper', <class 'resistics.transfunc.Tipper'>)
-
-        Now let's initialise an ImpedanceTensor from the base
-        ResisticsTransferFunction and a dictionary.
-
-        >>> mytf = {"name": "ImpedanceTensor", "variation": "ecross", "cross_chans": ["Ex", "Ey"]}
-        >>> test = ResisticsTransferFunction(**mytf)
-        >>> test.summary()
-        {'name': 'ImpedanceTensor'}
-
-        This is not quite what we were expecting. The reason is because the
-        validate method of the class was not used. This method is used by
-        pydantic.
-
-        >>> mytf = {"name": "ImpedanceTensor", "variation": "ecross", "cross_chans": ["Ex", "Ey"]}
-        >>> test = ResisticsTransferFunction.validate(mytf)
-        >>> test.summary()
-        {
-            'name': 'ImpedanceTensor',
-            'variation': 'ecross',
-            'out_chans': ['Ex', 'Ey'],
-            'in_chans': ['Hx', 'Hy'],
-            'cross_chans': ['Ex', 'Ey'],
-            'n_out': 2,
-            'n_in': 2,
-            'n_cross': 2
-        }
-
-        That's more like it. This will raise errors if an unknown type of
-        ResisticsTransferFunction is received.
-
-        >>> mytf = {"name": "NewTF", "cross_chans": ["Ex", "Ey"]}
-        >>> test = ResisticsTransferFunction.validate(mytf)
-        Traceback (most recent call last):
-        ...
-        ValueError: Unable to initialise NewTF from dictionary
-
-        Or if the dictionary does not have a name key
-
-        >>> mytf = {"cross_chans": ["Ex", "Ey"]}
-        >>> test = ResisticsTransferFunction.validate(mytf)
-        Traceback (most recent call last):
-        ...
-        KeyError: 'No name provided for initialisation of transfer function'
-
-        Unexpected inputs will also raise an error
-
-        >>> test = ResisticsTransferFunction.validate(5)
-        Traceback (most recent call last):
-        ...
-        ValueError: ResisticsTransferFunction unable to initialise from <class 'int'>
-        """
-        if isinstance(value, ResisticsTransferFunction):
-            return value
-        if not isinstance(value, dict):
-            raise ValueError(
-                f"ResisticsTransferFunction unable to initialise from {type(value)}"
-            )
-        if "name" not in value:
-            raise KeyError("No name provided for initialisation of transfer function")
-        name = value.pop("name")
-        try:
-            return cls._types[name](**value)
-        except Exception:
-            raise ValueError(f"Unable to initialise {name} from dictionary")
-
-    @validator("name", always=True)
-    def validate_name(cls, value: Union[str, None]) -> str:
-        """Inialise the name attribute of the transfer function"""
-        if value is None:
-            return cls.__name__
-        return value
-
-
-class TransferFunction(ResisticsTransferFunction):
+class TransferFunction(Metadata):
     """
     Define a generic transfer function
 
@@ -236,9 +75,9 @@ class TransferFunction(ResisticsTransferFunction):
     The cross channels are the channels that will be used to calculate out the
     cross powers for the regression.
 
-    This general parent class has no plotting function. However, child classes
-    may have a plotting function as different transfer functions may need
-    different types of plots.
+    This generic parent class has no implemented plotting function. However,
+    child classes may have a plotting function as different transfer functions
+    may need different types of plots.
 
     .. note::
 
@@ -252,38 +91,27 @@ class TransferFunction(ResisticsTransferFunction):
 
     Examples
     --------
-    A standard magnetotelluric transfer function
+    A generic example
 
-    >>> from resistics.transfunc import TransferFunction
-    >>> tf = TransferFunction(name="impedancetensor", out_chans=["Ex", "Ey"], in_chans=["Hx", "Hy"])
-    >>> print(tf.to_string())
-    | Ex | = | Ex_Hx Ex_Hy | | Hx |
-    | Ey |   | Ey_Hx Ey_Hy | | Hy |
-
-    The magnetotelluric tipper
-
-    >>> tf = TransferFunction(name="tipper", out_chans=["Hz"], in_chans=["Hx", "Hy"])
-    >>> print(tf.to_string())
-    | Hz | = | Hz_Hx Hz_Hy | | Hx |
-                             | Hy |
-
-    Combining the impedance tensor and the tipper
-
-    >>> tf = TransferFunction(name="combined", out_chans=["Ex", "Ey"], in_chans=["Hx", "Hy", "Hz"])
-    >>> print(tf.to_string())
-    | Ex |   | Ex_Hx Ex_Hy Ex_Hz | | Hx |
-    | Ey | = | Ey_Hx Ey_Hy Ey_Hz | | Hy |
-                                   | Hz |
-
-    And a generic example
-
-    >>> tf = TransferFunction(name="example", out_chans=["bye", "see you", "ciao"], in_chans=["hello", "hi_there"])
+    >>> tf = TransferFunction(variation="example", out_chans=["bye", "see you", "ciao"], in_chans=["hello", "hi_there"])
     >>> print(tf.to_string())
     | bye      |   | bye_hello         bye_hi_there      | | hello    |
     | see you  | = | see you_hello     see you_hi_there  | | hi_there |
     | ciao     |   | ciao_hello        ciao_hi_there     |
+
+    Combining the impedance tensor and the tipper into one TransferFunction
+
+    >>> tf = TransferFunction(variation="combined", out_chans=["Ex", "Ey"], in_chans=["Hx", "Hy", "Hz"])
+    >>> print(tf.to_string())
+    | Ex |   | Ex_Hx Ex_Hy Ex_Hz | | Hx |
+    | Ey | = | Ey_Hx Ey_Hy Ey_Hz | | Hy |
+                                   | Hz |
     """
 
+    _types: Dict[str, type] = {}
+    """Store types which will help automatic instantiation"""
+    name: Optional[str] = None
+    """The name of the transfer function, this will be set automatically"""
     variation: constr(max_length=16) = "generic"
     """A short additional bit of information about this variation"""
     out_chans: List[str]
@@ -298,6 +126,147 @@ class TransferFunction(ResisticsTransferFunction):
     """The number of input channels"""
     n_cross: Optional[int] = None
     """The number of cross power channels"""
+
+    def __init_subclass__(cls) -> None:
+        """
+        Used to automatically register child transfer functions in `_types`
+
+        When a TransferFunction child class is imported, it is added to the base
+        TransferFunction _types variable. Later, this dictionary of class types
+        can be used to initialise a specific child transfer function from a
+        dictonary as long as that specific child transfer fuction has already
+        been imported and it is called from a pydantic class that will validate
+        the inputs.
+
+        The intention of this method is to support initialising transfer
+        functions from JSON files. This is a similar approach to
+        ResisticsProcess.
+        """
+        cls._types[cls.__name__] = cls
+
+    @classmethod
+    def __get_validators__(cls):
+        """Get the validators that will be used by pydantic"""
+        yield cls.validate
+
+    @classmethod
+    def validate(
+        cls, value: Union["TransferFunction", Dict[str, Any]]
+    ) -> "TransferFunction":
+        """
+        Validate a TransferFunction
+
+        Parameters
+        ----------
+        value : Union[TransferFunction, Dict[str, Any]]
+            A TransferFunction child class or a dictionary
+
+        Returns
+        -------
+        TransferFunction
+            A TransferFunction or TransferFunction child class
+
+        Raises
+        ------
+        ValueError
+            If the value is neither a TransferFunction or a dictionary
+        KeyError
+            If name is not in the dictionary
+        ValueError
+            If initialising from dictionary fails
+
+        Examples
+        --------
+        The following example will show how a child TransferFunction class
+        can be instantiated using a dictionary and the parent TransferFunction
+        (but only as long as that child class has been imported).
+
+        >>> from resistics.transfunc import TransferFunction
+
+        Show known TransferFunction types in built into resistics
+
+        >>> for entry in TransferFunction._types.items():
+        ...     print(entry)
+        ('ImpedanceTensor', <class 'resistics.transfunc.ImpedanceTensor'>)
+        ('Tipper', <class 'resistics.transfunc.Tipper'>)
+
+        Now let's initialise an ImpedanceTensor from the base TransferFunction
+        and a dictionary.
+
+        >>> mytf = {"name": "ImpedanceTensor", "variation": "ecross", "cross_chans": ["Ex", "Ey"]}
+        >>> test = TransferFunction(**mytf)
+        Traceback (most recent call last):
+        ...
+        KeyError: 'out_chans'
+
+        This is not quite what we were expecting. The generic TransferFunction
+        requires out_chans to be defined, but they are not in the dictionary as
+        the ImpedanceTensor child class defaults these. To get this to work,
+        instead use the validate class method. This is the class method used by
+        pydantic when instantiating.
+
+        >>> mytf = {"name": "ImpedanceTensor", "variation": "ecross", "cross_chans": ["Ex", "Ey"]}
+        >>> test = TransferFunction.validate(mytf)
+        >>> test.summary()
+        {
+            'name': 'ImpedanceTensor',
+            'variation': 'ecross',
+            'out_chans': ['Ex', 'Ey'],
+            'in_chans': ['Hx', 'Hy'],
+            'cross_chans': ['Ex', 'Ey'],
+            'n_out': 2,
+            'n_in': 2,
+            'n_cross': 2
+        }
+
+        That's more like it. This will raise errors if an unknown type of
+        TransferFunction is received.
+
+        >>> mytf = {"name": "NewTF", "cross_chans": ["Ex", "Ey"]}
+        >>> test = TransferFunction.validate(mytf)
+        Traceback (most recent call last):
+        ...
+        ValueError: Unable to initialise NewTF from dictionary
+
+        Or if the dictionary does not have a name key
+
+        >>> mytf = {"cross_chans": ["Ex", "Ey"]}
+        >>> test = TransferFunction.validate(mytf)
+        Traceback (most recent call last):
+        ...
+        KeyError: 'No name provided for initialisation of TransferFunction'
+
+        Unexpected inputs will also raise an error
+
+        >>> test = TransferFunction.validate(5)
+        Traceback (most recent call last):
+        ...
+        ValueError: TransferFunction unable to initialise from <class 'int'>
+        """
+        if isinstance(value, TransferFunction):
+            return value
+        if not isinstance(value, dict):
+            raise ValueError(
+                f"TransferFunction unable to initialise from {type(value)}"
+            )
+        if "name" not in value:
+            raise KeyError("No name provided for initialisation of TransferFunction")
+        # check if it is a TransferFunction
+        name = value.pop("name")
+        if name == "TransferFunction":
+            return cls(**value)
+        # check other known Transfer Functions
+        try:
+            return cls._types[name](**value)
+        except Exception:
+            raise ValueError(f"Unable to initialise {name} from dictionary")
+
+    @validator("name", always=True)
+    def validate_name(cls, value: Union[str, None]) -> str:
+        """Inialise the name attribute of the transfer function"""
+        if value is None:
+            return cls.__name__
+        return value
 
     @validator("cross_chans", always=True)
     def validate_cross_chans(
@@ -336,6 +305,9 @@ class TransferFunction(ResisticsTransferFunction):
     def n_regressors(self) -> int:
         """Get the number of regressors"""
         return self.n_in
+
+    def plot(self) -> go.Figure:
+        raise NotImplementedError("Plot is not implemented in generic TransferFunction")
 
     def to_string(self):
         """Get the transfer function as as string"""
@@ -395,6 +367,9 @@ class ImpedanceTensor(TransferFunction):
     out_chans: List[str] = ["Ex", "Ey"]
     in_chans: List[str] = ["Hx", "Hy"]
 
+    def plot(self, freqs: List[float], components: Dict[str, Component]) -> go.Figure:
+        raise NotImplementedError("Coming...")
+
 
 class Tipper(TransferFunction):
     """
@@ -412,3 +387,6 @@ class Tipper(TransferFunction):
     variation: constr(max_length=16) = "default"
     out_chans: List[str] = ["Hz"]
     in_chans: List[str] = ["Hx", "Hy"]
+
+    def plot(self, freqs: List[float], components: Dict[str, Component]) -> go.Figure:
+        raise NotImplementedError("Coming...")
