@@ -2,7 +2,7 @@
 Module defining transfer functions
 """
 from typing import List, Optional, Dict, Any, Union
-from pydantic import validator
+from pydantic import validator, constr
 import numpy as np
 
 from resistics.common import Metadata
@@ -154,7 +154,7 @@ class ResisticsTransferFunction(Metadata):
         Now let's initialise an ImpedanceTensor from the base
         ResisticsTransferFunction and a dictionary.
 
-        >>> mytf = {"name": "ImpedanceTensor", "cross_chans": ["Ex", "Ey"]}
+        >>> mytf = {"name": "ImpedanceTensor", "variation": "ecross", "cross_chans": ["Ex", "Ey"]}
         >>> test = ResisticsTransferFunction(**mytf)
         >>> test.summary()
         {'name': 'ImpedanceTensor'}
@@ -163,11 +163,12 @@ class ResisticsTransferFunction(Metadata):
         validate method of the class was not used. This method is used by
         pydantic.
 
-        >>> mytf = {"name": "ImpedanceTensor", "cross_chans": ["Ex", "Ey"]}
+        >>> mytf = {"name": "ImpedanceTensor", "variation": "ecross", "cross_chans": ["Ex", "Ey"]}
         >>> test = ResisticsTransferFunction.validate(mytf)
         >>> test.summary()
         {
-            'name': 'impedancetensor',
+            'name': 'ImpedanceTensor',
+            'variation': 'ecross',
             'out_chans': ['Ex', 'Ey'],
             'in_chans': ['Hx', 'Hy'],
             'cross_chans': ['Ex', 'Ey'],
@@ -283,6 +284,8 @@ class TransferFunction(ResisticsTransferFunction):
     | ciao     |   | ciao_hello        ciao_hi_there     |
     """
 
+    variation: constr(max_length=16) = "generic"
+    """A short additional bit of information about this variation"""
     out_chans: List[str]
     """The output channels"""
     in_chans: List[str]
@@ -388,6 +391,7 @@ class ImpedanceTensor(TransferFunction):
     | Ey |   | Ey_Hx Ey_Hy | | Hy |
     """
 
+    variation: constr(max_length=16) = "default"
     out_chans: List[str] = ["Ex", "Ey"]
     in_chans: List[str] = ["Hx", "Hy"]
 
@@ -405,5 +409,6 @@ class Tipper(TransferFunction):
                              | Hy |
     """
 
+    variation: constr(max_length=16) = "default"
     out_chans: List[str] = ["Hz"]
     in_chans: List[str] = ["Hx", "Hy"]
