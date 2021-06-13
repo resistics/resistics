@@ -62,6 +62,22 @@ def get_component_key(out_chan: str, in_chan: str) -> str:
 
 
 class ResisticsTransferFunction(Metadata):
+    """
+    This is the resistics parent transfer function. It should not be used
+    directly but implements the logic for automatic re-initialization of the
+    correct transfer function from a JSON file or dictionary.
+
+    .. warning::
+
+        Users inheriting to define a custom transfer function should inherit
+        from TransferFunction instead.
+
+    See Also
+    --------
+    TransferFunction : The class to use for a generic transfer function
+    ImpedanceTensor: The class to use for the impedance tensor
+    Tipper: The class to use for the tipper
+    """
 
     _types: Dict[str, type] = {}
     """Store types which will help automatic instantiation"""
@@ -222,6 +238,11 @@ class TransferFunction(ResisticsTransferFunction):
     This general parent class has no plotting function. However, child classes
     may have a plotting function as different transfer functions may need
     different types of plots.
+
+    .. note::
+
+        Users interested in writing a custom transfer function should inherit
+        from this generic Transfer function
 
     See Also
     --------
