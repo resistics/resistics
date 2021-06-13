@@ -42,7 +42,7 @@ from resistics.project import Project, Site
 from resistics.decimate import DecimationParameters
 from resistics.spectra import SpectraLevelMetadata, SpectraMetadata, SpectraData
 from resistics.spectra import SpectraDataReader
-from resistics.transfunc import ResisticsTransferFunction
+from resistics.transfunc import TransferFunction
 
 
 def get_site_evals_metadata(
@@ -528,7 +528,7 @@ class ProjectGather(ResisticsProcess):
         config_name: str,
         proj: Project,
         selection: Selection,
-        tf: ResisticsTransferFunction,
+        tf: TransferFunction,
         out_name: str,
         in_name: Optional[str] = None,
         cross_name: Optional[str] = None,
@@ -544,7 +544,7 @@ class ProjectGather(ResisticsProcess):
             The project instance
         selection : Selection
             The selection
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             The transfer function
         out_name : str
             The name of the output site
@@ -806,7 +806,7 @@ class QuickGather(ResisticsProcess):
         self,
         dir_path: Path,
         dec_params: DecimationParameters,
-        tf: ResisticsTransferFunction,
+        tf: TransferFunction,
         eval_data: SpectraData,
     ) -> GatheredData:
         """
@@ -821,7 +821,7 @@ class QuickGather(ResisticsProcess):
             The directory path to the measurement
         dec_params : DecimationParameters
             The decimation parameters
-        tf : ResisticsTransferFunction
+        tf : TransferFunction
             The transfer function
         eval_data : SpectraData
             The spectra data at the evaluation frequencies
