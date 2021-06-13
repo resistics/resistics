@@ -756,6 +756,8 @@ def process_evals_to_tf(
     solution_path = get_results_path(proj.dir_path, out_site, config.name)
     if not solution_path.exists():
         solution_path.mkdir(parents=True)
-    solution_name = get_solution_name(fs, solution.tf.name, postfix)
+    solution_name = get_solution_name(
+        fs, solution.tf.name, solution.tf.variation, postfix
+    )
     solution.write(solution_path / solution_name)
     return solution
