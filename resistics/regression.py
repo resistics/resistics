@@ -630,7 +630,7 @@ class Solution(WriteableMetadata):
     >>> solution.components["ExHy"]
     Component(real=[1.0, 2.0, 3.0, 4.0, 5.0], imag=[-5.0, -4.0, -3.0, -2.0, -1.0])
 
-    To get the components as an array, the either get_component or subscripting
+    To get the components as an array, either get_component or subscripting
     be used
 
     >>> solution["ExHy"]
