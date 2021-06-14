@@ -644,7 +644,6 @@ def get_win_table(
         >>> plt.tight_layout() # doctest: +SKIP
         >>> plt.show() # doctest: +SKIP
     """
-    import numpy as np
     from resistics.sampling import to_n_samples, datetime_array_estimate
 
     increment_size = win_size - olap_size
