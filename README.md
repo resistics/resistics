@@ -1,37 +1,47 @@
 ## Welcome
 
-Resistics is a native Python 3 package for the processing of magnetotelluric (MT) data. It incorporates standard robust processing methods and adopts a modular approach to processing which allows for customisation and future improvements to be quickly adopted.
+[![PyPI Latest Release](https://img.shields.io/pypi/v/resistics.svg)](https://pypi.org/project/resistics/)
+[![Documentation Status](https://readthedocs.org/projects/resistics/badge/?version=latest)](https://resistics.readthedocs.io/en/latest/?badge=latest)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/resistics/resistics.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/resistics/resistics/context:python)
+[![codecov](https://codecov.io/gh/resistics/resistics/branch/master/graph/badge.svg?token=CXLJC9J7AW)](https://codecov.io/gh/resistics/resistics)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-## About
+Resistics is a native Python 3.8+ package for the processing of magnetotelluric
+(MT) data. It incorporates robust processing methods and adopts a modular
+approach to processing which allows for customisation and future improvements
+to be quickly adopted.
 
-Resistics began as a set of python classes to help analyse noisy MT timeseries data acquired in northern Switzerland through increased use of statistics and time window based features. Since then, it has grown into a MT data processing package. The name is an amalgamation of resistivty and statistics...resistics!
+## Latest news
+
+Resistics is moving to version 1.0.0 which will be a breaking change versus
+the current stable version of 0.0.6. Currently, version 1.0.0 is available as a
+pre-release on PYPI.
+
+- Documentation for 1.0.0: www.resistics.readthedocs.io
+- Documentation for 0.0.6: www.resistics.io
+
+When version 1.0.0 reaches a stable releases the documentation will move to the
+main resistics.io site.
 
 ## Audience
 
-Resistics is intended for people who use magnetotelluric methods to estimate the subsurface resistivity. This may be for the purposes of furthering geological understanding, for geothermal prospecting or for other purposes.
+Resistics is intended for people who use magnetotelluric methods to estimate the
+subsurface resistivity. This may be for furthering geological understanding, for
+geothermal prospecting or for other purposes.
+
+The package may have utility for the wider electromagnetic geophysics community.
 
 ## Getting started
 
-Resistics can be installed using pip,
+To install the pre-release of version 1.0.0
 
-```
-python -m pip install --user resistics
-```
+python -m pip install resistics==1.0.0a0
 
-or possibly,
+For the stable 0.0.6 version
 
-```
-python3 -m pip install --user resistics
-```
-
-depending on how your Python 3 install is named.
-
-The next step after installing is to visit www.resistics.io and read the documentation. For those unfamiliar with resistics, the features, conventions and tutorial sections are a good way to become more comfortable using the package.
-
-## Open-source
-
-Resistics is available for free under the MIT licence. The resistics source code can be found in the [GitHub repository](https://github.com/resistics/resistics). Contributors are welcome.
+python -m pip install resistics
 
 ## Support and feature requests
 
-Support and feature requests can be submitted on the in the [GitHub repository](https://github.com/resistics/resistics) page.
+Feel free to submit issues, feature requests or ideas for improvements in the
+Github issues section.
