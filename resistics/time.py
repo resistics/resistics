@@ -983,8 +983,6 @@ class TimeReaderNumpy(TimeReaderJSON):
         ValueError
             If metadata is None
         """
-        import numpy as np
-
         messages = [f"Reading raw data from {dir_path}"]
         messages.append(f"Sampling frequency {metadata.fs} Hz")
         data_path = dir_path / "data.npy"
