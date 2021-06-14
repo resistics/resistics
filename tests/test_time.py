@@ -6,8 +6,9 @@ import pytest
 import numpy as np
 
 from resistics.errors import ChannelNotFoundError, ProcessRunError
-from resistics.time import TimeData
-from resistics.testing import time_data_simple, time_data_random
+from resistics.sampling import DateTimeLike
+from resistics.time import TimeMetadata, TimeData, TimeReader
+from resistics.testing import time_metadata_1chan, time_data_simple, time_data_random
 
 
 @pytest.mark.parametrize(
@@ -43,6 +44,131 @@ def test_time_data(fs: float, n_samples: int, first_time: str, time_data: TimeDa
     with pytest.raises(ChannelNotFoundError):
         time_data["unknown"]
         return
+
+
+@pytest.mark.parametrize(
+    "metadata, from_time, to_time, exception, expected_from, expected_to",
+    [
+        (
+            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
+            None,
+            None,
+            None,
+            0,
+            99,
+        ),
+        (
+            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
+            "2020-01-01 00:00:01",
+            None,
+            None,
+            10,
+            99,
+        ),
+        (
+            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
+            None,
+            "2020-01-01 00:00:05",
+            None,
+            0,
+            50,
+        ),
+        (
+            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
+            "2019-12-31 23:59:55",
+            "2020-01-01 00:00:05",
+            None,
+            0,
+            50,
+        ),
+        (
+            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
+            "2020-01-01 00:00:01",
+            "2020-01-01 00:00:11",
+            None,
+            10,
+            99,
+        ),
+        (
+            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
+            "2020-01-01 00:00:01.34",
+            "2020-01-01 00:00:06.56",
+            None,
+            14,
+            65,
+        ),
+        (
+            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
+            "2020-01-01 00:00:11",
+            "2020-01-01 00:00:21",
+            ValueError,
+            0,
+            0,
+        ),
+        (
+            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
+            "2020-01-01 00:00:03",
+            "2020-01-01 00:00:02",
+            ValueError,
+            0,
+            0,
+        ),
+    ],
+)
+def test_time_data_get_read_samples_from_date_range(
+    metadata: TimeMetadata,
+    from_time: DateTimeLike,
+    to_time: DateTimeLike,
+    exception: Union[None, Exception],
+    expected_from: int,
+    expected_to: int,
+):
+    """Test getting the read from and read to samples from input datetime range"""
+    reader = TimeReader()
+    if exception is not None:
+        with pytest.raises(exception):
+            from_sample, to_sample = reader._get_read_samples(
+                metadata, from_time=from_time, to_time=to_time
+            )
+        return
+    from_sample, to_sample = reader._get_read_samples(
+        metadata, from_time=from_time, to_time=to_time
+    )
+    assert from_sample == expected_from
+    assert to_sample == expected_to
+
+
+@pytest.mark.parametrize(
+    "metadata, from_sample, to_sample, exception, expected_from, expected_to",
+    [
+        (time_metadata_1chan(10, n_samples=100), None, None, None, 0, 99),
+        (time_metadata_1chan(10, n_samples=100), 11, 22, None, 11, 22),
+        (time_metadata_1chan(10, n_samples=100), -5, 1000, ValueError, 0, 100),
+        (time_metadata_1chan(10, n_samples=100), 22, 22, ValueError, 0, 0),
+        (time_metadata_1chan(10, n_samples=100), 22, 11, ValueError, 0, 0),
+    ],
+)
+def test_time_data_get_read_samples_from_sample_range(
+    metadata: TimeMetadata,
+    from_sample: int,
+    to_sample: int,
+    exception: Union[None, Exception],
+    expected_from: int,
+    expected_to: int,
+):
+    """Test getting the read from and read to samples from input sample range"""
+    reader = TimeReader()
+    if exception is not None:
+        with pytest.raises(exception):
+            from_sample, to_sample = reader._get_read_samples(
+                metadata, from_sample=from_sample, to_sample=to_sample
+            )
+        return
+    from_sample, to_sample = reader._get_read_samples(
+        metadata, from_sample=from_sample, to_sample=to_sample
+    )
+    assert from_sample == expected_from
+    assert to_sample == expected_to
 
 
 @pytest.mark.parametrize(

@@ -778,7 +778,6 @@ class TimeReader(ResisticsProcess):
 
         n_samples = metadata.n_samples
 
-        read_to = n_samples - 1
         if from_time is not None:
             read_from = from_time_to_sample(
                 metadata.fs,
