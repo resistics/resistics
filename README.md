@@ -17,8 +17,8 @@ Resistics is moving to version 1.0.0 which will be a breaking change versus
 the current stable version of 0.0.6. Currently, version 1.0.0 is available as a
 pre-release on PYPI.
 
-- Documentation for 1.0.0: www.resistics.readthedocs.io
-- Documentation for 0.0.6: www.resistics.io
+- Documentation for 1.0.0: https://resistics.readthedocs.io/
+- Documentation for 0.0.6: https://resistics.io/
 
 When version 1.0.0 reaches a stable releases the documentation will move to the
 main resistics.io site.
