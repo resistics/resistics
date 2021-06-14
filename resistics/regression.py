@@ -186,7 +186,7 @@ class RegressionPreparerSpectra(ResisticsProcess):
         record = self._get_record("Produced regression input data for spectra data")
         metadata = RegressionInputMetadata(contributors={"data": spec_data.metadata})
         metadata.history.add_record(record)
-        return RegressionInputData(tf, freqs, obs, preds)
+        return RegressionInputData(metadata, tf, freqs, obs, preds)
 
     def _get_cross_powers(
         self, tf: TransferFunction, spec_data: SpectraData, level: int
