@@ -849,7 +849,7 @@ class SpectraDataWriter(ResisticsWriter):
         from resistics.errors import WriteError
 
         if not self._check_dir(dir_path):
-            WriteError(dir_path, "Unable to write to directory, check logs")
+            raise WriteError(dir_path, "Unable to write to directory, check logs")
         logger.info(f"Writing spectra data to {dir_path}")
         metadata_path = dir_path / "metadata.json"
         data_path = dir_path / "data"
