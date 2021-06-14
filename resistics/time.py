@@ -185,18 +185,62 @@ def get_time_metadata(
     Examples
     --------
     >>> from resistics.time import get_time_metadata
-    >>> time_dict = {"fs": 10, "n_samples": 100, "n_chans": 2, "first_time": "2021-01-01 00:00:00", "last_time": "2021-01-01 00:01:00"}
+    >>> time_dict = {"fs": 10, "n_samples": 100, "chans": ["Ex", "Hy"], "n_chans": 2, "first_time": "2021-01-01 00:00:00", "last_time": "2021-01-01 00:01:00"}
     >>> chans_dict = {"Ex": {"data_files": "example.ascii"}, "Hy": {"data_files": "example2.ascii", "sensor": "MFS"}}
     >>> metadata = get_time_metadata(time_dict, chans_dict)
-    >>> metadata.fs
-    10.0
+    >>> metadata.summary()
+    {
+        'file_info': None,
+        'fs': 10.0,
+        'chans': ['Ex', 'Hy'],
+        'n_chans': 2,
+        'n_samples': 100,
+        'first_time': '2021-01-01 00:00:00.000000_000000_000000_000000',
+        'last_time': '2021-01-01 00:01:00.000000_000000_000000_000000',
+        'system': '',
+        'serial': '',
+        'wgs84_latitude': -999.0,
+        'wgs84_longitude': -999.0,
+        'easting': -999.0,
+        'northing': -999.0,
+        'elevation': -999.0,
+        'chans_metadata': {
+            'Ex': {
+                'data_files': ['example.ascii'],
+                'sensor': '',
+                'serial': '',
+                'gain1': 1,
+                'gain2': 1,
+                'scaling': 1,
+                'hchopper': False,
+                'echopper': False,
+                'dx': 1,
+                'dy': 1,
+                'dz': 1,
+                'sensor_calibration_file': '',
+                'instrument_calibration_file': ''
+            },
+            'Hy': {
+                'data_files': ['example2.ascii'],
+                'sensor': 'MFS',
+                'serial': '',
+                'gain1': 1,
+                'gain2': 1,
+                'scaling': 1,
+                'hchopper': False,
+                'echopper': False,
+                'dx': 1,
+                'dy': 1,
+                'dz': 1,
+                'sensor_calibration_file': '',
+                'instrument_calibration_file': ''
+            }
+        },
+        'history': {'records': []}
+    }
     """
-    if "chans" in time_dict:
-        chans = time_dict["chans"]
-    else:
-        chans = sorted(list(chans_dict.keys()))
-        time_dict["chans"] = chans
-    chans_metadata = {chan: ChanMetadata(**meta) for chan, meta in chans_dict.items()}
+    chans = time_dict["chans"]
+    chans_metadata = {chan: ChanMetadata(**chans_dict[chan]) for chan in chans}
     time_dict["chans_metadata"] = chans_metadata
     return TimeMetadata(**time_dict)
 
