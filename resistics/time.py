@@ -170,6 +170,10 @@ def get_time_metadata(
     """
     Get metadata for TimeData
 
+    The time and channel dictionaries must have the TimeMetadata required
+    fields. For more information about the required fields, see
+    :class:`~TimeMetadata`
+
     Parameters
     ----------
     time_dict : Dict[str, Any]
@@ -181,6 +185,10 @@ def get_time_metadata(
     -------
     TimeMetadata
         Metadata for TimeData
+
+    See Also
+    --------
+    TimeMetadata : The TimeMetadata class which is returned
 
     Examples
     --------
