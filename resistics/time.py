@@ -44,11 +44,11 @@ class ChanMetadata(Metadata):
     echopper: bool = False
     """Boolean flag for electric chopper on"""
     dx: float = 1
-    """Dipole spacing x direction"""
+    """Dipole spacing x direction in metres"""
     dy: float = 1
-    """Dipole spacing y direction"""
+    """Dipole spacing y direction in metres"""
     dz: float = 1
-    """Dipole spacing z direction"""
+    """Dipole spacing z direction in metres"""
     sensor_calibration_file: str = ""
     """Explicit name of sensor calibration file"""
     instrument_calibration_file: str = ""
