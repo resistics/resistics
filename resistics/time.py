@@ -33,9 +33,9 @@ class ChanMetadata(Metadata):
     """The name of the sensor"""
     serial: str = ""
     """The serial number of the sensor"""
-    gain1: int = 1
+    gain1: float = 1
     """Primary channel gain"""
-    gain2: int = 1
+    gain2: float = 1
     """Secondary channel gain"""
     scaling: float = 1
     """Scaling to apply to the data. May include the gains and other scaling"""
