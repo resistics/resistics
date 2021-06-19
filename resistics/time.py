@@ -1452,7 +1452,7 @@ class Multiply(TimeProcess):
 
     Parameters
     ----------
-    multiply : Union[Dict[str, float], float]
+    multiplier : Union[Dict[str, float], float]
         Either a float to multiply all channels with the same value or a
         dictionary to specify different values for each channel
 
