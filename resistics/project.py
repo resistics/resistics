@@ -295,7 +295,7 @@ class Project(ResisticsModel):
             return self.sites
         return {name: site for name, site in self.sites.items() if fs in site.fs()}
 
-    def get_concurrent(self, site_name: str) -> List[str]:
+    def get_concurrent(self, site_name: str) -> List[Site]:
         """
         Find sites that recorded conscurrently to a specified site
 
@@ -306,8 +306,8 @@ class Project(ResisticsModel):
 
         Returns
         -------
-        List[str]
-            List of site names which were recording concurrently
+        List[Site]
+            List of Site instances which were recording concurrently
         """
         site_start = self.sites[site_name].begin_time
         site_end = self.sites[site_name].end_time
