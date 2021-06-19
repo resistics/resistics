@@ -89,7 +89,7 @@ class PlotData1D(ResisticsData):
         """Get x values"""
         if samples is None:
             return self.x
-        self.x[samples]
+        return self.x[samples]
 
 
 def figure_columns_as_lines(
