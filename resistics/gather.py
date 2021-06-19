@@ -23,12 +23,12 @@ multi site processing, the workflow follows:
     but is actually spectra data at a reduced set of frequencies corresponding
     to the evaluation frequncies.
 
-    Within a project instance, they have separate folders for users who want to
-    save both the full spectra data with all the frequencies as well as the
-    evaluation frequency spectra data with the smaller subset of frequencies.
-    Only the evaluation frequency data is required to calculate the transfer
-    function, but the full spectral data might be useful for visualisation and
-    analysis reasons.
+    Within a project, there are separate folders for users who want to save both
+    the full spectra data with all the frequencies as well as the evaluation
+    frequency spectra data with the smaller subset of frequencies. Only the
+    evaluation frequency data is required to calculate the transfer function,
+    but the full spectral data might be useful for visualisation and analysis
+    reasons.
 """
 from loguru import logger
 from typing import List, Dict, Optional, Tuple
