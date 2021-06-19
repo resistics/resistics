@@ -12,16 +12,17 @@ Configurations can be saved to and loaded from JSON files.
 """
 from typing import List
 
-from resistics.common import ResisticsModel, ResisticsProcess
+from resistics.common import ResisticsModel
 from resistics.time import TimeReader, TimeReaderNumpy, TimeReaderAscii
-from resistics.time import InterpolateNans, RemoveMean
-from resistics.calibrate import SensorCalibrationJSON, SensorCalibrator
+from resistics.time import TimeProcess, InterpolateNans, RemoveMean
+from resistics.calibrate import Calibrator, SensorCalibrationJSON, SensorCalibrator
 from resistics.decimate import DecimationSetup
 from resistics.decimate import Decimator
 from resistics.window import WindowSetup, Windower
-from resistics.spectra import FourierTransform, EvaluationFreqs
+from resistics.spectra import FourierTransform, EvaluationFreqs, SpectraProcess
 from resistics.transfunc import TransferFunction, ImpedanceTensor
-from resistics.regression import RegressionPreparerGathered, SolverScikitTheilSen
+from resistics.regression import RegressionPreparerGathered
+from resistics.regression import Solver, SolverScikitTheilSen
 
 
 class Configuration(ResisticsModel):
@@ -33,6 +34,8 @@ class Configuration(ResisticsModel):
 
     - Implementing new time data readers
     - Implementing readers for specific calibration formats
+    - Implementing time data processors
+    - Implementing spectra data processors
     - Adding new features to extract from the data
 
     Examples
@@ -121,31 +124,29 @@ class Configuration(ResisticsModel):
     """The name of the configuration"""
     time_readers: List[TimeReader] = [TimeReaderAscii(), TimeReaderNumpy()]
     """Time readers in the configuration"""
-    time_processors: List[ResisticsProcess] = [InterpolateNans(), RemoveMean()]
+    time_processors: List[TimeProcess] = [InterpolateNans(), RemoveMean()]
     """List of time processors to run"""
-    dec_setup: ResisticsProcess = DecimationSetup()
+    dec_setup: DecimationSetup = DecimationSetup()
     """Process to calculate decimation parameters"""
-    decimator: ResisticsProcess = Decimator()
+    decimator: Decimator = Decimator()
     """Process to decimate time data"""
-    win_setup: ResisticsProcess = WindowSetup()
+    win_setup: WindowSetup = WindowSetup()
     """Process to calculate windowing parameters"""
-    windower: ResisticsProcess = Windower()
+    windower: Windower = Windower()
     """Process to window the decimated data"""
-    fourier: ResisticsProcess = FourierTransform()
+    fourier: FourierTransform = FourierTransform()
     """Process to perform the fourier transform"""
-    spectra_processors: List[ResisticsProcess] = []
+    spectra_processors: List[SpectraProcess] = []
     """List of processors to run on spectra data"""
-    evals: ResisticsProcess = EvaluationFreqs()
+    evals: EvaluationFreqs = EvaluationFreqs()
     """Process to get the spectra data at the evaluation frequencies"""
-    sensor_calibrator: ResisticsProcess = SensorCalibrator(
-        readers=[SensorCalibrationJSON()]
-    )
+    sensor_calibrator: Calibrator = SensorCalibrator(readers=[SensorCalibrationJSON()])
     """The sensor calibrator and associated calibration file readers"""
     tf: TransferFunction = ImpedanceTensor()
     """The transfer function to solve"""
-    regression_preparer: ResisticsProcess = RegressionPreparerGathered()
+    regression_preparer: RegressionPreparerGathered = RegressionPreparerGathered()
     """Process to prepare linear equations"""
-    solver: ResisticsProcess = SolverScikitTheilSen()
+    solver: Solver = SolverScikitTheilSen()
     """The solver to use to estimate the regression parameters"""
 
 
