@@ -787,7 +787,7 @@ class Decimator(ResisticsProcess):
             DecimatedData instance with all the decimated data
         """
         decimation_fnc = self._resample if self.resample else self._decimate
-        metadata = time_data.metadata.dict()
+        metadata_dict = time_data.metadata.dict()
         data = {}
         levels_metadata = []
         messages = []
@@ -806,7 +806,7 @@ class Decimator(ResisticsProcess):
         completed = list(range(len(data)))
         target = list(range(dec_params.n_levels))
         messages.append(f"Completed levels {completed} out of {target}")
-        metadata = self._get_metadata(metadata, levels_metadata)
+        metadata = self._get_metadata(metadata_dict, levels_metadata)
         metadata.history.add_record(self._get_record(messages))
         return DecimatedData(metadata, data)
 
