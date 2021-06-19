@@ -306,8 +306,8 @@ class TransferFunction(Metadata):
         """Get the number of regressors"""
         return self.n_in
 
-    def plot(self) -> go.Figure:
-        raise NotImplementedError("Plot is not implemented in generic TransferFunction")
+    # def plot(self, freqs: List[float], components: Dict[str, Component]) -> go.Figure:
+    #     raise NotImplementedError("Plot is not implemented in generic TransferFunction")
 
     def to_string(self):
         """Get the transfer function as as string"""
