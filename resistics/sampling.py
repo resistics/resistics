@@ -8,7 +8,7 @@
 - attotime is a high precision datetime library
 """
 from loguru import logger
-from typing import Union, Tuple, Optional, Any
+from typing import Union, Tuple, Optional
 from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
@@ -16,8 +16,8 @@ from attotime import attodatetime, attotimedelta
 
 DateTimeLike = Union[str, pd.Timestamp, datetime]
 TimeDeltaLike = Union[float, timedelta, pd.Timedelta]
-RSDateTime = attodatetime
-RSTimeDelta = attotimedelta
+RSDateTime = Union[attodatetime]
+RSTimeDelta = Union[attotimedelta]
 
 
 class HighResDateTime(RSDateTime):
@@ -37,7 +37,7 @@ class HighResDateTime(RSDateTime):
         )
 
     @classmethod
-    def validate(cls, val: Any):
+    def validate(cls, val: Union[RSDateTime, DateTimeLike]):
         """Validator to be used by pydantic"""
         if isinstance(val, RSDateTime):
             return val
@@ -888,7 +888,7 @@ def datetime_array(
 
 
 def datetime_array_estimate(
-    first_time: Union[RSDateTime, datetime, str, pd.Timestamp],
+    first_time: Union[RSDateTime, DateTimeLike],
     fs: float,
     n_samples: Optional[int] = None,
     samples: Optional[np.ndarray] = None,
