@@ -928,23 +928,6 @@ class ResisticsProcess(ResisticsModel):
 
         return json.loads(self.json())
 
-    def run(self, *args: Any):
-        """
-        Run the process
-
-        Parameters
-        ----------
-        args : Any
-            The parameters for the process, should be detailed for child
-            processors
-
-        Raises
-        ------
-        NotImplementedError
-            Needs to be implemented in child classes
-        """
-        raise NotImplementedError("Child processor classes must have a run method")
-
     def _get_record(self, messages: Union[str, List[str]]) -> Record:
         """
         Get the record for the processor
@@ -960,35 +943,6 @@ class ResisticsProcess(ResisticsModel):
             A record
         """
         return get_record(self.parameters(), messages)
-
-
-class ResisticsWriter(ResisticsProcess):
-    """
-    Parent process for data writers
-
-    Parameters
-    ----------
-    overwrite : bool, optional
-        Boolean flag for overwriting the existing data, by default False
-    """
-
-    overwrite: bool = True
-
-    def _check_dir(self, dir_path: Path) -> bool:
-        """Check the output directory"""
-        if dir_path.exists() and not self.overwrite:
-            logger.error(f"Write path {dir_path} exists and overwrite is False")
-            return False
-        if dir_path.exists():
-            logger.warning(f"Overwriting existing directory {dir_path}")
-        if not dir_path.exists():
-            logger.info(f"Directory {dir_path} not found. Creating including parents.")
-            dir_path.mkdir(parents=True)
-        return True
-
-    def _get_record(self, dir_path: Path, data_type: Type):
-        """Get a process record for the writer"""
-        return super()._get_record([f"Writing out {data_type.__name__} to {dir_path}"])
 
 
 class ResisticsBase(object):
@@ -1024,9 +978,39 @@ class ResisticsBase(object):
 
 
 class ResisticsData(ResisticsBase):
+    """Base class for a resistics data object"""
+
+    pass
+
+
+class ResisticsWriter(ResisticsProcess):
     """
-    Base class for a resistics data object
+    Parent process for data writers
+
+    Parameters
+    ----------
+    overwrite : bool, optional
+        Boolean flag for overwriting the existing data, by default False
     """
 
-    def __init__(self):
-        pass
+    overwrite: bool = True
+
+    def run(self, dir_path: Path, data: ResisticsData) -> None:
+        """Write out a ResisticsData child object to a directory"""
+        raise NotImplementedError("To be implemented in child writers")
+
+    def _check_dir(self, dir_path: Path) -> bool:
+        """Check the output directory"""
+        if dir_path.exists() and not self.overwrite:
+            logger.error(f"Write path {dir_path} exists and overwrite is False")
+            return False
+        if dir_path.exists():
+            logger.warning(f"Overwriting existing directory {dir_path}")
+        if not dir_path.exists():
+            logger.info(f"Directory {dir_path} not found. Creating including parents.")
+            dir_path.mkdir(parents=True)
+        return True
+
+    def _get_record(self, dir_path: Path, data_type: Type):
+        """Get a process record for the writer"""
+        return super()._get_record([f"Writing out {data_type.__name__} to {dir_path}"])
