@@ -45,7 +45,7 @@ tqdm = "^4.61.0"
 
 [tool.poetry.dev-dependencies]
 matplotlib="^3.4.1"
-Sphinx="^3.5.4"
+Sphinx = "^4.0.0"
 furo="^2021.4.11b34"
 pytest="^6.2.3"
 pytest-cov="^2.11.1"
