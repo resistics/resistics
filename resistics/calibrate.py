@@ -413,6 +413,10 @@ class Calibrator(ResisticsProcess):
     chans: Optional[List[str]] = None
     """List of channels to calibrate"""
 
+    def run(self, dir_path: Path, spec_data: SpectraData) -> SpectraData:
+        """Run the instrument calibration"""
+        raise NotImplementedError("To be implemented")
+
     def _get_chans(self, chans: List[str]) -> List[str]:
         """Get the channels to calibrate"""
         if self.chans is None:
@@ -479,10 +483,6 @@ class InstrumentCalibrator(Calibrator):
 
     readers: List[InstrumentCalibrationReader]
     """List of readers for reading in instrument calibration files"""
-
-    def run(self, dir_path, spec_data: SpectraData) -> SpectraData:
-        """Run the instrument calibration"""
-        raise NotImplementedError("To be implemented")
 
 
 class SensorCalibrator(Calibrator):
