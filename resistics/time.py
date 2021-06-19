@@ -1158,7 +1158,15 @@ def new_time_data(
     return TimeData(metadata, data)
 
 
-class Subsection(ResisticsProcess):
+class TimeProcess(ResisticsProcess):
+    """Parent class for processing time data"""
+
+    def run(self, time_data: TimeData) -> TimeData:
+        """Run the time processor"""
+        raise NotImplementedError("Run not implemented in parent TimeProcess")
+
+
+class Subsection(TimeProcess):
     """
     Get a subsection of time data
 
@@ -1237,7 +1245,7 @@ class Subsection(ResisticsProcess):
         return new_time_data(time_data, metadata=metadata, data=data, record=record)
 
 
-class InterpolateNans(ResisticsProcess):
+class InterpolateNans(TimeProcess):
     """
     Interpolate nan values in the data
 
@@ -1306,7 +1314,7 @@ class InterpolateNans(ResisticsProcess):
         return chan_data
 
 
-class RemoveMean(ResisticsProcess):
+class RemoveMean(TimeProcess):
     """
     Remove channel mean value from each channel
 
@@ -1356,7 +1364,7 @@ class RemoveMean(ResisticsProcess):
         return new_time_data(time_data, data=data, record=record)
 
 
-class Add(ResisticsProcess):
+class Add(TimeProcess):
     """
     Add values to channels
 
@@ -1433,7 +1441,7 @@ class Add(ResisticsProcess):
         return add
 
 
-class Multiply(ResisticsProcess):
+class Multiply(TimeProcess):
     """
     Multiply channels by values
 
@@ -1510,7 +1518,7 @@ class Multiply(ResisticsProcess):
         return mult
 
 
-class LowPass(ResisticsProcess):
+class LowPass(TimeProcess):
     """
     Apply low pass filter
 
@@ -1580,7 +1588,7 @@ class LowPass(ResisticsProcess):
         return new_time_data(time_data, data=data, record=record)
 
 
-class HighPass(ResisticsProcess):
+class HighPass(TimeProcess):
     """
     High pass filter time data
 
@@ -1650,7 +1658,7 @@ class HighPass(ResisticsProcess):
         return new_time_data(time_data, data=data, record=record)
 
 
-class BandPass(ResisticsProcess):
+class BandPass(TimeProcess):
     """
     Band pass filter time data
 
@@ -1732,7 +1740,7 @@ class BandPass(ResisticsProcess):
         return new_time_data(time_data, data=data, record=record)
 
 
-class Notch(ResisticsProcess):
+class Notch(TimeProcess):
     """
     Notch filter time data
 
@@ -1812,7 +1820,7 @@ class Notch(ResisticsProcess):
         return new_time_data(time_data, data=data, record=record)
 
 
-class Resample(ResisticsProcess):
+class Resample(TimeProcess):
     """
     Resample TimeData
 
@@ -1909,7 +1917,7 @@ class Resample(ResisticsProcess):
         return new_time_data(time_data, metadata=metadata, data=data, record=record)
 
 
-class Decimate(ResisticsProcess):
+class Decimate(TimeProcess):
     """
     Decimate TimeData
 
@@ -2095,7 +2103,7 @@ class Decimate(ResisticsProcess):
         return prime_list
 
 
-class ShiftTimestamps(ResisticsProcess):
+class ShiftTimestamps(TimeProcess):
     """
     Shift timestamps. This method is usually used when there is an offset on the
     sampling, so that instead of coinciding with a second or an hour, they are
@@ -2192,6 +2200,97 @@ class ShiftTimestamps(ResisticsProcess):
         )
         record = self._get_record(messages)
         return new_time_data(time_data, metadata=metadata, data=data, record=record)
+
+
+def serialize_custom_fnc(fnc: Callable) -> str:
+    """
+    Serialize the custom functions
+
+    This is not really reversible and recovering parameters from ApplyFunction
+    is not supported
+
+    Parameters
+    ----------
+    fnc : Callable
+        Function to serialize
+
+    Returns
+    -------
+    str
+        serialized output
+    """
+    from resistics.common import array_to_string
+
+    test = np.arange(3)
+    input_vals = array_to_string(test, precision=2)
+    output_vals = array_to_string(fnc(test), precision=2)
+    return f"Custom function with result [{output_vals}] on [{input_vals}]"
+
+
+class ApplyFunction(TimeProcess):
+    """
+    Apply a generic functions to the time data
+
+    To be used with single argument functions that take the channel data array
+    and a perform transformation on the data.
+
+    Parameters
+    ----------
+    fncs : Dict[str, Callable]
+        Dictionary of channel to callable
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from resistics.testing import time_data_ones
+    >>> from resistics.time import ApplyFunction
+    >>> time_data = time_data_ones()
+    >>> process = ApplyFunction(fncs={"Ex": lambda x: 2*x, "Hy": lambda x: 3*x*x - 5*x + 1})
+    >>> result = process.run(time_data)
+    >>> time_data["Ex"]
+    array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.], dtype=float32)
+    >>> result["Ex"]
+    array([2., 2., 2., 2., 2., 2., 2., 2., 2., 2.])
+    >>> time_data["Hy"]
+    array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.], dtype=float32)
+    >>> result["Hy"]
+    array([-1., -1., -1., -1., -1., -1., -1., -1., -1., -1.])
+    """
+
+    fncs: Dict[str, Callable]
+
+    class Config:
+
+        arbitrary_types_allowed = True
+        json_encoders = {
+            types.LambdaType: serialize_custom_fnc,
+            types.FunctionType: serialize_custom_fnc,
+        }
+
+    def run(self, time_data: TimeData) -> TimeData:
+        """
+        Apply functions to channel data
+
+        Parameters
+        ----------
+        time_data : TimeData
+            Input TimeData
+
+        Returns
+        -------
+        TimeData
+            Transformed TimeData
+        """
+        logger.info(f"Applying custom functions to channels {list(self.fncs.keys())}")
+        messages = []
+        data = np.empty(shape=time_data.data.shape)
+        for chan, fnc in self.fncs.items():
+            if chan in time_data.metadata.chans:
+                messages.append(f"Applying custom function to {chan}")
+                idx = time_data.get_chan_index(chan)
+                data[idx] = fnc(time_data[chan])
+        record = self._get_record(messages)
+        return new_time_data(time_data, data=data, record=record)
 
 
 # class Join(ResisticsProcess):
@@ -2345,94 +2444,3 @@ class ShiftTimestamps(ResisticsProcess):
 #                 self.name, "Found no common channels amongst time data"
 #             )
 #         return sorted(list(chans))
-
-
-def serialize_custom_fnc(fnc: Callable) -> str:
-    """
-    Serialize the custom functions
-
-    This is not really reversible and recovering parameters from ApplyFunction
-    is not supported
-
-    Parameters
-    ----------
-    fnc : Callable
-        Function to serialize
-
-    Returns
-    -------
-    str
-        serialized output
-    """
-    from resistics.common import array_to_string
-
-    test = np.arange(3)
-    input_vals = array_to_string(test, precision=2)
-    output_vals = array_to_string(fnc(test), precision=2)
-    return f"Custom function with result [{output_vals}] on [{input_vals}]"
-
-
-class ApplyFunction(ResisticsProcess):
-    """
-    Apply a generic functions to the time data
-
-    To be used with single argument functions that take the channel data array
-    and a perform transformation on the data.
-
-    Parameters
-    ----------
-    fncs : Dict[str, Callable]
-        Dictionary of channel to callable
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from resistics.testing import time_data_ones
-    >>> from resistics.time import ApplyFunction
-    >>> time_data = time_data_ones()
-    >>> process = ApplyFunction(fncs={"Ex": lambda x: 2*x, "Hy": lambda x: 3*x*x - 5*x + 1})
-    >>> result = process.run(time_data)
-    >>> time_data["Ex"]
-    array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.], dtype=float32)
-    >>> result["Ex"]
-    array([2., 2., 2., 2., 2., 2., 2., 2., 2., 2.])
-    >>> time_data["Hy"]
-    array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.], dtype=float32)
-    >>> result["Hy"]
-    array([-1., -1., -1., -1., -1., -1., -1., -1., -1., -1.])
-    """
-
-    fncs: Dict[str, Callable]
-
-    class Config:
-
-        arbitrary_types_allowed = True
-        json_encoders = {
-            types.LambdaType: serialize_custom_fnc,
-            types.FunctionType: serialize_custom_fnc,
-        }
-
-    def run(self, time_data: TimeData) -> TimeData:
-        """
-        Apply functions to channel data
-
-        Parameters
-        ----------
-        time_data : TimeData
-            Input TimeData
-
-        Returns
-        -------
-        TimeData
-            Transformed TimeData
-        """
-        logger.info(f"Applying custom functions to channels {list(self.fncs.keys())}")
-        messages = []
-        data = np.empty(shape=time_data.data.shape)
-        for chan, fnc in self.fncs.items():
-            if chan in time_data.metadata.chans:
-                messages.append(f"Applying custom function to {chan}")
-                idx = time_data.get_chan_index(chan)
-                data[idx] = fnc(time_data[chan])
-        record = self._get_record(messages)
-        return new_time_data(time_data, data=data, record=record)
