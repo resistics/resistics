@@ -745,9 +745,9 @@ class Solution(WriteableMetadata):
 class Solver(ResisticsProcess):
     """General resistics solver"""
 
-    def run(self, regression_input: RegressionInputData):
+    def run(self, regression_input: RegressionInputData) -> Solution:
         """Every solver should have a run method"""
-        raise NotImplementedError("run should only be called from child classes")
+        raise NotImplementedError("Run not implemented in parent Solver class")
 
 
 class SolverScikit(Solver):
