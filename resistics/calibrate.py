@@ -12,6 +12,7 @@ Calibration data for induction coils is given in mV/nT. Because this is
 deconvolved from magnetic time data, which is in mV, the resultant magnetic
 time data is in nT.
 """
+from resistics.time import ChanMetadata
 from resistics.spectra import SpectraData
 from loguru import logger
 from typing import Optional, Any, List, Tuple, Union, Dict
@@ -201,12 +202,45 @@ class SensorCalibrationReader(CalibrationReader):
         chan : str
             The channel for which to search for a calibration file
 
+        Returns
+        -------
+        CalibrationData
+            The calibration data
+
+        Raises
+        ------
+        CalibrationFileNotFound
+            If the calibration file does not exist
+        """
+        file_path = self._get_path(dir_path, metadata, chan)
+        logger.info(f"Searching file {file_path.name} in {dir_path}")
+        if not file_path.exists():
+            raise CalibrationFileNotFound(dir_path, file_path)
+        logger.info(f"Reading calibration data from file {file_path.name}")
+        return self.read_calibration_data(file_path, metadata.chans_metadata[chan])
+
+    def read_calibration_data(
+        self, file_path: Path, chan_metadata: ChanMetadata
+    ) -> CalibrationData:
+        """
+        Read calibration data from a file
+
+        The is implemented as a separate function for anyone interested in
+        reading a calibration file separately from the run function.
+
+        Parameters
+        ----------
+        file_path : Path
+            The file path of the calibration file
+        chan_metadata : ChanMetadata
+            The channel metadata
+
         Raises
         ------
         NotImplementedError
-            To be implemented in child readers
+            To be implemented in child classes
         """
-        raise NotImplementedError("To be implemented in child classes")
+        raise NotImplementedError("Read data to be implemented in child classes")
 
     def _get_path(self, dir_path: Path, metadata: SpectraMetadata, chan: str) -> Path:
         """Get the expected Path to the calibration file"""
@@ -219,47 +253,29 @@ class SensorCalibrationReader(CalibrationReader):
 
 
 class SensorCalibrationJSON(SensorCalibrationReader):
-    """
-    Read in JSON formatted calibration data
-
-    Examples
-    --------
-
-    """
+    """Read in JSON formatted calibration data"""
 
     extension: str = ".json"
 
-    def run(
-        self, dir_path: Path, metadata: SpectraMetadata, chan: str
+    def read_calibration_data(
+        self, file_path: Path, chan_metadata: ChanMetadata
     ) -> CalibrationData:
         """
-        Get sensor calibration data from JSON file
+        Read the JSON calibration data
 
         Parameters
         ----------
-        dir_path : Path
-            The directory to search for a calibration file
-        metadata : SpectraMetadata
-            The time data metadata
-        chan : str
-            The channel to get calibration data for
+        file_path : Path
+            The file path of the JSON calibration file
+        chan_metadata : ChanMetadata
+            The channel metadata. Note that this is not used but is kept here
+            to ensure signature match to the parent class
 
         Returns
         -------
         CalibrationData
             The calibration data
-
-        Raises
-        ------
-        CalibrationFileNotFound
-            If no matching file is found in dir_path
         """
-        file_path = self._get_path(dir_path, metadata, chan)
-        logger.info(f"Searching file {file_path.name} in {dir_path}")
-        if not file_path.exists():
-            raise CalibrationFileNotFound(dir_path, file_path)
-        logger.info(f"Reading file {file_path.name}")
-
         cal_data = CalibrationData.parse_file(file_path)
         cal_data.file_path = file_path
         return cal_data
@@ -269,9 +285,26 @@ class SensorCalibrationTXT(SensorCalibrationReader):
     """
     Read in calibration data from a TXT file
 
-    Use of this calibration reader is discouraged. Instead, where a choice is
-    available, users should try and format their calibration data in the JSON
-    format as this is immediately much more portable
+    In general, JSON calibration files are recommended as they are more reliable
+    to read in. However, there are cases where it is easier to write out a text
+    based calibration file.
+
+    The format of the calibration file should be as follows:
+
+    .. code-block:: text
+
+        Serial = 710
+        Sensor = LEMI120
+        Static gain = 1
+        Magnitude unit = mV/nT
+        Phase unit = degrees
+        Chopper = False
+
+        CALIBRATION DATA
+        1.1000E-4	1.000E-2	9.0000E1
+        1.1000E-3	1.000E-1	9.0000E1
+        1.1000E-2	1.000E0	    8.9000E1
+        2.1000E-2	1.903E0	    8.8583E1
 
     See Also
     --------
@@ -280,37 +313,25 @@ class SensorCalibrationTXT(SensorCalibrationReader):
 
     extension = ".TXT"
 
-    def run(
-        self, dir_path: Path, metadata: SpectraMetadata, chan: str
+    def read_calibration_data(
+        self, file_path: Path, chan_metadata: ChanMetadata
     ) -> CalibrationData:
         """
-        Get sensor calibration data
+        Read the TXT calibration data
 
         Parameters
         ----------
-        dir_path : Path
-            The directory to search for a calibration file
-        metadata : SpectraMetadata
-            The time data metadata
-        chan : str
-            The channel to get calibration data for
+        file_path : Path
+            The file path of the JSON calibration file
+        chan_metadata : ChanMetadata
+            The channel metadata. Note that this is not used but is kept here
+            to ensure signature match to the parent class
 
         Returns
         -------
         CalibrationData
             The calibration data
-
-        Raises
-        ------
-        CalibrationFileNotFound
-            If no matching file is found in dir_path
         """
-        file_path = self._get_path(dir_path, metadata, chan)
-        logger.info(f"Searching file {file_path.name} in {dir_path}")
-        if not file_path.exists():
-            raise CalibrationFileNotFound(dir_path, file_path)
-
-        logger.info(f"Reading file {file_path.name}")
         with file_path.open("r") as f:
             lines = f.readlines()
         lines = [x.strip() for x in lines]
@@ -371,10 +392,9 @@ class SensorCalibrationTXT(SensorCalibrationReader):
         magnitude_unit: str = "mV/nT"
         phase_unit: str = "radians"
         for line in lines:
-            line = line.lower()
-            if "magnitude unit" in line:
+            if "magnitude unit" in line.lower():
                 magnitude_unit = line.split("=")[1].strip()
-            if "phase unit" in line:
+            if "phase unit" in line.lower():
                 phase_unit = line.split("=")[1].strip()
         return magnitude_unit, phase_unit
 
