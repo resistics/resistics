@@ -308,7 +308,7 @@ class SensorCalibrationTXT(SensorCalibrationReader):
 
     See Also
     --------
-    CalibrationReaderJSON : Reader for JSON calibration files
+    SensorCalibrationJSON : Reader for JSON calibration files
     """
 
     extension = ".TXT"
