@@ -327,8 +327,8 @@ def datetime_to_win(
     increment_seconds = increment_days_in_seconds + increment_remaining_in_seconds
 
     delta_days_in_seconds, delta_remaining_in_seconds = to_seconds(time - ref_time)
-    n_increments = delta_days_in_seconds / increment_seconds
-    n_increments += delta_remaining_in_seconds / increment_remaining_in_seconds
+    delta_total_in_seconds = delta_days_in_seconds + delta_remaining_in_seconds
+    n_increments = delta_total_in_seconds / increment_seconds
 
     if n_increments.is_integer():
         n_increments = int(n_increments)
