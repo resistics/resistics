@@ -63,6 +63,7 @@ flake8-bandit = "^2.1.2"
 flake8-pytest-style = "^1.4.2"
 flake8-cognitive-complexity = "^0.1.0"
 flake8-expression-complexity = "^0.0.9"
+python-dotenv = "^0.18.0"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
