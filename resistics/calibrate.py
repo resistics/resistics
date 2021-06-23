@@ -12,8 +12,6 @@ Calibration data for induction coils is given in mV/nT. Because this is
 deconvolved from magnetic time data, which is in mV, the resultant magnetic
 time data is in nT.
 """
-from resistics.time import ChanMetadata
-from resistics.spectra import SpectraData
 from loguru import logger
 from typing import Optional, Any, List, Tuple, Union, Dict
 from pathlib import Path
@@ -22,9 +20,10 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from resistics.common import ResisticsProcess, WriteableMetadata
-from resistics.spectra import SpectraMetadata
 from resistics.errors import CalibrationFileNotFound
+from resistics.common import ResisticsProcess, WriteableMetadata
+from resistics.time import ChanMetadata
+from resistics.spectra import SpectraMetadata, SpectraData
 
 
 class CalibrationData(WriteableMetadata):
