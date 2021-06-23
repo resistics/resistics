@@ -271,7 +271,7 @@ def datetime_to_win(
     A simple example to show the logic
 
     >>> from resistics.sampling import to_datetime, to_timedelta
-    >>> from resistics.window import datetime_to_win, win_to_datetime
+    >>> from resistics.window import datetime_to_win, win_to_datetime, inc_duration
     >>> ref_time = to_datetime("2021-01-01 00:00:00")
     >>> time = to_datetime("2021-01-01 00:01:00")
     >>> increment = to_timedelta(60)
@@ -316,6 +316,32 @@ def datetime_to_win(
     1944000
     >>> print(win_to_datetime(ref_time, global_win, increment))
     2021-04-17 18:00:00
+
+    Another example with a window duration of greater than a day
+
+    >>> fs = 4.8828125e-05
+    >>> win_size = 64
+    >>> olap_size = 16
+    >>> ref_time = to_datetime("1985-07-18 01:00:20")
+    >>> time = to_datetime("1985-09-22 23:00:00")
+    >>> increment = inc_duration(win_size, olap_size, fs)
+    >>> print(increment)
+    11 days, 9:04:00
+    >>> global_win = datetime_to_win(ref_time, time, increment)
+    >>> global_win
+    6
+    >>> print(win_to_datetime(ref_time, global_win, increment))
+    1985-09-24 07:24:20
+
+    This time is greater than the time that was transformed to global window,
+    1985-09-22 23:00:00. Try again, this time with the floor option.
+
+    >>> global_win = datetime_to_win(ref_time, time, increment, method="floor")
+    >>> global_win
+    5
+    >>> print(win_to_datetime(ref_time, global_win, increment))
+    1985-09-12 22:20:20
+
     """
     from math import floor, ceil
     from resistics.sampling import to_seconds
