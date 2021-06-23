@@ -306,9 +306,6 @@ class TransferFunction(Metadata):
         """Get the number of regressors"""
         return self.n_in
 
-    # def plot(self, freqs: List[float], components: Dict[str, Component]) -> go.Figure:
-    #     raise NotImplementedError("Plot is not implemented in generic TransferFunction")
-
     def to_string(self):
         """Get the transfer function as as string"""
         n_lines = max(len(self.in_chans), len(self.out_chans))
