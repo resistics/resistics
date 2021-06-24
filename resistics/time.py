@@ -20,6 +20,7 @@ from resistics.errors import ProcessRunError
 from resistics.common import ResisticsData, ResisticsProcess
 from resistics.common import Metadata, WriteableMetadata
 from resistics.common import History, Record, ResisticsWriter
+from resistics.common import get_chan_type
 from resistics.sampling import RSDateTime, RSTimeDelta, DateTimeLike
 from resistics.sampling import HighResDateTime, datetime_to_string
 
@@ -27,8 +28,14 @@ from resistics.sampling import HighResDateTime, datetime_to_string
 class ChanMetadata(Metadata):
     """Channel metadata"""
 
+    name: str
+    """The name of the channel"""
     data_files: Optional[List[str]] = None
     """The data files"""
+    chan_type: Optional[str] = None
+    """The channel type, electric, magnetic or unknown"""
+    chan_source: Optional[str] = None
+    """The name of channel in the data source, can be ignored if not required"""
     sensor: str = ""
     """The name of the sensor"""
     serial: str = ""
@@ -39,16 +46,10 @@ class ChanMetadata(Metadata):
     """Secondary channel gain"""
     scaling: float = 1
     """Scaling to apply to the data. May include the gains and other scaling"""
-    hchopper: bool = False
-    """Boolean flag for magnetic chopper on"""
-    echopper: bool = False
-    """Boolean flag for electric chopper on"""
-    dx: float = 1
-    """Dipole spacing x direction in metres"""
-    dy: float = 1
-    """Dipole spacing y direction in metres"""
-    dz: float = 1
-    """Dipole spacing z direction in metres"""
+    chopper: bool = False
+    """Boolean flag for chopper on"""
+    dipole_dist: float = 1
+    """Dipole spacing for the channel"""
     sensor_calibration_file: str = ""
     """Explicit name of sensor calibration file"""
     instrument_calibration_file: str = ""
@@ -65,6 +66,24 @@ class ChanMetadata(Metadata):
         if isinstance(value, str):
             return [value]
         return value
+
+    @validator("chan_type", always=True)
+    def validate_chan_type(cls, value: str, values: Dict[str, Any]) -> str:
+        """Validate the channel type"""
+        if isinstance(value, str):
+            return value
+        try:
+            return get_chan_type(values["name"])
+        except ValueError:
+            raise ValueError(f"Failed setting type for chan {values['name']}")
+
+    def electric(self) -> bool:
+        """True if the channel is an electric channel"""
+        return self.chan_type == "electric"
+
+    def magnetic(self) -> bool:
+        """True if the channel is a magnetic channel"""
+        return self.chan_type == "magnetic"
 
 
 class TimeMetadata(WriteableMetadata):
@@ -128,17 +147,17 @@ class TimeMetadata(WriteableMetadata):
         >>> chan_metadata = metadata["chan1"]
         >>> chan_metadata.summary()
         {
+            'name': 'chan1',
             'data_files': ['example1.ascii'],
+            'chan_type': 'electric',
+            'chan_source': None,
             'sensor': '',
             'serial': '',
             'gain1': 1,
             'gain2': 1,
             'scaling': 1,
-            'hchopper': False,
-            'echopper': False,
-            'dx': 1,
-            'dy': 1,
-            'dz': 1,
+            'chopper': False,
+            'dipole_dist': 1,
             'sensor_calibration_file': '',
             'instrument_calibration_file': ''
         }
@@ -162,6 +181,26 @@ class TimeMetadata(WriteableMetadata):
     def nyquist(self) -> float:
         """Get the nyquist frequency"""
         return self.fs / 2
+
+    def get_electric_chans(self) -> List[str]:
+        """Get electric channels"""
+        return [x for x in self.chans if self.chans_metadata[x].electric()]
+
+    def get_magnetic_chans(self) -> List[str]:
+        """Get magnetic channels"""
+        return [x for x in self.chans if self.chans_metadata[x].magnetic()]
+
+    def any_electric(self) -> bool:
+        """True if any channels are electric"""
+        if len(self.get_electric_chans()) == 0:
+            return False
+        return True
+
+    def any_magnetic(self) -> bool:
+        """True if any channels are magnetic"""
+        if len(self.get_magnetic_chans()) == 0:
+            return False
+        return True
 
 
 def get_time_metadata(
@@ -193,8 +232,18 @@ def get_time_metadata(
     Examples
     --------
     >>> from resistics.time import get_time_metadata
-    >>> time_dict = {"fs": 10, "n_samples": 100, "chans": ["Ex", "Hy"], "n_chans": 2, "first_time": "2021-01-01 00:00:00", "last_time": "2021-01-01 00:01:00"}
-    >>> chans_dict = {"Ex": {"data_files": "example.ascii"}, "Hy": {"data_files": "example2.ascii", "sensor": "MFS"}}
+    >>> time_dict = {
+    ...     "fs": 10,
+    ...     "n_samples": 100,
+    ...     "chans": ["Ex", "Hy"],
+    ...     "n_chans": 2,
+    ...     "first_time": "2021-01-01 00:00:00",
+    ...     "last_time": "2021-01-01 00:01:00"
+    ... }
+    >>> chans_dict = {
+    ...     "Ex": {"name": "Ex", "data_files": "example.ascii"},
+    ...     "Hy": {"name": "Hy", "data_files": "example2.ascii", "sensor": "MFS"}
+    ... }
     >>> metadata = get_time_metadata(time_dict, chans_dict)
     >>> metadata.summary()
     {
@@ -214,32 +263,32 @@ def get_time_metadata(
         'elevation': -999.0,
         'chans_metadata': {
             'Ex': {
+                'name': 'Ex',
                 'data_files': ['example.ascii'],
+                'chan_type': 'electric',
+                'chan_source': None,
                 'sensor': '',
                 'serial': '',
                 'gain1': 1,
                 'gain2': 1,
                 'scaling': 1,
-                'hchopper': False,
-                'echopper': False,
-                'dx': 1,
-                'dy': 1,
-                'dz': 1,
+                'chopper': False,
+                'dipole_dist': 1,
                 'sensor_calibration_file': '',
                 'instrument_calibration_file': ''
             },
             'Hy': {
+                'name': 'Hy',
                 'data_files': ['example2.ascii'],
+                'chan_type': 'magnetic',
+                'chan_source': None,
                 'sensor': 'MFS',
                 'serial': '',
                 'gain1': 1,
                 'gain2': 1,
                 'scaling': 1,
-                'hchopper': False,
-                'echopper': False,
-                'dx': 1,
-                'dy': 1,
-                'dz': 1,
+                'chopper': False,
+                'dipole_dist': 1,
                 'sensor_calibration_file': '',
                 'instrument_calibration_file': ''
             }
@@ -571,39 +620,34 @@ class TimeData(ResisticsData):
 
     def _get_subplots(self) -> List[str]:
         """Get list of subplots"""
-        from resistics.common import any_electric, any_magnetic
-
         subplots = []
-        if any_electric(self.metadata.chans):
+        if self.metadata.any_electric():
             subplots.append("Electric")
-        if any_magnetic(self.metadata.chans):
+        if self.metadata.any_magnetic():
             subplots.append("Magnetic")
         return subplots
 
     def _get_subplot_chans(self, subplots: List[str]) -> Dict[str, List[str]]:
         """Get channels for each subplot"""
-        from resistics.common import is_electric, is_magnetic
-
         subplot_columns = {}
         if "Electric" in subplots:
-            subplot_columns["Electric"] = [
-                x for x in self.metadata.chans if is_electric(x)
-            ]
+            subplot_columns["Electric"] = self.metadata.get_electric_chans()
         if "Magnetic" in subplots:
-            subplot_columns["Magnetic"] = [
-                x for x in self.metadata.chans if is_magnetic(x)
-            ]
+            subplot_columns["Magnetic"] = self.metadata.get_magnetic_chans()
         return subplot_columns
 
     def _get_y_labels(self, subplot_columns: Dict[str, List[str]]) -> Dict[str, str]:
         """Get subplot columns"""
-        from resistics.common import is_electric, is_magnetic
-
         y_labels = {}
         for subplot, columns in subplot_columns.items():
-            if len(columns) > 0 and is_electric(columns[0]):
+            if len(columns) == 0:
+                y_labels["subplot"] = "Unknown"
+                continue
+
+            chan = columns[0]
+            if self.metadata.chans_metadata[chan].electric():
                 y_labels[subplot] = "mv/km"
-            elif len(columns) > 0 and is_magnetic(columns[0]):
+            elif self.metadata.chans_metadata[chan].magnetic():
                 y_labels[subplot] = "mV or nT"
             else:
                 y_labels[subplot] = "Unknown"

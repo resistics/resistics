@@ -11,6 +11,9 @@ import numpy as np
 
 from resistics.sampling import RSDateTime, datetime_to_string
 
+ELECTRIC_CHANS = ["Ex", "Ey", "E1", "E2", "E3", "E4"]
+MAGNETIC_CHANS = ["Hx", "Hy", "Hz", "Bx", "By", "Bz"]
+
 
 def get_version() -> str:
     """Get the version of resistics"""
@@ -195,18 +198,6 @@ def dir_subdirs(dir_path: Path) -> List[Path]:
     return dirs
 
 
-def electric_chans() -> List[str]:
-    """
-    List of acceptable electric channels
-
-    Returns
-    -------
-    List[str]
-        List of acceptable electric channels
-    """
-    return ["Ex", "Ey", "E1", "E2", "E3", "E4"]
-
-
 def is_electric(chan: str) -> bool:
     """
     Check if a channel is electric
@@ -229,53 +220,9 @@ def is_electric(chan: str) -> bool:
     >>> is_electric("Hx")
     False
     """
-    if chan in electric_chans():
+    if chan in ELECTRIC_CHANS:
         return True
     return False
-
-
-def any_electric(chans: List[str]) -> bool:
-    """
-    Return boolean if any channels in list are electric
-
-    Parameters
-    ----------
-    chans : List[str]
-        List of channels
-
-    Returns
-    -------
-    bool
-        True if any electric
-
-    Examples
-    --------
-    List with no electric channels should evaluate to False
-
-    >>> from resistics.common import any_electric
-    >>> chans = ["Hx", "Hy", "Hz"]
-    >>> any_electric(chans)
-    False
-
-    Now with one electric channel
-
-    >>> chans = ["Ex", "Hy", "Hz"]
-    >>> any_electric(chans)
-    True
-    """
-    return np.any([is_electric(x) for x in chans])
-
-
-def magnetic_chans() -> List[str]:
-    """
-    List of acceptable magnetic channels
-
-    Returns
-    -------
-    List[str]
-        List of acceptable magnetic channels
-    """
-    return ["Hx", "Hy", "Hz", "Bx", "By", "Bz"]
 
 
 def is_magnetic(chan: str) -> bool:
@@ -300,76 +247,47 @@ def is_magnetic(chan: str) -> bool:
     >>> is_magnetic("Hx")
     True
     """
-    if chan in magnetic_chans():
+    if chan in MAGNETIC_CHANS:
         return True
     return False
 
 
-def any_magnetic(chans: List[str]) -> bool:
+def get_chan_type(chan: str) -> str:
     """
-    Return boolean if any channels in list are magnetic
-
-    Parameters
-    ----------
-    chans : List[str]
-        List of channels
-
-    Returns
-    -------
-    bool
-        True if any magnetic
-
-    Examples
-    --------
-    List with no magnetic channels should evaluate to False
-
-    >>> from resistics.common import any_magnetic
-    >>> chans = ["Ex", "Ey", "Ez"]
-    >>> any_magnetic(chans)
-    False
-
-    Now with one magnetic channel
-
-    >>> chans = ["Ex", "Ey", "Hz"]
-    >>> any_magnetic(chans)
-    True
-    """
-    return np.any([is_magnetic(x) for x in chans])
-
-
-def to_resistics_chan(chan: str) -> str:
-    """
-    Convert channels to ensure consistency
+    Get the channel type from the channel name
 
     Parameters
     ----------
     chan : str
-        Channel name
+        The name of the channel
 
     Returns
     -------
     str
-        Converted channel name
+        The channel type
+
+    Raises
+    ------
+    ValueError
+        If the channel is not known to resistics
 
     Examples
     --------
-    >>> from resistics.common import to_resistics_chan
-    >>> to_resistics_chan("Bx")
-    'Hx'
-    >>> to_resistics_chan("Ex")
-    'Ex'
+    >>> from resistics.common import get_chan_type
+    >>> get_chan_type("Ex")
+    'electric'
+    >>> get_chan_type("Hz")
+    'magnetic'
+    >>> get_chan_type("abc")
+    Traceback (most recent call last):
+    ...
+    ValueError: Channel abc not recognised as either electric or magnetic
     """
-    standard_chans = ["Hx", "Hy", "Hz", "Ex", "Ey"]
-    if chan in standard_chans:
-        return chan
-    elif chan == "Bx":
-        return "Hx"
-    elif chan == "By":
-        return "Hy"
-    elif chan == "Bz":
-        return "Hz"
-    else:
-        return chan
+    if is_electric(chan):
+        return "electric"
+    if is_magnetic(chan):
+        return "magnetic"
+    raise ValueError(f"Channel {chan} not recognised as either electric or magnetic")
 
 
 def check_chan(chan: str, chans: Collection[str]) -> bool:
