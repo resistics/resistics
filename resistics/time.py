@@ -987,7 +987,9 @@ class TimeReaderAscii(TimeReaderJSON):
     delimiter between values.
     """
 
-    extension: str = ".ascii"
+    extension: str = ".txt"
+    delimiter: str = " "
+    n_header: int = 0
 
     def read_data(
         self, dir_path: Path, metadata: TimeMetadata, read_from: int, read_to: int
@@ -1023,16 +1025,16 @@ class TimeReaderAscii(TimeReaderJSON):
         logger.info(f"Reading data from {dir_path}")
         messages = [f"Reading raw data from {dir_path}"]
         messages.append(f"Sampling frequency {metadata.fs} Hz")
-        for idx, chan in enumerate(metadata.chans):
-            chan_path = dir_path / metadata[chan].data_files[0]
-            messages.append(f"Reading data for {chan} from {chan_path}")
-            data[idx] = np.loadtxt(
-                chan_path,
-                dtype=dtype,
-                delimiter="\n",
-                skiprows=read_from,
-                max_rows=n_samples,
-            )
+        # all channels have the same data path
+        data_path = dir_path / metadata.chans_metadata[metadata.chans[0]].data_files[0]
+        data = np.loadtxt(
+            data_path,
+            dtype=dtype,
+            delimiter=self.delimiter,
+            skiprows=read_from + self.n_header,
+            max_rows=n_samples,
+        )
+        data = data.transpose()
         metadata = self._get_return_metadata(metadata, read_from, read_to)
         messages.append(f"From sample, time: {read_from}, {str(metadata.first_time)}")
         messages.append(f"To sample, time: {read_to}, {str(metadata.last_time)}")
