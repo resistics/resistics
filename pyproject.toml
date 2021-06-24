@@ -73,7 +73,7 @@ requires = ["poetry-core>=1.0.0"]
 addopts = "--doctest-modules"
 doctest_optionflags = "NORMALIZE_WHITESPACE ELLIPSIS"
 minversion = "6.0"
-testpaths = ["resistics", "tests"]
+testpaths = ["resistics", "tests/api"]
 
 [tool.coverage.paths]
 source = ["resistics"]
