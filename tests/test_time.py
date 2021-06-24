@@ -1,14 +1,107 @@
 """
 Test time data and processors
 """
-from typing import Union, Dict
+from typing import Union, Dict, Any, List
 import pytest
 import numpy as np
 
 from resistics.errors import ChannelNotFoundError, ProcessRunError
-from resistics.sampling import DateTimeLike
-from resistics.time import TimeMetadata, TimeData, TimeReader
+from resistics.sampling import to_datetime, DateTimeLike
+from resistics.time import ChanMetadata, TimeMetadata, TimeData, TimeReader
 from resistics.testing import time_metadata_1chan, time_data_simple, time_data_random
+
+
+def test_chan_metadata():
+    """Test initialising a channel metadata"""
+    chan_dict = {
+        "name": "cat",
+        "data_files": ["cat.exe"],
+        "gain2": 5,
+        "chopper": True,
+        "dipole_dist": 80,
+    }
+    with pytest.raises(ValueError):
+        ChanMetadata(**chan_dict)
+    chan_dict["chan_type"] = "electric"
+    chan_metadata = ChanMetadata(**chan_dict)
+    assert chan_metadata.name == chan_dict["name"]
+    assert chan_metadata.data_files == chan_dict["data_files"]
+    assert chan_metadata.chan_type == chan_dict["chan_type"]
+    assert chan_metadata.gain2 == chan_dict["gain2"]
+    assert chan_metadata.chopper == chan_dict["chopper"]
+    assert chan_metadata.dipole_dist == chan_dict["dipole_dist"]
+
+
+@pytest.mark.parametrize(
+    "time_metadata, chans_metadata, electric_chans, magnetic_chans",
+    [
+        (
+            {
+                "fs": 10,
+                "n_samples": 1_000,
+                "first_time": "2020-01-01 00:00:00",
+                "last_time": "2020-01-01 00:01:39.9",
+            },
+            {
+                "C1": ChanMetadata(name="C1", data_files=["a_file"], chan_type="test"),
+                "croc": ChanMetadata(
+                    name="croc", data_files=["cat.exe"], chan_type="danger"
+                ),
+            },
+            [],
+            [],
+        ),
+        (
+            {
+                "fs": 10,
+                "n_samples": 1_000,
+                "first_time": "2020-01-01 00:00:00",
+                "last_time": "2020-01-01 00:01:39.9",
+            },
+            {
+                "Ex": ChanMetadata(name="Ex", data_files=["a_file"]),
+                "C1": ChanMetadata(name="C1", data_files=["a_file"], chan_type="test"),
+                "cat": ChanMetadata(
+                    name="cat", data_files=["cat.exe"], chan_type="electric"
+                ),
+                "dog": ChanMetadata(
+                    name="dog", data_files=["dogs.txt"], chan_type="magnetic"
+                ),
+                "Bx": ChanMetadata(name="Bx", data_files=["Bx.txt"]),
+                "Hy": ChanMetadata(name="Hy", data_files=["Hy.txt"]),
+            },
+            ["Ex", "cat"],
+            ["dog", "Bx", "Hy"],
+        ),
+    ],
+)
+def test_time_metadata(
+    time_metadata: Dict[str, Any],
+    chans_metadata: Dict[str, Dict[str, Any]],
+    electric_chans: List[str],
+    magnetic_chans: List[str],
+):
+    """Test initialising time metadata"""
+    time_metadata["chans"] = list(chans_metadata.keys())
+    time_metadata["chans_metadata"] = chans_metadata
+    metadata = TimeMetadata(**time_metadata)
+    # test attributes
+    assert metadata.fs == time_metadata["fs"]
+    assert metadata.chans == list(chans_metadata.keys())
+    assert metadata.n_chans == len(chans_metadata)
+    assert metadata.n_samples == time_metadata["n_samples"]
+    assert metadata.first_time == to_datetime(time_metadata["first_time"])
+    assert metadata.last_time == to_datetime(time_metadata["last_time"])
+    # test methods
+    assert metadata.dt == 1 / time_metadata["fs"]
+    assert metadata.duration == to_datetime(time_metadata["last_time"]) - to_datetime(
+        time_metadata["first_time"]
+    )
+    assert metadata.nyquist == time_metadata["fs"] / 2
+    assert metadata.get_electric_chans() == electric_chans
+    assert metadata.get_magnetic_chans() == magnetic_chans
+    assert metadata.any_electric() == (len(electric_chans) > 0)
+    assert metadata.any_magnetic() == (len(magnetic_chans) > 0)
 
 
 @pytest.mark.parametrize(

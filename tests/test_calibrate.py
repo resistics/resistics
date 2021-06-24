@@ -27,7 +27,7 @@ def test_sensor_calibration_json(monkeypatch):
     monkeypatch.setattr(Path, "read_bytes", mock_read_bytes)
     reader = SensorCalibrationJSON()
     cal_data = reader.read_calibration_data(
-        Path("test.json"), ChanMetadata(data_files=[])
+        Path("test.json"), ChanMetadata(name="Ex", data_files=[])
     )
     cal_data_reference = get_cal_data()
     cal_data_reference.file_path = Path("test.json")
@@ -70,7 +70,7 @@ def test_sensor_calibration_txt(monkeypatch):
     monkeypatch.setattr(Path, "open", mock_open)
     reader = SensorCalibrationTXT()
     cal_data = reader.read_calibration_data(
-        Path("test.txt"), ChanMetadata(data_files=[])
+        Path("test.txt"), ChanMetadata(name="Ex", data_files=[])
     )
     cal_data_reference = get_cal_data()
     cal_data_reference.file_path = Path("test.txt")

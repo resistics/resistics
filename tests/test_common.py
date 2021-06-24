@@ -1,5 +1,5 @@
 """Tests for resistics.common"""
-from typing import List, Callable
+from typing import List, Callable, Union
 from pathlib import Path
 import pytest
 import pandas as pd
@@ -127,13 +127,6 @@ def test_assert_dir(
     assert assert_dir(Path("test")) is None
 
 
-def test_electric_chans() -> None:
-    """Test recognised electric channels"""
-    from resistics.common import electric_chans
-
-    assert electric_chans() == ["Ex", "Ey", "E1", "E2", "E3", "E4"]
-
-
 @pytest.mark.parametrize(
     "chan, expected",
     [("Ex", True), ("Ey", True), ("Hx", False), ("Hy", False), ("Hz", False)],
@@ -143,13 +136,6 @@ def test_is_electric(chan: str, expected: bool) -> None:
     from resistics.common import is_electric
 
     assert is_electric(chan) == expected
-
-
-def test_magnetic_chans() -> None:
-    """Test recognised magnetic channels"""
-    from resistics.common import magnetic_chans
-
-    assert magnetic_chans() == ["Hx", "Hy", "Hz", "Bx", "By", "Bz"]
 
 
 @pytest.mark.parametrize(
@@ -165,13 +151,27 @@ def test_is_magnetic(chan: str, expected: bool) -> None:
 
 @pytest.mark.parametrize(
     "chan, expected",
-    [("Ex", "Ex"), ("Bx", "Hx"), ("By", "Hy"), ("Bz", "Hz"), ("Cx", "Cx")],
+    [
+        ("Ex", "electric"),
+        ("Ey", "electric"),
+        ("Hx", "magnetic"),
+        ("Hy", "magnetic"),
+        ("Hz", "magnetic"),
+        ("Bx", "magnetic"),
+        ("By", "magnetic"),
+        ("Bz", "magnetic"),
+        ("Cx", None),
+    ],
 )
-def test_to_resistics_chan(chan: str, expected: bool) -> None:
+def test_get_chan_type(chan: str, expected: Union[str, None]) -> None:
     """Test to_resistics_chan"""
-    from resistics.common import to_resistics_chan
+    from resistics.common import get_chan_type
 
-    assert to_resistics_chan(chan) == expected
+    if expected is None:
+        with pytest.raises(ValueError):
+            get_chan_type(chan)
+        return
+    assert get_chan_type(chan) == expected
 
 
 @pytest.mark.parametrize(

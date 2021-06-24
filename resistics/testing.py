@@ -83,7 +83,11 @@ def time_metadata_1chan(
         "last_time": first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
     }
     chans_dict = {
-        "chan1": {"data_files": "example1.ascii"},
+        "chan1": {
+            "name": "chan1",
+            "chan_type": "electric",
+            "data_files": "example1.ascii",
+        },
     }
     return get_time_metadata(time_dict, chans_dict)
 
@@ -118,8 +122,17 @@ def time_metadata_2chan(
         "last_time": first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
     }
     chans_dict = {
-        "chan1": {"data_files": "example1.ascii"},
-        "chan2": {"data_files": "example2.ascii", "sensor": "MFS"},
+        "chan1": {
+            "name": "chan1",
+            "chan_type": "electric",
+            "data_files": "example1.ascii",
+        },
+        "chan2": {
+            "name": "chan2",
+            "chan_type": "magnetic",
+            "data_files": "example2.ascii",
+            "sensor": "MFS",
+        },
     }
     return get_time_metadata(time_dict, chans_dict)
 
@@ -155,10 +168,10 @@ def time_metadata_mt(
         "last_time": first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
     }
     chans_dict = {
-        "Ex": {"data_files": "Ex.ascii"},
-        "Ey": {"data_files": "Ex.ascii"},
-        "Hx": {"data_files": "Ex.ascii"},
-        "Hy": {"data_files": "Ex.ascii"},
+        "Ex": {"name": "Ex", "data_files": "Ex.ascii"},
+        "Ey": {"name": "Ey", "data_files": "Ex.ascii"},
+        "Hx": {"name": "Hx", "data_files": "Ex.ascii"},
+        "Hy": {"name": "Hy", "data_files": "Ex.ascii"},
     }
     return get_time_metadata(time_dict, chans_dict)
 
