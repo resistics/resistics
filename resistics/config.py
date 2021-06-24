@@ -51,7 +51,9 @@ class Configuration(ResisticsModel):
     {
         'name': 'TimeReaderAscii',
         'apply_scalings': True,
-        'extension': '.ascii'
+        'extension': '.txt',
+        'delimiter': ' ',
+        'n_header': 0
     }
     {
         'name': 'TimeReaderNumpy',
