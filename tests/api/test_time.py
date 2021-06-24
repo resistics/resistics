@@ -2,13 +2,17 @@
 Test time data and processors
 """
 from typing import Union, Dict, Any, List
+from pathlib import Path
 import pytest
 import numpy as np
+import pandas as pd
 
 from resistics.errors import ChannelNotFoundError, ProcessRunError
 from resistics.sampling import to_datetime, DateTimeLike
-from resistics.time import ChanMetadata, TimeMetadata, TimeData, TimeReader
-from resistics.testing import time_metadata_1chan, time_data_simple, time_data_random
+from resistics.time import ChanMetadata, TimeMetadata, TimeData
+from resistics.time import TimeReader, TimeReaderNumpy, TimeReaderAscii
+from resistics.testing import time_metadata_1chan, time_metadata_mt
+from resistics.testing import time_data_simple, time_data_random
 
 
 def test_chan_metadata():
@@ -123,6 +127,7 @@ def test_time_data(fs: float, n_samples: int, first_time: str, time_data: TimeDa
     first_rstime = to_datetime(first_time)
     last_rstime = first_rstime + to_timedelta(1 / fs) * (n_samples - 1)
 
+    # check metadata
     assert time_data.metadata.fs == fs
     assert time_data.metadata.chans == chans
     assert time_data.metadata.n_samples == n_samples
@@ -133,10 +138,29 @@ def test_time_data(fs: float, n_samples: int, first_time: str, time_data: TimeDa
     for idx, chan in enumerate(time_data.metadata.chans):
         assert idx == time_data.get_chan_index(chan)
         np.testing.assert_equal(time_data[chan], time_data.data[idx, :])
+        np.testing.assert_equal(time_data.get_chan(chan), time_data.data[idx, :])
+    # try setting a channel
+    time_data["Ex"] = np.ones(shape=(n_samples), dtype=np.float32)
+    np.testing.assert_equal(time_data["Ex"], np.ones(shape=(n_samples)))
+    # check the timestamps and plotting functions
+    assert time_data.x_size() == n_samples
+    timestamps = pd.date_range(
+        start=first_time, periods=n_samples, freq=pd.Timedelta(1 / fs, "s")
+    )
+    pd.testing.assert_index_equal(time_data.get_timestamps(estimate=True), timestamps)
+    pd.testing.assert_index_equal(time_data.get_x(), timestamps)
+    pd.testing.assert_index_equal(
+        time_data.get_x(samples=np.array([1, 5])), timestamps[np.array([1, 5])]
+    )
+    # copy
+    time_data_copy = time_data.copy()
+    assert time_data_copy.metadata == time_data.metadata
+    np.testing.assert_equal(time_data_copy.data, time_data.data)
     # check to make sure getting an unknown chan raises an error
     with pytest.raises(ChannelNotFoundError):
         time_data["unknown"]
-        return
+    with pytest.raises(ChannelNotFoundError):
+        time_data["unknown"] = np.ones(shape=(n_samples), dtype=np.float32)
 
 
 @pytest.mark.parametrize(
@@ -262,6 +286,48 @@ def test_time_data_get_read_samples_from_sample_range(
     )
     assert from_sample == expected_from
     assert to_sample == expected_to
+
+
+@pytest.mark.parametrize(
+    "reader",
+    [(TimeReaderNumpy()), (TimeReaderAscii())],
+)
+def test_time_reader(monkeypatch, reader: TimeReader):
+    """Test time readers"""
+
+    test_metadata = time_metadata_mt()
+    test_data = np.ones(shape=(4, test_metadata.n_samples))
+
+    def mock_read_bytes(*args):
+        """Mock the read_bytes used by pydantic"""
+        return test_metadata.json().encode()
+
+    def mock_true(*args):
+        """Mock is file"""
+        return True
+
+    def mock_data(*args, **kwargs):
+        """Mock data"""
+        return test_data
+
+    def mock_data_transpose(*args, **kwargs):
+        """Mock data"""
+        return test_data.T
+
+    monkeypatch.setattr(Path, "read_bytes", mock_read_bytes)
+    monkeypatch.setattr(Path, "exists", mock_true)
+    monkeypatch.setattr(Path, "is_file", mock_true)
+    monkeypatch.setattr(TimeReader, "_check_extensions", mock_true)
+    monkeypatch.setattr(np, "load", mock_data)
+    monkeypatch.setattr(np, "loadtxt", mock_data_transpose)
+
+    dir_path = Path("test")
+    metadata = reader.run(dir_path, metadata_only=True)
+    assert metadata == test_metadata
+    time_data = reader.run(dir_path)
+    test_metadata.history = time_data.metadata.history
+    assert time_data.metadata == test_metadata
+    np.testing.assert_equal(time_data.data, test_data)
 
 
 @pytest.mark.parametrize(
