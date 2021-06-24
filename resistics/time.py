@@ -1080,7 +1080,7 @@ class TimeReaderNumpy(TimeReaderJSON):
         """
         messages = [f"Reading raw data from {dir_path}"]
         messages.append(f"Sampling frequency {metadata.fs} Hz")
-        data_path = dir_path / "data.npy"
+        data_path = dir_path / metadata.chans_metadata[metadata.chans[0]].data_files[0]
         data = np.load(data_path, mmap_mode="r")[:, read_from : read_to + 1]
         metadata = self._get_return_metadata(metadata, read_from, read_to)
         messages.append(f"From sample, time: {read_from}, {str(metadata.first_time)}")
