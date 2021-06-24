@@ -982,9 +982,9 @@ class TimeReaderAscii(TimeReaderJSON):
     """
     Class for reading Ascii data
 
-    Ascii data expected to be one file per channel. Each file should have a
-    single column of data with no header lines. Assumed to have a newline
-    delimiter between values.
+    Ascii data expected to be a single file with all the data. The delimiter can
+    be set using the delimiter class attribute as can the number of header
+    lines with the n_header attribute.
     """
 
     extension: str = ".txt"
