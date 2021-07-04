@@ -143,14 +143,13 @@ def test_time_data(fs: float, n_samples: int, first_time: str, time_data: TimeDa
     time_data["Ex"] = np.ones(shape=(n_samples), dtype=np.float32)
     np.testing.assert_equal(time_data["Ex"], np.ones(shape=(n_samples)))
     # check the timestamps and plotting functions
-    assert time_data.x_size() == n_samples
     timestamps = pd.date_range(
         start=first_time, periods=n_samples, freq=pd.Timedelta(1 / fs, "s")
     )
     pd.testing.assert_index_equal(time_data.get_timestamps(estimate=True), timestamps)
-    pd.testing.assert_index_equal(time_data.get_x(), timestamps)
     pd.testing.assert_index_equal(
-        time_data.get_x(samples=np.array([1, 5])), timestamps[np.array([1, 5])]
+        time_data.get_timestamps(samples=np.array([1, 5]), estimate=True),
+        timestamps[np.array([1, 5])],
     )
     # copy
     time_data_copy = time_data.copy()
