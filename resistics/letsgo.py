@@ -487,16 +487,16 @@ def run_solver(config: Configuration, reg_data: RegressionInputData) -> Solution
     return config.solver.run(reg_data)
 
 
-def quick_read(config: Configuration, dir_path: Path) -> TimeData:
+def quick_read(dir_path: Path, config: Optional[Configuration] = None) -> TimeData:
     """
     Read time data folder
 
     Parameters
     ----------
-    config : Configuration
-        Configuration with appropriate readers, otherwise returns None
     dir_path : Path
         The directory path to read
+    config : Optional[Configuration], optional
+        Configuration with appropriate readers, by default None.
 
     Returns
     -------
@@ -508,6 +508,10 @@ def quick_read(config: Configuration, dir_path: Path) -> TimeData:
     TimeDataReadError
         If unable to read data
     """
+    logger.info(f"Reading data in {dir_path}")
+    if config is None:
+        config = get_default_configuration()
+
     for reader in config.time_readers:
         logger.info(f"Attempting to read data with reader {reader.name}")
         try:
@@ -544,23 +548,64 @@ def quick_view(
     max_pts : Optional[int], optional
         Max points in lttb decimation, by default 10_000
 
+    Returns
+    -------
+    go.Figure
+        Plotly figure
+
     Raises
     ------
     ValueError
         If time data fails reading
     """
-    logger.info(f"Plotting data in {dir_path}")
+    logger.info(f"Plotting time data in {dir_path}")
     if config is None:
         config = get_default_configuration()
 
-    time_data = quick_read(config, dir_path)
+    time_data = quick_read(dir_path, config)
     time_data = run_time_processors(config, time_data)
     if not decimate:
-        time_data.plot(max_pts=max_pts).show()
-        return
+        return time_data.plot(max_pts=max_pts)
     dec_params = config.dec_setup.run(time_data.metadata.fs)
     dec_data = run_decimation(config, time_data, dec_params=dec_params)
-    dec_data.plot(max_pts=max_pts).show()
+    return dec_data.plot(max_pts=max_pts)
+
+
+def quick_spectra(
+    dir_path: Path,
+    config: Optional[Configuration] = None,
+) -> SpectraData:
+    """
+    Quick plotting of time data
+
+    Parameters
+    ----------
+    dir_path : Path
+        The directory path
+    config : Optional[Configuration], optional
+        The configuration with the required time readers, by default None
+
+    Returns
+    -------
+    SpectraData
+        The spectra data
+
+    Raises
+    ------
+    ValueError
+        If time data fails reading
+    """
+    logger.info(f"Getting spectra for time data in {dir_path}")
+    if config is None:
+        config = get_default_configuration()
+
+    time_data = quick_read(dir_path, config)
+    ref_time = time_data.metadata.first_time
+    time_data = run_time_processors(config, time_data)
+    dec_params = config.dec_setup.run(time_data.metadata.fs)
+    dec_data = run_decimation(config, time_data, dec_params=dec_params)
+    win_data = run_windowing(config, ref_time, dec_data)
+    return run_fft(config, win_data)
 
 
 def quick_tf(
@@ -591,7 +636,7 @@ def quick_tf(
     if config is None:
         config = get_default_configuration()
 
-    time_data = quick_read(config, dir_path)
+    time_data = quick_read(dir_path, config)
     ref_time = time_data.metadata.first_time
     time_data = run_time_processors(config, time_data)
     dec_params = config.dec_setup.run(time_data.metadata.fs)
