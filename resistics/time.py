@@ -7,8 +7,7 @@ Classes and methods for storing and manipulating time data, including:
 - TimeData processors
 """
 from loguru import logger
-from typing import List, Dict, Union, Any, Tuple
-from typing import Optional, Callable
+from typing import List, Dict, Union, Any, Tuple, Optional, Callable
 import types
 from pathlib import Path
 from pydantic import validator, conint, PositiveFloat
@@ -182,12 +181,82 @@ class TimeMetadata(WriteableMetadata):
         """Get the nyquist frequency"""
         return self.fs / 2
 
+    def get_chan_types(self) -> List[str]:
+        """
+        Get all the different channel types
+
+        Returns
+        -------
+        List[str]
+            A list of different channel types
+
+        Examples
+        --------
+        >>> from resistics.testing import time_metadata_mt
+        >>> metadata = time_metadata_mt()
+        >>> metadata.get_chan_types()
+        ['electric', 'magnetic']
+        """
+        chan_types = {x.chan_type for x in self.chans_metadata.values()}
+        return sorted(list(chan_types))
+
+    def get_chans_with_type(self, chan_type: str) -> List[str]:
+        """
+        Get channels with the given type
+
+        Parameters
+        ----------
+        chan_type : str
+            The channel type
+
+        Returns
+        -------
+        List[str]
+            A list of channels with the given channel type
+
+        Examples
+        --------
+        >>> from resistics.testing import time_metadata_mt
+        >>> metadata = time_metadata_mt()
+        >>> metadata.get_chans_with_type("magnetic")
+        ['Hx', 'Hy']
+        """
+        return [x for x in self.chans if self.chans_metadata[x].chan_type == chan_type]
+
     def get_electric_chans(self) -> List[str]:
-        """Get electric channels"""
+        """
+        Get list of electric channels
+
+        Returns
+        -------
+        List[str]
+            List of electric channels
+
+        Examples
+        --------
+        >>> from resistics.testing import time_metadata_mt
+        >>> metadata = time_metadata_mt()
+        >>> metadata.get_electric_chans()
+        ['Ex', 'Ey']
+        """
         return [x for x in self.chans if self.chans_metadata[x].electric()]
 
     def get_magnetic_chans(self) -> List[str]:
-        """Get magnetic channels"""
+        """
+        Get list of magnetic channels
+
+        Returns
+        -------
+        List[str]
+            List of magnetic channels
+
+        Examples
+        --------
+        >>> from resistics.testing import time_metadata_mt
+        >>> metadata = time_metadata_mt()
+        >>> metadata.get_magnetic_chans()
+        ['Hx', 'Hy']
+        """
         return [x for x in self.chans if self.chans_metadata[x].magnetic()]
 
     def any_electric(self) -> bool:
@@ -567,120 +636,67 @@ class TimeData(ResisticsData):
     def plot(
         self,
         fig: Optional[go.Figure] = None,
-        subplots: Optional[List[str]] = None,
-        subplot_columns: Optional[Dict[str, List[str]]] = None,
-        max_pts: int = 10_000,
-        label_prefix: str = "",
+        chans: Optional[List[str]] = None,
+        color: str = "blue",
+        legend: str = "TimeData",
+        max_pts: Optional[int] = 10_000,
     ) -> go.Figure:
         """
-        Plot time data
+        Plot time series data
 
         Parameters
         ----------
-        fig : go.Figure, optional
-            Plotly figure, by default None. If no figure is provided, a new one
-            will be created.
-        subplots : Optional[List[str]], optional
-            Subplots, by default None. To customise the plot, provide a list of
-            subplots
-        subplot_columns : Optional[Dict[str, List[str]]], optional
-            Subplot columns defines which channels to plot for each subplot, by
-            default None
-        max_pts : int, optional
-            Maximum number of points to plot, by default 10000. Data will be
-            downsampled using lttb method.
-        label_prefix : str, optional
-            Prefix to add to legend labels, by default "".
+        fig : Optional[go.Figure], optional
+            A figure if appending the data to an existing plot, by default None
+        chans : Optional[List[str]], optional
+            Explicit definition of channels to plot, by default None
+        color : str, optional
+            The color for the data, by default "blue"
+        legend : str, optional
+            The legend group to use, by default "TimeData". This is more useful
+            when plotting multiple TimeData
+        max_pts : Optional[int], optional
+            The maximum number of points for any channel plot before applying
+            lttbc downsampling, by default 10_000. If set to None, no
+            downsampling will be applied.
 
         Returns
         -------
         go.Figure
-            Plotly figure
-        """
-        from resistics.plot import figure_columns_as_lines, plot_columns_1d
+            Plotly Figure
 
-        if subplots is None:
-            subplots = self._get_subplots()
-        if subplot_columns is None:
-            subplot_columns = self._get_subplot_chans(subplots)
+        Raises
+        ------
+        ValueError
+            If a figure is provided and channels have not been explicitly
+            defined
+        """
+        from resistics.plot import get_time_fig, apply_lttb
+
+        if fig is not None and chans is None:
+            raise ValueError("If a figure is provided, then chans must be specified")
+        if chans is None:
+            chans = self.metadata.chans
         if fig is None:
-            y_labels = self._get_y_labels(subplot_columns)
-            fig = figure_columns_as_lines(
-                subplots=subplots, y_labels=y_labels, x_label="Datetime"
-            )
-        plot_columns_1d(
-            fig,
-            self,
-            subplots,
-            subplot_columns,
-            max_pts=max_pts,
-            label_prefix=label_prefix,
-        )
-        return fig
+            y_labels = {x: self.metadata.chans_metadata[x].chan_type for x in chans}
+            fig = get_time_fig(self.metadata.chans, y_labels)
 
-    def _get_subplots(self) -> List[str]:
-        """Get list of subplots"""
-        subplots = []
-        if self.metadata.any_electric():
-            subplots.append("Electric")
-        if self.metadata.any_magnetic():
-            subplots.append("Magnetic")
-        return subplots
-
-    def _get_subplot_chans(self, subplots: List[str]) -> Dict[str, List[str]]:
-        """Get channels for each subplot"""
-        subplot_columns = {}
-        if "Electric" in subplots:
-            subplot_columns["Electric"] = self.metadata.get_electric_chans()
-        if "Magnetic" in subplots:
-            subplot_columns["Magnetic"] = self.metadata.get_magnetic_chans()
-        return subplot_columns
-
-    def _get_y_labels(self, subplot_columns: Dict[str, List[str]]) -> Dict[str, str]:
-        """Get subplot columns"""
-        y_labels = {}
-        for subplot, columns in subplot_columns.items():
-            if len(columns) == 0:
-                y_labels["subplot"] = "Unknown"
+        # plot the data
+        for idx, chan in enumerate(chans):
+            if chan not in self.metadata.chans:
                 continue
-
-            chan = columns[0]
-            if self.metadata.chans_metadata[chan].electric():
-                y_labels[subplot] = "mv/km"
-            elif self.metadata.chans_metadata[chan].magnetic():
-                y_labels[subplot] = "mV or nT"
-            else:
-                y_labels[subplot] = "Unknown"
-        return y_labels
-
-    def x_size(self) -> int:
-        """
-        For abstract plotting functions, return the size
-
-
-        Returns
-        -------
-        int
-            The x size, equal to the number of samples
-        """
-        return self.metadata.n_samples
-
-    def get_x(self, samples: Optional[np.ndarray] = None) -> pd.DatetimeIndex:
-        """
-        For plotting, get x dimension, in this case times
-
-        Parameters
-        ----------
-        samples : Union[np.ndarray, None], optional
-            If provided, x values (timestamps) are only returned for the
-            specified samples, by default None
-
-        Returns
-        -------
-        pd.DatetimeIndex
-            Timestamp array
-        """
-        return self.get_timestamps(samples=samples, estimate=True)
+            indices, data = apply_lttb(self.get_chan(chan), max_pts)
+            timestamps = self.get_timestamps(samples=indices, estimate=True)
+            scatter = go.Scattergl(
+                x=timestamps,
+                y=data,
+                line=dict(color=color),
+                name=legend,
+                legendgroup=legend,
+                showlegend=(idx == 0),
+            )
+            fig.add_trace(scatter, row=idx + 1, col=1)
+        return fig
 
     def to_string(self) -> str:
         """Class details as a string"""
@@ -1240,8 +1256,8 @@ class Subsection(TimeProcess):
         2020-01-01 00:00:25 2020-01-01 00:00:50.9
         >>> subsection.metadata.n_samples
         260
-        >>> plt.plot(time_data.get_x(), time_data["Ex"], label="full") # doctest: +SKIP
-        >>> plt.plot(subsection.get_x(), subsection["Ex"], label="sub") # doctest: +SKIP
+        >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
+        >>> plt.plot(subsection.get_timestamps(), subsection["Ex"], label="sub") # doctest: +SKIP
         >>> plt.legend(loc=3) # doctest: +SKIP
         >>> plt.tight_layout() # doctest: +SKIP
         >>> plt.show() # doctest: +SKIP
@@ -1588,8 +1604,8 @@ class LowPass(TimeProcess):
         time_data = time_data_periodic([10, 50], fs=250, n_samples=100)
         process = LowPass(cutoff=30)
         filtered = process.run(time_data)
-        plt.plot(time_data.get_x(), time_data["chan1"], label="original")
-        plt.plot(filtered.get_x(), filtered["chan1"], label="filtered")
+        plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original")
+        plt.plot(filtered.get_timestamps(), filtered["chan1"], label="filtered")
         plt.legend(loc=3)
         plt.tight_layout()
         plt.plot()
@@ -1658,8 +1674,8 @@ class HighPass(TimeProcess):
         time_data = time_data_periodic([10, 50], fs=250, n_samples=100)
         process = HighPass(cutoff=30)
         filtered = process.run(time_data)
-        plt.plot(time_data.get_x(), time_data["chan1"], label="original")
-        plt.plot(filtered.get_x(), filtered["chan1"], label="filtered")
+        plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original")
+        plt.plot(filtered.get_timestamps(), filtered["chan1"], label="filtered")
         plt.legend(loc=3)
         plt.tight_layout()
         plt.plot()
@@ -1730,8 +1746,8 @@ class BandPass(TimeProcess):
         time_data = time_data_periodic([10, 50], fs=250, n_samples=100)
         process = BandPass(cutoff_low=45, cutoff_high=55)
         filtered = process.run(time_data)
-        plt.plot(time_data.get_x(), time_data["chan1"], label="original")
-        plt.plot(filtered.get_x(), filtered["chan1"], label="filtered")
+        plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original")
+        plt.plot(filtered.get_timestamps(), filtered["chan1"], label="filtered")
         plt.legend(loc=3)
         plt.tight_layout()
         plt.plot()
@@ -1812,8 +1828,8 @@ class Notch(TimeProcess):
         time_data = time_data_periodic([10, 50], fs=250, n_samples=100)
         process = Notch(notch=50, band=10)
         filtered = process.run(time_data)
-        plt.plot(time_data.get_x(), time_data["chan1"], label="original")
-        plt.plot(filtered.get_x(), filtered["chan1"], label="filtered")
+        plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original")
+        plt.plot(filtered.get_timestamps(), filtered["chan1"], label="filtered")
         plt.legend(loc=3)
         plt.tight_layout()
         plt.plot()
@@ -1896,8 +1912,8 @@ class Resample(TimeProcess):
         >>> resampled = process.run(time_data)
         >>> print(resampled.metadata.n_samples, resampled.metadata.first_time, resampled.metadata.last_time)
         40 2020-01-01 00:00:00 2020-01-01 00:00:00.78
-        >>> plt.plot(time_data.get_x(), time_data["chan1"], label="original") # doctest: +SKIP
-        >>> plt.plot(resampled.get_x(), resampled["chan1"], label="resampled") # doctest: +SKIP
+        >>> plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original") # doctest: +SKIP
+        >>> plt.plot(resampled.get_timestamps(), resampled["chan1"], label="resampled") # doctest: +SKIP
         >>> plt.legend(loc=3) # doctest: +SKIP
         >>> plt.tight_layout() # doctest: +SKIP
         >>> plt.show() # doctest: +SKIP
@@ -2003,8 +2019,8 @@ class Decimate(TimeProcess):
         >>> decimated = process.run(time_data)
         >>> print(decimated.metadata.n_samples, decimated.metadata.first_time, decimated.metadata.last_time)
         40 2020-01-01 00:00:00 2020-01-01 00:00:00.78
-        >>> plt.plot(time_data.get_x(), time_data["chan1"], label="original") # doctest: +SKIP
-        >>> plt.plot(decimated.get_x(), decimated["chan1"], label="decimated") # doctest: +SKIP
+        >>> plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original") # doctest: +SKIP
+        >>> plt.plot(decimated.get_timestamps(), decimated["chan1"], label="decimated") # doctest: +SKIP
         >>> plt.legend(loc=3) # doctest: +SKIP
         >>> plt.tight_layout() # doctest: +SKIP
         >>> plt.show() # doctest: +SKIP
@@ -2175,14 +2191,14 @@ class ShiftTimestamps(TimeProcess):
         >>> from resistics.testing import time_data_with_offset
         >>> from resistics.time import ShiftTimestamps
         >>> time_data = time_data_with_offset(offset=10, fs=1/20, n_samples=5)
-        >>> [x.time().strftime('%H:%M:%S') for x in time_data.get_x()]
+        >>> [x.time().strftime('%H:%M:%S') for x in time_data.get_timestamps()]
         ['00:00:10', '00:00:30', '00:00:50', '00:01:10', '00:01:30']
         >>> process = ShiftTimestamps(shift=10)
         >>> result = process.run(time_data)
-        >>> [x.time().strftime('%H:%M:%S') for x in result.get_x()]
+        >>> [x.time().strftime('%H:%M:%S') for x in result.get_timestamps()]
         ['00:00:20', '00:00:40', '00:01:00', '00:01:20']
-        >>> plt.plot(time_data.get_x(), time_data["chan1"], "bo", label="original") # doctest: +SKIP
-        >>> plt.plot(result.get_x(), result["chan1"], "rd", label="shifted") # doctest: +SKIP
+        >>> plt.plot(time_data.get_timestamps(), time_data["chan1"], "bo", label="original") # doctest: +SKIP
+        >>> plt.plot(result.get_timestamps(), result["chan1"], "rd", label="shifted") # doctest: +SKIP
         >>> plt.legend(loc=4) # doctest: +SKIP
         >>> plt.grid() # doctest: +SKIP
         >>> plt.tight_layout() # doctest: +SKIP

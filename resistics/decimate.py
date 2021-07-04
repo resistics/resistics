@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 from resistics.common import ResisticsProcess, ResisticsModel, ResisticsData
 from resistics.common import ResisticsWriter, History, Metadata, WriteableMetadata
 from resistics.sampling import HighResDateTime
-from resistics.time import ChanMetadata, TimeData
+from resistics.time import ChanMetadata, TimeMetadata, TimeData
 
 
 def get_eval_freqs_min(fs: float, f_min: float) -> np.ndarray:
@@ -586,7 +586,7 @@ class DecimatedData(ResisticsData):
         }
         >>> for ilevel in range(0, dec_data.metadata.n_levels):
         ...     data = dec_data.get_level(ilevel)
-        ...     plt.plot(dec_data.get_x(ilevel), data[0], label=f"Level{ilevel}") # doctest: +SKIP
+        ...     plt.plot(dec_data.get_timestamps(ilevel), data[0], label=f"Level{ilevel}") # doctest: +SKIP
         >>> plt.legend(loc=3) # doctest: +SKIP
         >>> plt.tight_layout() # doctest: +SKIP
         >>> plt.show() # doctest: +SKIP
@@ -663,81 +663,44 @@ class DecimatedData(ResisticsData):
             n_samples=level_metadata.n_samples,
         )
 
-    def plot(self, max_pts: int = 10_000) -> go.Figure:
+    def plot(self, max_pts: Optional[int] = 10_000) -> go.Figure:
         """
         Plot the decimated data
 
         Parameters
         ----------
-        max_pts : int, optional
-            Maximum number of points to plot, by default 10_000
+        max_pts : Optional[int], optional
+            The maximum number of points in any individual plot before applying
+            lttbc downsampling, by default 10_000. If set to None, no
+            downsampling will be applied.
 
         Returns
         -------
         go.Figure
             Plotly Figure
         """
-        from resistics.time import TimeMetadata
+        from resistics.plot import get_time_fig
+        import plotly.express as px
 
         if len(self.data) == 0:
             logger.error("Data is empty, no decimation levels to plot")
 
-        fig = None
+        chans = self.metadata.chans
+        y_labels = {x: self.metadata.chans_metadata[x].chan_type for x in chans}
+        fig = get_time_fig(chans, y_labels)
+        colors = iter(px.colors.qualitative.Plotly)
+
         for ilevel in range(0, self.metadata.n_levels):
             logger.info(f"Plotting decimation level {ilevel}")
             metadata_dict = self.metadata.levels_metadata[ilevel].dict()
             metadata_dict["chans"] = self.metadata.chans
             metadata_dict["chans_metadata"] = self.metadata.chans_metadata
             time_data = TimeData(TimeMetadata(**metadata_dict), self.data[ilevel])
-            if fig is None:
-                fig = time_data.plot(
-                    max_pts=max_pts,
-                    label_prefix=f"Level {ilevel}",
-                )
-            else:
-                time_data.plot(
-                    fig=fig,
-                    max_pts=max_pts,
-                    label_prefix=f"Level {ilevel}",
-                )
+            legend = f"{ilevel} - {time_data.metadata.fs:.4f} Hz"
+            time_data.plot(
+                fig=fig, chans=chans, color=next(colors), legend=legend, max_pts=max_pts
+            )
         return fig
-
-    def x_size(self, level: int) -> int:
-        """
-        For abstract plotting functions, return the size
-
-        Parameters
-        ----------
-        level : int
-            The decimation level
-
-        Returns
-        -------
-        int
-            The x size, equal to the number of samples
-        """
-        return self.metadata.levels_metadata[level].n_samples
-
-    def get_x(
-        self, level: int, samples: Optional[np.ndarray] = None
-    ) -> pd.DatetimeIndex:
-        """
-        For plotting, get x dimension, in this case times
-
-        Parameters
-        ----------
-        level : int
-            The decimation level
-        samples : Union[np.ndarray, None], optional
-            If provided, x values (timestamps) are only returned for the
-            specified samples, by default None
-
-        Returns
-        -------
-        pd.DatetimeIndex
-            Timestamp array
-        """
-        return self.get_timestamps(level, samples=samples, estimate=True)
 
     def to_string(self) -> str:
         """Class details as a string"""

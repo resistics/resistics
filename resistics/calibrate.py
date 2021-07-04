@@ -78,7 +78,10 @@ class CalibrationData(WriteableMetadata):
         )
 
     def plot(
-        self, fig: Optional[go.Figure] = None, label_prefix: str = ""
+        self,
+        fig: Optional[go.Figure] = None,
+        color: str = "blue",
+        legend: str = "CalibrationData",
     ) -> go.Figure:
         """
         Plot calibration data
@@ -86,46 +89,41 @@ class CalibrationData(WriteableMetadata):
         Parameters
         ----------
         fig : Optional[go.Figure], optional
-            Plotly figure, by default None. If no figure is provided, a new one
-            will be created.
-        label_prefix : str, optional
-            Prefix to add to the plot labels, by default ""
+            A figure if adding the calibration data to an existing plot, by default None
+        color : str, optional
+            The color for the plot, by default "blue"
+        legend : str, optional
+            The legend name, by default "CalibrationData"
 
         Returns
         -------
         go.Figure
-            Plotly figure
+            Plotly figure with the calibration data added
         """
-        from resistics.plot import figure_columns_as_lines, plot_columns_1d
+        from resistics.plot import get_calibration_fig
 
-        subplots = ["Magnitude", "Phase"]
-        subplot_columns = {"Magnitude": ["magnitude"], "Phase": ["phase"]}
-        y_labels = {"Magnitude": self.magnitude_unit, "Phase": "radians"}
         if fig is None:
-            fig = figure_columns_as_lines(
-                subplots=subplots, y_labels=y_labels, x_label="Frequency Hz"
-            )
-            fig.update_xaxes(type="log")
-        plot_columns_1d(
-            fig,
-            self,
-            subplots,
-            subplot_columns,
-            max_pts=None,
-            label_prefix=label_prefix,
+            fig = get_calibration_fig()
+
+        scatter = go.Scatter(
+            x=self.frequency,
+            y=self.magnitude,
+            mode="lines+markers",
+            line=dict(color=color),
+            name=legend,
         )
+        fig.add_trace(scatter, row=1, col=1)
+
+        scatter = go.Scatter(
+            x=self.frequency,
+            y=self.phase,
+            mode="lines+markers",
+            line=dict(color=color),
+            name=legend,
+            showlegend=False,
+        )
+        fig.add_trace(scatter, row=2, col=1)
         return fig
-
-    def x_size(self) -> int:
-        """Get x size for plotting"""
-        return self.n_samples
-
-    def get_x(self, samples: Optional[np.ndarray] = None) -> np.ndarray:
-        """Get x axis for plotting 1-D"""
-        freqs = np.array(self.frequency)
-        if samples is not None:
-            return freqs[samples]
-        return freqs
 
     def to_dataframe(self):
         """Convert to pandas DataFrame"""

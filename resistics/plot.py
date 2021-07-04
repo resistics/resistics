@@ -1,15 +1,20 @@
 """
 Module to help plotting various data
 """
-from typing import List, Dict, Union, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Union
 import numpy as np
+import pandas as pd
+import lttbc
+import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-from resistics.common import ResisticsData
+PLOTLY_TEMPLATE = "seaborn"
+PLOTLY_MARGIN = dict(l=0, r=0, b=0, t=50)
 
 
 def lttb_downsample(
-    x: np.ndarray, y: np.ndarray, max_pts: int = 5000
+    x: np.ndarray, y: np.ndarray, max_pts: int = 5_000
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Downsample x, y for visualisation
@@ -33,11 +38,8 @@ def lttb_downsample(
     ValueError
         If the size of x does not match the size of y
     """
-    import lttbc
-
     if x.size != y.size:
         raise ValueError(f"x size {x.size} must equal y size {y.size}")
-
     if max_pts >= x.size:
         return x, y
 
@@ -51,121 +53,188 @@ def lttb_downsample(
     return nx.astype(x_dtype), ny.astype(y_dtype)
 
 
-class PlotData1D(ResisticsData):
+def apply_lttb(
+    data: np.ndarray, max_pts: Union[int, None]
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Class to help plot various 1-D data
+    Apply lttb downsampling if max_pts is not None
 
-    As this takes a full instance of x, it is not recommended for long time
-    series as this will have a memory impact
-    """
-
-    def __init__(self, x: np.ndarray, data: np.ndarray, rows: List[str]):
-        """
-        Initialise
-
-        Parameters
-        ----------
-        x : np.ndarray
-            The x array
-        data : np.ndarray
-            The data, which is n_rows x n_x
-        rows : List[str]
-            The name of each row
-        """
-        self.x = x
-        self.data = data
-        self.rows = rows
-
-    def __getitem__(self, row: str) -> np.ndarray:
-        """Get data for a row by name"""
-        index = self.rows.index(row)
-        return self.data[index, :]
-
-    def x_size(self) -> int:
-        """Get the x size"""
-        return len(self.x)
-
-    def get_x(self, samples: Optional[np.ndarray] = None) -> np.ndarray:
-        """Get x values"""
-        if samples is None:
-            return self.x
-        return self.x[samples]
-
-
-def figure_columns_as_lines(
-    subplots: List[str],
-    y_labels: Dict[str, str],
-    x_label: str,
-    title: Union[str, None] = None,
-) -> go.Figure:
-    """
-    Get a figure for columnar data with specified subplots
+    There is a helper function
 
     Parameters
     ----------
-    subplots : List[str]
-        The subplot titles
-    y_labels : Dict[str, str]
-        y labels for each subplot, with subplot as key and label as value
-    x_label : str
-        The x label, assumed to be the same for all subplots as this is for
-        columnar data
-    title : Union[str, None], optional
-        Title of the figure, by default None
+    data : np.ndarray
+        The data to downsample
+    max_pts : Union[int, None]
+        The maximum number of points or None. If None, no downsamping is
+        performed
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Indices and data selected for plotting
+    """
+    indices = np.arange(data.size)
+    if max_pts is None:
+        return indices, data
+
+    indices, data = lttb_downsample(indices, data, max_pts)
+    return indices, data
+
+
+def plot_timeline(
+    df: pd.DataFrame,
+    y_col: str,
+    title: str = "Timeline",
+    ref_time: Optional[pd.Timestamp] = None,
+) -> go.Figure:
+    """
+    Plot a timeline
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with the first and last times of the horizontal bars
+    y_col : str
+        The column to use for the y axis
+    title : str, optional
+        The title for the plot, by default "Timeline"
+    ref_time : Optional[pd.Timestamp], optional
+        The reference time, by default None
 
     Returns
     -------
     go.Figure
-        A plotly figure
-
-    Raises
-    ------
-    ValueError
-        If the ylabels specification does not match the subplot specification
+        Plotly figure
     """
-    from plotly.subplots import make_subplots
+    # get range for x axis
+    min_time = df["first_time"].min()
+    if ref_time is not None and ref_time < min_time:
+        min_time = ref_time
+    max_time = df["last_time"].max()
+    pad = 0.1 * (max_time - min_time)
+    min_time = min_time - pad
+    max_time = max_time + pad
 
-    if set(subplots) != set(y_labels.keys()):
-        raise ValueError(f"Mismatch between ylabels {y_labels} and subplots {subplots}")
-    if title is None:
-        title = "Data plot"
+    # sort for ordering
+    df = df.sort_values([y_col, "first_time"])
 
-    n_subplots = len(subplots)
-    fig = make_subplots(
-        rows=n_subplots,
-        cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.04,
-        subplot_titles=subplots,
+    fig = px.timeline(
+        df, x_start="first_time", x_end="last_time", y=y_col, color="fs", title=title
     )
-    fig.update_layout(title_text=title)
-    fig.update_xaxes(title_text=x_label, row=n_subplots, col=1)
-    for idx, subplot in enumerate(subplots):
-        fig.update_yaxes(title_text=y_labels[subplot], row=idx + 1, col=1)
+    if ref_time is not None:
+        fig.add_vline(x=ref_time, line_width=3, line_dash="dash", line_color="red")
+    fig.update_layout(template=PLOTLY_TEMPLATE, margin=dict(PLOTLY_MARGIN))
+    fig.update_xaxes(range=[min_time, max_time])
+    fig.update_layout(legend=dict(itemclick=False, itemdoubleclick=False))
     return fig
 
 
-def plot_columns_1d(
-    fig,
-    data: ResisticsData,
-    subplots: List[str],
-    subplot_columns: Dict[str, List[str]],
-    max_pts: Union[int, None] = 5000,
-    label_prefix: str = "",
-) -> None:
-    """View timeseries data as a line plot"""
-    if label_prefix != "":
-        label_prefix = f"{label_prefix} : "
-    for idx, subplot in enumerate(subplots):
-        for column in subplot_columns[subplot]:
-            if max_pts is not None:
-                nx, ny = lttb_downsample(
-                    np.arange(data.x_size()), data[column], max_pts
-                )
-                nx = data.get_x(samples=nx)
-            else:
-                nx = data.get_x()
-                ny = data[column]
-            lineplot = go.Scattergl(x=nx, y=ny, name=f"{label_prefix}{column}")
-            fig.add_trace(lineplot, row=idx + 1, col=1)
+def get_calibration_fig() -> go.Figure:
+    """
+    Get a figure for plotting calibration data
+
+    Returns
+    -------
+    go.Figure
+        Plotly figure
+    """
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        subplot_titles=["Magnitude", "Phase"],
+        vertical_spacing=0.05,
+    )
+    fig.update_xaxes(type="log", row=1, col=1)
+    fig.update_yaxes(title_text="Magnitude, nT/mV", type="log", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency, Hz", type="log", row=2, col=1)
+    fig.update_yaxes(title_text="Phase, radians", row=2, col=1)
+    fig.layout.update(template=PLOTLY_TEMPLATE, margin=dict(PLOTLY_MARGIN))
+    return fig
+
+
+def get_time_fig(chans: List[str], y_axis_label: Dict[str, str]) -> go.Figure:
+    """
+    Get a figure for plotting time data
+
+    Parameters
+    ----------
+    chans : List[str]
+        The channels to plot
+    y_axis_label : Dict[str, str]
+        The labels to use for the y axis
+
+    Returns
+    -------
+    go.Figure
+        Plotly figure
+    """
+    fig = make_subplots(
+        rows=len(chans),
+        cols=1,
+        shared_xaxes=True,
+        subplot_titles=[f"Channel {chan}" for chan in chans],
+        vertical_spacing=0.05,
+    )
+    for idx, chan in enumerate(chans):
+        fig.update_yaxes(title_text=y_axis_label[chan], row=idx + 1, col=1)
+    fig.layout.update(template=PLOTLY_TEMPLATE, margin=dict(PLOTLY_MARGIN))
+    return fig
+
+
+def get_spectra_stack_fig(chans: List[str], y_axis_label: Dict[str, str]) -> go.Figure:
+    """
+    Get a figure for plotting spectra stack data
+
+    Parameters
+    ----------
+    chans : List[str]
+        The channels to plot
+    y_axis_label : Dict[str, str]
+        The y axis labels
+
+    Returns
+    -------
+    go.Figure
+        Plotly figure
+    """
+    fig = make_subplots(
+        rows=len(chans),
+        cols=1,
+        shared_xaxes=True,
+        subplot_titles=[f"Channel {chan}" for chan in chans],
+        vertical_spacing=0.05,
+    )
+    for idx, chan in enumerate(chans):
+        fig.update_xaxes(type="log")
+        fig.update_yaxes(title_text=y_axis_label[chan], type="log", row=idx + 1, col=1)
+    fig.update_xaxes(title_text="Frequency, Hz", row=len(chans), col=1)
+    fig.layout.update(template=PLOTLY_TEMPLATE, margin=dict(PLOTLY_MARGIN))
+    return fig
+
+
+def get_spectra_section_fig(chans: List[str]) -> go.Figure:
+    """
+    Get figure for plotting spectra sections
+
+    Parameters
+    ----------
+    chans : List[str]
+        The channels to plot
+
+    Returns
+    -------
+    go.Figure
+        Plotly figure
+    """
+    fig = make_subplots(
+        rows=len(chans),
+        cols=1,
+        subplot_titles=[f"Channel {chan}" for chan in chans],
+        vertical_spacing=0.05,
+        x_title="Date",
+        y_title="Frequency, Hz",
+    )
+    fig.layout.update(template=PLOTLY_TEMPLATE, margin=dict(PLOTLY_MARGIN))
     return fig

@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any, Union
 from pydantic import validator, constr
 import numpy as np
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from resistics.common import Metadata
 
@@ -374,13 +375,47 @@ class ImpedanceTensor(TransferFunction):
     out_chans: List[str] = ["Ex", "Ey"]
     in_chans: List[str] = ["Hx", "Hy"]
 
-    def get_resistivity(self, periods: np.ndarray, component: Component) -> np.ndarray:
-        """Get the apparent resistivity for a component"""
+    @staticmethod
+    def get_resistivity(periods: np.ndarray, component: Component) -> np.ndarray:
+        """
+        Get apparent resistivity for a component
+
+        Parameters
+        ----------
+        periods : np.ndarray
+            The periods of the component
+        component : Component
+            The component values
+
+        Returns
+        -------
+        np.ndarray
+            Apparent resistivity
+        """
         squared = np.power(np.absolute(component.to_numpy()), 2)
         return 0.2 * periods * squared
 
-    def get_phase(self, key: str, component: Component) -> np.ndarray:
-        """Get the phase for a component"""
+    @staticmethod
+    def get_phase(key: str, component: Component) -> np.ndarray:
+        """
+        Get the phase for the component
+
+        .. note::
+
+            Components ExHx and ExHy are wrapped around in [0,90]
+
+        Parameters
+        ----------
+        key : str
+            The component name
+        component : Component
+            The component values
+
+        Returns
+        -------
+        np.ndarray
+            The phase values
+        """
         phase = np.angle(component.to_numpy())
         # unwrap into specific quadrant and convert to degrees
         phase = np.unwrap(phase) * 180 / np.pi
@@ -388,27 +423,17 @@ class ImpedanceTensor(TransferFunction):
             phase = np.mod(phase, 360) - 180
         return phase
 
-    def plot(
-        self,
-        freqs: List[float],
-        components: Dict[str, Component],
-        to_plot: Optional[List[str]] = None,
+    @staticmethod
+    def get_fig(
         x_lim: Optional[List[float]] = None,
         res_lim: Optional[List[float]] = None,
         phs_lim: Optional[List[float]] = None,
     ) -> go.Figure:
         """
-        Plot the impedance tensor
+        Get a figure for plotting the ImpedanceTensor
 
         Parameters
         ----------
-        freqs : List[float]
-            The x axis frequencies
-        components : Dict[str, Component]
-            The component data
-        to_plot : Optional[List[str]], optional
-            The components of the impedance tensor to plot, by default None,
-            which will plot all of them
         x_lim : Optional[List[float]], optional
             The x limits, to be provided as powers of 10, by default None. For
             example, for 0.001, use -3
@@ -423,11 +448,8 @@ class ImpedanceTensor(TransferFunction):
         go.Figure
             Plotly figure
         """
-        from plotly.subplots import make_subplots
+        from resistics.plot import PLOTLY_MARGIN, PLOTLY_TEMPLATE
 
-        periods = np.reciprocal(freqs)
-        if to_plot is None:
-            to_plot = ["ExHy", "EyHx", "ExHx", "EyHy"]
         if x_lim is None:
             x_lim = [-3, 5]
         if res_lim is None:
@@ -435,7 +457,6 @@ class ImpedanceTensor(TransferFunction):
         if phs_lim is None:
             phs_lim = [-10, 100]
 
-        colors = {"ExHx": "orange", "EyHy": "green", "ExHy": "red", "EyHx": "blue"}
         fig = make_subplots(
             rows=2,
             cols=1,
@@ -443,38 +464,95 @@ class ImpedanceTensor(TransferFunction):
             vertical_spacing=0.08,
             subplot_titles=["Apparent resistivity", "Phase"],
         )
-        fig.update_layout(width=1000, autosize=True)
-        # x axes
-        fig.update_xaxes(title_text="Period (s)", type="log", range=x_lim, row=1, col=1)
+        # apparent resistivity axes
+        fig.update_xaxes(type="log", range=x_lim, row=1, col=1)
         fig.update_xaxes(showticklabels=True, row=1, col=1)
-        fig.update_xaxes(title_text="Period (s)", type="log", range=x_lim, row=2, col=1)
-        fig.update_xaxes(showticklabels=True, row=2, col=1)
-        # y axes
         fig.update_yaxes(title_text="App. resistivity (Ohm m)", row=1, col=1)
         fig.update_yaxes(type="log", range=res_lim, row=1, col=1)
+        # phase axes
+        fig.update_xaxes(title_text="Period (s)", type="log", row=2, col=1)
+        fig.update_xaxes(showticklabels=True, row=2, col=1)
         fig.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
         fig.update_yaxes(title_text="Phase (degrees)", range=phs_lim, row=2, col=1)
+        fig.update_layout(template=PLOTLY_TEMPLATE, margin=dict(PLOTLY_MARGIN))
+        return fig
+
+    @staticmethod
+    def plot(
+        freqs: List[float],
+        components: Dict[str, Component],
+        fig: Optional[go.Figure] = None,
+        to_plot: Optional[List[str]] = None,
+        legend: str = "Impedance tensor",
+        x_lim: Optional[List[float]] = None,
+        res_lim: Optional[List[float]] = None,
+        phs_lim: Optional[List[float]] = None,
+        symbol: Optional[str] = "circle",
+    ) -> go.Figure:
+        """
+        Plot the Impedance tensor
+
+        Parameters
+        ----------
+        freqs : List[float]
+            The frequencies where the impedance tensor components have been
+            calculated
+        components : Dict[str, Component]
+            The component data
+        fig : Optional[go.Figure], optional
+            Figure to add to, by default None
+        to_plot : Optional[List[str]], optional
+            The components to plot, by default all of the components of the
+            impedance tensor
+        legend : str, optional
+            Legend prefix for the components, by default "Impedance tensor"
+        x_lim : Optional[List[float]], optional
+            The x limits, to be provided as powers of 10, by default None. For
+            example, for 0.001, use -3. Only used when a figure is not provided.
+        res_lim : Optional[List[float]], optional
+            The y limits for resistivity, to be provided as powers of 10, by
+            default None. For example, for 1000, use 3. Only used when a figure
+            is not provided.
+        phs_lim : Optional[List[float]], optional
+            The phase limits, by default None. Only used when a figure is not
+            provided.
+        symbol : Optional[str], optional
+            The marker symbol to use, by default "circle"
+
+        Returns
+        -------
+        go.Figure
+            [description]
+        """
+        if fig is None:
+            fig = ImpedanceTensor.get_fig(x_lim=x_lim, res_lim=res_lim, phs_lim=phs_lim)
+        if to_plot is None:
+            to_plot = ["ExHy", "EyHx", "ExHx", "EyHy"]
+
+        periods = np.reciprocal(freqs)
+        colors = {"ExHx": "orange", "EyHy": "green", "ExHy": "red", "EyHx": "blue"}
         for comp in to_plot:
-            res = self.get_resistivity(periods, components[comp])
-            phs = self.get_phase(comp, components[comp])
+            res = ImpedanceTensor.get_resistivity(periods, components[comp])
+            phs = ImpedanceTensor.get_phase(comp, components[comp])
+            comp_legend = f"{legend} - {comp}"
             scatter = go.Scatter(
                 x=periods,
                 y=res,
                 mode="lines+markers",
-                marker=dict(color=colors[comp]),
+                marker=dict(color=colors[comp], symbol=symbol),
                 line=dict(color=colors[comp]),
-                legendgroup=comp,
-                name=comp,
+                name=comp_legend,
+                legendgroup=comp_legend,
             )
             fig.add_trace(scatter, row=1, col=1)
             scatter = go.Scatter(
                 x=periods,
                 y=phs,
                 mode="lines+markers",
-                marker=dict(color=colors[comp]),
+                marker=dict(color=colors[comp], symbol=symbol),
                 line=dict(color=colors[comp]),
-                legendgroup=comp,
-                name=comp,
+                name=comp_legend,
+                legendgroup=comp_legend,
                 showlegend=False,
             )
             fig.add_trace(scatter, row=2, col=1)

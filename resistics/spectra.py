@@ -13,6 +13,7 @@ from pydantic import PositiveInt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 
 from resistics.common import ResisticsData, ResisticsProcess, History
 from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
@@ -173,15 +174,46 @@ class SpectraData(ResisticsData):
             level_metadata.index_offset,
         )
 
-    def plot_stack(
+    def plot(self, max_pts: Optional[int] = 10_000) -> go.Figure:
+        """
+        Stack spectra data for all decimation levels
+
+        Parameters
+        ----------
+        max_pts : Optional[int], optional
+            The maximum number of points in any individual plot before applying
+            lttbc downsampling, by default 10_000. If set to None, no
+            downsampling will be applied.
+
+        Returns
+        -------
+        go.Figure
+            The plotly figure
+        """
+        from resistics.plot import get_spectra_stack_fig
+
+        y_labels = {x: "Magnitude" for x in self.metadata.chans}
+        fig = get_spectra_stack_fig(self.metadata.chans, y_labels)
+        colors = iter(px.colors.qualitative.Plotly)
+        for ilevel in range(self.metadata.n_levels):
+            level_metadata = self.metadata.levels_metadata[ilevel]
+            freqs = np.array(level_metadata.freqs)
+            stack = np.mean(np.absolute(self.data[ilevel]), axis=0)
+            legend = f"{ilevel} - {level_metadata.fs:.4f} Hz"
+            fig = self._add_stack_data(
+                fig, freqs, stack, legend, color=next(colors), max_pts=max_pts
+            )
+        return fig
+
+    def plot_level_stack(
         self,
         level: int,
         max_pts: int = 10_000,
-        grouping: str = "12h",
+        grouping: Optional[str] = None,
         offset: str = "0h",
     ) -> go.Figure:
         """
-        Stack the spectra with optional time grouping
+        Stack the spectra for a decimation level with optional time grouping
 
         Parameters
         ----------
@@ -190,8 +222,8 @@ class SpectraData(ResisticsData):
         max_pts : int, optional
             The maximum number of points in any individual plot before applying
             lttbc downsampling, by default 10_000
-        grouping : str, optional
-            A grouping interval as a pandas freq string, by default "6h"
+        grouping : Optional[str], optional
+            A grouping interval as a pandas freq string, by default None
         offset : str, optional
             A time offset to add to the grouping, by default "0h". For instance,
             to plot night time and day time spectra, set grouping to "12h" and
@@ -202,7 +234,7 @@ class SpectraData(ResisticsData):
         go.Figure
             The plotly figure
         """
-        from resistics.plot import PlotData1D, figure_columns_as_lines, plot_columns_1d
+        from resistics.plot import get_spectra_stack_fig
 
         if grouping is None:
             first_date = pd.Timestamp(self.metadata.first_time.isoformat()).floor("D")
@@ -214,31 +246,69 @@ class SpectraData(ResisticsData):
             index=self.get_timestamps(level),
             columns=["local"],
         )
-        # prepare the plot
-        subplots = self.metadata.chans
-        subplot_columns = {x: [x] for x in subplots}
-        y_labels = {x: "Magnitude" for x in subplots}
-        fig = figure_columns_as_lines(
-            subplots=subplots, y_labels=y_labels, x_label="Frequency"
-        )
-        fig.update_yaxes(type="log")
         # group by the grouping frequency, iterate over the groups and plot
+        freqs = np.array(level_metadata.freqs)
+        y_labels = {x: "Magnitude" for x in self.metadata.chans}
+        fig = get_spectra_stack_fig(self.metadata.chans, y_labels)
+        colors = iter(px.colors.qualitative.Plotly)
         for idx, group in df.groupby(pd.Grouper(freq=grouping, offset=offset)):
             stack = np.mean(np.absolute(self.data[level][group["local"]]), axis=0)
-            plot_data = PlotData1D(
-                x=np.array(level_metadata.freqs), data=stack, rows=self.metadata.chans
-            )
-            plot_columns_1d(
-                fig,
-                plot_data,
-                subplots,
-                subplot_columns,
-                max_pts=max_pts,
-                label_prefix=str(idx),
+            fig = self._add_stack_data(
+                fig, freqs, stack, str(idx), color=next(colors), max_pts=max_pts
             )
         return fig
 
-    def plot_section(self, level: int, grouping="30T") -> go.Figure:
+    def _add_stack_data(
+        self,
+        fig: go.Figure,
+        freqs: np.ndarray,
+        data: np.ndarray,
+        legend: str,
+        color: str = "blue",
+        max_pts: Optional[int] = 10_000,
+    ) -> go.Figure:
+        """
+        Add stacked spectra data to a plot
+
+        Parameters
+        ----------
+        fig : go.Figure
+            The figure to add to
+        freqs : np.ndarray
+            Frequencies
+        data : np.ndarray
+            The magnitude data
+        legend : str
+            The legend string for the data
+        color : str, optional
+            The color to plot the line, by default "blue"
+        max_pts : Optional[int], optional
+            Maximum number of points to plot, by default 10_000. If the number
+            of samples in the data is above this, it will be downsampled
+
+        Returns
+        -------
+        go.Figure
+            Plotly figure
+        """
+        from resistics.plot import apply_lttb
+
+        n_chans = data.shape[0]
+        for idx in range(n_chans):
+            indices, chan_data = apply_lttb(data[idx, :], max_pts)
+            chan_freqs = freqs[indices]
+            scatter = go.Scattergl(
+                x=chan_freqs,
+                y=chan_data,
+                line=dict(color=color),
+                name=legend,
+                legendgroup=legend,
+                showlegend=(idx == 0),
+            )
+            fig.add_trace(scatter, row=idx + 1, col=1)
+        return fig
+
+    def plot_level_section(self, level: int, grouping="30T") -> go.Figure:
         """
         Plot a spectra section
 
@@ -254,7 +324,7 @@ class SpectraData(ResisticsData):
         go.Figure
             A plotly figure
         """
-        from resistics.plot import figure_columns_as_lines
+        from resistics.plot import get_spectra_section_fig
 
         level_metadata = self.metadata.levels_metadata[level]
         df = pd.DataFrame(
@@ -262,14 +332,10 @@ class SpectraData(ResisticsData):
             index=self.get_timestamps(level),
             columns=["local"],
         )
-        # create the figure
-        subplots = self.metadata.chans
-        y_labels = {x: "Frequency Hz" for x in subplots}
-        fig = figure_columns_as_lines(
-            subplots=subplots, y_labels=y_labels, x_label="Date"
-        )
+
+        fig = get_spectra_section_fig(self.metadata.chans)
         colorbar_len = 0.90 / self.metadata.n_chans
-        colorbar_inc = 0.83 / (self.metadata.n_chans - 1)
+        colorbar_inc = 0.84 / (self.metadata.n_chans - 1)
         # group by the grouping frequency, iterate over the groups and plot
         data = {}
         for idx, group in df.groupby(pd.Grouper(freq=grouping)):
@@ -283,7 +349,6 @@ class SpectraData(ResisticsData):
             z_max = np.floor(z.max())
             z_range = np.arange(z_min, z_max + 1)
             colorbar = dict(
-                title=f"Amplitude {chan}",
                 tickvals=z_range,
                 ticktext=[f"10^{int(x)}" for x in z_range],
                 y=0.92 - idx * colorbar_inc,

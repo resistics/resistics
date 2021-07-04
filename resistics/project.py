@@ -7,17 +7,15 @@ configuration.
 In particular, this module includes the core Project, Site and Measurement
 clasess and some supporting functions.
 """
-from loguru import logger
 from typing import Iterator, Optional, List, Dict
 from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 
 from resistics.common import ResisticsModel, WriteableMetadata
 from resistics.sampling import HighResDateTime
-from resistics.time import TimeMetadata
-from resistics.time import TimeReader
+from resistics.time import TimeMetadata, TimeReader
+from resistics.plot import plot_timeline
 
 
 PROJ_FILE = "resistics.json"
@@ -176,17 +174,10 @@ class Site(ResisticsModel):
         """Plot the site timeline"""
         df = self.to_dataframe()
         if len(df.index) == 0:
-            logger.error("No measurements found to plot")
-            return
-        fig = px.timeline(
-            df,
-            x_start="first_time",
-            x_end="last_time",
-            y="name",
-            color="fs",
-            title=self.name,
-        )
-        return fig
+            raise ValueError("No measurements found to plot")
+
+        df["fs"] = df["fs"].astype(str)
+        return plot_timeline(df, y_col="name")
 
     def to_dataframe(self) -> pd.DataFrame:
         """
@@ -325,20 +316,11 @@ class Project(ResisticsModel):
     def plot(self) -> go.Figure:
         """Plot a timeline of the project"""
         df = self.to_dataframe()
-        df["Site"] = df["site"]
-        df["Sampling frequency, Hz"] = df["fs"].values.astype(str)
         if len(df.index) == 0:
-            logger.error("No measurements found to plot")
-            return
-        fig = px.timeline(
-            df,
-            x_start="first_time",
-            x_end="last_time",
-            y="Site",
-            color="Sampling frequency, Hz",
-            title=str(self.dir_path),
-        )
-        return fig
+            raise ValueError("No measurements found to plot")
+
+        df["fs"] = df["fs"].astype(str)
+        return plot_timeline(df, y_col="site")
 
     def to_dataframe(self) -> pd.DataFrame:
         """Detail Project recordings in a DataFrame"""
