@@ -481,7 +481,7 @@ class RegressionPreparerGathered(ResisticsProcess):
         out_data = gathered_data.out_data.data[eval_idx]
         in_data = gathered_data.in_data.data[eval_idx]
         cross_data = gathered_data.cross_data.data[eval_idx]
-        cross_data = np.conj(cross_data[:, np.newaxis, ...])
+        cross_data = np.conjugate(cross_data[:, np.newaxis, :])
 
         # multiply using broadcasting
         out_powers = out_data[..., np.newaxis] * cross_data
@@ -935,7 +935,7 @@ class SolverScikitTheilSen(SolverScikit):
     """Number of jobs to run"""
     max_subpopulation: int = 2_000
     """Maximum population. Reduce this if the process is taking a long time"""
-    n_subsamples: Optional[int] = None
+    n_subsamples: Optional[float] = None
     """Number of rows to use for each solution"""
 
     def run(self, regression_input: RegressionInputData) -> Solution:
@@ -943,12 +943,46 @@ class SolverScikitTheilSen(SolverScikit):
         from sklearn.linear_model import TheilSenRegressor
 
         model = TheilSenRegressor(
-            fit_intercept=self.fit_intercept,
-            max_subpopulation=self.max_subpopulation,
-            n_subsamples=self.n_subsamples,
-            n_jobs=self.n_jobs,
+            # fit_intercept=self.fit_intercept,
+            # max_subpopulation=self.max_subpopulation,
+            # n_subsamples=self.n_subsamples,
+            # n_jobs=self.n_jobs,
         )
         return self._solve(regression_input, model)
+
+    def _get_coef(
+        self, model: BaseEstimator, obs: np.ndarray, preds: np.ndarray
+    ) -> np.ndarray:
+        """
+        Get coefficients for a single evaluation frequency and output channel
+
+        Parameters
+        ----------
+        model : BaseEstimator
+            sklearn base estimator
+        obs : np.ndarray
+            The observations
+        preds : np.ndarray
+            The predictors
+
+        Returns
+        -------
+        np.ndarray
+            The coefficients
+        """
+        from sklearn.linear_model import TheilSenRegressor
+
+        n_subsamples = None
+        if self.n_subsamples is not None:
+            n_subsamples = int(self.n_subsamples * obs.shape[0])
+        model = TheilSenRegressor(
+            fit_intercept=self.fit_intercept,
+            max_subpopulation=self.max_subpopulation,
+            n_subsamples=n_subsamples,
+            n_jobs=self.n_jobs,
+        )
+        model.fit(preds, obs)
+        return model.coef_
 
 
 class SolverScikitRANSAC(SolverScikit):
@@ -960,9 +994,9 @@ class SolverScikitRANSAC(SolverScikit):
     https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RANSACRegressor.html
     """
 
-    min_samples: float = 0.1
+    min_samples: float = 0.8
     """Minimum number of samples in each solution as a proportion of total"""
-    max_trials: int = 1000
+    max_trials: int = 20
     """The maximum number of trials to run"""
 
     def run(self, regression_input: RegressionInputData) -> Solution:
@@ -1034,7 +1068,7 @@ class SolverScikitWLS(SolverScikitOLS):
             obs_pred = model.predict(preds)
             resids = np.absolute(obs - obs_pred)
             resids_scaled = scalar.fit_transform(resids.reshape(-1, 1))
-            weights = self.bisquare(resids_scaled)
+            weights = self.trimmed_mean(resids_scaled)
             iteration += 1
         return model.coef_
 

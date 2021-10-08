@@ -69,15 +69,9 @@ Next steps
 
 .. toctree::
    :maxdepth: 3
-   :caption: Getting started:
+   :caption: User guide:
 
-   installation.rst
-   tutorial.rst
-
-.. toctree::
-   :maxdepth: 3
-   :caption: Advanced:
-
+   getting-started.rst
    custom-process.rst
 
 .. toctree::

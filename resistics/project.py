@@ -13,7 +13,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from resistics.common import ResisticsModel, WriteableMetadata
-from resistics.sampling import HighResDateTime
+from resistics.sampling import HighResDateTime, to_timestamp
 from resistics.time import TimeMetadata, TimeReader
 from resistics.plot import plot_timeline
 
@@ -318,9 +318,10 @@ class Project(ResisticsModel):
         df = self.to_dataframe()
         if len(df.index) == 0:
             raise ValueError("No measurements found to plot")
-
         df["fs"] = df["fs"].astype(str)
-        return plot_timeline(df, y_col="site")
+
+        ref_time = to_timestamp(self.metadata.ref_time)
+        return plot_timeline(df, y_col="site", ref_time=ref_time)
 
     def to_dataframe(self) -> pd.DataFrame:
         """Detail Project recordings in a DataFrame"""

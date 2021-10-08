@@ -1004,7 +1004,7 @@ class TimeReaderAscii(TimeReaderJSON):
     """
 
     extension: str = ".txt"
-    delimiter: str = " "
+    delimiter: Optional[str] = None
     n_header: int = 0
 
     def read_data(

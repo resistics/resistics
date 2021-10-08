@@ -340,7 +340,7 @@ class DecimationSetup(ResisticsProcess):
     per_level : int, optional
         Number of frequencies per level, by default 5
     min_samples : int, optional
-        Number of samples to under which to quit decimating
+        Number of samples under which to quit decimating
     div_factor : int, optional
         Minimum division factor for decimation, by default 2.
     eval_freqs : Optional[List[float]], optional

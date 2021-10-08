@@ -11,6 +11,8 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 from pathlib import Path
 import resistics
+from plotly.io._sg_scraper import plotly_sg_scraper
+from sphinx_gallery.sorting import FileNameSortKey
 
 
 # -- Project information -----------------------------------------------------
@@ -39,6 +41,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx.ext.autosectionlabel",
     "matplotlib.sphinxext.plot_directive",
+    "sphinx_gallery.gen_gallery",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -71,6 +74,27 @@ autodoc_pydantic_model_show_validator_summary = False
 autodoc_pydantic_model_show_validator_members = False
 autodoc_pydantic_model_hide_paramlist = True
 autodoc_pydantic_field_show_default = True
+# sphinx gallery
+image_scrapers = (
+    "matplotlib",
+    plotly_sg_scraper,
+)
+sphinx_gallery_conf = {
+    "examples_dirs": [
+        "../../examples/read",
+        "../../examples/quick",
+        "../../examples/project",
+        "../../examples/config",
+    ],
+    "gallery_dirs": [
+        "tutorial-read",
+        "tutorial-quick",
+        "tutorial-project",
+        "tutorial-config",
+    ],
+    "image_scrapers": image_scrapers,
+    "within_subsection_order": FileNameSortKey,
+}
 
 # -- Options for HTML output -------------------------------------------------
 

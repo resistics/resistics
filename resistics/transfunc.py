@@ -450,13 +450,6 @@ class ImpedanceTensor(TransferFunction):
         """
         from resistics.plot import PLOTLY_MARGIN, PLOTLY_TEMPLATE
 
-        if x_lim is None:
-            x_lim = [-3, 5]
-        if res_lim is None:
-            res_lim = [-2, 6]
-        if phs_lim is None:
-            phs_lim = [-10, 100]
-
         fig = make_subplots(
             rows=2,
             cols=1,
@@ -465,15 +458,21 @@ class ImpedanceTensor(TransferFunction):
             subplot_titles=["Apparent resistivity", "Phase"],
         )
         # apparent resistivity axes
-        fig.update_xaxes(type="log", range=x_lim, row=1, col=1)
-        fig.update_xaxes(showticklabels=True, row=1, col=1)
+        fig.update_xaxes(type="log", showticklabels=True, row=1, col=1)
         fig.update_yaxes(title_text="App. resistivity (Ohm m)", row=1, col=1)
-        fig.update_yaxes(type="log", range=res_lim, row=1, col=1)
+        fig.update_yaxes(type="log", row=1, col=1)
+        if x_lim is not None:
+            fig.update_xaxes(range=x_lim, row=1, col=1)
+        if res_lim is not None:
+            fig.update_yaxes(range=res_lim, row=1, col=1)
         # phase axes
         fig.update_xaxes(title_text="Period (s)", type="log", row=2, col=1)
         fig.update_xaxes(showticklabels=True, row=2, col=1)
-        fig.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
-        fig.update_yaxes(title_text="Phase (degrees)", range=phs_lim, row=2, col=1)
+        # fig.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
+        fig.update_yaxes(title_text="Phase (degrees)", row=2, col=1)
+        if phs_lim is not None:
+            fig.update_yaxes(range=phs_lim, row=2, col=1)
+        # update the layout
         fig.update_layout(template=PLOTLY_TEMPLATE, margin=dict(PLOTLY_MARGIN))
         return fig
 

@@ -52,7 +52,7 @@ class Configuration(ResisticsModel):
         'name': 'TimeReaderAscii',
         'apply_scalings': True,
         'extension': '.txt',
-        'delimiter': ' ',
+        'delimiter': None,
         'n_header': 0
     }
     {

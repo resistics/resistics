@@ -683,8 +683,9 @@ def get_win_table(
     first_win_time = win_to_datetime(ref_time, first_win, increment)
     n_wins = last_win - first_win + 1
     local_wins = np.arange(n_wins).astype(int)
-    # samples
-    first_sample = to_n_samples(first_win_time - first_time, fs, method="round") - 1
+    # samples - use the floor here to avoid a situation where it is rounded up
+    # and then there are insufficient samples
+    first_sample = to_n_samples(first_win_time - first_time, fs, method="floor") - 1
     starts = datetime_array_estimate(first_win_time, fs / increment_size, n_wins)
     ends = get_win_ends(starts, win_size, fs)
     df_dict = {
@@ -752,8 +753,8 @@ class WindowParameters(ResisticsModel):
     {
         'n_levels': 3,
         'min_n_wins': 5,
-        'win_sizes': [1024, 512, 256],
-        'olap_sizes': [256, 128, 64]
+        'win_sizes': [1024, 512, 128],
+        'olap_sizes': [256, 128, 32]
     }
     >>> win_params.get_win_size(0)
     1024
@@ -855,8 +856,8 @@ class WindowSetup(ResisticsProcess):
     {
         'n_levels': 3,
         'min_n_wins': 5,
-        'win_sizes': [256, 256, 256],
-        'olap_sizes': [64, 64, 64]
+        'win_sizes': [128, 128, 128],
+        'olap_sizes': [32, 32, 32]
     }
 
     Window parameters can also be explicitly defined
@@ -872,12 +873,12 @@ class WindowSetup(ResisticsProcess):
         'n_levels': 3,
         'min_n_wins': 5,
         'win_sizes': [1000, 578, 104],
-        'olap_sizes': [250, 144, 64]
+        'olap_sizes': [250, 144, 32]
     }
     """
 
-    min_size: int = 256
-    min_olap: int = 64
+    min_size: int = 128
+    min_olap: int = 32
     win_factor: int = 4
     olap_proportion: float = 0.25
     min_n_wins: int = 5
@@ -1381,11 +1382,12 @@ class Windower(ResisticsProcess):
         from numpy.lib.stride_tricks import sliding_window_view
 
         from_sample = win_table.loc[0, "from_sample"]
+        to_sample = win_table.loc[win_table.index[-1], "from_sample"]
         increment_size = win_size - olap_size
         view = np.squeeze(
             sliding_window_view(data, window_shape=(n_chans, win_size), writeable=True)
         )
-        return view[from_sample::increment_size]
+        return view[from_sample : to_sample + 1 : increment_size]
 
     def _get_level_metadata(
         self,
