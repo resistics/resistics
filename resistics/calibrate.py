@@ -110,7 +110,9 @@ class CalibrationData(WriteableMetadata):
             y=self.magnitude,
             mode="lines+markers",
             line=dict(color=color),
-            name=legend,
+            name="frequency",
+            legendgroup=legend,
+            legendgrouptitle_text=legend,
         )
         fig.add_trace(scatter, row=1, col=1)
 
@@ -119,8 +121,8 @@ class CalibrationData(WriteableMetadata):
             y=self.phase,
             mode="lines+markers",
             line=dict(color=color),
-            name=legend,
-            showlegend=False,
+            name="phase",
+            legendgroup=legend,
         )
         fig.add_trace(scatter, row=2, col=1)
         return fig
