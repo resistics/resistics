@@ -3,9 +3,9 @@ Viewing time data
 ^^^^^^^^^^^^^^^^^
 
 With the quick viewing functionality, it is possible to view time series data
-without having to setup a project. The decimation option provides an easy way to
-see the time series at multiple sampling frequencies (decimated to lower
-frequencies).
+without having to setup a project or explicitly read the data first. The
+quickview decimation option provides an easy way to see the time series at
+multiple sampling frequencies (decimated to lower frequencies).
 
 .. warning::
 
@@ -16,20 +16,19 @@ frequencies).
 
     Those looking to view non downsampled data are advised to use the quick
     reading functionality and then plot specific subsections of data.
+
+Further details about the data can be found in [Jones2009]_.
 """
-from dotenv import load_dotenv
-import os
 from pathlib import Path
+import seedir as sd
 import plotly
 import resistics.letsgo as letsgo
 
 
 # %%
-# Define the data path. This is dependent on where the data is stored. Here, the
-# data path is being read from an environment variable.
-load_dotenv()
-data_path = Path(os.getenv("EXAMPLES_DATA_PATH"))
-time_data_path = data_path / "time_numpy"
+# Define the data path. This is dependent on where the data is stored.
+time_data_path = Path("..", "..", "data", "time", "quick", "kap123")
+sd.seedir(str(time_data_path), style="emoji")
 
 # %%
 # Quickly view the time series data

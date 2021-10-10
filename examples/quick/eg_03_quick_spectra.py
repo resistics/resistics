@@ -8,20 +8,19 @@ recording.
 
 Note that spectra data are calculated after decimation and spectra data objects
 include data for multiple decimation levels.
+
+Further details about the data can be found in [Jones2009]_.
 """
-from dotenv import load_dotenv
-import os
+# sphinx_gallery_thumbnail_number = 3
 from pathlib import Path
+import seedir as sd
 import plotly
 import resistics.letsgo as letsgo
 
-
 # %%
-# Define the data path. This is dependent on where the data is stored. Here, the
-# data path is being read from an environment variable.
-load_dotenv()
-data_path = Path(os.getenv("EXAMPLES_DATA_PATH"))
-time_data_path = data_path / "time_numpy"
+# Define the data path. This is dependent on where the data is stored.
+time_data_path = Path("..", "..", "data", "time", "quick", "kap123")
+sd.seedir(str(time_data_path), style="emoji")
 
 # %%
 # Get the spectra data.
@@ -39,13 +38,14 @@ plotly.io.show(fig)
 # It is also possible to plot spectra data for a particular decimation level.
 # In the below example, an optional grouping is being used to stack spectra data
 # for the decimation level into certain time groups
-fig = spec_data.plot_level_stack(level=0, grouping="1T")
+fig = spec_data.plot_level_stack(level=0, grouping="3D")
 fig.update_layout(height=900)
 plotly.io.show(fig)
 
 
 # %%
-# It is also possible to plot spectra heatmaps for a decimation level.
-fig = spec_data.plot_level_section(level=0, grouping="5S")
+# It is also possible to plot spectra heatmaps for a decimation level. Here, the
+# sphinx_gallery_defer_figures
+fig = spec_data.plot_level_section(level=0, grouping="6H")
 fig.update_layout(height=900)
 plotly.io.show(fig)
