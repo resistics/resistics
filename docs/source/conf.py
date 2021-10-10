@@ -10,6 +10,8 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 from pathlib import Path
+import os
+import re
 import resistics
 from plotly.io._sg_scraper import plotly_sg_scraper
 from sphinx_gallery.sorting import FileNameSortKey
@@ -80,6 +82,9 @@ image_scrapers = (
     plotly_sg_scraper,
 )
 sphinx_gallery_conf = {
+    "run_stale_examples": False,
+    "filename_pattern": f"{re.escape(os.sep)}eg_",
+    "thumbnail_size": (300, 300),
     "examples_dirs": [
         "../../examples/read",
         "../../examples/quick",
@@ -96,6 +101,10 @@ sphinx_gallery_conf = {
     "within_subsection_order": FileNameSortKey,
 }
 
+# code styles
+pygments_style = "sphinx"
+pygments_dark_style = "monokai"
+
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -105,7 +114,15 @@ html_theme = "furo"
 html_logo = str(Path("_static", "images", "logo.png"))
 html_favicon = str(Path("_static", "images", "favicon.png"))
 
+html_theme_options = {
+    "navigation_with_keys": True,
+}
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+
+def setup(app):
+    app.add_css_file("custom_gallery.css")
