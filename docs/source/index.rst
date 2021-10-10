@@ -80,6 +80,12 @@ Next steps
 
    resistics.rst
 
+.. toctree::
+   :maxdepth: 3
+   :caption: Literature:
+
+   literature.rst
+
 
 Index
 =====
