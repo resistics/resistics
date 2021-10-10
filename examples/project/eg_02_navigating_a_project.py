@@ -7,7 +7,9 @@ is useful to be able to navigate a project. This example shows the various types
 of objects available in resistics that can help navigate a project and access
 data.
 
-Further details about the data can be found in [Jones2009]_.
+The data in this example has been provided for use by the SAMTEX consortium.
+For more information, please refer to [Jones2009]_. Additional details about the
+data can be found at https://www.mtnet.info/data/kap03/kap03.html.
 """
 # sphinx_gallery_thumbnail_number = 2
 from pathlib import Path

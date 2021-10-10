@@ -8,8 +8,9 @@ TimeReaderNumpy reader as long as a metadata file can be made.
 Information about the recording will be required to make the metadata file. In
 the below example, a metadata file is made and then the data is read.
 
-The dataset in this example has provided for use by SAMTEX consortium. For
-more information, please refer to [Jones2009]_.
+The dataset in this example has been provided for use by the SAMTEX consortium.
+For more information, please refer to [Jones2009]_. Additional details about the
+dataset can be found at https://www.mtnet.info/data/kap03/kap03.html.
 
 The dataset is KAP130. A couple of notes:
 

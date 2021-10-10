@@ -9,7 +9,9 @@ recording.
 Note that spectra data are calculated after decimation and spectra data objects
 include data for multiple decimation levels.
 
-Further details about the data can be found in [Jones2009]_.
+The dataset in this example has been provided for use by the SAMTEX consortium.
+For more information, please refer to [Jones2009]_. Additional details about the
+dataset can be found at https://www.mtnet.info/data/kap03/kap03.html.
 """
 # sphinx_gallery_thumbnail_number = 3
 from pathlib import Path

@@ -17,7 +17,9 @@ multiple sampling frequencies (decimated to lower frequencies).
     Those looking to view non downsampled data are advised to use the quick
     reading functionality and then plot specific subsections of data.
 
-Further details about the data can be found in [Jones2009]_.
+The dataset in this example has been provided for use by the SAMTEX consortium.
+For more information, please refer to [Jones2009]_. Additional details about the
+dataset can be found at https://www.mtnet.info/data/kap03/kap03.html.
 """
 from pathlib import Path
 import seedir as sd

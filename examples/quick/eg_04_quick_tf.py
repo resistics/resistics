@@ -6,9 +6,11 @@ When doing field work, it can be useful to quickly estimate the transfer
 function from a single continuous recording. This example shows estimation of
 the transfer function using all default settings. The default transfer function
 is the impedance tensor and this will be calculated. Later, the data will be
-reprocessed using an alternative configuration.
+re-processed using an alternative configuration.
 
-Further details about the data can be found in [Jones2009]_.
+The dataset in this example has been provided for use by the SAMTEX consortium.
+For more information, please refer to [Jones2009]_. Additional details about the
+dataset can be found at https://www.mtnet.info/data/kap03/kap03.html.
 """
 from pathlib import Path
 import seedir as sd

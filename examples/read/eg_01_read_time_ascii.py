@@ -7,8 +7,9 @@ default ASCII data reader. To do this, a metadata file is required. The example
 shows how an appropriate metadata file can be created and the information
 required to create such a metadata file.
 
-The dataset in this example has provided for use by SAMTEX consortium. For
-more information, please refer to the paper [Jones2009]_.
+The dataset in this example has been provided for use by the SAMTEX consortium.
+For more information, please refer to [Jones2009]_. Additional details about the
+dataset can be found at https://www.mtnet.info/data/kap03/kap03.html.
 
 The dataset is KAP175. A couple of notes:
 

@@ -8,7 +8,9 @@ sites, it can be more convenient to use a resistics project. This is generally
 easier to manage and use, especially when doing remote reference or intersite
 processing.
 
-Further details about the data can be found in [Jones2009]_.
+The data in this example has been provided for use by the SAMTEX consortium.
+For more information, please refer to [Jones2009]_. Additional details about the
+data can be found at https://www.mtnet.info/data/kap03/kap03.html.
 """
 from pathlib import Path
 import seedir as sd
