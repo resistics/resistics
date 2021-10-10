@@ -2,10 +2,8 @@
 Calibration data TXT
 ^^^^^^^^^^^^^^^^^^^^
 
-This example reads calibration data from a text based calibration file.
+An alternative to JSON calibration files is to use text/ASCII calibration files.
 """
-from dotenv import load_dotenv
-import os
 from pathlib import Path
 import plotly
 from resistics.time import ChanMetadata
@@ -13,10 +11,8 @@ from resistics.calibrate import SensorCalibrationTXT
 
 # %%
 # Define the calibration data path. This is dependent on where the data is
-# stored. Here, the data path is being read from an environment variable.
-load_dotenv()
-data_path = Path(os.getenv("EXAMPLES_DATA_PATH"))
-cal_data_path = data_path / "calibration_ascii" / "example.txt"
+# stored.
+cal_data_path = Path("..", "..", "data", "calibration", "example.txt")
 
 # %%
 # Inspect the contents of the calibration file

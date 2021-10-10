@@ -2,10 +2,10 @@
 Calibration data JSON
 ^^^^^^^^^^^^^^^^^^^^^
 
-An alternative to text calibration files is to use a JSON calibration file.
+The preferred format for calibration data is JSON file. Howeer, they are not
+always as easy to handwrite, so it is possible to use txt/ASCII calibration
+files too.
 """
-from dotenv import load_dotenv
-import os
 from pathlib import Path
 import json
 import plotly
@@ -14,10 +14,8 @@ from resistics.calibrate import SensorCalibrationJSON
 
 # %%
 # Define the calibration data path. This is dependent on where the data is
-# stored. Here, the data path is being read from an environment variable.
-load_dotenv()
-data_path = Path(os.getenv("EXAMPLES_DATA_PATH"))
-cal_data_path = data_path / "calibration_json" / "example.json"
+# stored.
+cal_data_path = Path("..", "..", "data", "calibration", "example.json")
 
 # %%
 # Inspect the contents of the calibration file

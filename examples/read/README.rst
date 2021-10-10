@@ -6,7 +6,7 @@ data formats.
 
 For time data:
 
-- ASCII
+- ASCII (including compressed ASCII, e.g. bz2)
 - numpy .npy
 
 Where possible, it is recommended to use the numpy data format for time data
