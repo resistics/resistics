@@ -6,7 +6,9 @@ Resistics can quickly read a single continuous recording using the quick reading
 functionality. This can be useful for inspecting the metadata and having a
 look at the data when in the field.
 
-Further details about the data can be found in [Jones2009]_.
+The dataset in this example has been provided for use by the SAMTEX consortium.
+For more information, please refer to [Jones2009]_. Additional details about the
+dataset can be found at https://www.mtnet.info/data/kap03/kap03.html.
 """
 from pathlib import Path
 import seedir as sd
