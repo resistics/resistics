@@ -31,7 +31,7 @@ fig = soln.tf.plot(
     soln.components,
     to_plot=["ExHy", "EyHx"],
     x_lim=[1, 5],
-    res_lim=[1, 4],
+    res_lim=[0, 4],
     legend="128",
     symbol="circle",
 )
