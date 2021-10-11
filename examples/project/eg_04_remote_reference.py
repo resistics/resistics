@@ -1,6 +1,6 @@
 """
-Remote reference processing
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Remote reference
+^^^^^^^^^^^^^^^^
 
 .. warning::
 
