@@ -1037,6 +1037,7 @@ class SolverScikitWLS(SolverScikitOLS):
     n_jobs: int = -2
     """Number of jobs to run"""
     n_iter: int = 50
+    """Number of iterations before quitting if residual is not low enough"""
 
     def _get_coef(
         self, model: BaseEstimator, obs: np.ndarray, preds: np.ndarray
