@@ -84,6 +84,7 @@ image_scrapers = (
 sphinx_gallery_conf = {
     "run_stale_examples": False,
     "filename_pattern": f"{re.escape(os.sep)}eg_",
+    "remove_config_comments": True,
     "thumbnail_size": (300, 300),
     "examples_dirs": [
         "../../examples/read",
