@@ -800,9 +800,9 @@ class WindowSetup(ResisticsProcess):
     Parameters
     ----------
     min_size : int, optional
-        Minimum window size, by default 256
+        Minimum window size, by default 128
     min_olap : int, optional
-        Minimum overlap size, by default 64
+        Minimum overlap size, by default 32
     win_factor : int, optional
         Window factor, by default 4. Window sizes are calculated by sampling
         frequency / 4 to ensure sufficient frequency resolution. If the
