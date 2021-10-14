@@ -20,3 +20,8 @@ body[data-theme="dark"] .sphx-glr-script-out .highlight pre {
   background-color: rgb(63, 63, 63);
   color: #dfdfbf;
 }
+/*sphinx gallery output cells not light mode support (system default)*/
+body:not([data-theme="light"]) .sphx-glr-script-out .highlight pre {
+  background-color: rgb(63, 63, 63);
+  color: #dfdfbf;
+}
