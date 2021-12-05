@@ -563,13 +563,15 @@ class ProjectGather(ResisticsProcess):
         if cross_name is None:
             cross_name = in_name
 
-        # collect the data
+        logger.info(f"Collecting data for out site {out_name}")
         out_data = self._get_site_data(
             config_name, proj, selection, out_name, tf.out_chans
         )
+        logger.info(f"Collecting data for in site {in_name}")
         in_data = self._get_site_data(
             config_name, proj, selection, in_name, tf.in_chans
         )
+        logger.info(f"Collecting data for cross site {cross_name}")
         cross_data = self._get_site_data(
             config_name, proj, selection, cross_name, tf.cross_chans
         )
