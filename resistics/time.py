@@ -631,7 +631,7 @@ class TimeData(ResisticsData):
 
     def copy(self) -> "TimeData":
         """Get a deepcopy of the time data object"""
-        return TimeData(TimeMetadata(**self.metadata.dict()), np.array(self.data))
+        return TimeData(self.metadata.copy(deep=True), np.array(self.data))
 
     def plot(
         self,
@@ -1139,7 +1139,7 @@ class TimeWriterNumpy(ResisticsWriter):
         metadata_path = dir_path / "metadata.json"
         data_path = dir_path / "data.npy"
         np.save(data_path, time_data.data)
-        metadata = time_data.metadata.copy()
+        metadata = time_data.metadata.copy(deep=True)
         for chan in time_data.metadata.chans:
             metadata[chan].data_files = [data_path.name]
         metadata.history.add_record(self._get_record(dir_path, type(time_data)))
@@ -1173,7 +1173,7 @@ class TimeWriterAscii(ResisticsWriter):
             raise WriteError(dir_path, "Unable to write to directory, check logs")
         logger.info(f"Writing time ASCII data to {dir_path}")
         metadata_path = dir_path / "metadata.json"
-        metadata = time_data.metadata.copy()
+        metadata = time_data.metadata.copy(deep=True)
         for chan in time_data.metadata.chans:
             chan_path = dir_path / f"{chan.lower()}.ascii"
             np.savetxt(chan_path, time_data[chan], fmt="%.6f", newline="\n")
@@ -1212,7 +1212,7 @@ def new_time_data(
         A new TimeData instance
     """
     if metadata is None:
-        metadata = TimeMetadata(**time_data.metadata.dict())
+        metadata = time_data.metadata.copy(deep=True)
     if data is None:
         data = np.array(time_data.data)
     if record is not None:
@@ -1300,7 +1300,7 @@ class Subsection(TimeProcess):
         )
         messages = [f"Subection from sample {from_sample} to {to_sample}"]
         messages.append(f"Adjusted times {str(from_time)} to {str(to_time)}")
-        metadata = time_data.metadata.copy()
+        metadata = time_data.metadata.copy(deep=True)
         metadata = adjust_time_metadata(metadata, fs, from_time, n_samples=n_samples)
         data = np.array(time_data.data[:, from_sample : to_sample + 1])
         record = self._get_record(messages)
@@ -1970,7 +1970,7 @@ class Resample(TimeProcess):
         data = data.astype(time_data.data.dtype)
         # adjust headers and
         n_samples = data.shape[1]
-        metadata = time_data.metadata.copy()
+        metadata = time_data.metadata.copy(deep=True)
         metadata = adjust_time_metadata(
             metadata, self.new_fs, time_data.metadata.first_time, n_samples=n_samples
         )
@@ -2066,7 +2066,7 @@ class Decimate(TimeProcess):
         new_fs = fs / self.factor
         messages.append(f"Sampling frequency adjusted from {fs} to {new_fs}")
         n_samples = data.shape[1]
-        metadata = time_data.metadata.copy()
+        metadata = time_data.metadata.copy(deep=True)
         metadata = adjust_time_metadata(
             metadata, new_fs, time_data.metadata.first_time, n_samples=n_samples
         )
@@ -2256,7 +2256,7 @@ class ShiftTimestamps(TimeProcess):
         x_shift = np.arange(0, n_samples, dtype=time_data.data.dtype) + norm_shift
         interp_fnc = interp1d(x, time_data.data, axis=1, copy=False)
         data = interp_fnc(x_shift)
-        metadata = time_data.metadata.copy()
+        metadata = time_data.metadata.copy(deep=True)
         metadata = adjust_time_metadata(
             metadata, metadata.fs, first_time, n_samples=n_samples
         )
@@ -2447,7 +2447,7 @@ class ApplyFunction(TimeProcess):
 #         histories = [x.history for x in args]
 #         parameters = histories_to_parameters(histories)
 #         record = get_process_record(self.name, parameters, messages)
-#         metadata = args[0].metadata.copy()
+#         metadata = args[0].metadata.copy(deep=True)
 #         metadata = adjust_time_metadata(metadata, fs, first_time, n_samples=n_samples)
 #         return TimeData(metadata, data)
 
