@@ -5,9 +5,10 @@ This module is the main interface to resistics and includes:
 - Functions for processing data
 """
 from loguru import logger
-from typing import Optional, Dict, Union, Any
+from typing import List, Optional, Dict, Union, Any
 from pathlib import Path
 from datetime import datetime
+import pandas as pd
 
 from resistics.errors import MetadataReadError, TimeDataReadError
 from resistics.common import ResisticsProcess, ResisticsModel
@@ -18,7 +19,7 @@ from resistics.sampling import DateTimeLike, HighResDateTime
 from resistics.time import TimeData
 from resistics.decimate import DecimationParameters
 from resistics.decimate import DecimatedData
-from resistics.window import WindowedData
+from resistics.window import WindowedData, get_win_table
 from resistics.spectra import SpectraData
 from resistics.gather import GatheredData
 from resistics.regression import RegressionInputData, Solution
@@ -652,6 +653,36 @@ def quick_tf(
     return run_solver(config, reg_data)
 
 
+def profile_windowing(
+    dir_path: Path,
+    config: Optional[Configuration] = None,
+    ref_time: Optional[DateTimeLike] = None,
+) -> List[pd.DataFrame]:
+    from resistics.sampling import to_datetime
+
+    logger.info(f"Profiling windowing for {dir_path}")
+    if config is None:
+        config = get_default_configuration()
+
+    time_data = quick_read(dir_path, config)
+    if ref_time is None:
+        ref_time = time_data.metadata.first_time
+    else:
+        ref_time = to_datetime(ref_time)
+    time_data = run_time_processors(config, time_data)
+    dec_params = config.dec_setup.run(time_data.metadata.fs)
+    dec_data = run_decimation(config, time_data, dec_params=dec_params)
+    win_params = config.win_setup.run(dec_data.metadata.n_levels, dec_data.metadata.fs)
+    profiles = {}
+    for ilevel in range(0, dec_data.metadata.n_levels):
+        logger.info(f"Profiling windowing for level {ilevel}")
+        win_size = win_params.get_win_size(ilevel)
+        olap_size = win_params.get_olap_size(ilevel)
+        level_metadata = dec_data.metadata.levels_metadata[ilevel]
+        profiles[ilevel] = get_win_table(ref_time, level_metadata, win_size, olap_size)
+    return profiles
+
+
 def process_time(
     resenv: ResisticsEnvironment,
     site_name: str,
@@ -796,6 +827,7 @@ def process_evals_to_tf(
         in_name=in_site,
         cross_name=cross_site,
     )
+    return gathered_data
     reg_data = run_regression_preparer(config, gathered_data)
     solution = run_solver(config, reg_data)
     solution_path = get_results_path(proj.dir_path, out_site, config.name)
