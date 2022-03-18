@@ -703,7 +703,7 @@ class TimeData(ResisticsData):
             chans = self.metadata.chans
         if fig is None:
             y_labels = {x: self.metadata.chans_metadata[x].chan_type for x in chans}
-            fig = get_time_fig(self.metadata.chans, y_labels)
+            fig = get_time_fig(chans, y_labels)
 
         # plot the data
         for idx, chan in enumerate(chans):
@@ -1372,6 +1372,9 @@ class Subsamples(TimeProcess):
     Another option is to use negative sample numbers which counts back from the
     end of the time data.
 
+    .. plot::
+        :width: 90%
+
         >>> import matplotlib.pyplot as plt
         >>> from resistics.testing import time_data_random
         >>> from resistics.time import Subsamples
@@ -1389,9 +1392,12 @@ class Subsamples(TimeProcess):
         >>> plt.legend(loc=3) # doctest: +SKIP
         >>> plt.tight_layout() # doctest: +SKIP
         >>> plt.show() # doctest: +SKIP
-    
-    If from_sample is not passed, it will be set to 0. If to_sample is not 
+
+    If from_sample is not passed, it will be set to 0. If to_sample is not
     passed this will default to the last sample.
+
+    .. plot::
+        :width: 90%
 
         >>> import matplotlib.pyplot as plt
         >>> from resistics.testing import time_data_random
@@ -1432,6 +1438,15 @@ class Subsamples(TimeProcess):
         -------
         TimeData
             Subsection TimeData
+
+        Raises
+        ------
+        ProcessRunError
+            If from_sample is not less than to_sample
+        ProcessRunError
+            If from_sample is out of range
+        ProcessRunError
+            If to_sample is out of range
         """
         from resistics.sampling import samples_to_datetimes, check_sample
 
