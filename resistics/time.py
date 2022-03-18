@@ -2525,24 +2525,22 @@ class CropTimestamps(TimeProcess):
 
     Examples
     --------
-    An example shifting timestamps for TimeData with a sample period of 20
-    seconds (fs = 1/20 = 0.05 Hz) but with an offset of 10 seconds on the
-    timestamps
+    An example cropping timestamps to the nearest minute.
 
     .. plot::
         :width: 90%
 
-        >>> from resistics.testing import time_data_with_offset
-        >>> from resistics.time import ShiftTimestamps
-        >>> time_data = time_data_with_offset(offset=10, fs=1/20, n_samples=5)
-        >>> [x.time().strftime('%H:%M:%S') for x in time_data.get_timestamps()]
-        ['00:00:10', '00:00:30', '00:00:50', '00:01:10', '00:01:30']
-        >>> process = ShiftTimestamps(shift=10)
+        >>> from resistics.testing import time_data_random
+        >>> from resistics.time import CropTimestamps
+        >>> time_data = time_data_random(n_samples=1000)
+        >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
+        2020-01-01 00:00:00 2020-01-01 00:01:39.9
+        >>> process = CropTimestamps(time_unit="T")
         >>> result = process.run(time_data)
-        >>> [x.time().strftime('%H:%M:%S') for x in result.get_timestamps()]
-        ['00:00:20', '00:00:40', '00:01:00', '00:01:20']
-        >>> plt.plot(time_data.get_timestamps(), time_data["chan1"], "bo", label="original") # doctest: +SKIP
-        >>> plt.plot(result.get_timestamps(), result["chan1"], "rd", label="shifted") # doctest: +SKIP
+        >>> print(result.metadata.first_time, result.metadata.last_time)
+        2020-01-01 00:00:00 2020-01-01 00:01:00
+        >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], "bo-", label="original") # doctest: +SKIP
+        >>> plt.plot(result.get_timestamps(), result["Ex"], "rd-", label="cropped") # doctest: +SKIP
         >>> plt.legend(loc=4) # doctest: +SKIP
         >>> plt.grid() # doctest: +SKIP
         >>> plt.tight_layout() # doctest: +SKIP
