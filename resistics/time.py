@@ -1285,6 +1285,10 @@ class Subsection(TimeProcess):
         >>> plt.legend(loc=3) # doctest: +SKIP
         >>> plt.tight_layout() # doctest: +SKIP
         >>> plt.show() # doctest: +SKIP
+
+    See Also
+    --------
+    Subsamples : Getting a section of data using samples rather than dates
     """
 
     from_time: DateTimeLike
@@ -1307,12 +1311,13 @@ class Subsection(TimeProcess):
         from resistics.sampling import datetimes_to_samples, samples_to_datetimes
         from resistics.sampling import to_datetime
 
-        logger.info(f"Taking subsection between {self.from_time} and {self.to_time}")
         from_time = to_datetime(self.from_time)
         to_time = to_datetime(self.to_time)
         fs = time_data.metadata.fs
         first_time = time_data.metadata.first_time
         last_time = time_data.metadata.last_time
+        logger.info(f"Data times {str(first_time)} to {str(last_time)}")
+        logger.info(f"Taking subsection between {self.from_time} and {self.to_time}")
         # convert to samples
         from_sample, to_sample = datetimes_to_samples(
             fs, first_time, last_time, from_time, to_time
@@ -1322,8 +1327,9 @@ class Subsection(TimeProcess):
         from_time, to_time = samples_to_datetimes(
             fs, first_time, from_sample, to_sample
         )
-        messages = [f"Subection from sample {from_sample} to {to_sample}"]
-        messages.append(f"Adjusted times {str(from_time)} to {str(to_time)}")
+        messages = [f"Subsection from sample {from_sample} to {to_sample}"]
+        messages.append(f"First time: {str(first_time)} -> {str(from_time)}")
+        messages.append(f"Last time: {str(last_time)} -> {str(to_time)}")
         metadata = time_data.metadata.copy(deep=True)
         metadata = adjust_time_metadata(metadata, fs, from_time, n_samples=n_samples)
         data = np.array(time_data.data[:, from_sample : to_sample + 1])
