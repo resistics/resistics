@@ -706,6 +706,7 @@ class TimeData(ResisticsData):
             fig = get_time_fig(chans, y_labels)
 
         # plot the data
+        logger.info(f"Plotting time data, chans {chans}")
         for idx, chan in enumerate(chans):
             if chan not in self.metadata.chans:
                 continue
@@ -720,6 +721,7 @@ class TimeData(ResisticsData):
                 showlegend=(idx == 0),
             )
             fig.add_trace(scatter, row=idx + 1, col=1)
+        logger.info("Plotting completed")
         return fig
 
     def to_string(self) -> str:
