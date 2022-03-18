@@ -1362,9 +1362,9 @@ class Subsamples(TimeProcess):
         >>> import matplotlib.pyplot as plt
         >>> from resistics.testing import time_data_random
         >>> from resistics.time import Subsamples
-        >>> time_data = time_data_random(n_samples=1000)
+        >>> time_data = time_data_random(n_samples=300)
         >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
-        2020-01-01 00:00:00 2020-01-01 00:01:39.9
+        2020-01-01 00:00:00 2020-01-01 00:00:29.9
         >>> process = Subsamples(from_sample=10, to_sample=120)
         >>> subsample = process.run(time_data)
         >>> print(subsample.metadata.first_time, subsample.metadata.last_time)
@@ -1386,13 +1386,13 @@ class Subsamples(TimeProcess):
         >>> import matplotlib.pyplot as plt
         >>> from resistics.testing import time_data_random
         >>> from resistics.time import Subsamples
-        >>> time_data = time_data_random(n_samples=1000)
+        >>> time_data = time_data_random(n_samples=300)
         >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
-        2020-01-01 00:00:00 2020-01-01 00:01:39.9
+        2020-01-01 00:00:00 2020-01-01 00:00:29.9
         >>> process = Subsamples(from_sample=-100, to_sample=-50)
         >>> subsample = process.run(time_data)
         >>> print(subsample.metadata.first_time, subsample.metadata.last_time)
-        2020-01-01 00:01:30 2020-01-01 00:01:35
+        2020-01-01 00:00:20 2020-01-01 00:00:25
         >>> subsample.metadata.n_samples
         51
         >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
@@ -1410,9 +1410,9 @@ class Subsamples(TimeProcess):
         >>> import matplotlib.pyplot as plt
         >>> from resistics.testing import time_data_random
         >>> from resistics.time import Subsamples
-        >>> time_data = time_data_random(n_samples=1000)
+        >>> time_data = time_data_random(n_samples=300)
         >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
-        2020-01-01 00:00:00 2020-01-01 00:01:39.9
+        2020-01-01 00:00:00 2020-01-01 00:00:29.9
         >>> process = Subsamples(to_sample=100)
         >>> subsample = process.run(time_data)
         >>> print(subsample.metadata.first_time, subsample.metadata.last_time)
