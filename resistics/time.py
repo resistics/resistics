@@ -2153,13 +2153,15 @@ class Resample(TimeProcess):
             padtype="mean",
         )
         data = data.astype(time_data.data.dtype)
-        # adjust headers and
+        # adjust metadata
         n_samples = data.shape[1]
         metadata = time_data.metadata.copy(deep=True)
         metadata = adjust_time_metadata(
             metadata, self.new_fs, time_data.metadata.first_time, n_samples=n_samples
         )
         messages = [f"Resampled data from {fs} Hz to {self.new_fs} Hz"]
+        messages.append(f"Resampled first time {str(metadata.first_time)}")
+        messages.append(f"Resampled last time {str(metadata.last_time)}")
         record = self._get_record(messages)
         return new_time_data(time_data, metadata=metadata, data=data, record=record)
 
