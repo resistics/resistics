@@ -7,7 +7,7 @@ Classes and methods for storing and manipulating time data, including:
 - TimeData processors
 """
 from loguru import logger
-from typing import List, Dict, Union, Any, Tuple, Optional, Callable
+from typing import List, Dict, Literal, Union, Any, Tuple, Optional, Callable
 import types
 from pathlib import Path
 from pydantic import validator, conint, PositiveFloat
@@ -2380,7 +2380,7 @@ class ShiftTimestamps(TimeProcess):
         >>> time_data = time_data_with_offset(offset=10, fs=1/20, n_samples=5)
         >>> [x.time().strftime('%H:%M:%S') for x in time_data.get_timestamps()]
         ['00:00:10', '00:00:30', '00:00:50', '00:01:10', '00:01:30']
-        >>> process = ShiftTimestamps(shift=10)
+        >>> process = ShiftTimestamps(shift=10, style="linear")
         >>> result = process.run(time_data)
         >>> [x.time().strftime('%H:%M:%S') for x in result.get_timestamps()]
         ['00:00:20', '00:00:40', '00:01:00', '00:01:20']
@@ -2393,6 +2393,7 @@ class ShiftTimestamps(TimeProcess):
     """
 
     shift: PositiveFloat
+    style: Literal["spline", "linear"] = "spline"
 
     def run(self, time_data: TimeData) -> TimeData:
         """
@@ -2416,14 +2417,12 @@ class ShiftTimestamps(TimeProcess):
             offset from timestamps
         """
         from resistics.sampling import to_timedelta
-        from scipy.interpolate import interp1d
 
         metadata = time_data.metadata
         if self.shift >= metadata.dt:
             raise ProcessRunError(
                 self.name, f"Shift {self.shift} not < sample period {metadata.dt}"
             )
-
         # calculate properties of shifted data
         norm_shift = self.shift / metadata.dt
         n_samples = metadata.n_samples - 1
@@ -2437,16 +2436,166 @@ class ShiftTimestamps(TimeProcess):
         logger.info(f"New data covers {str(first_time)} to {str(last_time)}")
         messages = [f"First time: {str(metadata.first_time)} -> {str(first_time)}"]
         messages.append(f"Last time: {str(metadata.last_time)} -> {str(last_time)}")
-
         # shift data
-        x = np.arange(0, metadata.n_samples, dtype=time_data.data.dtype)
-        x_shift = np.arange(0, n_samples, dtype=time_data.data.dtype) + norm_shift
-        interp_fnc = interp1d(x, time_data.data, axis=1, copy=False)
-        data = interp_fnc(x_shift)
+        x = np.arange(0, metadata.n_samples, dtype=np.float64)
+        x_shift = np.arange(0, n_samples, dtype=np.float64) + norm_shift
+        fnc_map = {
+            "linear": self._linear_interpolate,
+            "spline": self._spline_interpolate,
+        }
+        data = fnc_map[self.style](x, x_shift, time_data)
+
+        # update metadata
         metadata = time_data.metadata.copy(deep=True)
         metadata = adjust_time_metadata(
             metadata, metadata.fs, first_time, n_samples=n_samples
         )
+        record = self._get_record(messages)
+        return new_time_data(time_data, metadata=metadata, data=data, record=record)
+
+    def _spline_interpolate(
+        self, x: np.ndarray, x_shift: np.ndarray, time_data: TimeData
+    ) -> np.ndarray:
+        """
+        Perform a spline interpolation
+
+        Parameters
+        ----------
+        x : np.ndarray
+            The sample numbers of the current timestamps.
+        x_shift : np.ndarray
+            The sample number of the requested timestamps.
+        time_data : TimeData
+            The time data
+
+        Returns
+        -------
+        np.ndarray
+            The values of the data at the new timestamps calculated via a spline
+            interpolation
+        """
+        from scipy.interpolate import splev, splrep
+
+        logger.info("Interpolating new values using spline interpoation")
+        data = np.empty(
+            shape=(time_data.metadata.n_chans, x_shift.size), dtype=time_data.data.dtype
+        )
+        for idx in range(time_data.metadata.n_chans):
+            spl = splrep(x, time_data.data[idx], s=0)
+            data[idx] = splev(x_shift, spl, der=0)
+        return data
+
+    def _linear_interpolate(
+        self, x: np.ndarray, x_shift: np.ndarray, time_data: TimeData
+    ) -> np.ndarray:
+        """
+        Perform a linear interpolation
+
+        Parameters
+        ----------
+        x : np.ndarray
+            The sample numbers of the current timestamps.
+        x_shift : np.ndarray
+            The sample number of the requested timestamps.
+        time_data : TimeData
+            The time data
+
+        Returns
+        -------
+        np.ndarray
+            The values of the data at the new timestamps calculated via a linear
+            interpolation
+        """
+        from scipy.interpolate import interp1d
+
+        logger.info("Interpolating new values using linear interpoation")
+        interp_fnc = interp1d(x, time_data.data, axis=1, kind="linear", copy=False)
+        return interp_fnc(x_shift)
+
+
+class CropTimestamps(TimeProcess):
+    """
+    Crop timestamps to make them begin at the next second or minute or hour
+    and end one sample before the nearest second, minute or hour.
+
+    Input timestamps should be sampled coincidentally with the start_next time
+    unit. This can be achieved with :ref:`ShitTimestamps`.
+
+    Examples
+    --------
+    An example shifting timestamps for TimeData with a sample period of 20
+    seconds (fs = 1/20 = 0.05 Hz) but with an offset of 10 seconds on the
+    timestamps
+
+    .. plot::
+        :width: 90%
+
+        >>> from resistics.testing import time_data_with_offset
+        >>> from resistics.time import ShiftTimestamps
+        >>> time_data = time_data_with_offset(offset=10, fs=1/20, n_samples=5)
+        >>> [x.time().strftime('%H:%M:%S') for x in time_data.get_timestamps()]
+        ['00:00:10', '00:00:30', '00:00:50', '00:01:10', '00:01:30']
+        >>> process = ShiftTimestamps(shift=10)
+        >>> result = process.run(time_data)
+        >>> [x.time().strftime('%H:%M:%S') for x in result.get_timestamps()]
+        ['00:00:20', '00:00:40', '00:01:00', '00:01:20']
+        >>> plt.plot(time_data.get_timestamps(), time_data["chan1"], "bo", label="original") # doctest: +SKIP
+        >>> plt.plot(result.get_timestamps(), result["chan1"], "rd", label="shifted") # doctest: +SKIP
+        >>> plt.legend(loc=4) # doctest: +SKIP
+        >>> plt.grid() # doctest: +SKIP
+        >>> plt.tight_layout() # doctest: +SKIP
+        >>> plt.show() # doctest: +SKIP
+    """
+
+    time_unit: str = "s"
+
+    def run(self, time_data: TimeData) -> TimeData:
+        """Crop timestamps to the next time unit
+
+        Parameters
+        ----------
+        time_data : TimeData
+            The TimeData to crop
+
+        Returns
+        -------
+        TimeData
+            The cropped TimeData
+
+        See Also
+        --------
+        ShiftTimestamps : to shift timestamps on to a particular time unit
+        """
+        from resistics.sampling import to_datetime
+        from resistics.sampling import datetimes_to_samples, samples_to_datetimes
+
+        # get the from and to time based on the time unit
+        fs = time_data.metadata.fs
+        first_time = time_data.metadata.first_time
+        last_time = time_data.metadata.last_time
+        from_time = pd.Timestamp(first_time.isoformat()).ceil(self.time_unit)
+        from_time = to_datetime(from_time)
+        to_time = pd.Timestamp(last_time.isoformat()).floor(self.time_unit)
+        to_time = to_datetime(to_time)
+        # this is now essentially taking a subsection
+        from_sample, to_sample = datetimes_to_samples(
+            fs, first_time, last_time, from_time, to_time
+        )
+        n_samples = to_sample - from_sample + 1
+        # convert back to times as datetimes may not coincide with timestamps
+        from_time, to_time = samples_to_datetimes(
+            fs, first_time, from_sample, to_sample
+        )
+        # output
+        logger.info(f"Cropping timestamps to the '{self.time_unit}'")
+        logger.debug(f"First timestamp {str(first_time)} -> {str(from_time)}")
+        logger.debug(f"Last timestamp {str(last_time)} -> {str(to_time)}")
+        messages = [f"Cropping timestamps to the {self.time_unit}"]
+        messages.append(f"First time: {str(first_time)} -> {str(from_time)}")
+        messages.append(f"Last time: {str(last_time)} -> {str(to_time)}")
+        metadata = time_data.metadata.copy(deep=True)
+        metadata = adjust_time_metadata(metadata, fs, from_time, n_samples=n_samples)
+        data = np.array(time_data.data[:, from_sample : to_sample + 1])
         record = self._get_record(messages)
         return new_time_data(time_data, metadata=metadata, data=data, record=record)
 
