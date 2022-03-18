@@ -2392,6 +2392,10 @@ class ShiftTimestamps(TimeProcess):
         >>> plt.grid() # doctest: +SKIP
         >>> plt.tight_layout() # doctest: +SKIP
         >>> plt.show() # doctest: +SKIP
+
+    See Also
+    --------
+    CropTimestamps : Crop timestamps to a specified time unit
     """
 
     shift: PositiveFloat
@@ -2520,8 +2524,20 @@ class CropTimestamps(TimeProcess):
     Crop timestamps to make them begin at the next second or minute or hour
     and end one sample before the nearest second, minute or hour.
 
-    Input timestamps should be sampled coincidentally with the start_next time
-    unit. This can be achieved with :ref:`ShitTimestamps`.
+    Input timestamps should be sampled coincidentally with the time
+    unit. This can be achieved with :class:`~ShiftTimestamps`.
+
+    Cropping works as follows:
+
+    - First times are cropped to the next time unit or maintained if they are a
+      whole time unit already
+    - Last times are cropped to the previous time unit or maintained if they are
+      a whole time unit already
+
+    Parameters
+    ----------
+    time_unit : str
+        The time unit to crop to given in pandas style time freq
 
     Examples
     --------
@@ -2545,6 +2561,10 @@ class CropTimestamps(TimeProcess):
         >>> plt.grid() # doctest: +SKIP
         >>> plt.tight_layout() # doctest: +SKIP
         >>> plt.show() # doctest: +SKIP
+
+    See Also
+    --------
+    ShiftTimestamps : Calculate data values on shifted timestamps
     """
 
     time_unit: str = "s"
@@ -2561,10 +2581,6 @@ class CropTimestamps(TimeProcess):
         -------
         TimeData
             The cropped TimeData
-
-        See Also
-        --------
-        ShiftTimestamps : to shift timestamps on to a particular time unit
         """
         from resistics.sampling import to_datetime
         from resistics.sampling import datetimes_to_samples, samples_to_datetimes
