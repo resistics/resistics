@@ -629,6 +629,30 @@ class TimeData(ResisticsData):
         sub = Subsection(from_time=from_time, to_time=to_time)
         return sub.run(self)
 
+    def subsamples(
+        self, from_sample: Optional[int] = None, to_sample: Optional[int] = None
+    ) -> "TimeData":
+        """Get a subsample range of the TimeData
+
+        Returns a new TimeData object
+
+        Parameters
+        ----------
+        from_sample : Optional[int], optional
+            The sample to go from, by default None. If not provided, this will
+            be the first sample.
+        to_sample : Optional[int], optional
+            The sample to end at, by default None. If not provided, this will be
+            the last sample
+
+        Returns
+        -------
+        TimeData
+            The subsamples as a new TimeData object
+        """
+        sub = Subsamples(from_sample=from_sample, to_sample=to_sample)
+        return sub.run(self)
+
     def copy(self) -> "TimeData":
         """Get a deepcopy of the time data object"""
         return TimeData(self.metadata.copy(deep=True), np.array(self.data))
@@ -1302,6 +1326,146 @@ class Subsection(TimeProcess):
         messages.append(f"Adjusted times {str(from_time)} to {str(to_time)}")
         metadata = time_data.metadata.copy(deep=True)
         metadata = adjust_time_metadata(metadata, fs, from_time, n_samples=n_samples)
+        data = np.array(time_data.data[:, from_sample : to_sample + 1])
+        record = self._get_record(messages)
+        return new_time_data(time_data, metadata=metadata, data=data, record=record)
+
+
+class Subsamples(TimeProcess):
+    """
+    Get a subsamples of time data, an alternative to getting a subsection by
+    times
+
+    Parameters
+    ----------
+    from_sample : int
+        Sample to begin from
+    to_time : DateTimeLike
+        Sample to end at
+
+    Examples
+    --------
+    Taking subsample using positive sample numbers. Sample 0 is the first
+    sample and sample -1 is the last sample.
+
+    .. plot::
+        :width: 90%
+
+        >>> import matplotlib.pyplot as plt
+        >>> from resistics.testing import time_data_random
+        >>> from resistics.time import Subsamples
+        >>> time_data = time_data_random(n_samples=1000)
+        >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
+        2020-01-01 00:00:00 2020-01-01 00:01:39.9
+        >>> process = Subsamples(from_sample=10, to_sample=120)
+        >>> subsample = process.run(time_data)
+        >>> print(subsample.metadata.first_time, subsample.metadata.last_time)
+        2020-01-01 00:00:01 2020-01-01 00:00:12
+        >>> subsample.metadata.n_samples
+        111
+        >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
+        >>> plt.plot(subsample.get_timestamps(), subsample["Ex"], label="sub") # doctest: +SKIP
+        >>> plt.legend(loc=3) # doctest: +SKIP
+        >>> plt.tight_layout() # doctest: +SKIP
+        >>> plt.show() # doctest: +SKIP
+
+    Another option is to use negative sample numbers which counts back from the
+    end of the time data.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from resistics.testing import time_data_random
+        >>> from resistics.time import Subsamples
+        >>> time_data = time_data_random(n_samples=1000)
+        >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
+        2020-01-01 00:00:00 2020-01-01 00:01:39.9
+        >>> process = Subsamples(from_sample=-100, to_sample=-50)
+        >>> subsample = process.run(time_data)
+        >>> print(subsample.metadata.first_time, subsample.metadata.last_time)
+        2020-01-01 00:01:30 2020-01-01 00:01:35
+        >>> subsample.metadata.n_samples
+        51
+        >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
+        >>> plt.plot(subsample.get_timestamps(), subsample["Ex"], label="sub") # doctest: +SKIP
+        >>> plt.legend(loc=3) # doctest: +SKIP
+        >>> plt.tight_layout() # doctest: +SKIP
+        >>> plt.show() # doctest: +SKIP
+    
+    If from_sample is not passed, it will be set to 0. If to_sample is not 
+    passed this will default to the last sample.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from resistics.testing import time_data_random
+        >>> from resistics.time import Subsamples
+        >>> time_data = time_data_random(n_samples=1000)
+        >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
+        2020-01-01 00:00:00 2020-01-01 00:01:39.9
+        >>> process = Subsamples(to_sample=100)
+        >>> subsample = process.run(time_data)
+        >>> print(subsample.metadata.first_time, subsample.metadata.last_time)
+        2020-01-01 00:00:00 2020-01-01 00:00:10
+        >>> subsample.metadata.n_samples
+        101
+        >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
+        >>> plt.plot(subsample.get_timestamps(), subsample["Ex"], label="sub") # doctest: +SKIP
+        >>> plt.legend(loc=3) # doctest: +SKIP
+        >>> plt.tight_layout() # doctest: +SKIP
+        >>> plt.show() # doctest: +SKIP
+
+    See Also
+    --------
+    Subsection : For taking a subsection using dates
+    """
+
+    from_sample: Optional[int] = None
+    to_sample: Optional[int] = None
+
+    def run(self, time_data: TimeData) -> TimeData:
+        """
+        Take a subsection from TimeData
+
+        Parameters
+        ----------
+        time_data : TimeData
+            TimeData to take subsection from
+
+        Returns
+        -------
+        TimeData
+            Subsection TimeData
+        """
+        from resistics.sampling import samples_to_datetimes, check_sample
+
+        # put in default values if either is None
+        n_samples = time_data.metadata.n_samples
+        from_sample = 0 if self.from_sample is None else self.from_sample
+        to_sample = n_samples - 1 if self.to_sample is None else self.to_sample
+        logger.info(f"From {from_sample} to {to_sample} from n_samples {n_samples}")
+        # check negative sample values
+        if from_sample < 0:
+            from_sample = n_samples + from_sample
+        if to_sample < 0:
+            to_sample = n_samples + to_sample
+        logger.info(f"Adjusted sample range {from_sample} to {to_sample}")
+        # checks
+        if from_sample >= to_sample:
+            raise ProcessRunError(f"From {from_sample} not < to {to_sample}")
+        if not check_sample(n_samples, from_sample):
+            raise ProcessRunError(f"From sample {from_sample} out of range")
+        if not check_sample(n_samples, to_sample):
+            raise ProcessRunError(f"To sample {to_sample} out of range")
+        # convert samples to datetimes
+        n_subsamples = to_sample - from_sample + 1
+        fs = time_data.metadata.fs
+        first_time = time_data.metadata.first_time
+        last_time = time_data.metadata.last_time
+        from_time, to_time = samples_to_datetimes(
+            time_data.metadata.fs, first_time, from_sample, to_sample
+        )
+        messages = [f"Taking subsample from {from_sample} to {to_sample}"]
+        messages.append(f"First time: {str(first_time)} -> {str(from_time)}")
+        messages.append(f"Last time: {str(last_time)} -> {str(to_time)}")
+        metadata = time_data.metadata.copy(deep=True)
+        metadata = adjust_time_metadata(metadata, fs, from_time, n_samples=n_subsamples)
         data = np.array(time_data.data[:, from_sample : to_sample + 1])
         record = self._get_record(messages)
         return new_time_data(time_data, metadata=metadata, data=data, record=record)
