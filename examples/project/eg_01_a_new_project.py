@@ -15,7 +15,6 @@ data can be found at https://www.mtnet.info/data/kap03/kap03.html.
 from pathlib import Path
 import seedir as sd
 import shutil
-import plotly
 import resistics.letsgo as letsgo
 
 # %%
@@ -60,4 +59,4 @@ resenv.proj.summary()
 # Finally, plot the project timeline.
 fig = resenv.proj.plot()
 fig.update_layout(height=700)
-plotly.io.show(fig)
+fig

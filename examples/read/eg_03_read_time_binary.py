@@ -20,7 +20,6 @@ The dataset is KAP130. A couple of notes:
 from pathlib import Path
 import numpy as np
 import pandas as pd
-import plotly
 from resistics.time import TimeMetadata, ChanMetadata, TimeReaderNumpy
 from resistics.time import InterpolateNans, LowPass
 
@@ -84,4 +83,4 @@ fig = filtered_data.plot(
     max_pts=1_000, fig=fig, chans=chans, legend="filtered", color="red"
 )
 fig.update_layout(height=700)
-plotly.io.show(fig)
+fig

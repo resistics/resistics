@@ -16,7 +16,6 @@ dataset can be found at https://www.mtnet.info/data/kap03/kap03.html.
 # sphinx_gallery_thumbnail_number = 3
 from pathlib import Path
 import seedir as sd
-import plotly
 import resistics.letsgo as letsgo
 
 # %%
@@ -34,7 +33,7 @@ spec_data = letsgo.quick_spectra(time_data_path)
 # decimation levels.
 fig = spec_data.plot()
 fig.update_layout(height=900)
-plotly.io.show(fig)
+fig
 
 # %%
 # It is also possible to plot spectra data for a particular decimation level.
@@ -42,7 +41,7 @@ plotly.io.show(fig)
 # for the decimation level into certain time groups
 fig = spec_data.plot_level_stack(level=0, grouping="3D")
 fig.update_layout(height=900)
-plotly.io.show(fig)
+fig
 
 
 # %%
@@ -50,4 +49,4 @@ plotly.io.show(fig)
 # sphinx_gallery_defer_figures
 fig = spec_data.plot_level_section(level=0, grouping="6H")
 fig.update_layout(height=900)
-plotly.io.show(fig)
+fig

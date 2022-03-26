@@ -13,7 +13,6 @@ dataset can be found at https://www.mtnet.info/data/kap03/kap03.html.
 """
 from pathlib import Path
 import seedir as sd
-import plotly
 from resistics.config import Configuration
 import resistics.letsgo as letsgo
 from resistics.time import TimeReaderNumpy, InterpolateNans, RemoveMean, Multiply
@@ -91,4 +90,4 @@ fig = soln.tf.plot(
     symbol="circle",
 )
 fig.update_layout(height=900)
-plotly.io.show(fig)
+fig

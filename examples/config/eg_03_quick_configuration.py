@@ -12,7 +12,6 @@ dataset can be found at https://www.mtnet.info/data/kap03/kap03.html.
 """
 from pathlib import Path
 import seedir as sd
-import plotly
 import resistics.letsgo as letsgo
 from resistics.config import Configuration
 from resistics.time import InterpolateNans, RemoveMean, Multiply
@@ -37,7 +36,7 @@ fig = soln_default.tf.plot(
     symbol="circle",
 )
 fig.update_layout(height=800)
-plotly.io.show(fig)
+fig
 
 # %%
 # Looking at the transfer function, it's clear that the phases are in the wrong
@@ -75,4 +74,4 @@ fig = soln_custom.tf.plot(
     symbol="diamond",
 )
 fig.update_layout(height=800)
-plotly.io.show(fig)
+fig

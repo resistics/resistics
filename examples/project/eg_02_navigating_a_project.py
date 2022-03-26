@@ -14,7 +14,6 @@ data can be found at https://www.mtnet.info/data/kap03/kap03.html.
 # sphinx_gallery_thumbnail_number = 2
 from pathlib import Path
 import seedir as sd
-import plotly
 import resistics.letsgo as letsgo
 
 # %%
@@ -58,7 +57,7 @@ print(measurements)
 # %%
 # It's also possible to plot the timeline of a single site.
 fig = site.plot()
-plotly.io.show(fig)
+fig
 
 # %%
 # There is only a single measurement in this site named "meas01". Let's get its
@@ -81,4 +80,4 @@ time_data.summary()
 # Let's plot the time data.
 fig = time_data.plot()
 fig.update_layout(height=700)
-plotly.io.show(fig)
+fig

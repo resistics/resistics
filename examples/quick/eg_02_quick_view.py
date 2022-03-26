@@ -23,7 +23,6 @@ dataset can be found at https://www.mtnet.info/data/kap03/kap03.html.
 """
 from pathlib import Path
 import seedir as sd
-import plotly
 import resistics.letsgo as letsgo
 
 
@@ -36,7 +35,7 @@ sd.seedir(str(time_data_path), style="emoji")
 # Quickly view the time series data
 fig = letsgo.quick_view(time_data_path, max_pts=1_000)
 fig.update_layout(height=700)
-plotly.io.show(fig)
+fig
 
 # %%
 # In many cases, data plotting at its recording frequency can be quite nosiy.
@@ -44,4 +43,4 @@ plotly.io.show(fig)
 # so the data can be compared at multiple sampling frequencies.
 fig = letsgo.quick_view(time_data_path, max_pts=1_000, decimate=True)
 fig.update_layout(height=700)
-plotly.io.show(fig)
+fig

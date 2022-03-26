@@ -5,7 +5,6 @@ Calibration data TXT
 An alternative to JSON calibration files is to use text/ASCII calibration files.
 """
 from pathlib import Path
-import plotly
 from resistics.time import ChanMetadata
 from resistics.calibrate import SensorCalibrationTXT
 
@@ -31,4 +30,4 @@ cal_data = SensorCalibrationTXT().read_calibration_data(cal_data_path, chan_meta
 # Plot the calibration data.
 fig = cal_data.plot(color="green")
 fig.update_layout(height=700)
-plotly.io.show(fig)
+fig

@@ -14,7 +14,6 @@ dataset can be found at https://www.mtnet.info/data/kap03/kap03.html.
 """
 from pathlib import Path
 import seedir as sd
-import plotly
 import resistics.letsgo as letsgo
 
 
@@ -36,4 +35,4 @@ fig = soln.tf.plot(
     symbol="circle",
 )
 fig.update_layout(height=900)
-plotly.io.show(fig)
+fig

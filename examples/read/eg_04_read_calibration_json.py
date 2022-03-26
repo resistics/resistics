@@ -8,7 +8,6 @@ files too.
 """
 from pathlib import Path
 import json
-import plotly
 from resistics.time import ChanMetadata
 from resistics.calibrate import SensorCalibrationJSON
 
@@ -34,4 +33,4 @@ cal_data = SensorCalibrationJSON().read_calibration_data(cal_data_path, chan_met
 # Plot the calibration data.
 fig = cal_data.plot(color="maroon")
 fig.update_layout(height=700)
-plotly.io.show(fig)
+fig
