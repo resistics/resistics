@@ -13,6 +13,7 @@ from pathlib import Path
 import os
 import re
 import resistics
+import plotly.io as pio
 from plotly.io._sg_scraper import plotly_sg_scraper
 from sphinx_gallery.sorting import FileNameSortKey
 
@@ -36,6 +37,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinxcontrib.autodoc_pydantic",
     "sphinx.ext.napoleon",
+    "sphinx.ext.intersphinx",
     "sphinx.ext.doctest",
     "sphinx.ext.todo",
     "sphinx.ext.coverage",
@@ -55,6 +57,7 @@ templates_path = ["_templates"]
 exclude_patterns = ["setup.rst", "modules.rst"]
 
 # resistics configuration
+# autodoc
 autosectionlabel_prefix_document = True
 autodoc_member_order = "bysource"
 autodoc_undoc_members = False
@@ -64,6 +67,12 @@ napoleon_attr_annotations = False
 # other configuration
 plot_include_source = True
 todo_include_todos = True
+# intersphinx
+intersphinx_mapping = {
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "matplotlib": ("https://matplotlib.org/stable", None),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
+}
 # copy button
 copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: "
 copybutton_prompt_is_regexp = True
@@ -77,12 +86,10 @@ autodoc_pydantic_model_show_validator_members = False
 autodoc_pydantic_model_hide_paramlist = True
 autodoc_pydantic_field_show_default = True
 # sphinx gallery
-image_scrapers = (
-    "matplotlib",
-    plotly_sg_scraper,
-)
+pio.renderers.default = "sphinx_gallery_png"
+image_scrapers = ("matplotlib", plotly_sg_scraper)
 sphinx_gallery_conf = {
-    "run_stale_examples": False,
+    "run_stale_examples": True,
     "filename_pattern": f"{re.escape(os.sep)}eg_",
     "remove_config_comments": True,
     "thumbnail_size": (300, 300),
