@@ -488,7 +488,14 @@ def run_solver(config: Configuration, reg_data: RegressionInputData) -> Solution
     return config.solver.run(reg_data)
 
 
-def quick_read(dir_path: Path, config: Optional[Configuration] = None) -> TimeData:
+def quick_read(
+    dir_path: Path,
+    config: Optional[Configuration] = None,
+    from_time: Optional[DateTimeLike] = None,
+    to_time: Optional[DateTimeLike] = None,
+    from_sample: Optional[None] = None,
+    to_sample: Optional[None] = None,
+) -> TimeData:
     """
     Read time data folder
 
@@ -498,6 +505,14 @@ def quick_read(dir_path: Path, config: Optional[Configuration] = None) -> TimeDa
         The directory path to read
     config : Optional[Configuration], optional
         Configuration with appropriate readers, by default None.
+    from_time : Union[DateTimeLike, None], optional
+        Timestamp to read from, by default None
+    to_time : Union[DateTimeLike, None], optional
+        Timestamp to read to, by default None
+    from_sample : Union[int, None], optional
+        Sample to read from, by default None
+    to_sample : Union[int, None], optional
+        Sample to read to, by default None
 
     Returns
     -------
@@ -516,7 +531,13 @@ def quick_read(dir_path: Path, config: Optional[Configuration] = None) -> TimeDa
     for reader in config.time_readers:
         logger.info(f"Attempting to read data with reader {reader.name}")
         try:
-            return reader.run(dir_path)
+            return reader.run(
+                dir_path,
+                from_time=from_time,
+                to_time=to_time,
+                from_sample=from_sample,
+                to_sample=to_sample,
+            )
         except MetadataReadError:
             logger.debug(f"Unable to read metadata with reader {reader.name}")
         except TimeDataReadError:
@@ -689,8 +710,10 @@ def process_time(
     meas_name: str,
     out_site: str,
     out_meas: str,
-    from_time: Optional[DateTimeLike] = None,
-    to_time: Optional[DateTimeLike] = None,
+    input_from_time: Optional[DateTimeLike] = None,
+    input_to_time: Optional[DateTimeLike] = None,
+    output_from_time: Optional[DateTimeLike] = None,
+    output_to_time: Optional[DateTimeLike] = None,
 ) -> None:
     """
     Process time data and save as a new measurement
@@ -709,10 +732,18 @@ def process_time(
         The site to output the data to
     out_meas : str
         The name of the measurement to output the data to
-    from_time : Optional[DateTimeLike], optional
-        Time to get the time data from, by default None
-    to_time : Optional[DateTimeLike], optional
-        Time to get the time data up to, by default None
+    input_from_time : Optional[DateTimeLike], optional
+        Time to read data from for the input data, by default None. If None, the
+        first time of the time series data is used.
+    input_to_time : Optional[DateTimeLike], optional
+        Time to read data to for the input data, by default None. If None, the
+        last time of the input time series data is used.
+    output_from_time : Optional[DateTimeLike], optional
+        Time to output data from, by default None. If None, the first time of
+        input data is used.
+    output_to_time : Optional[DateTimeLike], optional
+        Time to output data to, by default None. If None, the last time of the
+        input data is used.
     """
     from resistics.time import TimeWriterNumpy
     from resistics.project import get_meas_time_path
@@ -720,9 +751,25 @@ def process_time(
     logger.info(f"Running time processors on meas {meas_name} from site {site_name}")
     meas = resenv.proj[site_name][meas_name]
     time_data = meas.reader.run(
-        meas.dir_path, metadata=meas.metadata, from_time=from_time, to_time=to_time
+        meas.dir_path,
+        metadata=meas.metadata,
+        from_time=input_from_time,
+        to_time=input_to_time,
     )
     time_data = run_time_processors(resenv.config, time_data)
+    # restrict output time if required
+    if output_from_time is not None or output_to_time is not None:
+        output_from_time = (
+            output_from_time
+            if output_from_time is not None
+            else time_data.metadata.first_time.isoformat()
+        )
+        output_to_time = (
+            output_to_time
+            if output_to_time is not None
+            else time_data.metadata.last_time.isoformat()
+        )
+        time_data = time_data.subsection(output_from_time, output_to_time)
     out_path = get_meas_time_path(resenv.proj.dir_path, out_site, out_meas)
     writer = TimeWriterNumpy()
     writer.run(out_path, time_data)
@@ -827,7 +874,7 @@ def process_evals_to_tf(
         in_name=in_site,
         cross_name=cross_site,
     )
-    return gathered_data
+    # return gathered_data
     reg_data = run_regression_preparer(config, gathered_data)
     solution = run_solver(config, reg_data)
     solution_path = get_results_path(proj.dir_path, out_site, config.name)
