@@ -586,7 +586,8 @@ class ProjectGather(ResisticsProcess):
         chans: List[str],
     ) -> SiteCombinedData:
         """
-        Collect the evals data for the site
+        Collect the evals data for the site. This is only for the shared
+        windows.
 
         Parameters
         ----------
@@ -608,6 +609,7 @@ class ProjectGather(ResisticsProcess):
         """
         from resistics.project import get_meas_evals_path
 
+        logger.debug(f"Collecting site data for {site_name}, channels {chans}")
         site = proj[site_name]
         measurements = selection.get_measurements(site)
         data = self._get_empty_data(selection, chans)
@@ -784,7 +786,9 @@ class ProjectGather(ResisticsProcess):
         """
         eval_wins["combined_index"] = np.arange(len(eval_wins))
         eval_meas_wins = eval_wins[eval_wins[site.name] == meas_name]
+        # this is the local window indices for this measurement
         eval_data_indices = eval_meas_wins.index.values - level_metadata.index_offset
+        # this is the combined indices for this measurement
         combined_indices = eval_meas_wins["combined_index"].values
         return eval_data_indices, combined_indices
 
