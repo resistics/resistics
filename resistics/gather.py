@@ -158,7 +158,9 @@ def get_site_level_wins(
         first_global = level_metadata.index_offset
         last_gobal = level_metadata.index_offset + level_metadata.n_wins - 1
         index = np.arange(first_global, last_gobal + 1)
-        level_wins = level_wins.append(pd.Series(data=meas_name, index=index))
+        level_wins = pd.concat(
+            [level_wins, pd.Series(data=meas_name, index=index)], axis=0
+        )
     level_wins = level_wins[~level_wins.index.duplicated(keep="first")]
     return level_wins.sort_index()
 
