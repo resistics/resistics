@@ -875,6 +875,19 @@ class WindowSetup(ResisticsProcess):
         'win_sizes': [1000, 578, 104],
         'olap_sizes': [250, 144, 32]
     }
+
+    When providing explicit window and overlap sizes, the size of the overlap
+    is expected to be less than the size of the window
+
+    >>> from resistics.decimate import DecimationSetup
+    >>> from resistics.window import WindowSetup
+    >>> dec_setup = DecimationSetup(n_levels=3, per_level=3)
+    >>> dec_params = dec_setup.run(0.05)
+    >>> win_setup = WindowSetup(win_sizes=[1000, 578, 104], olap_sizes=[1001, 600, 25])
+    >>> win_params = win_setup.run(dec_params.n_levels, dec_params.dec_fs)
+    Traceback (most recent call last):
+    ...
+    ValueError: Invalid overlaps found [ True  True False]
     """
 
     min_size: int = 128
@@ -922,6 +935,8 @@ class WindowSetup(ResisticsProcess):
             If the number of windows does not match the number of levels
         ValueError
             If the number of overlaps does not match the number of levels
+        ValueError
+            If any of the overlaps are bigger than the window sizes
         """
         if self.win_sizes is None:
             win_sizes = self._get_win_sizes(n_levels, dec_fs)
@@ -946,6 +961,10 @@ class WindowSetup(ResisticsProcess):
             # this may happen with user input windows
             # but decimated data has fewer levels
             olap_sizes = olap_sizes[:n_levels]
+
+        invalid_olaps = np.greater(olap_sizes, win_sizes)
+        if np.any(invalid_olaps):
+            raise ValueError(f"Invalid overlaps found {invalid_olaps}")
 
         return WindowParameters(
             n_levels=n_levels,
