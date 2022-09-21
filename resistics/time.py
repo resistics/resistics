@@ -2151,7 +2151,6 @@ class Resample(TimeProcess):
             frac.numerator,
             frac.denominator,
             axis=1,
-            window="hamming",
             padtype="mean",
         )
         data = data.astype(time_data.data.dtype)
