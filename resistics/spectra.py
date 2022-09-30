@@ -966,7 +966,7 @@ class SpectraSmootherGaussian(SpectraProcess):
         messages = [f"Smoothing frequencies with gaussian filter, sigma {self.sigma}"]
         for ilevel in range(spec_data.metadata.n_levels):
             data[ilevel] = ndimage.gaussian_filter1d(
-                spec_data.get_level(ilevel), 1, axis=-1
+                spec_data.get_level(ilevel), self.sigma, axis=-1
             )
             messages.append(f"Smoothed level {ilevel} with gaussian filter")
         metadata = SpectraMetadata(**spec_data.metadata.dict())
