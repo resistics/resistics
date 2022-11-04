@@ -21,9 +21,11 @@ The dataset in this example has been provided for use by the SAMTEX consortium.
 For more information, please refer to [Jones2009]_. Additional details about the
 dataset can be found at https://www.mtnet.info/data/kap03/kap03.html.
 """
+# sphinx_gallery_thumbnail_number = 2
 from pathlib import Path
 import seedir as sd
 import resistics.letsgo as letsgo
+import plotly
 
 
 # %%
@@ -35,7 +37,7 @@ sd.seedir(str(time_data_path), style="emoji")
 # Quickly view the time series data
 fig = letsgo.quick_view(time_data_path, max_pts=1_000)
 fig.update_layout(height=700)
-fig
+plotly.io.show(fig)
 
 # %%
 # In many cases, data plotting at its recording frequency can be quite nosiy.
@@ -43,4 +45,4 @@ fig
 # so the data can be compared at multiple sampling frequencies.
 fig = letsgo.quick_view(time_data_path, max_pts=1_000, decimate=True)
 fig.update_layout(height=700)
-fig
+plotly.io.show(fig)
