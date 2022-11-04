@@ -10,7 +10,6 @@ This includes testing data for:
 - DecimatedData
 - SpectraData
 """
-
 from typing import List, Dict, Optional, Type, Union
 import numpy as np
 import pandas as pd
