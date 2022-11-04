@@ -5,11 +5,11 @@ description = "Python package for processing magnetotelluric data"
 license = "MIT"
 authors = ["Neeraj Shah <resistics@outlook.com>"]
 maintainers = ["Neeraj Shah <resistics@outlook.com>"]
-readme="README.md"
-homepage="https://www.resistics.io"
-repository="https://github.com/resistics/resistics"
-documentation="https://www.resistics.io"
-keywords=[
+readme = "README.md"
+homepage = "https://www.resistics.io"
+repository = "https://github.com/resistics/resistics"
+documentation = "https://www.resistics.io"
+keywords = [
     "geophysics",
     "magnetotellurics",
     "electromagnetic",
@@ -29,46 +29,53 @@ classifiers = [
 "Bug Tracker" = "https://github.com/resistics/resistics/issues"
 
 [tool.poetry.dependencies]
-python = ">=3.8.1,<3.11"
-numpy = "^1.20.2"
-scipy = "^1.6.2"
-pandas = "^1.2.3"
-lttbc = "^0.2.1"
+python = ">=3.8.1,<=3.11"
+numpy = ">=1.20.2"
+scipy = ">=1.6.2"
+pandas = ">=1.2.3"
+lttbc = ">=0.2.1"
 attotime = "0.2.3"
-plotly = "^5.9.0"
-loguru = "^0.5.3"
-scikit-learn = "^1.1.1"
-pydantic = "^1.8.1"
-prettyprinter = "^0.18.0"
-PyYAML = "^5.4.1"
-tqdm = "^4.61.0"
+plotly = ">=5.9.0"
+loguru = ">=0.5.3"
+scikit-learn = ">=1.1.1"
+pydantic = ">=1.8.1"
+prettyprinter = ">=0.18.0"
+PyYAML = ">=5.4.1"
+tqdm = ">=4.61.0"
 
-[tool.poetry.dev-dependencies]
-matplotlib="^3.5.2"
-Sphinx = "^5.0.0"
-furo="^2022.6.21"
-pytest="^7.1.2"
-pytest-cov="^3.0.0"
-pytest-html="^3.1.1"
-mypy="^0.961"
-darglint="^1.8.0"
-flake8="^4.0.1"
-black="^22.3.0"
-pre-commit="^2.19.0"
-autodoc-pydantic = "^1.7.2"
-sphinx-copybutton = "^0.5.0"
-flake8-builtins = "^1.5.3"
-flake8-docstrings = "^1.6.0"
-flake8-bandit = "^2.1.2"
-flake8-pytest-style = "^1.4.2"
-flake8-cognitive-complexity = "^0.1.0"
-flake8-expression-complexity = "^0.0.9"
-python-dotenv = "^0.18.0"
-sphinx-gallery = "^0.10.1"
-ipython = "^7.25.0"
-nbformat = "^5.1.3"
+[tool.poetry.group.shared.dependencies]
+matplotlib = "*"
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+pre-commit = "*"
+flake8 = "*"
+flake8-builtins = "*"
+flake8-docstrings = "*"
+flake8-bandit = "*"
+flake8-pytest-style = "*"
+flake8-cognitive-complexity = "*"
+flake8-expression-complexity = "*"
+darglint = "*"
+
+[tool.poetry.group.docs.dependencies]
+Sphinx = "*"
+furo = "*"
+sphinx-gallery = "*"
+sphinxext-opengraph = "*"
+autodoc-pydantic = "*"
+sphinx-copybutton = "*"
 kaleido = "0.2.1"
-seedir = "^0.2.0"
+ipython = "*"
+nbformat = "*"
+seedir = "*"
+emoji = "*"
+
+[tool.poetry.group.tests.dependencies]
+pytest = "*"
+pytest-cov = "*"
+pytest-html = "*"
+mypy = "*"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
