@@ -5,7 +5,7 @@ This module is the main interface to resistics and includes:
 - Functions for processing data
 """
 from loguru import logger
-from typing import List, Optional, Dict, Union, Any
+from typing import Optional, Dict, Union, Any
 from pathlib import Path
 from datetime import datetime
 import pandas as pd
@@ -678,7 +678,32 @@ def profile_windowing(
     dir_path: Path,
     config: Optional[Configuration] = None,
     ref_time: Optional[DateTimeLike] = None,
-) -> List[pd.DataFrame]:
+) -> Dict[pd.DataFrame]:
+    """
+    Profile windowing for a measurement
+
+    This function will return window tables for each decimation level. Note that
+    any time processses are run first in case these changes the start or end
+    time of the data.
+
+    Parameters
+    ----------
+    dir_path : Path
+        Directory path of the time data
+    config : Optional[Configuration], optional
+        Configuration to use, by default None. If not provided, the default
+        configuration will be used.
+    ref_time : Optional[DateTimeLike], optional
+        A reference time to perform windowing against, by default None. If not
+        provided, the start time of the recording will be used as the reference
+        time.
+
+    Returns
+    -------
+    Dict[pd.DataFrame]
+        Mapping from decimation level to a pandas DataFrame of the windows for
+        the decimation level
+    """
     from resistics.sampling import to_datetime
 
     logger.info(f"Profiling windowing for {dir_path}")
