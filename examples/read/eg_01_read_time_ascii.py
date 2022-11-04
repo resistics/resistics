@@ -19,6 +19,7 @@ The dataset is KAP175. A couple of notes:
 from pathlib import Path
 import pandas as pd
 from resistics.time import ChanMetadata, TimeMetadata, TimeReaderAscii, InterpolateNans
+import plotly
 
 # %%
 # Define the data path. This is dependent on where the data is stored. Here, the
@@ -89,4 +90,4 @@ time_data = InterpolateNans().run(time_data)
 # algorithm to avoid slow and large plots.
 fig = time_data.plot(max_pts=1_000)
 fig.update_layout(height=700)
-fig
+plotly.io.show(fig)

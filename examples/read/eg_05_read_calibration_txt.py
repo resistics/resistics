@@ -7,6 +7,7 @@ An alternative to JSON calibration files is to use text/ASCII calibration files.
 from pathlib import Path
 from resistics.time import ChanMetadata
 from resistics.calibrate import SensorCalibrationTXT
+import plotly
 
 # %%
 # Define the calibration data path. This is dependent on where the data is
@@ -30,4 +31,4 @@ cal_data = SensorCalibrationTXT().read_calibration_data(cal_data_path, chan_meta
 # Plot the calibration data.
 fig = cal_data.plot(color="green")
 fig.update_layout(height=700)
-fig
+plotly.io.show(fig)

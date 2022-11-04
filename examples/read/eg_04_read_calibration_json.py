@@ -10,6 +10,7 @@ from pathlib import Path
 import json
 from resistics.time import ChanMetadata
 from resistics.calibrate import SensorCalibrationJSON
+import plotly
 
 # %%
 # Define the calibration data path. This is dependent on where the data is
@@ -33,4 +34,4 @@ cal_data = SensorCalibrationJSON().read_calibration_data(cal_data_path, chan_met
 # Plot the calibration data.
 fig = cal_data.plot(color="maroon")
 fig.update_layout(height=700)
-fig
+plotly.io.show(fig)

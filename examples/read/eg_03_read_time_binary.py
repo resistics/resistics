@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 from resistics.time import TimeMetadata, ChanMetadata, TimeReaderNumpy
 from resistics.time import InterpolateNans, LowPass
+import plotly
 
 # %%
 # Define the data path. This is dependent on where the data is stored. Here, the
@@ -83,4 +84,4 @@ fig = filtered_data.plot(
     max_pts=1_000, fig=fig, chans=chans, legend="filtered", color="red"
 )
 fig.update_layout(height=700)
-fig
+plotly.io.show(fig)
