@@ -678,7 +678,7 @@ def profile_windowing(
     dir_path: Path,
     config: Optional[Configuration] = None,
     ref_time: Optional[DateTimeLike] = None,
-) -> Dict[pd.DataFrame]:
+) -> Dict[int, pd.DataFrame]:
     """
     Profile windowing for a measurement
 
@@ -700,7 +700,7 @@ def profile_windowing(
 
     Returns
     -------
-    Dict[pd.DataFrame]
+    Dict[int, pd.DataFrame]
         Mapping from decimation level to a pandas DataFrame of the windows for
         the decimation level
     """
