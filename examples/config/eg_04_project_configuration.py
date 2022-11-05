@@ -18,6 +18,7 @@ import resistics.letsgo as letsgo
 from resistics.time import TimeReaderNumpy, InterpolateNans, RemoveMean, Multiply
 from resistics.decimate import DecimationSetup
 from resistics.window import WindowSetup
+import plotly
 
 # The first thing to do is define the configuration to use.
 myconfig = letsgo.Configuration(
@@ -90,4 +91,4 @@ fig = soln.tf.plot(
     symbol="circle",
 )
 fig.update_layout(height=900)
-fig
+plotly.io.show(fig)

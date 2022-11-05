@@ -17,6 +17,7 @@ from resistics.config import Configuration
 from resistics.time import InterpolateNans, RemoveMean, Multiply
 from resistics.decimate import DecimationSetup
 from resistics.window import WindowerTarget
+import plotly
 
 # %%
 # Define the data path. This is dependent on where the data is stored.
@@ -74,4 +75,4 @@ fig = soln_custom.tf.plot(
     symbol="diamond",
 )
 fig.update_layout(height=800)
-fig
+plotly.io.show(fig)
