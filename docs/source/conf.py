@@ -48,7 +48,7 @@ exclude_patterns = ["setup.rst", "modules.rst"]
 
 # resistics configuration
 # code styles
-pygments_style = "friendly_grayscale"
+pygments_style = "gruvbox-light"
 pygments_dark_style = "paraiso-dark"
 # autodoc
 autosectionlabel_prefix_document = True
