@@ -15,6 +15,7 @@ data can be found at https://www.mtnet.info/data/kap03/kap03.html.
 from pathlib import Path
 import seedir as sd
 import resistics.letsgo as letsgo
+import plotly
 
 # %%
 # Let's remind ourselves of the project contents, load the project and have a
@@ -57,7 +58,7 @@ print(measurements)
 # %%
 # It's also possible to plot the timeline of a single site.
 fig = site.plot()
-fig
+plotly.io.show(fig)
 
 # %%
 # There is only a single measurement in this site named "meas01". Let's get its
@@ -80,4 +81,4 @@ time_data.summary()
 # Let's plot the time data.
 fig = time_data.plot()
 fig.update_layout(height=700)
-fig
+plotly.io.show(fig)

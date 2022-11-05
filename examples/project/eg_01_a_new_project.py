@@ -16,6 +16,7 @@ from pathlib import Path
 import seedir as sd
 import shutil
 import resistics.letsgo as letsgo
+import plotly
 
 # %%
 # Define the path where the project will be created and any extra project
@@ -59,4 +60,4 @@ resenv.proj.summary()
 # Finally, plot the project timeline.
 fig = resenv.proj.plot()
 fig.update_layout(height=700)
-fig
+plotly.io.show(fig)
