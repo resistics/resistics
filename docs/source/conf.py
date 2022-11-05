@@ -48,8 +48,8 @@ exclude_patterns = ["setup.rst", "modules.rst"]
 
 # resistics configuration
 # code styles
-pygments_style = "nord-darker"
-# pygments_dark_style = "monokai"
+pygments_style = "friendly_grayscale"
+pygments_dark_style = "paraiso-dark"
 # autodoc
 autosectionlabel_prefix_document = True
 autodoc_member_order = "bysource"
@@ -62,9 +62,11 @@ plot_include_source = True
 todo_include_todos = True
 # intersphinx
 intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
-    "matplotlib": ("https://matplotlib.org/stable", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
+    "matplotlib": ("https://matplotlib.org/stable", None),
 }
 # copy button
 copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: "
@@ -82,7 +84,7 @@ autodoc_pydantic_field_show_default = True
 pio.renderers.default = "sphinx_gallery_png"
 image_scrapers = ("matplotlib", plotly_sg_scraper)
 sphinx_gallery_conf = {
-    "run_stale_examples": True,
+    "run_stale_examples": False,
     "filename_pattern": f"{re.escape(os.sep)}eg_",
     "remove_config_comments": True,
     "thumbnail_size": (300, 300),
