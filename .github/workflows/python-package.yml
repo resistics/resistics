@@ -20,9 +20,9 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - uses: Gr1N/setup-poetry@v7
@@ -30,14 +30,14 @@ jobs:
           poetry --version
           poetry config virtualenvs.in-project true
           poetry config --list
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: .venv
           key: poetry-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
         run: |
           poetry config --list
-          poetry install
+          poetry install --without docs
       - name: Lint with flake8
         run: poetry run flake8 resistics
         if: matrix.platform == 'ubuntu-latest' && matrix.python-version == 3.9
