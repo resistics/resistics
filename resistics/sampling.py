@@ -878,7 +878,7 @@ def datetime_array(
     '2021-01-01 00:00:00.024169921875'
     >>> pdarr = pd.date_range(start="2021-01-01 00:00:00", freq=pd.Timedelta(1/4096, "s"), periods=n_samples)
     >>> pdarr[-1]
-    Timestamp('2021-01-01 00:00:00.024169959', freq='244141N')
+    Timestamp('2021-01-01 00:00:00.024169959')
     """
     if n_samples is not None:
         return first_time + np.arange(n_samples) * to_timedelta(1 / fs)
