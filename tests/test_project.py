@@ -10,6 +10,8 @@ from pydantic.error_wrappers import ValidationError
 from resistics.project import PROJ_DIRS
 from resistics.project import get_meas_spectra_path, get_meas_evals_path
 from resistics.project import get_meas_features_path, get_mask_path, get_results_path
+from resistics.testing import time_metadata_2chan
+from resistics.time import TimeReaderAscii
 
 
 @pytest.mark.parametrize(
@@ -137,6 +139,52 @@ def test_get_solution_name(
 
     fs_str = fs_to_string(fs)
     assert get_solution_name(fs, tf_name, tf_var, postfix) == fs_str + "_" + expected
+
+
+@pytest.mark.parametrize(
+    "values, error",
+    [
+        (
+            {
+                "site_name": "test_site",
+                "dir_path": Path("test", "project", "time", "test_site", "measX"),
+                "metadata": time_metadata_2chan(),
+                "reader": TimeReaderAscii(),
+            },
+            None,
+        ),
+        (
+            {
+                "site_name": "test_site",
+                "dir_path": "test/project/time/test_site/measY",
+                "metadata": time_metadata_2chan(),
+                "reader": TimeReaderAscii(),
+            },
+            None,
+        ),
+        (
+            {
+                "site_name": "test_site",
+                "dir_path": Path("test", "project", "time", "test_site", "measX"),
+                "metadata": time_metadata_2chan(),
+                "reader": -10,
+            },
+            ValidationError,
+        ),
+    ],
+    ids=["One error", "Convert string to Path", "All correct"],
+)
+def test_measurement(values, error):
+    """Test the Measurement class"""
+    from resistics.project import Measurement
+
+    if error is not None:
+        with pytest.raises(error):
+            assert Measurement(**values)
+        return
+
+    meas = Measurement(**values)
+    assert meas.name == meas.dir_path.name
 
 
 @pytest.mark.parametrize(
