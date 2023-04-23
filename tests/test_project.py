@@ -3,7 +3,9 @@ Testing project related functions and classes
 """
 from typing import Union, Callable
 from pathlib import Path
+import pandas as pd
 import pytest
+from pydantic.error_wrappers import ValidationError
 
 from resistics.project import PROJ_DIRS
 from resistics.project import get_meas_spectra_path, get_meas_evals_path
@@ -135,3 +137,53 @@ def test_get_solution_name(
 
     fs_str = fs_to_string(fs)
     assert get_solution_name(fs, tf_name, tf_var, postfix) == fs_str + "_" + expected
+
+
+@pytest.mark.parametrize(
+    "values, error",
+    [
+        ({}, ValidationError),
+        ({"ref_time": -999}, ValidationError),
+        ({"ref_time": "2021-01-01 00:00:00"}, None),
+        ({"ref_time": pd.Timestamp("2021-01-01 00:00:00")}, None),
+        (
+            {
+                "ref_time": "2021-01-01 00:00:00",
+                "location": "Masai Mara",
+                "country": "Kenya",
+                "year": 2021,
+                "description": "This is a dummy project",
+                "contributors": ["A", "B", "C"],
+            },
+            None,
+        ),
+        (
+            {
+                "ref_time": "2021-01-01 00:00:00",
+                "location": "Masai Mara",
+                "country": 10,
+                "year": 2021,
+                "description": "This is a dummy project",
+                "contributors": ["A", "B", "C"],
+            },
+            None,
+        ),
+    ],
+    ids=[
+        "Nothing",
+        "Wrong type",
+        "Just reference time",
+        "Pandas datetime",
+        "All correct",
+        "Country wrong type",
+    ],
+)
+def test_project_metadata(values, error):
+    """Test the ProjectMetadata class"""
+    from resistics.project import ProjectMetadata
+
+    if error is not None:
+        with pytest.raises(error):
+            assert ProjectMetadata(**values)
+        return
+    assert ProjectMetadata(**values)
