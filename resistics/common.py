@@ -198,6 +198,35 @@ def dir_subdirs(dir_path: Path) -> List[Path]:
     return dirs
 
 
+def known_chan(chan: str) -> bool:
+    """
+    Check whether resistics is familiar with a channel name
+
+    Parameters
+    ----------
+    chan : str
+        The channel name
+
+    Returns
+    -------
+    bool
+        True if it is a resistics known channel, false otherwise
+
+    Examples
+    --------
+    >>> from resistics.common import known_chan
+    >>> known_chan("Ex")
+    True
+    >>> known_chan("Hy")
+    True
+    >>> known_chan("cat")
+    False
+    """
+    if chan in ELECTRIC_CHANS or chan in MAGNETIC_CHANS:
+        return True
+    return False
+
+
 def is_electric(chan: str) -> bool:
     """
     Check if a channel is electric
