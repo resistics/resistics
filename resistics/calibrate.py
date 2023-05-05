@@ -127,7 +127,7 @@ class CalibrationData(WriteableMetadata):
         fig.add_trace(scatter, row=2, col=1)
         return fig
 
-    def to_dataframe(self):
+    def to_dataframe(self) -> pd.DataFrame:
         """Convert to pandas DataFrame"""
         data = {
             "frequency": self.frequency,
