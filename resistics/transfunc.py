@@ -94,6 +94,7 @@ class TransferFunction(Metadata):
     --------
     A generic example
 
+    >>> from resistics.transfunc import TransferFunction
     >>> tf = TransferFunction(variation="example", out_chans=["bye", "see you", "ciao"], in_chans=["hello", "hi_there"])
     >>> print(tf.to_string())
     | bye      |   | bye_hello         bye_hi_there      | | hello    |
@@ -306,6 +307,35 @@ class TransferFunction(Metadata):
     def n_regressors(self) -> int:
         """Get the number of regressors"""
         return self.n_in
+
+    def solution_components(self) -> List[str]:
+        """
+        Get the components of the solution based on the input and output
+        channels
+
+        Returns
+        -------
+        List[str]
+            The solution components
+
+        Examples
+        --------
+
+        >>> from resistics.transfunc import TransferFunction
+        >>> tf = TransferFunction(
+        ...     name="example",
+        ...     variation="a",
+        ...     in_chans=["a", "b", "c"],
+        ...     out_chans=["x", "y"]
+        ... )
+        >>> tf.solution_components()
+        ['xa', 'xb', 'xc', 'ya', 'yb', 'yc']
+        """
+        return [
+            f"{out_chan}{in_chan}"
+            for out_chan in self.out_chans
+            for in_chan in self.in_chans
+        ]
 
     def to_string(self):
         """Get the transfer function as as string"""
