@@ -17,6 +17,7 @@ from loguru import logger
 from typing import List, Dict, Tuple, Union, Optional
 from tqdm import tqdm
 import numpy as np
+import pandas as pd
 from sklearn.base import BaseEstimator
 
 from resistics.common import Metadata, WriteableMetadata, History
@@ -620,21 +621,21 @@ class Solution(WriteableMetadata):
     | Ex | = | Ex_Hx Ex_Hy | | Hx |
     | Ey |   | Ey_Hx Ey_Hy | | Hy |
     >>> solution.n_freqs
-    5
+    6
     >>> solution.freqs
-    [10.0, 20.0, 30.0, 40.0, 50.0]
+    [100.0, 80.0, 60.0, 40.0, 20.0, 10.0]
     >>> solution.periods.tolist()
-    [0.1, 0.05, 0.03333333333333333, 0.025, 0.02]
+    [0.01, 0.0125, 0.016666666666666666, 0.025, 0.05, 0.1]
     >>> solution.components["ExHx"]
-    Component(real=[1.0, 1.0, 2.0, 2.0, 3.0], imag=[5.0, 5.0, 4.0, 4.0, 3.0])
+    Component(real=[1.0, 1.0, 2.0, 2.0, 3.0, 3.0], imag=[5.0, 5.0, 4.0, 4.0, 3.0, 3.0])
     >>> solution.components["ExHy"]
-    Component(real=[1.0, 2.0, 3.0, 4.0, 5.0], imag=[-5.0, -4.0, -3.0, -2.0, -1.0])
+    Component(real=[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], imag=[-5.0, -4.0, -3.0, -2.0, -1.0, 1.0])
 
     To get the components as an array, either get_component or subscripting
     be used
 
     >>> solution["ExHy"]
-    array([1.-5.j, 2.-4.j, 3.-3.j, 4.-2.j, 5.-1.j])
+    array([1.-5.j, 2.-4.j, 3.-3.j, 4.-2.j, 5.-1.j, 6.+1.j])
     >>> solution["ab"]
     Traceback (most recent call last):
     ...
@@ -722,7 +723,9 @@ class Solution(WriteableMetadata):
 
     def get_tensor(self, eval_idx: int) -> np.ndarray:
         """
-        Get the tensor at a single evaluation frequency
+        Get the tensor at a single evaluation frequency. This has shape:
+
+        n_out_chans x n_in_chans
 
         Parameters
         ----------
@@ -740,6 +743,12 @@ class Solution(WriteableMetadata):
                 key = get_component_key(out_chan, in_chan)
                 tensor[out_idx, in_idx] = self.components[key].get_value(eval_idx)
         return tensor
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """Get the solution as a pandas DataFrame"""
+        soln_data = {comp: self.get_component(comp) for comp in self.components}
+        index = self.freqs
+        return pd.DataFrame(data=soln_data, index=index)
 
 
 class Solver(ResisticsProcess):
@@ -896,7 +905,7 @@ class SolverScikitOLS(SolverScikit):
 
         model = LinearRegression(
             fit_intercept=self.fit_intercept,
-            normalize=self.normalize,
+            # normalize=self.normalize,
             n_jobs=self.n_jobs,
         )
         return self._solve(regression_input, model)

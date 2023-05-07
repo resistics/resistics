@@ -14,12 +14,13 @@ from typing import List, Dict, Optional, Type, Union
 import numpy as np
 import pandas as pd
 
-from resistics.common import Record, History, get_record
+from resistics.common import Record, History, get_record, known_chan
 from resistics.time import get_time_metadata, TimeMetadata, TimeData
+from resistics.decimate import get_eval_freqs_size, DecimationParameters
 from resistics.decimate import DecimatedMetadata, DecimatedData
 from resistics.spectra import SpectraLevelMetadata, SpectraMetadata, SpectraData
 from resistics.gather import SiteCombinedMetadata
-from resistics.transfunc import Component, ImpedanceTensor
+from resistics.transfunc import Component, TransferFunction, ImpedanceTensor
 from resistics.regression import RegressionInputMetadata, Solution
 
 DEFAULT_TIME_DATA_DTYPE = np.float32
@@ -136,6 +137,51 @@ def time_metadata_2chan(
     return get_time_metadata(time_dict, chans_dict)
 
 
+def time_metadata_general(
+    chans: List[str],
+    fs: float = 10,
+    first_time: str = "2020-01-01 00:00:00",
+    n_samples: int = 11,
+    chan_type: Optional[str] = None,
+) -> TimeMetadata:
+    """
+    Get general time metadata
+
+    Parameters
+    ----------
+    chans : List[str]
+        The channels in the time data
+    fs : float, optional
+        The sampling frequency, by default 10
+    first_time : _type_, optional
+        The time of the first sample, by default "2020-01-01 00:00:00"
+    n_samples : int, optional
+        The number of samples, by default 11
+    chan_type : Optional[str], optional
+        The channel type for channels with unknown type, by default None
+
+    Returns
+    -------
+    TimeMetadata
+        An instance of TimeMetadata with the approripate properties
+    """
+    first_time = pd.to_datetime(first_time)
+    time_dict = {
+        "chans": chans,
+        "fs": fs,
+        "dt": 1 / fs,
+        "n_chans": len(chans),
+        "n_samples": n_samples,
+        "first_time": first_time,
+        "last_time": first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
+    }
+    chans_dict = {chan: {"name": chan, "data_files": "Ex.ascii"} for chan in chans}
+    for chan in chans:
+        if not known_chan(chan):
+            chans_dict[chan]["chan_type"] = "unknown"
+    return get_time_metadata(time_dict, chans_dict)
+
+
 def time_metadata_mt(
     fs: float = 10, first_time: str = "2020-01-01 00:00:00", n_samples: int = 11
 ) -> TimeMetadata:
@@ -156,23 +202,10 @@ def time_metadata_mt(
     TimeMetadata
         TimeMetadata
     """
-    first_time = pd.to_datetime(first_time)
-    time_dict = {
-        "chans": ["Ex", "Ey", "Hx", "Hy"],
-        "fs": fs,
-        "dt": 1 / fs,
-        "n_chans": 4,
-        "n_samples": n_samples,
-        "first_time": first_time,
-        "last_time": first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
-    }
-    chans_dict = {
-        "Ex": {"name": "Ex", "data_files": "Ex.ascii"},
-        "Ey": {"name": "Ey", "data_files": "Ex.ascii"},
-        "Hx": {"name": "Hx", "data_files": "Ex.ascii"},
-        "Hy": {"name": "Hy", "data_files": "Ex.ascii"},
-    }
-    return get_time_metadata(time_dict, chans_dict)
+    chans = ["Ex", "Ey", "Hx", "Hy"]
+    return time_metadata_general(
+        chans, fs=fs, first_time=first_time, n_samples=n_samples
+    )
 
 
 def time_data_ones(
@@ -806,11 +839,179 @@ def spectra_data_basic() -> SpectraData:
     return SpectraData(metadata, data)
 
 
-def regression_input_metadata_mt(
-    fs: float, freqs: List[float]
+def generate_evaluation_data(
+    chans: List[str], soln: Solution, n_wins: int
+) -> np.ndarray:
+    """
+    Generate evaluation frequency data that satisfies a provided solution
+
+    The returned array has the shape:
+    n_wins x n_chans x n_evals
+    Which is close to the shape required for spectra data
+
+    There is an extra check provided to check if a channel appears in both the
+    input and output channels, which could be a tricky scenario.
+
+    The data is produced randomly using np.random.randn, meaning that it is
+    sampled from a standard normal distribution
+
+    Parameters
+    ----------
+    chans : List[str]
+        The channels in the data
+    soln : Solution
+        The Solution that needs to be satisfied
+    n_wins : int
+        The number of windows to generate
+
+    Returns
+    -------
+    np.ndarray
+        The evaluation frequency data array
+    """
+    n_evals = len(soln.freqs)
+    n_chans = len(chans)
+    in_chans = soln.tf.in_chans
+    out_chans = soln.tf.out_chans
+
+    # create the data array to hold the data and generate the data
+    data_array = np.empty((n_evals, n_chans, n_wins), dtype=np.complex128)
+    for eval_idx in range(n_evals):
+        freq_tensor = soln.get_tensor(eval_idx)
+        # generate input channels
+        freq_data = {in_chan: np.random.randn(n_wins) for in_chan in in_chans}
+        # calculate output channels from input and solution
+        for out_idx, out_chan in enumerate(out_chans):
+            if out_chan in in_chans:
+                # ignore if the channel already appears in the input data
+                continue
+            products = [
+                freq_tensor[out_idx, in_idx] * freq_data[in_chan]
+                for in_idx, in_chan in enumerate(in_chans)
+            ]
+            freq_data[out_chan] = np.sum(products, axis=0)
+        # add the data to the data array
+        for chan_idx, chan in enumerate(chans):
+            data_array[eval_idx, chan_idx, ...] = freq_data[chan]
+    return data_array.transpose()
+
+
+def evaluation_data(
+    fs: float, dec_params: DecimationParameters, n_wins: int, soln: Solution
+) -> SpectraData:
+    """
+    Generate evaluation frequency data that will satisfy a given solution. This
+    will generate random data between the low and high values
+
+    Parameters
+    ----------
+    fs : float
+        The sampling frequency of the original data
+    dec_params : DecimationParameters
+        The data decimation information
+    n_wins : int
+        The number of windows to generate
+    soln : Solution
+        The solution that the generated data should satisfy
+
+    Returns
+    -------
+    SpectraData
+        The evaluation frequency data
+
+    Raises
+    ------
+    ValueError
+        If the number of evaluation frequencies is not exactly divisible by the
+        number of levels
+    """
+    # get information about the decimation levels
+    n_levels = dec_params.n_levels
+    per_level = dec_params.per_level
+    levels_fs = dec_params.dec_fs
+    eval_freqs_for_levels = {
+        ilevel: dec_params.get_eval_freqs(ilevel) for ilevel in range(n_levels)
+    }
+
+    # create the data
+    chans = list(set(soln.tf.in_chans + soln.tf.out_chans))
+    data_array = generate_evaluation_data(chans, soln, n_wins)
+    data = {}
+    for ilevel in range(n_levels):
+        istart = ilevel * per_level
+        iend = istart + per_level
+        data[ilevel] = data_array[..., istart:iend]
+
+    # create the metadata
+    levels_metadata = []
+    for ilevel, level_fs in enumerate(levels_fs):
+        levels_metadata.append(
+            SpectraLevelMetadata(
+                fs=level_fs,
+                n_wins=n_wins,
+                win_size=20,
+                olap_size=5,
+                index_offset=0,
+                n_freqs=per_level,
+                freqs=eval_freqs_for_levels[ilevel],
+            )
+        )
+        levels_metadata[-1].summary()
+    metadata_dict = time_metadata_general(chans).dict()
+    metadata_dict["chans"] = chans
+    metadata_dict["fs"] = levels_fs
+    metadata_dict["n_levels"] = len(levels_metadata)
+    metadata_dict["levels_metadata"] = levels_metadata
+    metadata_dict["ref_time"] = metadata_dict["first_time"]
+    spec_metadata = SpectraMetadata(**metadata_dict)
+    return SpectraData(spec_metadata, data)
+
+
+def transfer_function_random(n_in: int, n_out: int) -> TransferFunction:
+    """
+    Generate a random transfer function
+
+    n_in and n_out must be less than or equal to 26 as the random samples are
+    taken from the alphabet
+
+    Parameters
+    ----------
+    n_in : int
+        Number of input channels
+    n_out : int
+        Number of output channels
+
+    Returns
+    -------
+    TransferFunction
+        A randomly generated transfer function
+
+    Raises
+    ------
+    ValueError
+        If any of the channel names is duplicated
+    """
+    import random
+    import string
+
+    ins = string.ascii_lowercase
+    outs = string.ascii_uppercase
+    in_chans = random.sample(ins, n_in)
+    out_chans = random.sample(outs, n_out)
+    if len(set(ins + outs)) < len(ins) + len(outs):
+        raise ValueError(f"There is a duplicate somewhere, {ins=}, {outs=}")
+
+    return TransferFunction(
+        name="testing", variation="random", in_chans=in_chans, out_chans=out_chans
+    )
+
+
+def regression_input_metadata_single_site(
+    fs: float, freqs: List[float], tf: TransferFunction
 ) -> RegressionInputMetadata:
     """
-    Get example regression input metadata for single site mt
+    Given a transfer function, get example regression input metadata assuming a
+    single site
 
     Parameters
     ----------
@@ -818,6 +1019,8 @@ def regression_input_metadata_mt(
         The sampling frequency
     freqs : List[float]
         The evaluation frequencies
+    tf : TransferFunction
+        The transfer function for which to create RegressionInputMetadata
 
     Returns
     -------
@@ -829,7 +1032,7 @@ def regression_input_metadata_mt(
         site_name="site1",
         fs=fs,
         measurements=["run1", "run2"],
-        chans=["Ex", "Ey"],
+        chans=tf.out_chans,
         n_evals=len(freqs),
         eval_freqs=freqs,
         histories={"run1": History(), "run2": History()},
@@ -838,14 +1041,14 @@ def regression_input_metadata_mt(
         site_name="site1",
         fs=fs,
         measurements=["run1", "run2"],
-        chans=["Hx", "Hy"],
+        chans=tf.in_chans,
         n_evals=len(freqs),
         eval_freqs=freqs,
         histories={"run1": History(), "run2": History()},
     )
     cross_site = SiteCombinedMetadata(**in_site.dict())
     creator = {
-        "name": "regression_input_metadata_mt",
+        "name": "regression_input_metadata",
     }
     record = get_record(creator, "Generated testing regression input metadata for MT")
     return RegressionInputMetadata(
@@ -867,13 +1070,12 @@ def components_mt() -> Dict[str, Component]:
     Dict[str, Component]
         Dictionary of component values (ExHx, ExHy, EyHx, EyHy)
     """
-    components = {
-        "ExHx": Component(real=[1, 1, 2, 2, 3], imag=[5, 5, 4, 4, 3]),
-        "ExHy": Component(real=[1, 2, 3, 4, 5], imag=[-5, -4, -3, -2, -1]),
-        "EyHx": Component(real=[-1, -2, -3, -4, -5], imag=[5, 4, 3, 2, 1]),
-        "EyHy": Component(real=[-1, -1, -2, -2, -3], imag=[-5, -5, -4, -4, -3]),
+    return {
+        "ExHx": Component(real=[1, 1, 2, 2, 3, 3], imag=[5, 5, 4, 4, 3, 3]),
+        "ExHy": Component(real=[1, 2, 3, 4, 5, 6], imag=[-5, -4, -3, -2, -1, 1]),
+        "EyHx": Component(real=[-1, -2, -3, -4, -5, -6], imag=[5, 4, 3, 2, 1, 2]),
+        "EyHy": Component(real=[-1, -1, -2, -2, -3, -2], imag=[-5, -5, -4, -4, -3, -4]),
     }
-    return components
 
 
 def solution_mt() -> Solution:
@@ -883,13 +1085,13 @@ def solution_mt() -> Solution:
     Returns
     -------
     Solution
-        The solution
+        The solution for an MT dataset
     """
     tf = ImpedanceTensor()
-    fs = 128
-    freqs = [10.0, 20.0, 30.0, 40.0, 50.0]
+    fs = 256
+    freqs = [100, 80, 60, 40, 20, 10]
     components = components_mt()
-    metadata = regression_input_metadata_mt(fs, freqs)
+    metadata = regression_input_metadata_single_site(fs, freqs, tf)
     return Solution(
         tf=tf,
         freqs=freqs,
@@ -897,3 +1099,122 @@ def solution_mt() -> Solution:
         history=History(),
         contributors=metadata.contributors,
     )
+
+
+def solution_general(
+    fs: float, tf: TransferFunction, n_evals: int, components: Dict[str, Component]
+) -> Solution:
+    """
+    Create a Solution instance from the specified components
+
+    Parameters
+    ----------
+    fs : float
+        The sampling frequency of the original data
+    tf : TransferFunction
+        The transfer function to be solved
+    n_evals : int
+        The number of evaluation frequencies
+    components : Dict[str, Component]
+        The components of the solution
+
+    Returns
+    -------
+    Solution
+        The Solution instance
+    """
+    freqs = get_eval_freqs_size(fs, n_evals).tolist()
+    metadata = regression_input_metadata_single_site(fs, freqs, tf)
+    return Solution(
+        tf=tf,
+        freqs=freqs,
+        components=components,
+        history=History(),
+        contributors=metadata.contributors,
+    )
+
+
+def solution_random_int(
+    fs: float, tf: TransferFunction, n_evals=10, low: int = -10, high: int = 10
+) -> Solution:
+    """
+    Generate a set of random integer components for a solution
+
+    Parameters
+    ----------
+    fs : float
+        The original sampling frequency of the data
+    tf : TransferFunction
+        The transfer function
+    n_evals : int, optional
+        The number of evaluation frequencies, by default 10
+    low : int, optional
+        A low value for the integers, by default -10
+    high : int, optional
+        A high value for the integers, by default 10
+
+    Returns
+    -------
+    Solution
+        A randomly generated solution for the transfer function
+    """
+    soln_components = tf.solution_components()
+    # generate the components with values for each evaluation frequency
+    components = {
+        comp: Component(
+            real=np.random.randint(low, high, size=n_evals).tolist(),
+            imag=np.random.randint(low, high, size=n_evals).tolist(),
+        )
+        for comp in soln_components
+    }
+    return solution_general(fs, tf, n_evals, components)
+
+
+def solution_random_float(fs: float, tf: TransferFunction, n_evals=10) -> Solution:
+    """
+    Generate a set of random float components for a solution
+
+    This uses the numpy np.random.randn which generates numbers on a standard
+    distribution and then multiplies that with a random integer between 0 and
+    10.
+
+    Parameters
+    ----------
+    fs : float
+        The original sampling frequency of the data
+    tf : TransferFunction
+        The transfer function
+    n_evals : int, optional
+        The number of evaluation frequencies, by default 10
+
+    Returns
+    -------
+    Solution
+        A randomly generated solution for the transfer function
+    """
+    soln_components = tf.solution_components()
+    # generate the components with values for each evaluation frequency
+    components = {
+        comp: Component(
+            real=(np.random.randn(n_evals) * np.random.randint(0, 10)).tolist(),
+            imag=(np.random.randn(n_evals) * np.random.randint(0, 10)).tolist(),
+        )
+        for comp in soln_components
+    }
+    return solution_general(fs, tf, n_evals, components)
+
+
+def assert_soln_equal(soln1: Solution, soln2: Solution):
+    """
+    Check that two solutions are nearly the same
+
+    Parameters
+    ----------
+    soln1 : Solution
+        The first solution
+    soln2 : Solution
+        The second solution
+    """
+    df1 = soln1.to_dataframe()
+    df2 = soln2.to_dataframe()
+    pd.testing.assert_frame_equal(df1, df2)

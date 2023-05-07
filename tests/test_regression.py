@@ -24,11 +24,16 @@ And the corresponding predictor array has shape
 """
 from typing import List
 import numpy as np
+import pytest
 
 from resistics.common import History
 from resistics.gather import SiteCombinedData, SiteCombinedMetadata, GatheredData
+from resistics.decimate import DecimationSetup
 from resistics.transfunc import TransferFunction, ImpedanceTensor
-from resistics.regression import RegressionPreparerGathered
+from resistics.regression import RegressionPreparerGathered, Solution
+from resistics.regression import Solver, SolverScikitOLS
+from resistics.testing import solution_mt, solution_random_float, solution_random_int
+from resistics.testing import transfer_function_random
 
 
 # this first example has 2 windows, 1chan
@@ -140,3 +145,87 @@ def test_regression_preparer_2chan():
     np.testing.assert_array_equal(reg_data.obs[0]["Ex"], TEST2_OBS["Ex"])
     np.testing.assert_array_equal(reg_data.obs[0]["Ey"], TEST2_OBS["Ey"])
     np.testing.assert_array_equal(reg_data.preds[0], TEST2_PREDS[0])
+
+
+RANDOM_TF1 = transfer_function_random(5, 7)
+RANDOM_TF2 = transfer_function_random(12, 4)
+
+
+@pytest.mark.parametrize(
+    "fs, tf, expected_soln, solver, n_levels, n_wins",
+    [
+        (
+            256,
+            ImpedanceTensor(),
+            solution_mt(),
+            SolverScikitOLS(),
+            1,
+            10,
+        ),
+        (
+            256,
+            ImpedanceTensor(),
+            solution_mt(),
+            SolverScikitOLS(),
+            1,
+            50,
+        ),
+        (
+            256,
+            ImpedanceTensor(),
+            solution_mt(),
+            SolverScikitOLS(),
+            2,
+            30,
+        ),
+        (
+            512,
+            RANDOM_TF1,
+            solution_random_float(512, RANDOM_TF1, 25),
+            SolverScikitOLS(),
+            5,
+            1000,
+        ),
+        (
+            512,
+            RANDOM_TF2,
+            solution_random_int(512, RANDOM_TF2, 20),
+            SolverScikitOLS(),
+            5,
+            800,
+        ),
+    ],
+)
+def test_quick_tf_synthetic_data(
+    fs: float,
+    tf: TransferFunction,
+    expected_soln: Solution,
+    solver: Solver,
+    n_levels: int,
+    n_wins: int,
+):
+    """Test regression using synthetic evaluation frequency data"""
+    from pathlib import Path
+    from resistics.config import get_default_configuration
+    from resistics.gather import QuickGather
+    from resistics.letsgo import run_regression_preparer, run_solver
+    from resistics.testing import evaluation_data, assert_soln_equal
+
+    n_evals = len(expected_soln.freqs)
+    if n_evals % n_levels != 0:
+        raise ValueError(f"{n_evals=} not divisible by {n_levels=}")
+    per_level = n_evals // n_levels
+    dec_setup = DecimationSetup(
+        n_levels=n_levels, per_level=per_level, eval_freqs=expected_soln.freqs
+    )
+    dec_params = dec_setup.run(fs)
+    eval_data = evaluation_data(fs, dec_params, n_wins, expected_soln)
+
+    # solve
+    config = get_default_configuration()
+    config.solver = solver
+    config.tf = tf
+    gathered_data = QuickGather().run(Path(), dec_params, config.tf, eval_data)
+    reg_data = run_regression_preparer(config, gathered_data)
+    soln = run_solver(config, reg_data)
+    assert_soln_equal(soln, expected_soln)
