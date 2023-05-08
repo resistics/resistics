@@ -57,9 +57,7 @@ def apply_lttb(
     data: np.ndarray, max_pts: Union[int, None]
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Apply lttb downsampling if max_pts is not None
-
-    There is a helper function
+    A helper function for applying lttb downsampling if max_pts is not None
 
     Parameters
     ----------
