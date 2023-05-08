@@ -112,11 +112,6 @@ def test_new_project_already_exists(monkeypatch):
         new(dir_path, proj_info)
 
 
-# def test_load_project():
-#     """Test loading of a project"""
-#     assert True
-
-
 @pytest.mark.parametrize(
     "time_data, time_processors",
     [
