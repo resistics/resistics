@@ -1,5 +1,6 @@
 """
-Module for producing testing data for resistics
+Module for producing testing data for resistics and helper functions to compare
+instances of the same object.
 
 This includes testing data for:
 
@@ -9,6 +10,9 @@ This includes testing data for:
 - TimeData
 - DecimatedData
 - SpectraData
+- Evaluation frequency SpectraData
+- RegressionInputMetadata
+- Solution
 """
 from typing import List, Dict, Optional, Type, Union
 import numpy as np
@@ -1202,6 +1206,62 @@ def solution_random_float(fs: float, tf: TransferFunction, n_evals=10) -> Soluti
         for comp in soln_components
     }
     return solution_general(fs, tf, n_evals, components)
+
+
+def remove_record_times(records: Dict) -> Dict:
+    """
+    Remove timestamps from records
+
+    Timestamps can make comparision of two data objects harder as processes need
+    to have been run at exactly the same time for equality, which is unlikely to
+    be the case in tests
+
+    Parameters
+    ----------
+    records : Dict
+        The history records
+
+    Returns
+    -------
+    Dict
+        The history records with timestamps removed
+    """
+    for rec in records:
+        rec.pop("time_local")
+        rec.pop("time_utc")
+    return records
+
+
+def assert_time_data_equal(
+    time_data1: TimeData, time_data2: TimeData, history_times: bool = True
+):
+    """
+    Assert that two time data instances are equal
+
+    Parameters
+    ----------
+    time_data1 : TimeData
+        Time data 1
+    time_data2 : TimeData
+        Time data 2
+    history_times : bool, optional
+        Flag to include history timestamps in the comparison, by default True.
+        Including timestamps will cause a failure if processes were not run at
+        exactly the same time.
+    """
+    metadata1 = time_data1.metadata.dict()
+    history1 = metadata1.pop("history")
+    metadata2 = time_data2.metadata.dict()
+    history2 = metadata2.pop("history")
+    # compare core metadata
+    assert metadata1 == metadata2
+    # compare histories
+    if not history_times:
+        history1["records"] = remove_record_times(history1["records"])
+        history2["records"] = remove_record_times(history2["records"])
+    assert history1 == history2
+    # compare data
+    np.testing.assert_array_equal(time_data1.data, time_data2.data)
 
 
 def assert_soln_equal(soln1: Solution, soln2: Solution):

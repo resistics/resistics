@@ -196,7 +196,7 @@ RANDOM_TF2 = transfer_function_random(12, 4)
         ),
     ],
 )
-def test_quick_tf_synthetic_data(
+def test_regression_solution(
     fs: float,
     tf: TransferFunction,
     expected_soln: Solution,
@@ -206,9 +206,8 @@ def test_quick_tf_synthetic_data(
 ):
     """Test regression using synthetic evaluation frequency data"""
     from pathlib import Path
-    from resistics.config import get_default_configuration
     from resistics.gather import QuickGather
-    from resistics.letsgo import run_regression_preparer, run_solver
+    from resistics.regression import RegressionPreparerGathered
     from resistics.testing import evaluation_data, assert_soln_equal
 
     n_evals = len(expected_soln.freqs)
@@ -222,10 +221,7 @@ def test_quick_tf_synthetic_data(
     eval_data = evaluation_data(fs, dec_params, n_wins, expected_soln)
 
     # solve
-    config = get_default_configuration()
-    config.solver = solver
-    config.tf = tf
-    gathered_data = QuickGather().run(Path(), dec_params, config.tf, eval_data)
-    reg_data = run_regression_preparer(config, gathered_data)
-    soln = run_solver(config, reg_data)
+    gathered_data = QuickGather().run(Path(), dec_params, tf, eval_data)
+    reg_data = RegressionPreparerGathered().run(tf, gathered_data)
+    soln = solver.run(reg_data)
     assert_soln_equal(soln, expected_soln)

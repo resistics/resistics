@@ -3,7 +3,9 @@ select = B,B9,BLK,C,E,F,I,S,W
 # ignore line too long errors B950 and E501 as these flag on docstrings
 # rely instead on black to flag when a file requires formatting
 ignore = B950,E203,E501,W503
-per-file-ignores = tests/*:S101
+per-file-ignores =
+    resistics/testing.py:S101
+    tests/*:S101
 # others
 max-line-length = 88
 max-complexity = 10
