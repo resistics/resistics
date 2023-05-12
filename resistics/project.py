@@ -325,7 +325,5 @@ class Project(ResisticsModel):
 
     def to_dataframe(self) -> pd.DataFrame:
         """Detail Project recordings in a DataFrame"""
-        df = pd.DataFrame(columns=["name", "first_time", "last_time", "fs", "site"])
-        for site in self.sites.values():
-            df = df.append(site.to_dataframe())
-        return df
+        sites_df = [site.to_dataframe() for site in self.site.values()]
+        return pd.concat(sites_df, axis=0)
