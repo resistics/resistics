@@ -64,7 +64,7 @@ RUN3 = Measurement(
 )
 SITEB = Site(
     dir_path=Path("test_project", "time", "siteB"),
-    measurements={"run1": RUN3, "run2": RUN3, "run3": RUN3},
+    measurements={"run1": RUN1, "run2": RUN2, "run3": RUN3},
     begin_time=min(
         RUN1.metadata.first_time, RUN2.metadata.first_time, RUN3.metadata.first_time
     ),
@@ -322,21 +322,21 @@ def test_project():
         contributors=["PersonA", "PersonB"],
     )
     proj = Project(
-        Path("test_project"),
+        dir_path=Path("test_project"),
         begin_time=min(SITEA.begin_time, SITEB.begin_time),
         end_time=max(SITEA.end_time, SITEB.end_time),
         metadata=metadata,
         sites={"siteA": SITEA, "siteB": SITEB},
     )
     assert proj.n_sites == 2
-    assert proj.fs == [10, 20, 50]
+    assert proj.fs() == [10, 20, 50]
     assert proj.begin_time == SITEA.begin_time
     assert proj.end_time == SITEB.end_time
     assert proj.get_site("siteA") == SITEA
     assert proj.get_sites() == {"siteA": SITEA, "siteB": SITEB}
     assert proj.get_sites(fs=20) == {"siteA": SITEA, "siteB": SITEB}
     assert proj.get_sites(fs=50) == {"siteB": SITEB}
-    assert proj.get_concurrent("siteA") == ["siteB"]
+    assert proj.get_concurrent("siteA") == [SITEB]
     data = [
         {
             "name": "meas1",
@@ -377,4 +377,7 @@ def test_project():
     df = pd.DataFrame.from_records(data=data).sort_values(["name", "site"])
     df["first_time"] = pd.to_datetime(df["first_time"])
     df["last_time"] = pd.to_datetime(df["last_time"])
-    pd.testing.assert_frame_equal(proj.to_dataframe().sort_values(["name", "site"]), df)
+    # sort and reset the project data frame in case the ordering was different
+    proj_df = proj.to_dataframe().sort_values(["name", "site"])
+    proj_df = proj_df.reset_index(drop=True)
+    pd.testing.assert_frame_equal(proj_df, df)
