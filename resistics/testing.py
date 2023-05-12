@@ -146,7 +146,6 @@ def time_metadata_general(
     fs: float = 10,
     first_time: str = "2020-01-01 00:00:00",
     n_samples: int = 11,
-    chan_type: Optional[str] = None,
 ) -> TimeMetadata:
     """
     Get general time metadata
@@ -161,8 +160,6 @@ def time_metadata_general(
         The time of the first sample, by default "2020-01-01 00:00:00"
     n_samples : int, optional
         The number of samples, by default 11
-    chan_type : Optional[str], optional
-        The channel type for channels with unknown type, by default None
 
     Returns
     -------
