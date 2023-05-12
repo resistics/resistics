@@ -5,6 +5,23 @@ from typing import Collection, Optional, List, Union
 from pathlib import Path
 
 
+def path_to_string(path: Path) -> str:
+    """
+    Convert a path to a string in a OS agnostic way
+
+    Parameters
+    ----------
+    path : Path
+        The path to convert
+
+    Returns
+    -------
+    str
+        A string for the path
+    """
+    return f"'{path.as_posix()}'"
+
+
 ###
 # general errors
 ###
@@ -15,28 +32,32 @@ class PathError(Exception):
         self.path = path
 
     def __str__(self) -> str:
-        return f"Error with path {self.path}"
+        pathstr = path_to_string(self.path)
+        return f"Error with path {pathstr}"
 
 
 class PathNotFoundError(PathError):
     """Use if path does not exist"""
 
     def __str__(self) -> str:
-        return f"Path {self.path} does not exist"
+        pathstr = path_to_string(self.path)
+        return f"Path {pathstr} does not exist"
 
 
 class NotFileError(PathError):
     """Use if expected a file and got a directory"""
 
     def __str__(self) -> str:
-        return f"Path {self.path} is not a file"
+        pathstr = path_to_string(self.path)
+        return f"Path {pathstr} is not a file"
 
 
 class NotDirectoryError(PathError):
     """Use if expected a directory and got a file"""
 
     def __str__(self) -> str:
-        return f"Path {self.path} is not a directory"
+        pathstr = path_to_string(self.path)
+        return f"Path {pathstr} is not a directory"
 
 
 class WriteError(Exception):
@@ -45,7 +66,8 @@ class WriteError(Exception):
         self.message = message
 
     def __str__(self) -> str:
-        return f"Error with path {self.path}. {self.message}."
+        pathstr = path_to_string(self.path)
+        return f"Error with path {pathstr}. {self.message}."
 
 
 class ReadError(Exception):
@@ -54,7 +76,8 @@ class ReadError(Exception):
         self.message = message
 
     def __str__(self) -> str:
-        return f"Unable to read from {self.path}. {self.message}."
+        pathstr = path_to_string(self.path)
+        return f"Unable to read from {pathstr}. {self.message}."
 
 
 ###
@@ -68,7 +91,8 @@ class MetadataReadError(Exception):
         self.message = message
 
     def __str__(self) -> str:
-        out = f"Failed to read metadata from file {self.path}."
+        pathstr = path_to_string(self.path)
+        out = f"Failed to read metadata from file {pathstr}."
         if self.message is not None:
             out += f" {self.message}."
         return out
@@ -85,21 +109,24 @@ class ProjectPathError(Exception):
         self.message = message
 
     def __str__(self):
-        return f"{self.project_dir}, {self.message}"
+        pathstr = path_to_string(self.project_dir)
+        return f"{pathstr}, {self.message}."
 
 
 class ProjectCreateError(ProjectPathError):
     """Use if encounter an error creating a project"""
 
     def __str__(self) -> str:
-        return f"Error creating project in {self.project_dir}. {self.message}."
+        pathstr = path_to_string(self.project_dir)
+        return f"Error creating project in {pathstr}. {self.message}."
 
 
 class ProjectLoadError(ProjectPathError):
     """Use if error on project load"""
 
     def __str__(self) -> str:
-        return f"Error loading project {self.project_dir}. {self.message}."
+        pathstr = path_to_string(self.project_dir)
+        return f"Error loading project {pathstr}. {self.message}."
 
 
 class MeasurementNotFoundError(Exception):
@@ -110,7 +137,7 @@ class MeasurementNotFoundError(Exception):
         self.meas_name = meas_name
 
     def __str__(self) -> str:
-        return f"Measurement {self.meas_name} not found in Site {self.site_name}"
+        return f"Measurement '{self.meas_name}' not found in Site '{self.site_name}'."
 
 
 class SiteNotFoundError(Exception):
@@ -120,7 +147,7 @@ class SiteNotFoundError(Exception):
         self.site_name = site_name
 
     def __str__(self) -> str:
-        return f"Site {self.site_name} not found in project"
+        return f"Site '{self.site_name}' not found in project."
 
 
 ###
@@ -134,7 +161,8 @@ class TimeDataReadError(Exception):
         self.message = message
 
     def __str__(self) -> str:
-        return f"Failed to read time series data from {self.dir_path}\n{self.message}"
+        pathstr = path_to_string(self.dir_path)
+        return f"Failed to read time series data from {pathstr}\n{self.message}."
 
 
 class ChannelNotFoundError(Exception):
@@ -146,7 +174,7 @@ class ChannelNotFoundError(Exception):
 
     def __str__(self) -> str:
         chans_string = "', '".join(self.chans)
-        return f"'{self.chan}' not found in channels '{chans_string}'"
+        return f"'{self.chan}' not found in channels '{chans_string}'."
 
 
 ###
@@ -159,14 +187,16 @@ class CalibrationFileNotFound(Exception):
         self, dir_path: Path, file_paths: Union[Path, List[Path]], message: str = ""
     ):
         self.dir_path = dir_path
-        self.file_paths = file_paths
+        self.file_paths = file_paths if isinstance(file_paths, list) else [file_paths]
         self.message = message
 
     def __str__(self) -> str:
-        outstr = f"Failed to find calibration files {self.file_paths}"
-        outstr += f" in calibration data folder {self.dir_path}."
+        files = "', '".join([x.name for x in self.file_paths])
+        pathstr = path_to_string(self.dir_path)
+        outstr = f"Failed to find calibration files '{files}'"
+        outstr += f" in calibration data folder {pathstr}."
         if self.message != "":
-            outstr += f" {self.message}"
+            outstr += f" {self.message}."
         return outstr
 
 
@@ -178,7 +208,8 @@ class CalibrationFileReadError(Exception):
         self.message = message
 
     def __str__(self) -> str:
-        outstr = f"Failed to read calibration file {self.calibration_path}."
+        pathstr = path_to_string(self.calibration_path)
+        outstr = f"Failed to read calibration file {pathstr}."
         if self.message != "":
             outstr += f" {self.message}"
         return outstr
@@ -195,4 +226,4 @@ class ProcessRunError(Exception):
         self.message = message
 
     def __str__(self) -> str:
-        return f"Run error encounted in {self.process}. {self.message}."
+        return f"Run error encounted in '{self.process}'. {self.message}."
