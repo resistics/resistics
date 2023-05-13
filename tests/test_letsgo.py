@@ -10,7 +10,7 @@ from resistics.common import WriteableMetadata
 from resistics.time import Add, Multiply
 from resistics.decimate import DecimationSetup
 from resistics.transfunc import TransferFunction, ImpedanceTensor
-from resistics.regression import Solution, Solver, SolverScikitOLS
+from resistics.regression import Solution, Solver, SolverOLS
 from resistics.testing import time_data_ones, solution_mt, solution_random_float
 from resistics.testing import transfer_function_random
 
@@ -135,7 +135,8 @@ def test_run_time_processors(time_data, time_processors):
     assert_time_data_equal(time_data_new, time_data, history_times=False)
 
 
-RANDOM_TF_EXAMPLE = transfer_function_random(3, 11)
+RANDOM_TF1 = transfer_function_random(3, 11)
+RANDOM_TF2 = transfer_function_random(3, 7, n_cross=5)
 
 
 @pytest.mark.parametrize(
@@ -145,15 +146,23 @@ RANDOM_TF_EXAMPLE = transfer_function_random(3, 11)
             256,
             ImpedanceTensor(),
             solution_mt(),
-            SolverScikitOLS(),
+            SolverOLS(),
             1,
             50,
         ),
         (
             512,
-            RANDOM_TF_EXAMPLE,
-            solution_random_float(512, RANDOM_TF_EXAMPLE, 25),
-            SolverScikitOLS(),
+            RANDOM_TF1,
+            solution_random_float(512, RANDOM_TF1, 25),
+            SolverOLS(),
+            5,
+            1000,
+        ),
+        (
+            512,
+            RANDOM_TF2,
+            solution_random_float(512, RANDOM_TF2, 25),
+            SolverOLS(),
             5,
             1000,
         ),
@@ -182,7 +191,7 @@ def test_run_preparer_solver(
         n_levels=n_levels, per_level=per_level, eval_freqs=expected_soln.freqs
     )
     dec_params = dec_setup.run(fs)
-    eval_data = evaluation_data(fs, dec_params, n_wins, expected_soln)
+    eval_data = evaluation_data(dec_params, n_wins, expected_soln)
 
     # solve
     config = get_default_configuration()
