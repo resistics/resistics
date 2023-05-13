@@ -22,7 +22,7 @@ from resistics.window import WindowSetup, Windower
 from resistics.spectra import FourierTransform, EvaluationFreqs, SpectraProcess
 from resistics.transfunc import TransferFunction, ImpedanceTensor
 from resistics.regression import RegressionPreparerGathered
-from resistics.regression import Solver, SolverScikitTheilSen
+from resistics.regression import Solver, SolverOLS
 
 
 class Configuration(ResisticsModel):
@@ -148,7 +148,7 @@ class Configuration(ResisticsModel):
     """The transfer function to solve"""
     regression_preparer: RegressionPreparerGathered = RegressionPreparerGathered()
     """Process to prepare linear equations"""
-    solver: Solver = SolverScikitTheilSen()
+    solver: Solver = SolverOLS()
     """The solver to use to estimate the regression parameters"""
 
 

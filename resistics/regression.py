@@ -2,23 +2,17 @@
 The regression module provides functions and classes for the following:
 
 - Preparing gathered data for regression
-- Performing the linear regression
+- Performing the regression to calculate the components of the transfer function
 
-Resistics has built in solvers that use scikit learn models, namely
-
-- Ordinary least squares
-- RANSAC
-- TheilSen
-
-These will perform well in many scenarios. However, the functionality available
-in resistics makes it possible to use custom solvers if required.
+Resistics has a few built in solvers, but makes it possible to define custom
+solvers as required
 """
 from loguru import logger
-from typing import List, Dict, Tuple, Union, Optional
+from typing import List, Dict, Tuple, Union
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from regressioninc.linear import Regressor, LeastSquares
 
 from resistics.common import Metadata, WriteableMetadata, History
 from resistics.common import ResisticsData, ResisticsProcess
@@ -57,49 +51,45 @@ class RegressionInputData(ResisticsData):
     output channel. The values in the secondary dictionary are the observations
     for that output channel and have 1-D size:
 
-    (n_wins x n_cross_chans x 2).
-
-    The factor of 2 is because the real and complex parts of each equation are
-    separated into two equations to allow use of solvers that work exclusively
-    on real data.
+    [n_wins x n_cross_chans].
 
     The preds attribute is a single level dictionary with key of evaluation
     frequency index and value of the predictors for the evaluation frequency.
     The predictors have 2-D shape:
 
-    (n_wins x n_cross_chans x 2)  x (n_input_channels x 2).
+    [n_wins x n_cross_chans, n_input_channels].
 
-    The number of windows is multiplied by 2 for the same reason as the
-    observations. The doubling of the input channels is because one is the
-    predictor for the real part of that transfer function component and one is
-    the predictor for the complex part of the transfer function component.
 
-    Considering the impedance tensor as an example with:
+    For an example, consider the impedance tensor. This has:
 
     - output channels Ex, Ey
     - input channels Hx, Hy
-    - cross channels Hx, Hy
 
-    The below shows the arrays for the 0 index evaluation frequency:
+    Call the cross channels
 
-    Observations
+    - cross channels C1, C2
 
-    - Ex: [w1_crossHx_RE, w1_crossHx_IM, w1_crossHy_RE, w1_crossHy_IM]
-    - Ey: [w1_crossHx_RE, w1_crossHx_IM, w1_crossHy_RE, w1_crossHy_IM]
+    For single site processing, the cross channels are often Hx and Hy, though
+    this does not have to be the case and the source of this data changes for
+    remote reference processing.
+
+    In this case, the observations and predictors for the output channel Ex are:
+
+    Observations Ex
+
+    - win1 C1: <Ex_win1, conj(C1_win1)>
+    - win1 C2: <Ex_win1, conj(C2_win1)>
+    - win2 C1: <Ex_win2, conj(C1_win2)>
+    - win2 C2: <Ex_win2, conj(C2_win1)>
+    - ...
 
     Predictors Ex
 
-    - w1_crossHx_RE:    Zxx_RE  Zxx_IM  Zxy_RE  Zxy_IM
-    - w1_crossHx_IM:    Zxx_RE  Zxx_IM  Zxy_RE  Zxy_IM
-    - w1_crossHy_RE:    Zxx_RE  Zxx_IM  Zxy_RE  Zxy_IM
-    - w1_crossHy_IM:    Zxx_RE  Zxx_IM  Zxy_RE  Zxy_IM
-
-    Predictors Ey
-
-    - w1_crossHx_RE:    Zyx_RE  Zyx_IM  Zyy_RE  Zyy_IM
-    - w1_crossHx_IM:    Zyx_RE  Zyx_IM  Zyy_RE  Zyy_IM
-    - w1_crossHy_RE:    Zyx_RE  Zyx_IM  Zyy_RE  Zyy_IM
-    - w1_crossHy_IM:    Zyx_RE  Zyx_IM  Zyy_RE  Zyy_IM
+    - win1 C1:  Zxx <Hx_win1, conj(C1_win1)>   Zxy <Hy_win1, conj(C1_win1)>
+    - win1 C2:  Zxx <Hx_win1, conj(C2_win1)>   Zxy <Hy_win1, conj(C2_win1)>
+    - win2 C1:  Zxx <Hx_win2, conj(C1_win2)>   Zxy <Hy_win2, conj(C1_win2)>
+    - win2 C2:  Zxx <Hx_win2, conj(C2_win1)>   Zxy <Hy_win2, conj(C2_win1)>
+    - ...
 
     Note that the predictors are the same regardless of the output channel,
     only the observations change.
@@ -160,204 +150,6 @@ class RegressionInputData(ResisticsData):
             Observations and predictons
         """
         return self.obs[freq_idx][out_chan], self.preds[freq_idx]
-
-
-class RegressionPreparerSpectra(ResisticsProcess):
-    """
-    Prepare regression data directly from spectra data
-
-    This can be useful for running a single measurement
-    """
-
-    def run(self, tf: TransferFunction, spec_data: SpectraData) -> RegressionInputData:
-        """Construct the linear equation for solving"""
-        freqs = []
-        obs = []
-        preds = []
-        for ilevel in range(spec_data.metadata.n_levels):
-            level_metadata = spec_data.metadata.levels_metadata[ilevel]
-            out_powers, in_powers = self._get_cross_powers(tf, spec_data, ilevel)
-            for idx, freq in enumerate(level_metadata.freqs):
-                logger.info(
-                    f"Preparing regression data: level {ilevel}, freq. {idx} = {freq}"
-                )
-                freqs.append(freq)
-                obs.append(self._get_obs(tf, out_powers[..., idx]))
-                preds.append(self._get_preds(tf, in_powers[..., idx]))
-        record = self._get_record("Produced regression input data for spectra data")
-        metadata = RegressionInputMetadata(contributors={"data": spec_data.metadata})
-        metadata.history.add_record(record)
-        return RegressionInputData(metadata, tf, freqs, obs, preds)
-
-    def _get_cross_powers(
-        self, tf: TransferFunction, spec_data: SpectraData, level: int
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Get cross powers
-
-        Spectra data is:
-
-        [n_wins, n_chans, n_freqs]
-
-        To multiply each in/out channel with the cross channels, broadcasting is
-        used. Using output channels as an example, this is what we have:
-
-        out_data = [n_wins, n_out_chans, n_freqs]
-        cross_data = [n_wins, n_cross_chans, n_freqs]
-
-        The aim is to achieve an array that looks like this:
-
-        cross_powers = [n_wins, n_out_chans, n_cross_chans, n_freqs]
-
-        This can be achieved by numpy broadcasting the two arrays as follows
-
-        out_data = [n_wins, n_out_chans, new_axis, n_freqs]
-        cross_data = [n_wins, new_axis, n_cross_chans, n_freqs]
-
-        Parameters
-        ----------
-        tf : TransferFunction
-            Definition of transfer function
-        spec_data : SpectraTimeData
-            Spectra data for a decimation level
-        level : int
-            The decimation level
-
-        Returns
-        -------
-        Tuple[np.ndarray, np.ndarray]
-            Cross powers with output channels and cross powers with input
-            channels
-        """
-        # prepare to calculate the crosspowers
-        out_data = spec_data.get_chans(level, tf.out_chans)
-        in_data = spec_data.get_chans(level, tf.in_chans)
-        cross_data = spec_data.get_chans(level, tf.cross_chans)
-        cross_data = np.conj(cross_data[:, np.newaxis, ...])
-
-        # multiply using broadcasting
-        out_powers = out_data[..., np.newaxis, :] * cross_data
-        in_powers = in_data[..., np.newaxis, :] * cross_data
-        return out_powers, in_powers
-
-    def _get_obs(
-        self, tf: TransferFunction, out_powers: np.ndarray
-    ) -> Dict[str, np.ndarray]:
-        """
-        Get observations for an output channel
-
-        Parameters
-        ----------
-        tf : TransferFunction
-            Definition of transfer function
-        out_powers : np.ndarray
-            The cross powers for the output channels
-
-        Returns
-        -------
-        Dict[str, np.ndarray]
-            Dictionary with output channel as key and observations as value
-        """
-        obs = {}
-        for idx, out_chan in enumerate(tf.out_chans):
-            flattened = out_powers[:, idx, ...].flatten()
-            obs_chan = np.empty((flattened.size * 2), dtype=float)
-            obs_chan[0::2] = flattened.real
-            obs_chan[1::2] = flattened.imag
-            obs[out_chan] = obs_chan
-        return obs
-
-    def _get_obs_chan(self, tf: TransferFunction, out_powers: np.ndarray) -> np.ndarray:
-        """
-        Get observations for a single output channel
-
-        The data comes in as:
-
-        [n_wins, n_cross_chans]
-
-        The aim is to turn this into an array of obserations for this output
-        channel. The shape should be:
-
-        [n_wins * n_cross_chans]
-
-        Next, make everything floats to allow use of a wider range of open
-        source solvers. This means interleaving the real and imaginary
-        components into a longer single array, giving a final shape of:
-
-        [n_wins * n_cross_chans * 2 ]
-
-        Considering a concrete example for two windows:
-
-        [[<Ex1, Hx1>, <Ex1,Hy1>], [[<Ex2, Hx2>, <Ex2,Hy2>]]
-
-        Should become:
-
-        [<Ex1, Hx1>.Real, <Ex1, Hx1>.Imag, <Ex1,Hy1>.Real, <Ex1,Hy1>.Imag,
-        <Ex2, Hx2>.Real, <Ex2, Hx2>.Imag, <Ex2,Hy2>.Real, <Ex2,Hy2>.Imag]
-
-        Parameters
-        ----------
-        tf : TransferFunction
-            The transfer function definition
-        out_powers : np.ndarray
-            The cross powers for the a single output channel
-
-        Returns
-        -------
-        np.ndarray
-            The observations as a float
-        """
-        flattened = out_powers.flatten()
-        obs = np.empty((flattened.size * 2), dtype=float)
-        obs[0::2] = flattened.real
-        obs[1::2] = flattened.imag
-        return obs
-
-    def _get_preds(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
-        """
-        Construct the predictors
-
-        The in_powers is received with shape
-
-        [n_wins, n_in_chans, n_cross_chans]
-
-        The aim is to make this into
-
-        [n_wins * n_cross_chans * 2, n_in_chans * 2]
-
-        Parameters
-        ----------
-        tf : TransferFunction
-            Transfer function definition
-        in_powers : np.ndarray
-            The cross powers for the input channels
-
-        Returns
-        -------
-        np.ndarray
-            The predictors
-        """
-        np.swapaxes(in_powers, 1, 2)
-        n_wins = in_powers.shape[0]
-        entries_per_win = tf.n_cross * 2
-        preds = np.empty((n_wins * entries_per_win, tf.n_in * 2), dtype=float)
-        for iwin in range(0, n_wins):
-            idx_from = iwin * entries_per_win
-            idx_to = idx_from + entries_per_win
-            preds[idx_from:idx_to, :] = self._get_preds_win(tf, in_powers[iwin])
-        return preds
-
-    def _get_preds_win(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
-        """Get predictors for a window"""
-        preds_win = np.empty((tf.n_cross * 2, tf.n_in * 2), dtype=float)
-        in_powers = np.swapaxes(in_powers, 0, 1)
-        in_real = np.real(in_powers)
-        in_imag = np.imag(in_powers)
-        preds_win[0::2, 0::2] = in_real
-        preds_win[0::2, 1::2] = -in_imag
-        preds_win[1::2, 0::2] = in_imag
-        preds_win[1::2, 1::2] = in_real
-        return preds_win
 
 
 class RegressionPreparerGathered(ResisticsProcess):
@@ -495,6 +287,10 @@ class RegressionPreparerGathered(ResisticsProcess):
         """
         Get observations for an output channel
 
+        This is a single dimension array with shape
+
+        [n_wins * n_cross_chans]
+
         Parameters
         ----------
         tf : TransferFunction
@@ -507,60 +303,10 @@ class RegressionPreparerGathered(ResisticsProcess):
         Dict[str, np.ndarray]
             Dictionary with output channel as key and observations as value
         """
-        obs = {}
-        for idx, out_chan in enumerate(tf.out_chans):
-            flattened = out_powers[:, idx, ...].flatten()
-            obs_chan = np.empty((flattened.size * 2), dtype=float)
-            obs_chan[0::2] = flattened.real
-            obs_chan[1::2] = flattened.imag
-            obs[out_chan] = obs_chan
-        return obs
-
-    def _get_obs_chan(self, tf: TransferFunction, out_powers: np.ndarray) -> np.ndarray:
-        """
-        Get observations for a single output channel
-
-        The data comes in as:
-
-        [n_wins, n_cross_chans]
-
-        The aim is to turn this into an array of obserations for this output
-        channel. The shape should be:
-
-        [n_wins * n_cross_chans]
-
-        Next, make everything floats to allow use of a wider range of open
-        source solvers. This means interleaving the real and imaginary
-        components into a longer single array, giving a final shape of:
-
-        [n_wins * n_cross_chans * 2 ]
-
-        Considering a concrete example for two windows:
-
-        [[<Ex1, Hx1>, <Ex1,Hy1>], [[<Ex2, Hx2>, <Ex2,Hy2>]]
-
-        Should become:
-
-        [<Ex1, Hx1>.Real, <Ex1, Hx1>.Imag, <Ex1,Hy1>.Real, <Ex1,Hy1>.Imag,
-        <Ex2, Hx2>.Real, <Ex2, Hx2>.Imag, <Ex2,Hy2>.Real, <Ex2,Hy2>.Imag]
-
-        Parameters
-        ----------
-        tf : TransferFunction
-            The transfer function definition
-        out_powers : np.ndarray
-            The cross powers for the a single output channel
-
-        Returns
-        -------
-        np.ndarray
-            The observations as a float
-        """
-        flattened = out_powers.flatten()
-        obs = np.empty((flattened.size * 2), dtype=float)
-        obs[0::2] = flattened.real
-        obs[1::2] = flattened.imag
-        return obs
+        return {
+            out_chan: out_powers[:, idx, ...].flatten()
+            for idx, out_chan in enumerate(tf.out_chans)
+        }
 
     def _get_preds(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
         """
@@ -572,7 +318,7 @@ class RegressionPreparerGathered(ResisticsProcess):
 
         The aim is to make this into
 
-        [n_wins * n_cross_chans * 2, n_in_chans * 2]
+        [n_wins * n_cross_chans, n_in_chans]
 
         Parameters
         ----------
@@ -586,27 +332,87 @@ class RegressionPreparerGathered(ResisticsProcess):
         np.ndarray
             The predictors
         """
-        np.swapaxes(in_powers, 1, 2)
-        n_wins = in_powers.shape[0]
-        entries_per_win = tf.n_cross * 2
-        preds = np.empty((n_wins * entries_per_win, tf.n_in * 2), dtype=float)
-        for iwin in range(0, n_wins):
-            idx_from = iwin * entries_per_win
-            idx_to = idx_from + entries_per_win
-            preds[idx_from:idx_to, :] = self._get_preds_win(tf, in_powers[iwin])
-        return preds
+        in_powers = np.swapaxes(in_powers, 1, 2)
+        return in_powers.reshape(-1, in_powers.shape[-1])
 
-    def _get_preds_win(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
-        """Get predictors for a window"""
-        preds_win = np.empty((tf.n_cross * 2, tf.n_in * 2), dtype=float)
-        in_powers = np.swapaxes(in_powers, 0, 1)
-        in_real = np.real(in_powers)
-        in_imag = np.imag(in_powers)
-        preds_win[0::2, 0::2] = in_real
-        preds_win[0::2, 1::2] = -in_imag
-        preds_win[1::2, 0::2] = in_imag
-        preds_win[1::2, 1::2] = in_real
-        return preds_win
+
+class RegressionPreparerSpectra(RegressionPreparerGathered):
+    """
+    Prepare regression data directly from spectra data
+
+    This can be useful for running a single measurement
+
+    See Also
+    --------
+    RegressionPreparerGathered : Produce regression input data from gathered
+    data
+    """
+
+    def run(self, tf: TransferFunction, spec_data: SpectraData) -> RegressionInputData:
+        """Construct the linear equation for solving"""
+        freqs = []
+        obs = []
+        preds = []
+        for ilevel in range(spec_data.metadata.n_levels):
+            level_metadata = spec_data.metadata.levels_metadata[ilevel]
+            out_powers, in_powers = self._get_cross_powers(tf, spec_data, ilevel)
+            for idx, freq in enumerate(level_metadata.freqs):
+                logger.info(
+                    f"Preparing regression data: level {ilevel}, freq. {idx} = {freq}"
+                )
+                freqs.append(freq)
+                obs.append(self._get_obs(tf, out_powers[..., idx]))
+                preds.append(self._get_preds(tf, in_powers[..., idx]))
+        record = self._get_record("Produced regression input data for spectra data")
+        metadata = RegressionInputMetadata(contributors={"data": spec_data.metadata})
+        metadata.history.add_record(record)
+        return RegressionInputData(metadata, tf, freqs, obs, preds)
+
+    def _get_cross_powers(
+        self, tf: TransferFunction, spec_data: SpectraData, level: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Get cross powers
+
+        Spectra data is:
+
+        [n_wins, n_chans, n_freqs]
+
+        To multiply each in/out channel with the cross channels, broadcasting is
+        used. Using output channels as an example, this is what we have:
+
+        out_data = [n_wins, n_out_chans, n_freqs]
+        cross_data = [n_wins, n_cross_chans, n_freqs]
+
+        The aim is to achieve an array that looks like this:
+
+        cross_powers = [n_wins, n_out_chans, n_cross_chans, n_freqs]
+
+        Parameters
+        ----------
+        tf : TransferFunction
+            Definition of transfer function
+        spec_data : SpectraTimeData
+            Spectra data for a decimation level
+        level : int
+            The decimation level
+
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray]
+            Cross powers with output channels and cross powers with input
+            channels
+        """
+        # prepare to calculate the crosspowers
+        out_data = spec_data.get_chans(level, tf.out_chans)
+        in_data = spec_data.get_chans(level, tf.in_chans)
+        cross_data = spec_data.get_chans(level, tf.cross_chans)
+        cross_data = np.conj(cross_data[:, np.newaxis, ...])
+
+        # multiply using broadcasting
+        out_powers = out_data[..., np.newaxis, :] * cross_data
+        in_powers = in_data[..., np.newaxis, :] * cross_data
+        return out_powers, in_powers
 
 
 class Solution(WriteableMetadata):
@@ -759,16 +565,14 @@ class Solver(ResisticsProcess):
         raise NotImplementedError("Run not implemented in parent Solver class")
 
 
-class SolverScikit(Solver):
-    """Base class for Scikit learn solvers"""
+class SolverLinear(Solver):
+    """Base class for linear solvers"""
 
     fit_intercept: bool = False
     """Flag for adding an intercept term"""
-    normalize: bool = False
-    """Flag for normalizing, only used if fit_intercept is True"""
 
     def _solve(
-        self, regression_input: RegressionInputData, model: BaseEstimator
+        self, regression_input: RegressionInputData, model: Regressor
     ) -> Solution:
         """
         Get the regression solution for all evaluation frequencies
@@ -792,12 +596,11 @@ class SolverScikit(Solver):
         for eval_idx in tqdm(range(n_freqs)):
             for iout, out_chan in enumerate(tf.out_chans):
                 obs, preds = regression_input.get_inputs(eval_idx, out_chan)
-                coef = self._get_coef(model, obs, preds)
-                tensors[eval_idx, iout] = self._get_tensor(tf, coef)
+                tensors[eval_idx, iout] = self._get_coef(model, obs, preds)
         return self._get_solution(tf, regression_input, tensors)
 
     def _get_coef(
-        self, model: BaseEstimator, obs: np.ndarray, preds: np.ndarray
+        self, model: Regressor, obs: np.ndarray, preds: np.ndarray
     ) -> np.ndarray:
         """
         Get coefficients for a single evaluation frequency and output channel
@@ -817,33 +620,7 @@ class SolverScikit(Solver):
             The coefficients
         """
         model.fit(preds, obs)
-        return model.coef_
-
-    def _get_tensor(self, tf: TransferFunction, coef: np.ndarray) -> np.ndarray:
-        """
-        Rearrange the coefficients into a tensor
-
-        Recall that the real and complex parts of the problem are separated out
-        to allow use of a greater selection of solvers. Therefore, part of
-        the job of this function is to reform the complex numbers.
-
-        Parameters
-        ----------
-        tf : TransferFunction
-            The transfer fuction
-        coef : np.ndarray
-            The coefficients
-
-        Returns
-        -------
-        np.ndarray
-            The coefficients in a tensor
-        """
-        values = np.empty((tf.n_in), dtype=np.complex128)
-        for in_idx in range(tf.n_in):
-            idx_coef = in_idx * 2
-            values[in_idx] = coef[idx_coef] + 1j * coef[idx_coef + 1]
-        return values
+        return model.coef
 
     def _get_solution(
         self,
@@ -888,260 +665,11 @@ class SolverScikit(Solver):
         )
 
 
-class SolverScikitOLS(SolverScikit):
-    """
-    Ordinary least squares solver
-
-    This is simply a wrapper around the scikit learn least squares regression
-    https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
-    """
-
+class SolverOLS(SolverLinear):
     n_jobs: int = -2
     """Number of jobs to run"""
 
     def run(self, regression_input: RegressionInputData) -> Solution:
         """Run ordinary least squares regression on the RegressionInputData"""
-        from sklearn.linear_model import LinearRegression
-
-        model = LinearRegression(
-            fit_intercept=self.fit_intercept,
-            # normalize=self.normalize,
-            n_jobs=self.n_jobs,
-        )
+        model = LeastSquares()
         return self._solve(regression_input, model)
-
-
-class SolverScikitHuber(SolverScikit):
-    """
-    Scikit Huber solver
-
-    This is simply a wrapper around the scikit learn Huber Regressor. For
-    more information, please see
-    https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.HuberRegressor.html
-    """
-
-    epsilon: float = 1
-    """The smaller the epsilon, the more robust it is to outliers."""
-
-    def run(self, regression_input: RegressionInputData) -> Solution:
-        """Run Huber Regressor regression on the RegressionInputData"""
-        from sklearn.linear_model import HuberRegressor
-
-        model = HuberRegressor(epsilon=self.epsilon)
-        return self._solve(regression_input, model)
-
-
-class SolverScikitTheilSen(SolverScikit):
-    """
-    Scikit Theil Sen solver
-
-    This is simply a wrapper around the scikit learn Theil Sen Regressor. For
-    more information, please see
-    https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TheilSenRegressor.html
-    """
-
-    n_jobs: int = -2
-    """Number of jobs to run"""
-    max_subpopulation: int = 2_000
-    """Maximum population. Reduce this if the process is taking a long time"""
-    n_subsamples: Optional[float] = None
-    """Number of rows to use for each solution"""
-
-    def run(self, regression_input: RegressionInputData) -> Solution:
-        """Run TheilSen regression on the RegressionInputData"""
-        from sklearn.linear_model import TheilSenRegressor
-
-        model = TheilSenRegressor(
-            # fit_intercept=self.fit_intercept,
-            # max_subpopulation=self.max_subpopulation,
-            # n_subsamples=self.n_subsamples,
-            # n_jobs=self.n_jobs,
-        )
-        return self._solve(regression_input, model)
-
-    def _get_coef(
-        self, model: BaseEstimator, obs: np.ndarray, preds: np.ndarray
-    ) -> np.ndarray:
-        """
-        Get coefficients for a single evaluation frequency and output channel
-
-        Parameters
-        ----------
-        model : BaseEstimator
-            sklearn base estimator
-        obs : np.ndarray
-            The observations
-        preds : np.ndarray
-            The predictors
-
-        Returns
-        -------
-        np.ndarray
-            The coefficients
-        """
-        from sklearn.linear_model import TheilSenRegressor
-
-        n_subsamples = None
-        if self.n_subsamples is not None:
-            n_subsamples = int(self.n_subsamples * obs.shape[0])
-        model = TheilSenRegressor(
-            fit_intercept=self.fit_intercept,
-            max_subpopulation=self.max_subpopulation,
-            n_subsamples=n_subsamples,
-            n_jobs=self.n_jobs,
-        )
-        model.fit(preds, obs)
-        return model.coef_
-
-
-class SolverScikitRANSAC(SolverScikit):
-    """
-    Run a RANSAC solver with LinearRegression as Base Estimator
-
-    This is a wrapper around the scikit learn RANSAC regressor. More information
-    can be found here
-    https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RANSACRegressor.html
-    """
-
-    min_samples: float = 0.8
-    """Minimum number of samples in each solution as a proportion of total"""
-    max_trials: int = 20
-    """The maximum number of trials to run"""
-
-    def run(self, regression_input: RegressionInputData) -> Solution:
-        """Run RANSAC regression on the RegressionInputData"""
-        from sklearn.linear_model import LinearRegression, RANSACRegressor
-
-        model = RANSACRegressor(
-            LinearRegression(
-                fit_intercept=self.fit_intercept, normalize=self.normalize
-            ),
-            min_samples=self.min_samples,
-            max_trials=self.max_trials,
-        )
-        return self._solve(regression_input, model)
-
-    def _get_coef(
-        self, model: BaseEstimator, obs: np.ndarray, preds: np.ndarray
-    ) -> np.ndarray:
-        """Get coefficients for single evaluation frequeny and output channel"""
-
-        model.fit(preds, obs)
-        return model.estimator_.coef_
-
-
-class SolverScikitWLS(SolverScikitOLS):
-    """
-    Weighted least squares solver
-
-    .. warning::
-
-        This is homespun and is currently only experimental
-
-    This is simply a wrapper around the scikit learn least squares regression
-    using the sample_weight option
-    https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
-    """
-
-    n_jobs: int = -2
-    """Number of jobs to run"""
-    n_iter: int = 50
-    """Number of iterations before quitting if residual is not low enough"""
-
-    def _get_coef(
-        self, model: BaseEstimator, obs: np.ndarray, preds: np.ndarray
-    ) -> np.ndarray:
-        """
-        Get coefficients for a single evaluation frequency and output channel
-
-        Parameters
-        ----------
-        model : BaseEstimator
-            sklearn base estimator
-        obs : np.ndarray
-            The observations
-        preds : np.ndarray
-            The predictors
-
-        Returns
-        -------
-        np.ndarray
-            The coefficients
-        """
-        from sklearn.preprocessing import RobustScaler
-
-        weights = np.ones(shape=(obs.size))
-        scalar = RobustScaler()
-        iteration = 0
-        while iteration < self.n_iter:
-            model.fit(preds, obs, sample_weight=weights)
-            obs_pred = model.predict(preds)
-            resids = np.absolute(obs - obs_pred)
-            resids_scaled = scalar.fit_transform(resids.reshape(-1, 1))
-            weights = self.trimmed_mean(resids_scaled)
-            iteration += 1
-        return model.coef_
-
-    def bisquare(self, r: np.ndarray, k: float = 4.685) -> np.ndarray:
-        """
-        Bisquare location weights
-
-        Parameters
-        ----------
-        r : np.ndarray
-            Residuals
-        k : float, None
-            Tuning parameter. If None, a standard value will be used.
-
-        Returns
-        -------
-        weights : np.ndarray
-            The robust weights
-        """
-        r = r.reshape((r.shape[0]))
-        ones = np.ones(shape=r.shape)
-        thresh = np.minimum(ones, r / k)
-        return np.power((1 - np.power(thresh, 2)), 2)
-
-    def huber(self, r: np.ndarray, k: float = 1.345) -> np.ndarray:
-        """Huber location weights
-
-        Parameters
-        ----------
-        r : np.ndarray
-            Residuals
-        k : float
-            Tuning parameter. If None, a standard value will be used.
-
-        Returns
-        -------
-        weights : np.ndarray
-            The robust weights
-        """
-        r = r.reshape((r.shape[0]))
-        indices = np.where(r > k)
-        weights = np.ones(shape=r.shape)
-        weights[indices] = k / r[indices]
-        return weights
-
-    def trimmed_mean(self, r: np.ndarray, k: float = 2) -> np.ndarray:
-        """
-        Trimmed mean location weights
-
-        Parameters
-        ----------
-        r : np.ndarray
-            Residuals
-        k : float
-            Tuning parameter. If None, a standard value will be used.
-
-        Returns
-        -------
-        weights : np.ndarray
-            The robust weights
-        """
-        r = r.reshape((r.shape[0]))
-        indices = np.where(r <= k)
-        weights = np.zeros(shape=r.shape)
-        weights[indices] = 1
-        return weights.real

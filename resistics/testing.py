@@ -847,11 +847,16 @@ def generate_evaluation_data(
     Generate evaluation frequency data that satisfies a provided solution
 
     The returned array has the shape:
-    n_wins x n_chans x n_evals
+
+    [n_wins, n_chans, n_evals]
+
     Which is close to the shape required for spectra data
 
-    There is an extra check provided to check if a channel appears in both the
-    input and output channels, which could be a tricky scenario.
+    The generation works as follows
+
+    - input channels
+    - output channels excluding any that also appear in input channels
+    - cross channels excluding any that also appear in intput or output channels
 
     The data is produced randomly using np.random.randn, meaning that it is
     sampled from a standard normal distribution
@@ -874,31 +879,36 @@ def generate_evaluation_data(
     n_chans = len(chans)
     in_chans = soln.tf.in_chans
     out_chans = soln.tf.out_chans
+    cross_generate = set(soln.tf.cross_chans) - set(in_chans + out_chans)
+    independent_chans = in_chans + list(cross_generate)
 
     # create the data array to hold the data and generate the data
     data_array = np.empty((n_evals, n_chans, n_wins), dtype=np.complex128)
     for eval_idx in range(n_evals):
         freq_tensor = soln.get_tensor(eval_idx)
         # generate input channels
-        freq_data = {in_chan: np.random.randn(n_wins) for in_chan in in_chans}
+        freq_data = {chan: np.random.randn(n_wins) for chan in independent_chans}
+
         # calculate output channels from input and solution
+        # ignore output channels that are also input channels
         for out_idx, out_chan in enumerate(out_chans):
             if out_chan in in_chans:
-                # ignore if the channel already appears in the input data
                 continue
             products = [
                 freq_tensor[out_idx, in_idx] * freq_data[in_chan]
                 for in_idx, in_chan in enumerate(in_chans)
             ]
             freq_data[out_chan] = np.sum(products, axis=0)
+
         # add the data to the data array
         for chan_idx, chan in enumerate(chans):
             data_array[eval_idx, chan_idx, ...] = freq_data[chan]
+
     return data_array.transpose()
 
 
 def evaluation_data(
-    fs: float, dec_params: DecimationParameters, n_wins: int, soln: Solution
+    dec_params: DecimationParameters, n_wins: int, soln: Solution
 ) -> SpectraData:
     """
     Generate evaluation frequency data that will satisfy a given solution. This
@@ -906,8 +916,6 @@ def evaluation_data(
 
     Parameters
     ----------
-    fs : float
-        The sampling frequency of the original data
     dec_params : DecimationParameters
         The data decimation information
     n_wins : int
@@ -935,7 +943,7 @@ def evaluation_data(
     }
 
     # create the data
-    chans = list(set(soln.tf.in_chans + soln.tf.out_chans))
+    chans = list(set(soln.tf.in_chans + soln.tf.out_chans + soln.tf.cross_chans))
     data_array = generate_evaluation_data(chans, soln, n_wins)
     data = {}
     for ilevel in range(n_levels):
@@ -957,7 +965,6 @@ def evaluation_data(
                 freqs=eval_freqs_for_levels[ilevel],
             )
         )
-        levels_metadata[-1].summary()
     metadata_dict = time_metadata_general(chans).dict()
     metadata_dict["chans"] = chans
     metadata_dict["fs"] = levels_fs
@@ -968,7 +975,9 @@ def evaluation_data(
     return SpectraData(spec_metadata, data)
 
 
-def transfer_function_random(n_in: int, n_out: int) -> TransferFunction:
+def transfer_function_random(
+    n_in: int, n_out: int, n_cross: int = -1
+) -> TransferFunction:
     """
     Generate a random transfer function
 
@@ -981,16 +990,15 @@ def transfer_function_random(n_in: int, n_out: int) -> TransferFunction:
         Number of input channels
     n_out : int
         Number of output channels
+    n_cross : int, optional
+        The number of cross channels, by default -1. If a number greather than 0
+        is provided, this will use n_cross distinct cross channels. Otherwise,
+        the input channels will be used as the cross channels.
 
     Returns
     -------
     TransferFunction
         A randomly generated transfer function
-
-    Raises
-    ------
-    ValueError
-        If any of the channel names is duplicated
     """
     import random
     import string
@@ -999,11 +1007,19 @@ def transfer_function_random(n_in: int, n_out: int) -> TransferFunction:
     outs = string.ascii_uppercase
     in_chans = random.sample(ins, n_in)
     out_chans = random.sample(outs, n_out)
-    if len(set(ins + outs)) < len(ins) + len(outs):
-        raise ValueError(f"There is a duplicate somewhere, {ins=}, {outs=}")
+
+    if n_cross > 0:
+        crosses = [f"X{x:02d}" for x in range(0, 26)]
+        cross_chans = random.sample(crosses, n_cross)
+    else:
+        cross_chans = in_chans
 
     return TransferFunction(
-        name="testing", variation="random", in_chans=in_chans, out_chans=out_chans
+        name="testing",
+        variation="random",
+        in_chans=in_chans,
+        out_chans=out_chans,
+        cross_chans=cross_chans,
     )
 
 
@@ -1274,4 +1290,6 @@ def assert_soln_equal(soln1: Solution, soln2: Solution):
     """
     df1 = soln1.to_dataframe()
     df2 = soln2.to_dataframe()
+    print(df1)
+    print(df2)
     pd.testing.assert_frame_equal(df1, df2)

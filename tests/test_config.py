@@ -8,7 +8,7 @@ from resistics.spectra import FourierTransform, EvaluationFreqs, SpectraSmoother
 from resistics.calibrate import SensorCalibrator
 from resistics.calibrate import SensorCalibrationJSON, SensorCalibrationTXT
 from resistics.transfunc import TransferFunction
-from resistics.regression import RegressionPreparerGathered, SolverScikitOLS
+from resistics.regression import RegressionPreparerGathered, SolverOLS
 
 
 def test_config_json():
@@ -43,7 +43,7 @@ def test_config_json():
         out_chans=["a", "b", "c"], in_chans=["x", "y", "z"], cross_chans=["a", "x", "z"]
     )
     regression_preparer = RegressionPreparerGathered()
-    solver = SolverScikitOLS(fit_intercept=True)
+    solver = SolverOLS(fit_intercept=False)
 
     config = Configuration(
         name="testing",
@@ -80,5 +80,4 @@ def test_config_json():
     assert config_test.tf == tf
     assert config_test.regression_preparer == regression_preparer
     assert config_test.solver == solver
-
     assert config_test == config
