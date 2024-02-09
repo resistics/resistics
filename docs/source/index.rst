@@ -72,6 +72,7 @@ Next steps
    :caption: User guide:
 
    getting-started.rst
+   lower-level.rst
    custom-process.rst
 
 .. toctree::
