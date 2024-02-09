@@ -12,7 +12,7 @@ from typing import List, Dict, Tuple, Union
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
-from regressioninc.linear import Regressor, LeastSquares
+from regressioninc.linear.models import Regressor, LeastSquares
 
 from resistics.common import Metadata, WriteableMetadata, History
 from resistics.common import ResisticsData, ResisticsProcess
