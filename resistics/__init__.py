@@ -14,4 +14,4 @@ except PackageNotFoundError:  # pragma: no cover
     __version__ = "unknown"
 
 
-from resistics.letsgo import new, load  # noqa: F401
+# from resistics.letsgo import new, load  # noqa: F401

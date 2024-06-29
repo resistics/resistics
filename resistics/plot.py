@@ -1,10 +1,12 @@
 """
 Module to help plotting various data
 """
+
 from typing import List, Dict, Tuple, Optional, Union
 import numpy as np
 import pandas as pd
 import lttbc
+from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -89,6 +91,9 @@ def plot_timeline(
     """
     Plot a timeline
 
+    The function converts pd.Timestamps to Python datetime objects which are
+    supported more fully in serialization.
+
     Parameters
     ----------
     df : pd.DataFrame
@@ -105,25 +110,40 @@ def plot_timeline(
     go.Figure
         Plotly figure
     """
+
+    def check_datetime(x):
+        if isinstance(x, pd.Timestamp):
+            return x.to_pydatetime()
+        return x
+
     # get range for x axis
-    min_time = df["first_time"].min()
+    min_time = df["start"].min()
+    max_time = df["end"].max()
     if ref_time is not None and ref_time < min_time:
+        ref_time = check_datetime(ref_time)
         min_time = ref_time
-    max_time = df["last_time"].max()
+    # get axis range and covert to datetime
     pad = 0.1 * (max_time - min_time)
-    min_time = min_time - pad
-    max_time = max_time + pad
+    min_time = check_datetime(min_time - pad)
+    max_time = check_datetime(max_time + pad)
 
     # sort for ordering
-    df = df.sort_values([y_col, "first_time"])
+    df = df.sort_values([y_col, "start"])
 
     fig = px.timeline(
-        df, x_start="first_time", x_end="last_time", y=y_col, color="fs", title=title
+        df,
+        x_start="start",
+        x_end="end",
+        y=y_col,
+        color="sample_rate",
+        hover_data=["survey", "station", "run"],
+        title=title,
     )
     if ref_time is not None:
         fig.add_vline(x=ref_time, line_width=3, line_dash="dash", line_color="red")
     fig.update_layout(template=PLOTLY_TEMPLATE, margin=dict(PLOTLY_MARGIN))
     fig.update_xaxes(range=[min_time, max_time])
+    fig.update_yaxes(title=None, autorange="reversed")
     fig.update_layout(legend=dict(itemclick=False, itemdoubleclick=False))
     return fig
 

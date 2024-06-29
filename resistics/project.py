@@ -9,6 +9,7 @@ clasess and some supporting functions.
 """
 from typing import Iterator, Optional, List, Dict
 from pathlib import Path
+from mth5.mth5 import MTH5
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -215,11 +216,7 @@ class ProjectMetadata(WriteableMetadata):
     """Project metadata"""
 
     ref_time: HighResDateTime
-    location: str = ""
-    country: str = ""
-    year: int = -999
-    description: str = ""
-    contributors: List[str] = []
+    mth5_name: str
 
 
 class Project(ResisticsModel):
@@ -234,6 +231,7 @@ class Project(ResisticsModel):
     """
 
     dir_path: Path
+    mth_data: MTH5
     begin_time: HighResDateTime
     end_time: HighResDateTime
     metadata: ProjectMetadata

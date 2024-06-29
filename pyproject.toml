@@ -29,7 +29,7 @@ classifiers = [
 "Bug Tracker" = "https://github.com/resistics/resistics/issues"
 
 [tool.poetry.dependencies]
-python = ">=3.8.1,<=3.11"
+python = ">=3.8.1,<=3.12"
 numpy = ">=1.20.2"
 scipy = ">=1.6.2"
 pandas = ">=1.2.3"
@@ -42,7 +42,8 @@ pydantic = ">=1.8.1"
 prettyprinter = ">=0.18.0"
 PyYAML = ">=5.4.1"
 tqdm = ">=4.61.0"
-regressioninc = "^0.1.0a0"
+regressioninc = {path = "../regressioninc", develop = true}
+mth5 = "^0.4.1"
 
 [tool.poetry.group.shared.dependencies]
 matplotlib = "*"
