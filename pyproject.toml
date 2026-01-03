@@ -1,14 +1,12 @@
-[tool.poetry]
+[project]
 name = "resistics"
 version = "1.0.0-alpha.3"
 description = "Python package for processing magnetotelluric data"
-license = "MIT"
-authors = ["Neeraj Shah <resistics@outlook.com>"]
-maintainers = ["Neeraj Shah <resistics@outlook.com>"]
+authors = [{ name = "Neeraj Shah", email = "resistics@outlook.com" }]
+requires-python = ">=3.8.1,<=3.14"
 readme = "README.md"
-homepage = "https://www.resistics.io"
-repository = "https://github.com/resistics/resistics"
-documentation = "https://www.resistics.io"
+license = "MIT"
+maintainers = [{ name = "Neeraj Shah", email = "resistics@outlook.com" }]
 keywords = [
     "geophysics",
     "magnetotellurics",
@@ -23,69 +21,70 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Intended Audience :: Science/Research",
 ]
+dependencies = [
+    "numpy>=1.20.2",
+    "scipy>=1.6.2",
+    "pandas>=1.2.3",
+    "lttbc>=0.2.1",
+    "attotime==0.2.3",
+    "plotly>=5.9.0",
+    "loguru>=0.5.3",
+    "scikit-learn>=1.1.1",
+    "pydantic>=1.8.1",
+    "prettyprinter>=0.18.0",
+    "PyYAML>=5.4.1",
+    "tqdm>=4.61.0",
+    "regressioninc",
+    "mth5>=0.4.1",
+    "obspy>=1.4.2",
+]
 
-[tool.poetry.urls]
-"Source" = "https://github.com/resistics/resistics"
+[project.urls]
+Homepage = "https://www.resistics.io"
+Repository = "https://github.com/resistics/resistics"
+Documentation = "https://www.resistics.io"
+Source = "https://github.com/resistics/resistics"
 "Bug Tracker" = "https://github.com/resistics/resistics/issues"
 
-[tool.poetry.dependencies]
-python = ">=3.8.1,<=3.12"
-numpy = ">=1.20.2"
-scipy = ">=1.6.2"
-pandas = ">=1.2.3"
-lttbc = ">=0.2.1"
-attotime = "0.2.3"
-plotly = ">=5.9.0"
-loguru = ">=0.5.3"
-scikit-learn = ">=1.1.1"
-pydantic = ">=1.8.1"
-prettyprinter = ">=0.18.0"
-PyYAML = ">=5.4.1"
-tqdm = ">=4.61.0"
-regressioninc = {path = "../regressioninc", develop = true}
-mth5 = "^0.4.1"
+[dependency-groups]
+shared = ["matplotlib"]
+dev = [
+    "black",
+    "pre-commit",
+    "flake8",
+    "flake8-builtins",
+    "flake8-docstrings",
+    "flake8-bandit",
+    "flake8-pytest-style",
+    "flake8-cognitive-complexity",
+    "flake8-expression-complexity",
+    "darglint",
+]
+docs = [
+    "Sphinx",
+    "furo",
+    "sphinx-gallery",
+    "sphinxext-opengraph",
+    "autodoc-pydantic",
+    "sphinx-copybutton",
+    "kaleido",
+    "ipython",
+    "nbformat",
+    "seedir",
+    "emoji",
+]
+tests = ["pytest", "pytest-cov", "pytest-html", "mypy"]
+notebooks = ["ipykernel>=6.22.0,<7"]
 
-[tool.poetry.group.shared.dependencies]
-matplotlib = "*"
+[tool.uv]
+default-groups = ["shared", "dev", "docs", "tests", "notebooks"]
 
-[tool.poetry.group.dev.dependencies]
-black = "*"
-pre-commit = "*"
-flake8 = "*"
-flake8-builtins = "*"
-flake8-docstrings = "*"
-flake8-bandit = "*"
-flake8-pytest-style = "*"
-flake8-cognitive-complexity = "*"
-flake8-expression-complexity = "*"
-darglint = "*"
-
-[tool.poetry.group.docs.dependencies]
-Sphinx = "*"
-furo = "*"
-sphinx-gallery = "*"
-sphinxext-opengraph = "*"
-autodoc-pydantic = "*"
-sphinx-copybutton = "*"
-kaleido = "0.2.1"
-ipython = "*"
-nbformat = "*"
-seedir = "*"
-emoji = "*"
-
-[tool.poetry.group.tests.dependencies]
-pytest = "*"
-pytest-cov = "*"
-pytest-html = "*"
-mypy = "*"
-
-
-[tool.poetry.group.notebooks.dependencies]
-ipykernel = "^6.22.0"
+[tool.uv.sources]
+regressioninc = { path = "../regressioninc", editable = true }
 
 [build-system]
-build-backend = "poetry.core.masonry.api"
-requires = ["poetry-core>=1.0.0"]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 addopts = "--doctest-modules"
