@@ -1,35 +1,46 @@
-from loguru import logger
-from typing import Iterator, Optional, List, Dict, Union
+import json
+from datetime import datetime, timedelta
 from pathlib import Path
-from mth5.mth5 import MTH5
-from mth5.groups.survey import SurveyGroup
-from mth5.groups.station import StationGroup
-from mth5.groups.run import RunGroup
+from typing import Dict, Iterator, List, Optional, Union
+
 import pandas as pd
 import plotly.graph_objects as go
-from pydantic import Field, BaseModel, ConfigDict
-from pydantic_core import core_schema
-from typing_extensions import Annotated
-import json
 from attotime import attodatetime, attotimedelta
-from datetime import datetime, timedelta
+from loguru import logger
+from mth5.groups.run import RunGroup
+from mth5.groups.station import StationGroup
+from mth5.groups.survey import SurveyGroup
+from mth5.mth5 import MTH5
 from pydantic import (
+    BaseModel,
     BeforeValidator,
+    ConfigDict,
+    Field,
     PlainSerializer,
     TypeAdapter,
     WithJsonSchema,
 )
+from pydantic_core import core_schema
+from typing_extensions import Annotated
 
 # from resistics.common import ResisticsModel, WriteableMetadata
 # from resistics.sampling import HighResDateTime, to_timestamp
 # from resistics.time import TimeMetadata, TimeReader
 from resistics.plot import plot_timeline
-from resistics.sampling import to_datetime, datetime_to_string, to_timestamp
+from resistics.sampling import datetime_to_string, to_datetime, to_timestamp
 
 DateTimeLike = Union[str, pd.Timestamp, datetime]
 TimeDeltaLike = Union[float, timedelta, pd.Timedelta]
 PROJ_FILE = "resistics.json"
-PROJ_DIRS = ["configs", "data", "logs"]
+PROJ_DIRS = [
+    "configs",
+    "configs/flows",
+    "configs/parameters",
+    "configs/runs",
+    "data",
+    "logs",
+    "plugins",
+]
 
 
 def datetime_validate(val: Union[attodatetime, DateTimeLike]):
@@ -86,7 +97,7 @@ def get_run_dir(
     config_name: None | str = None,
 ) -> Path:
     """Get path to run data directory with optional config subdir"""
-    if config is None:
+    if config_name is None:
         return proj_dir / "data" / survey_name / station_name / run_name
     return proj_dir / "data" / survey_name / station_name / run_name / config_name
 
@@ -99,6 +110,7 @@ def get_run_dir(
 # def get_mask_name(fs: float, mask_name: str) -> str:
 #     """Get the name of a mask file"""
 #     from resistics.common import fs_to_string
+
 
 #     return f"{fs_to_string(fs)}_{mask_name}.dat"
 
@@ -120,9 +132,11 @@ class Project(BaseModel):
     mth5_path: Path = Field(repr=True)
     mth5_data: MTH5 = Field(repr=False, exclude=True)
     ref_time: RSDateTime = Field(repr=True)
+    experiments: list = Field(repr=True, default=[])
     surveys: list = Field(repr=False, default=[])
     stations: list = Field(repr=False, default=[])
     runs: list = Field(repr=False, default=[])
+    plugin_paths: List[Path] = Field(repr=True, default=[])
     table: pd.DataFrame | None = Field(repr=False, exclude=True, default=None)
 
     def __getitem__(self, obj_path: str) -> SurveyGroup | StationGroup | RunGroup:
@@ -291,7 +305,7 @@ def init(proj_dir: Path, mth5_path: Path, ref_time, force: bool = False):
     )
     metadata_path = proj_dir / PROJ_FILE
     with metadata_path.open("w") as f:
-        f.write(proj.model_dump_json(include=["mth5_path", "ref_time"]))
+        f.write(proj.model_dump_json(include={"mth5_path", "ref_time", "plugin_paths"}))
 
     logger.info(f"Project created in {proj_dir}")
 
