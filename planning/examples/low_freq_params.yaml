@@ -1,0 +1,11 @@
+name: Default Low Frequency
+description: Parameters optimized for low frequency recordings
+read:
+  apply_scalings: true
+calibrate:
+  use_cache: true
+fft:
+  window_type: parzen
+  window_length: 4096
+tf:
+  solver: RobustOLS

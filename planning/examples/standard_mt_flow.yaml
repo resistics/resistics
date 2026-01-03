@@ -1,0 +1,14 @@
+name: Standard MT Processing
+description: A basic flow for magnetotelluric data processing
+nodes:
+  - id: read
+    type: TimeReader
+  - id: calibrate
+    type: SensorCalibrator
+    inputs: [read]
+  - id: fft
+    type: FourierTransform
+    inputs: [calibrate]
+  - id: tf
+    type: ImpedanceTensor
+    inputs: [fft]
