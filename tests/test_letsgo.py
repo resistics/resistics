@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 import pandas as pd
 import pytest
-from pydantic.error_wrappers import ValidationError
+from pydantic import ValidationError
 
 from resistics.errors import ProjectCreateError
 from resistics.common import WriteableMetadata

@@ -132,7 +132,7 @@ def get_site_level_wins(
     31     meas2
     108    meas3
     109    meas3
-    dtype: object
+    dtype: str
     >>> get_site_level_wins(meas_metadata, 1)
     2      meas1
     3      meas1
@@ -141,14 +141,14 @@ def get_site_level_wins(
     27     meas2
     104    meas3
     105    meas3
-    dtype: object
+    dtype: str
     >>> get_site_level_wins(meas_metadata, 2)
     1      meas1
     2      meas1
     22     meas2
     23     meas2
     102    meas3
-    dtype: object
+    dtype: str
     """
     level_wins = pd.Series(dtype=str)
     for meas_name, metadata in meas_metadata.items():

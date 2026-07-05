@@ -10,7 +10,7 @@ from loguru import logger
 from typing import List, Dict, Literal, Union, Any, Tuple, Optional, Callable
 import types
 from pathlib import Path
-from pydantic import validator, conint, PositiveFloat
+from pydantic import ConfigDict, ValidationInfo, conint, field_validator, PositiveFloat
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -26,6 +26,8 @@ from resistics.sampling import HighResDateTime, datetime_to_string
 
 class ChanMetadata(Metadata):
     """Channel metadata"""
+
+    model_config = ConfigDict(validate_assignment=True)
 
     name: str
     """The name of the channel"""
@@ -54,27 +56,24 @@ class ChanMetadata(Metadata):
     instrument_calibration_file: str = ""
     """Explicit name of instrument calibration file"""
 
-    class Config:
-        """pydantic configuration information"""
-
-        validate_assignment = True
-
-    @validator("data_files", pre=True)
+    @field_validator("data_files", mode="before")
+    @classmethod
     def validate_data_files(cls, value: Any) -> List[str]:
         """Validate data files and convert to list if required"""
         if isinstance(value, str):
             return [value]
         return value
 
-    @validator("chan_type", always=True)
-    def validate_chan_type(cls, value: str, values: Dict[str, Any]) -> str:
+    @field_validator("chan_type")
+    @classmethod
+    def validate_chan_type(cls, value: str, info: ValidationInfo) -> str:
         """Validate the channel type"""
         if isinstance(value, str):
             return value
         try:
-            return get_chan_type(values["name"])
+            return get_chan_type(info.data["name"])
         except ValueError:
-            raise ValueError(f"Failed setting type for chan {values['name']}")
+            raise ValueError(f"Failed setting type for chan {info.data['name']}")
 
     def electric(self) -> bool:
         """True if the channel is an electric channel"""
@@ -87,6 +86,8 @@ class ChanMetadata(Metadata):
 
 class TimeMetadata(WriteableMetadata):
     """Time metadata"""
+
+    model_config = ConfigDict(validate_assignment=True)
 
     fs: float
     """The sampling frequency"""
@@ -119,12 +120,6 @@ class TimeMetadata(WriteableMetadata):
     history: History = History()
     """Processing history"""
 
-    class Config:
-        """pydantic configuration information"""
-
-        json_encoders = {RSDateTime: datetime_to_string}
-        validate_assignment = True
-
     def __getitem__(self, chan: str) -> ChanMetadata:
         """
         Get channel metadata
@@ -152,11 +147,11 @@ class TimeMetadata(WriteableMetadata):
             'chan_source': None,
             'sensor': '',
             'serial': '',
-            'gain1': 1,
-            'gain2': 1,
-            'scaling': 1,
+            'gain1': 1.0,
+            'gain2': 1.0,
+            'scaling': 1.0,
             'chopper': False,
-            'dipole_dist': 1,
+            'dipole_dist': 1.0,
             'sensor_calibration_file': '',
             'instrument_calibration_file': ''
         }
@@ -338,11 +333,11 @@ def get_time_metadata(
                 'chan_source': None,
                 'sensor': '',
                 'serial': '',
-                'gain1': 1,
-                'gain2': 1,
-                'scaling': 1,
+                'gain1': 1.0,
+                'gain2': 1.0,
+                'scaling': 1.0,
                 'chopper': False,
-                'dipole_dist': 1,
+                'dipole_dist': 1.0,
                 'sensor_calibration_file': '',
                 'instrument_calibration_file': ''
             },
@@ -353,11 +348,11 @@ def get_time_metadata(
                 'chan_source': None,
                 'sensor': 'MFS',
                 'serial': '',
-                'gain1': 1,
-                'gain2': 1,
-                'scaling': 1,
+                'gain1': 1.0,
+                'gain2': 1.0,
+                'scaling': 1.0,
                 'chopper': False,
-                'dipole_dist': 1,
+                'dipole_dist': 1.0,
                 'sensor_calibration_file': '',
                 'instrument_calibration_file': ''
             }
@@ -655,7 +650,7 @@ class TimeData(ResisticsData):
 
     def copy(self) -> "TimeData":
         """Get a deepcopy of the time data object"""
-        return TimeData(self.metadata.copy(deep=True), np.array(self.data))
+        return TimeData(self.metadata.model_copy(deep=True), np.array(self.data))
 
     def plot(
         self,
@@ -1009,7 +1004,7 @@ class TimeReaderJSON(TimeReader):
 
         metadata_path = dir_path / "metadata.json"
         try:
-            metadata = TimeMetadata.parse_file(metadata_path)
+            metadata = TimeMetadata.model_validate_json(metadata_path.read_bytes())
         except KeyError:
             raise MetadataReadError(metadata_path, "No metadata found in metadata file")
 
@@ -1165,7 +1160,7 @@ class TimeWriterNumpy(ResisticsWriter):
         metadata_path = dir_path / "metadata.json"
         data_path = dir_path / "data.npy"
         np.save(data_path, time_data.data)
-        metadata = time_data.metadata.copy(deep=True)
+        metadata = time_data.metadata.model_copy(deep=True)
         for chan in time_data.metadata.chans:
             metadata[chan].data_files = [data_path.name]
         metadata.history.add_record(self._get_record(dir_path, type(time_data)))
@@ -1199,7 +1194,7 @@ class TimeWriterAscii(ResisticsWriter):
             raise WriteError(dir_path, "Unable to write to directory, check logs")
         logger.info(f"Writing time ASCII data to {dir_path}")
         metadata_path = dir_path / "metadata.json"
-        metadata = time_data.metadata.copy(deep=True)
+        metadata = time_data.metadata.model_copy(deep=True)
         for chan in time_data.metadata.chans:
             chan_path = dir_path / f"{chan.lower()}.ascii"
             np.savetxt(chan_path, time_data[chan], fmt="%.6f", newline="\n")
@@ -1238,7 +1233,7 @@ def new_time_data(
         A new TimeData instance
     """
     if metadata is None:
-        metadata = time_data.metadata.copy(deep=True)
+        metadata = time_data.metadata.model_copy(deep=True)
     if data is None:
         data = np.array(time_data.data)
     if record is not None:
@@ -1332,7 +1327,7 @@ class Subsection(TimeProcess):
         messages = [f"Subsection from sample {from_sample} to {to_sample}"]
         messages.append(f"First time: {str(first_time)} -> {str(from_time)}")
         messages.append(f"Last time: {str(last_time)} -> {str(to_time)}")
-        metadata = time_data.metadata.copy(deep=True)
+        metadata = time_data.metadata.model_copy(deep=True)
         metadata = adjust_time_metadata(metadata, fs, from_time, n_samples=n_samples)
         data = np.array(time_data.data[:, from_sample : to_sample + 1])
         record = self._get_record(messages)
@@ -1487,7 +1482,7 @@ class Subsamples(TimeProcess):
         messages = [f"Taking subsample from {from_sample} to {to_sample}"]
         messages.append(f"First time: {str(first_time)} -> {str(from_time)}")
         messages.append(f"Last time: {str(last_time)} -> {str(to_time)}")
-        metadata = time_data.metadata.copy(deep=True)
+        metadata = time_data.metadata.model_copy(deep=True)
         metadata = adjust_time_metadata(metadata, fs, from_time, n_samples=n_subsamples)
         data = np.array(time_data.data[:, from_sample : to_sample + 1])
         record = self._get_record(messages)
@@ -1584,7 +1579,7 @@ class RemoveMean(TimeProcess):
     >>> hx_test
     array([-2.5, -1.5, -0.5,  1.5, -2.5, -1.5, -0.5,  0.5, -1.5,  2.5,  3.5,
             2.5,  1.5,  0.5, -0.5, -1.5], dtype=float32)
-    >>> np.all(hx_test == time_data_new["Hx"])
+    >>> bool(np.all(hx_test == time_data_new["Hx"]))
     True
     """
 
@@ -2156,7 +2151,7 @@ class Resample(TimeProcess):
         data = data.astype(time_data.data.dtype)
         # adjust metadata
         n_samples = data.shape[1]
-        metadata = time_data.metadata.copy(deep=True)
+        metadata = time_data.metadata.model_copy(deep=True)
         metadata = adjust_time_metadata(
             metadata, self.new_fs, time_data.metadata.first_time, n_samples=n_samples
         )
@@ -2254,7 +2249,7 @@ class Decimate(TimeProcess):
         new_fs = fs / self.factor
         messages.append(f"Sampling frequency adjusted from {fs} to {new_fs}")
         n_samples = data.shape[1]
-        metadata = time_data.metadata.copy(deep=True)
+        metadata = time_data.metadata.model_copy(deep=True)
         metadata = adjust_time_metadata(
             metadata, new_fs, time_data.metadata.first_time, n_samples=n_samples
         )
@@ -2451,7 +2446,7 @@ class ShiftTimestamps(TimeProcess):
         data = fnc_map[self.style](x, x_shift, time_data)
 
         # update metadata
-        metadata = time_data.metadata.copy(deep=True)
+        metadata = time_data.metadata.model_copy(deep=True)
         metadata = adjust_time_metadata(
             metadata, metadata.fs, first_time, n_samples=n_samples
         )
@@ -2588,9 +2583,10 @@ class CropTimestamps(TimeProcess):
         fs = time_data.metadata.fs
         first_time = time_data.metadata.first_time
         last_time = time_data.metadata.last_time
-        from_time = pd.Timestamp(first_time.isoformat()).ceil(self.time_unit)
+        time_unit = "min" if self.time_unit == "T" else self.time_unit
+        from_time = pd.Timestamp(first_time.isoformat()).ceil(time_unit)
         from_time = to_datetime(from_time)
-        to_time = pd.Timestamp(last_time.isoformat()).floor(self.time_unit)
+        to_time = pd.Timestamp(last_time.isoformat()).floor(time_unit)
         to_time = to_datetime(to_time)
         # this is now essentially taking a subsection
         from_sample, to_sample = datetimes_to_samples(
@@ -2608,7 +2604,7 @@ class CropTimestamps(TimeProcess):
         messages = [f"Cropping timestamps to the {self.time_unit}"]
         messages.append(f"First time: {str(first_time)} -> {str(from_time)}")
         messages.append(f"Last time: {str(last_time)} -> {str(to_time)}")
-        metadata = time_data.metadata.copy(deep=True)
+        metadata = time_data.metadata.model_copy(deep=True)
         metadata = adjust_time_metadata(metadata, fs, from_time, n_samples=n_samples)
         data = np.array(time_data.data[:, from_sample : to_sample + 1])
         record = self._get_record(messages)
@@ -2670,15 +2666,15 @@ class ApplyFunction(TimeProcess):
     array([-1., -1., -1., -1., -1., -1., -1., -1., -1., -1.])
     """
 
-    fncs: Dict[str, Callable]
-
-    class Config:
-
-        arbitrary_types_allowed = True
-        json_encoders = {
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_encoders={
             types.LambdaType: serialize_custom_fnc,
             types.FunctionType: serialize_custom_fnc,
-        }
+        },
+    )
+
+    fncs: Dict[str, Callable]
 
     def run(self, time_data: TimeData) -> TimeData:
         """

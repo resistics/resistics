@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 from attotime import attodatetime, attotimedelta
+from pydantic_core import core_schema
 
 DateTimeLike = Union[str, pd.Timestamp, datetime]
 TimeDeltaLike = Union[float, timedelta, pd.Timedelta]
@@ -24,17 +25,29 @@ class HighResDateTime(RSDateTime):
     """Wrapper around RSDateTime to use for pydantic"""
 
     @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        """Get the validator schema that will be used by pydantic v2."""
+        return core_schema.no_info_plain_validator_function(
+            cls.validate,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                datetime_to_string,
+                return_schema=core_schema.str_schema(),
+            ),
+        )
+
+    @classmethod
+    def __get_pydantic_json_schema__(cls, core_schema, handler):
+        """Add to the pydantic JSON schema."""
+        return {
+            "type": "string",
+            "pattern": "%Y-%m-%d %H:%M:%S.%f_%o_%q_%v",
+            "examples": ["2021-01-01 00:00:00.000061_035156_250000_000000"],
+        }
+
+    @classmethod
     def __get_validators__(cls):
         """Yield validators for RSDateTime"""
         yield cls.validate
-
-    @classmethod
-    def __modify_schema__(cls, field_schema):
-        """Add to the pydantic schema"""
-        field_schema.update(
-            pattern="%Y-%m-%d %H:%M:%S.%f_%o_%q_%v",
-            examples=["2021-01-01 00:00:00.000061_035156_250000_000000"],
-        )
 
     @classmethod
     def validate(cls, val: Union[RSDateTime, DateTimeLike]):
@@ -43,7 +56,7 @@ class HighResDateTime(RSDateTime):
             return val
         if isinstance(val, (str, pd.Timestamp, datetime)):
             return to_datetime(val)
-        raise TypeError(f"Type {type(val)} not recognised for RSDateTime")
+        raise ValueError(f"Type {type(val)} not recognised for RSDateTime")
 
     def __repr__(self) -> str:
         return super().__repr__()
@@ -936,4 +949,6 @@ def datetime_array_estimate(
         return pd.date_range(start=first_time, freq=dt, periods=n_samples)
     if samples is None:
         raise ValueError("One of n_samples or samples must be provided")
-    return pd.to_datetime(pd.to_datetime(first_time) + samples * dt)
+    return pd.date_range(start=first_time, freq=dt, periods=int(np.max(samples)) + 1)[
+        samples
+    ]

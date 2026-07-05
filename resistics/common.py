@@ -2,14 +2,25 @@
 Common resistics functions and classes used throughout the package
 """
 from loguru import logger
-from typing import List, Tuple, Union, Dict
+from collections.abc import Callable
+from typing import ClassVar, List, Tuple, Union, Dict
 from typing import Any, Collection, Optional, Type
 from pathlib import Path
-from pydantic import BaseModel, Field, validator
-from datetime import datetime
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic_core import core_schema
+from datetime import UTC, datetime
 import numpy as np
 
 from resistics.sampling import RSDateTime, datetime_to_string
+
+
+def json_fallback(value: Any) -> Any:
+    """Fallback serializer for values Pydantic v2 cannot encode directly."""
+    if isinstance(value, RSDateTime):
+        return datetime_to_string(value)
+    if isinstance(value, Callable):
+        return getattr(value, "__name__", str(value))
+    return str(value)
 
 ELECTRIC_CHANS = ["Ex", "Ey", "E1", "E2", "E3", "E4"]
 MAGNETIC_CHANS = ["Hx", "Hy", "Hz", "Bx", "By", "Bz"]
@@ -418,15 +429,40 @@ def array_to_string(
 class ResisticsModel(BaseModel):
     """Base resistics model"""
 
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_encoders={RSDateTime: datetime_to_string},
+        validate_default=True,
+    )
+
     def __str__(self) -> str:
         return self.to_string()
+
+    def model_dump(self, *args, **kwargs) -> Dict[str, Any]:
+        """Dump model data, preserving subclass fields for process registries."""
+        kwargs.setdefault("serialize_as_any", True)
+        return super().model_dump(*args, **kwargs)
+
+    def model_dump_json(self, *args, **kwargs) -> str:
+        """Dump model JSON, preserving subclass fields for process registries."""
+        kwargs.setdefault("serialize_as_any", True)
+        kwargs.setdefault("fallback", json_fallback)
+        return super().model_dump_json(*args, **kwargs)
+
+    def dict(self, *args, **kwargs) -> Dict[str, Any]:
+        """Backward-compatible dict dump using Pydantic v2 serialization."""
+        return self.model_dump(*args, **kwargs)
+
+    def json(self, *args, **kwargs) -> str:
+        """Backward-compatible JSON dump using Pydantic v2 serialization."""
+        return self.model_dump_json(*args, **kwargs)
 
     def to_string(self) -> str:
         """Class info as string"""
         import json
         import yaml
 
-        json_dict = json.loads(self.json())
+        json_dict = json.loads(self.model_dump_json())
         return yaml.dump(json_dict, indent=4, sort_keys=False)
 
     def summary(self) -> None:
@@ -434,31 +470,26 @@ class ResisticsModel(BaseModel):
         import json
         from prettyprinter import cpprint
 
-        cpprint(json.loads(self.json()))
-
-    class Config:
-        """pydantic configuration information"""
-
-        json_encoders = {RSDateTime: datetime_to_string}
+        cpprint(json.loads(self.model_dump_json()))
 
 
 class ResisticsFile(ResisticsModel):
     """Required information for writing out a resistics file"""
 
     created_on_local: datetime = Field(default_factory=datetime.now)
-    created_on_utc: datetime = Field(default_factory=datetime.utcnow)
+    created_on_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))
     version: Optional[str] = Field(default_factory=get_version)
 
 
 class Metadata(ResisticsModel):
     """Parent class for metadata"""
 
-    @validator("n_chans", check_fields=False, always=True)
-    def validate_n_chans(cls, value: Union[None, int], values: Dict[str, Any]) -> int:
+    @model_validator(mode="after")
+    def validate_n_chans(self) -> "Metadata":
         """Initialise number of channels"""
-        if value is None:
-            return len(values["chans"])
-        return value
+        if hasattr(self, "n_chans") and self.n_chans is None:
+            self.n_chans = len(self.chans)
+        return self
 
 
 class WriteableMetadata(Metadata):
@@ -478,7 +509,7 @@ class WriteableMetadata(Metadata):
         """
         self.file_info = ResisticsFile()
         with json_path.open("w") as f:
-            f.write(self.json())
+            f.write(self.model_dump_json())
 
 
 class Record(ResisticsModel):
@@ -512,7 +543,7 @@ class Record(ResisticsModel):
 
     time_local: datetime = Field(default_factory=datetime.now)
     """The local time when the process ran"""
-    time_utc: datetime = Field(default_factory=datetime.utcnow)
+    time_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))
     """The UTC time when the process ran"""
     creator: Dict[str, Any]
     """The creator and its parameters as a dictionary"""
@@ -567,7 +598,7 @@ class History(ResisticsModel):
     }
     """
 
-    records: List[Record] = []
+    records: List[Record] = Field(default_factory=list)
 
     def add_record(self, record: Record):
         """
@@ -632,7 +663,7 @@ def get_record(
     if isinstance(messages, str):
         messages = [messages]
     if time_utc is None:
-        time_utc = datetime.utcnow()
+        time_utc = datetime.now(UTC)
     if time_local is None:
         time_local = datetime.now()
     return Record(
@@ -724,7 +755,7 @@ def get_history(record: Record, history: Optional[History] = None) -> History:
     """
     if history is None:
         return History(records=[record])
-    history = History(**history.dict())
+    history = History(**history.model_dump())
     history.add_record(record)
     return history
 
@@ -738,8 +769,8 @@ class ResisticsProcess(ResisticsModel):
     a process record to the dataset
     """
 
-    _types: Dict[str, type] = {}
-    name: Optional[str]
+    _types: ClassVar[Dict[str, type["ResisticsProcess"]]] = {}
+    name: Optional[str] = None
 
     def __init_subclass__(cls) -> None:
         """
@@ -753,6 +784,22 @@ class ResisticsProcess(ResisticsModel):
         JSON files.
         """
         cls._types[cls.__name__] = cls
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        """Get the validator schema that will be used by pydantic v2."""
+        return core_schema.no_info_before_validator_function(
+            cls.validate_model_input, handler(source_type)
+        )
+
+    @classmethod
+    def validate_model_input(cls, value: Any) -> Any:
+        """Resolve registered process dictionaries during pydantic validation."""
+        if isinstance(value, ResisticsProcess):
+            return value
+        if isinstance(value, dict) and "name" in value:
+            return cls.validate(value)
+        return value
 
     @classmethod
     def __get_validators__(cls):
@@ -794,12 +841,14 @@ class ResisticsProcess(ResisticsModel):
         >>> from resistics.common import ResisticsProcess
         >>> from resistics.decimate import DecimationSetup
         >>> process = {"name": 'DecimationSetup', "n_levels": 8, "per_level": 5, "min_samples": 256, "div_factor": 2, "eval_freqs": None}
-        >>> ResisticsProcess(**process)
-        ResisticsProcess(name='DecimationSetup')
+        >>> ResisticsProcess(**process) # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+        ...
+        pydantic_core._pydantic_core.ValidationError: ...
 
-        This is not what was expected. To get the right result, the class
-        validate method needs to be used. This is done automatically by
-        pydantic.
+        To get the right concrete process class, the class validate method
+        needs to be used. This is done automatically by pydantic for fields
+        typed as ResisticsProcess.
 
         >>> ResisticsProcess.validate(process)
         DecimationSetup(name='DecimationSetup', n_levels=8, per_level=5, min_samples=256, div_factor=2, eval_freqs=None)
@@ -845,18 +894,23 @@ class ResisticsProcess(ResisticsModel):
             )
         if "name" not in value:
             raise KeyError("No name provided for initialisation of process")
-        name = value.pop("name")
+        data = dict(value)
+        name = data.get("name")
+        if name == cls.__name__:
+            data.pop("name")
+            return data
         try:
-            return cls._types[name](**value)
+            data.pop("name")
+            return cls._types[name](**data)
         except Exception:
             raise ValueError(f"Unable to initialise {name} from dictionary")
 
-    @validator("name", always=True)
-    def validate_name(cls, value: Union[str, None]) -> str:
+    @model_validator(mode="after")
+    def validate_name(self) -> "ResisticsProcess":
         """Inialise the name attribute of the resistics process"""
-        if value is None:
-            return cls.__name__
-        return value
+        if self.name is None:
+            self.name = self.__class__.__name__
+        return self
 
     def parameters(self) -> Dict[str, Any]:
         """
@@ -873,7 +927,7 @@ class ResisticsProcess(ResisticsModel):
         """
         import json
 
-        return json.loads(self.json())
+        return json.loads(self.model_dump_json())
 
     def _get_record(self, messages: Union[str, List[str]]) -> Record:
         """

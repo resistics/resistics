@@ -97,7 +97,7 @@ using a window size of 8 samples per window and a 2 sample overlap.
 from loguru import logger
 from pathlib import Path
 from typing import Optional, List, Tuple, Dict, Union, Any
-from pydantic import PositiveInt
+from pydantic import ConfigDict, PositiveInt
 import numpy as np
 import pandas as pd
 
@@ -539,7 +539,7 @@ def get_win_starts(
     0   2021-01-01 01:00:00.000
     1   2021-01-01 01:00:07.500
     2   2021-01-01 01:00:15.000
-    dtype: datetime64[ns]
+    dtype: datetime64[us]
     """
     from resistics.sampling import datetime_array_estimate
 
@@ -587,7 +587,7 @@ def get_win_ends(
     0   2021-01-01 01:00:00.000
     1   2021-01-01 01:00:07.500
     2   2021-01-01 01:00:15.000
-    dtype: datetime64[ns]
+    dtype: datetime64[us]
     >>> ends = get_win_ends(starts, win_size, fs)
     >>> pd.Series(ends)
     0   2021-01-01 01:00:09.900
@@ -1042,6 +1042,8 @@ class WindowedLevelMetadata(Metadata):
 class WindowedMetadata(WriteableMetadata):
     """Metadata for windowed data"""
 
+    model_config = ConfigDict(extra="ignore")
+
     fs: List[float]
     chans: List[str]
     n_chans: Optional[int] = None
@@ -1059,11 +1061,6 @@ class WindowedMetadata(WriteableMetadata):
     levels_metadata: List[WindowedLevelMetadata]
     ref_time: HighResDateTime
     history: History = History()
-
-    class Config:
-
-        extra = "ignore"
-
 
 class WindowedData(ResisticsData):
     """
@@ -1280,7 +1277,7 @@ class Windower(ResisticsProcess):
     first channel. This is simply a linear set of data ranging from 0...16_383.
 
     >>> dec_data.data[0][0]
-    array([    0,     1,     2, ..., 16381, 16382, 16383])
+    array([    0,     1,     2, ..., 16381, 16382, 16383], shape=(16384,))
 
     Inspecting the first few windows shows they are as expected including the
     overlap.
@@ -1578,7 +1575,7 @@ class WindowedDataWriter(ResisticsWriter):
         metadata_path = dir_path / "metadata.json"
         data_path = dir_path / "data"
         np.savez_compressed(data_path, **{str(x): y for x, y in win_data.data.items()})
-        metadata = win_data.metadata.copy()
+        metadata = win_data.metadata.model_copy()
         metadata.history.add_record(self._get_record(dir_path, type(win_data)))
         metadata.write(metadata_path)
 
@@ -1615,7 +1612,7 @@ class WindowedDataReader(ResisticsProcess):
             raise ReadError(dir_path, "Directory does not exist")
         logger.info(f"Reading windowed data from {dir_path}")
         metadata_path = dir_path / "metadata.json"
-        metadata = WindowedMetadata.parse_file(metadata_path)
+        metadata = WindowedMetadata.model_validate_json(metadata_path.read_bytes())
         if metadata_only:
             return metadata
         data_path = dir_path / "data.npz"

@@ -7,7 +7,7 @@ Module for time data decimation including classes and for the following
 from loguru import logger
 from typing import Any, Optional, Tuple, Union, Dict, List
 from pathlib import Path
-from pydantic import validator, PositiveInt, conint
+from pydantic import ConfigDict, PositiveInt, conint, model_validator
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -191,22 +191,19 @@ class DecimationParameters(ResisticsModel):
     dec_increments: Optional[List[int]] = None
     dec_fs: Optional[List[float]] = None
 
-    @validator("dec_increments", always=True)
-    def set_dec_increments(cls, value, values):
-        """Initialise decimation increments if not provided"""
-        if value is None:
-            divisor = np.ones(shape=(values["n_levels"]), dtype=int)
-            divisor[1:] = values["dec_factors"][:-1]
-            return np.divide(values["dec_factors"], divisor).astype(int).tolist()
-        return value
-
-    @validator("dec_fs", always=True)
-    def set_dec_fs(cls, value, values):
-        """Initialise decimation sampling frequencies if not provided"""
-        if value is None:
-            factors = np.array(values["dec_factors"]).astype(float)
-            return (values["fs"] * np.reciprocal(factors)).tolist()
-        return value
+    @model_validator(mode="after")
+    def set_derived_decimation_fields(self) -> "DecimationParameters":
+        """Initialise derived decimation fields if not provided."""
+        if self.dec_increments is None:
+            divisor = np.ones(shape=(self.n_levels), dtype=int)
+            divisor[1:] = self.dec_factors[:-1]
+            self.dec_increments = (
+                np.divide(self.dec_factors, divisor).astype(int).tolist()
+            )
+        if self.dec_fs is None:
+            factors = np.array(self.dec_factors).astype(float)
+            self.dec_fs = (self.fs * np.reciprocal(factors)).tolist()
+        return self
 
     def __getitem__(self, args: Union[int, Tuple[int, int]]):
         """Get the evaluation frequency for level and evaluation frequency index"""
@@ -514,6 +511,8 @@ class DecimatedLevelMetadata(Metadata):
 class DecimatedMetadata(WriteableMetadata):
     """Metadata for DecimatedData"""
 
+    model_config = ConfigDict(extra="ignore")
+
     fs: List[float]
     chans: List[str]
     n_chans: Optional[int] = None
@@ -530,11 +529,6 @@ class DecimatedMetadata(WriteableMetadata):
     chans_metadata: Dict[str, ChanMetadata]
     levels_metadata: List[DecimatedLevelMetadata]
     history: History = History()
-
-    class Config:
-
-        extra = "ignore"
-
 
 class DecimatedData(ResisticsData):
     """
@@ -829,7 +823,7 @@ class DecimatedDataWriter(ResisticsWriter):
         metadata_path = dir_path / "metadata.json"
         data_path = dir_path / "data"
         np.savez_compressed(data_path, **{str(x): y for x, y in dec_data.data.items()})
-        metadata = dec_data.metadata.copy()
+        metadata = dec_data.metadata.model_copy()
         metadata.history.add_record(self._get_record(dir_path, type(dec_data)))
         metadata.write(metadata_path)
 
@@ -866,7 +860,7 @@ class DecimatedDataReader(ResisticsProcess):
             raise ReadError(dir_path, "Directory does not exist")
         logger.info(f"Reading decimated data from {dir_path}")
         metadata_path = dir_path / "metadata.json"
-        metadata = DecimatedMetadata.parse_file(metadata_path)
+        metadata = DecimatedMetadata.model_validate_json(metadata_path.read_bytes())
         if metadata_only:
             return metadata
         data_path = dir_path / "data.npz"

@@ -1290,6 +1290,4 @@ def assert_soln_equal(soln1: Solution, soln2: Solution):
     """
     df1 = soln1.to_dataframe()
     df2 = soln2.to_dataframe()
-    print(df1)
-    print(df2)
-    pd.testing.assert_frame_equal(df1, df2)
+    pd.testing.assert_frame_equal(df1, df2, check_exact=False, rtol=1e-10, atol=1e-10)

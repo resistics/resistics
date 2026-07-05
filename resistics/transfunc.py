@@ -1,8 +1,9 @@
 """
 Module defining transfer functions
 """
-from typing import List, Optional, Dict, Any, Union
-from pydantic import validator, constr
+from typing import ClassVar, List, Optional, Dict, Any, Union
+from pydantic import field_validator, model_validator, constr
+from pydantic_core import core_schema
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -110,7 +111,7 @@ class TransferFunction(Metadata):
                                    | Hz |
     """
 
-    _types: Dict[str, type] = {}
+    _types: ClassVar[Dict[str, type["TransferFunction"]]] = {}
     """Store types which will help automatic instantiation"""
     name: Optional[str] = None
     """The name of the transfer function, this will be set automatically"""
@@ -145,6 +146,22 @@ class TransferFunction(Metadata):
         ResisticsProcess.
         """
         cls._types[cls.__name__] = cls
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        """Get the validator schema that will be used by pydantic v2."""
+        return core_schema.no_info_before_validator_function(
+            cls.validate_model_input, handler(source_type)
+        )
+
+    @classmethod
+    def validate_model_input(cls, value: Any) -> Any:
+        """Resolve registered transfer-function dictionaries in pydantic."""
+        if isinstance(value, TransferFunction):
+            return value
+        if isinstance(value, dict) and "name" in value:
+            return cls.validate(value)
+        return value
 
     @classmethod
     def __get_validators__(cls):
@@ -196,16 +213,15 @@ class TransferFunction(Metadata):
         and a dictionary.
 
         >>> mytf = {"name": "ImpedanceTensor", "variation": "ecross", "cross_chans": ["Ex", "Ey"]}
-        >>> test = TransferFunction(**mytf)
+        >>> test = TransferFunction(**mytf) # doctest: +ELLIPSIS
         Traceback (most recent call last):
         ...
-        KeyError: 'out_chans'
+        pydantic_core._pydantic_core.ValidationError: ...
 
-        This is not quite what we were expecting. The generic TransferFunction
-        requires out_chans to be defined, but they are not in the dictionary as
-        the ImpedanceTensor child class defaults these. To get this to work,
-        instead use the validate class method. This is the class method used by
-        pydantic when instantiating.
+        The generic TransferFunction does not dispatch to a child class during
+        direct base-class construction. To get this to work, instead use the
+        validate class method. This is the class method used by pydantic for
+        fields typed as TransferFunction.
 
         >>> mytf = {"name": "ImpedanceTensor", "variation": "ecross", "cross_chans": ["Ex", "Ey"]}
         >>> test = TransferFunction.validate(mytf)
@@ -221,14 +237,14 @@ class TransferFunction(Metadata):
             'n_cross': 2
         }
 
-        That's more like it. This will raise errors if an unknown type of
-        TransferFunction is received.
+        That's more like it. Unknown transfer function names are preserved
+        as dictionary input, allowing custom transfer function definitions to
+        be handled outside the built-in registry.
 
         >>> mytf = {"name": "NewTF", "cross_chans": ["Ex", "Ey"]}
         >>> test = TransferFunction.validate(mytf)
-        Traceback (most recent call last):
-        ...
-        ValueError: Unable to initialise NewTF from dictionary
+        >>> test
+        {'name': 'NewTF', 'cross_chans': ['Ex', 'Ey']}
 
         Or if the dictionary does not have a name key
 
@@ -253,51 +269,55 @@ class TransferFunction(Metadata):
             )
         if "name" not in value:
             raise KeyError("No name provided for initialisation of TransferFunction")
-        # check if it is a TransferFunction
-        name = value.pop("name")
+        data = dict(value)
+        name = data.get("name")
         if name == "TransferFunction":
-            return cls(**value)
+            data.pop("name")
+            return data
+        if cls is TransferFunction and name not in cls._types:
+            return value
         # check other known Transfer Functions
         try:
-            return cls._types[name](**value)
+            data.pop("name")
+            return cls._types[name](**data)
         except Exception:
             raise ValueError(f"Unable to initialise {name} from dictionary")
 
-    @validator("name", always=True)
-    def validate_name(cls, value: Union[str, None]) -> str:
+    @model_validator(mode="after")
+    def validate_name(self) -> "TransferFunction":
         """Inialise the name attribute of the transfer function"""
-        if value is None:
-            return cls.__name__
-        return value
+        if self.name is None:
+            self.name = self.__class__.__name__
+        return self
 
-    @validator("cross_chans", always=True)
+    @field_validator("cross_chans", mode="before")
     def validate_cross_chans(
-        cls, value: Union[None, List[str]], values: Dict[str, Any]
+        cls, value: Union[None, List[str]], info
     ) -> List[str]:
         """Validate cross spectra channels"""
         if value is None:
-            return values["in_chans"]
+            return info.data["in_chans"]
         return value
 
-    @validator("n_out", always=True)
-    def validate_n_out(cls, value: Union[None, int], values: Dict[str, Any]) -> int:
+    @field_validator("n_out", mode="before")
+    def validate_n_out(cls, value: Union[None, int], info) -> int:
         """Validate number of output channels"""
         if value is None:
-            return len(values["out_chans"])
+            return len(info.data["out_chans"])
         return value
 
-    @validator("n_in", always=True)
-    def validate_n_in(cls, value: Union[None, int], values: Dict[str, Any]) -> int:
+    @field_validator("n_in", mode="before")
+    def validate_n_in(cls, value: Union[None, int], info) -> int:
         """Validate number of input channels"""
         if value is None:
-            return len(values["in_chans"])
+            return len(info.data["in_chans"])
         return value
 
-    @validator("n_cross", always=True)
-    def validate_n_cross(cls, value: Union[None, int], values: Dict[str, Any]) -> int:
+    @field_validator("n_cross", mode="before")
+    def validate_n_cross(cls, value: Union[None, int], info) -> int:
         """Validate number of cross channels"""
         if value is None:
-            return len(values["cross_chans"])
+            return len(info.data["cross_chans"])
         return value
 
     def n_eqns_per_output(self) -> int:

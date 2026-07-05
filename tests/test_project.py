@@ -5,7 +5,7 @@ from typing import Union, Callable
 from pathlib import Path
 import pandas as pd
 import pytest
-from pydantic.error_wrappers import ValidationError
+from pydantic import ValidationError
 
 from resistics.project import PROJ_DIRS, Measurement, Site, Project, ProjectMetadata
 from resistics.project import get_meas_spectra_path, get_meas_evals_path

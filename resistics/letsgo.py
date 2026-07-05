@@ -125,7 +125,7 @@ class ProjectLoader(ResisticsProcess):
             )
         self._check_subdirs()
 
-        metadata = ProjectMetadata.parse_file(metadata_path)
+        metadata = ProjectMetadata.model_validate_json(metadata_path.read_bytes())
         time_subdirs = dir_subdirs(self.dir_path / PROJ_DIRS["time"])
         sites = {}
         for site_dir in time_subdirs:
@@ -951,4 +951,4 @@ def get_solution(
     proj = resenv.proj
     solution_path = get_results_path(proj.dir_path, site_name, config_name)
     solution_name = get_solution_name(fs, tf_name, tf_var, postfix)
-    return Solution.parse_file(solution_path / solution_name)
+    return Solution.model_validate_json((solution_path / solution_name).read_bytes())

@@ -12,7 +12,8 @@ from typing import List, Dict, Tuple, Union
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
-from regressioninc.linear.models import Regressor, LeastSquares
+from regressioninc.base import Regressor
+from regressioninc.linear import LeastSquares
 
 from resistics.common import Metadata, WriteableMetadata, History
 from resistics.common import ResisticsData, ResisticsProcess
@@ -20,6 +21,11 @@ from resistics.transfunc import Component, get_component_key
 from resistics.transfunc import TransferFunction
 from resistics.spectra import SpectraMetadata, SpectraData
 from resistics.gather import SiteCombinedMetadata, GatheredData
+
+
+def get_least_squares_regressor() -> Regressor:
+    """Return the regressioninc least-squares regressor."""
+    return LeastSquares()
 
 
 class RegressionInputMetadata(Metadata):
@@ -653,7 +659,7 @@ class SolverLinear(Solver):
                 components[key] = Component(
                     real=values.real.tolist(), imag=values.imag.tolist()
                 )
-        history = History(**regression_input.metadata.history.dict())
+        history = History(**regression_input.metadata.history.model_dump())
         message = f"Solved {len(regression_input.freqs)} evaluation frequencies"
         history.add_record(self._get_record(message))
         return Solution(
@@ -664,12 +670,11 @@ class SolverLinear(Solver):
             contributors=regression_input.metadata.contributors,
         )
 
-
 class SolverOLS(SolverLinear):
     n_jobs: int = -2
     """Number of jobs to run"""
 
     def run(self, regression_input: RegressionInputData) -> Solution:
         """Run ordinary least squares regression on the RegressionInputData"""
-        model = LeastSquares()
+        model = get_least_squares_regressor()
         return self._solve(regression_input, model)

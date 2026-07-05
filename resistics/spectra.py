@@ -9,7 +9,7 @@ scipy stft function.
 from loguru import logger
 from pathlib import Path
 from typing import Union, Tuple, Dict, List, Any, Optional
-from pydantic import PositiveInt
+from pydantic import ConfigDict, PositiveInt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -50,6 +50,8 @@ class SpectraLevelMetadata(Metadata):
 class SpectraMetadata(WriteableMetadata):
     """Metadata for spectra data"""
 
+    model_config = ConfigDict(extra="ignore")
+
     fs: List[float]
     chans: List[str]
     n_chans: Optional[int] = None
@@ -67,11 +69,6 @@ class SpectraMetadata(WriteableMetadata):
     levels_metadata: List[SpectraLevelMetadata]
     ref_time: HighResDateTime
     history: History = History()
-
-    class Config:
-
-        extra = "ignore"
-
 
 class SpectraData(ResisticsData):
     """
@@ -788,7 +785,7 @@ class SpectraDataWriter(ResisticsWriter):
         metadata_path = dir_path / "metadata.json"
         data_path = dir_path / "data"
         np.savez_compressed(data_path, **{str(x): y for x, y in spec_data.data.items()})
-        metadata = spec_data.metadata.copy()
+        metadata = spec_data.metadata.model_copy()
         metadata.history.add_record(self._get_record(dir_path, type(spec_data)))
         metadata.write(metadata_path)
 
@@ -825,7 +822,7 @@ class SpectraDataReader(ResisticsProcess):
             raise ReadError(dir_path, "Directory does not exist")
         logger.info(f"Reading spectra data from {dir_path}")
         metadata_path = dir_path / "metadata.json"
-        metadata = SpectraMetadata.parse_file(metadata_path)
+        metadata = SpectraMetadata.model_validate_json(metadata_path.read_bytes())
         if metadata_only:
             return metadata
         data_path = dir_path / "data.npz"

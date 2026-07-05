@@ -15,7 +15,7 @@ time data is in nT.
 from loguru import logger
 from typing import Optional, Any, List, Tuple, Union, Dict
 from pathlib import Path
-from pydantic import validator
+from pydantic import model_validator
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -39,7 +39,7 @@ class CalibrationData(WriteableMetadata):
     - Phase is in radians
     """
 
-    file_path: Optional[Path]
+    file_path: Optional[Path] = None
     """Path to the calibration file"""
     sensor: str = ""
     """Sensor type"""
@@ -58,12 +58,12 @@ class CalibrationData(WriteableMetadata):
     n_samples: Optional[int] = None
     """Number of data samples"""
 
-    @validator("n_samples", always=True)
-    def validate_n_samples(cls, value: Union[int, None], values: Dict[str, Any]) -> int:
+    @model_validator(mode="after")
+    def validate_n_samples(self) -> "CalibrationData":
         """Validate number of samples"""
-        if value is None:
-            return len(values["frequency"])
-        return value
+        if self.n_samples is None:
+            self.n_samples = len(self.frequency)
+        return self
 
     def __getitem__(self, arg: str) -> np.ndarray:
         """Get data mainly for the purposes of plotting"""
@@ -275,7 +275,7 @@ class SensorCalibrationJSON(SensorCalibrationReader):
         CalibrationData
             The calibration data
         """
-        cal_data = CalibrationData.parse_file(file_path)
+        cal_data = CalibrationData.model_validate_json(file_path.read_bytes())
         cal_data.file_path = file_path
         return cal_data
 
@@ -310,7 +310,7 @@ class SensorCalibrationTXT(SensorCalibrationReader):
     SensorCalibrationJSON : Reader for JSON calibration files
     """
 
-    extension = ".TXT"
+    extension: str = ".TXT"
 
     def read_calibration_data(
         self, file_path: Path, chan_metadata: ChanMetadata
@@ -357,14 +357,18 @@ class SensorCalibrationTXT(SensorCalibrationReader):
             "phase_unit": phase_unit,
         }
 
-    def _get_sensor_details(self, lines: List[str]) -> Tuple[str, str]:
+    def _get_sensor_details(self, lines: List[str]) -> Tuple[Union[int, str], str]:
         """Get sensor details"""
-        serial: str = "1"
+        serial: Union[int, str] = 1
         sensor: str = ""
         for line in lines:
             line = line.lower()
             if "serial" in line:
                 serial = line.split("=")[1].strip()
+                try:
+                    serial = int(serial)
+                except ValueError:
+                    pass
             if "sensor" in line:
                 sensor = line.split("=")[1].strip()
         return serial, sensor

@@ -216,7 +216,7 @@ class ProjectMetadata(WriteableMetadata):
     """Project metadata"""
 
     ref_time: HighResDateTime
-    mth5_name: str
+    mth5_name: str = ""
 
 
 class Project(ResisticsModel):
@@ -231,7 +231,7 @@ class Project(ResisticsModel):
     """
 
     dir_path: Path
-    mth_data: MTH5
+    mth_data: Optional[MTH5] = None
     begin_time: HighResDateTime
     end_time: HighResDateTime
     metadata: ProjectMetadata
