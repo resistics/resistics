@@ -1,8 +1,0 @@
-name: Campaign 2024 Batch
-flow: standard_mt_flow.yaml
-parameters: low_freq_params.yaml
-batch:
-  - { site: Site01, remote: Site02 }
-  - { site: Site02, remote: Site01 }
-  - { site: Site03, remote: Site04 }
-  - { site: Site04, remote: Site03 }

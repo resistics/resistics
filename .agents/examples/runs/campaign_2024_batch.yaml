@@ -1,0 +1,8 @@
+name: Campaign 2024 Batch
+flow: ../flows/standard_mt_flow.yaml
+configuration: ../configurations/low_freq_configuration.yaml
+batch:
+  - { station: Station01, remote: Station02 }
+  - { station: Station02, remote: Station01 }
+  - { station: Station03, remote: Station04 }
+  - { station: Station04, remote: Station03 }

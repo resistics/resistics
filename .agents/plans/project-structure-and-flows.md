@@ -10,17 +10,17 @@ A **Flow** defines the sequence and connectivity of processing steps. It specifi
 - **Format**: YAML or JSON.
 - **Logic**: A Directed Acyclic Graph (DAG) of process identifiers.
 
-### 2. Parameter Set
-A **Parameter Set** defines the specific values and settings for one or more processing steps. These are often "static" across multiple runs.
+### 2. Processing Configuration
+A **Processing Configuration** defines the specific values and settings for one or more processing steps. These are often "static" across multiple runs.
 - **Examples**: Window sizes, window types, decimation factors, frequency bands.
 - **Format**: YAML or JSON.
 
 ### 3. Run Configuration
-A **Run Configuration** binds a Flow with a Parameter Set and specific **Runtime Arguments** to create an executable processing environment.
+A **Run Configuration** binds a Flow with a Processing Configuration and specific **Runtime Arguments** to create an executable processing environment.
 
 ### 4. Runtime Arguments
 These are parameters that change with almost every run and define the *scope* of the processing.
-- **Examples**: Primary site, Remote reference site, Time range (Start/End), input data sampling frequency.
+- **Examples**: Primary station, Remote reference station, Time range (Start/End), input data sampling frequency.
 
 ---
 
@@ -30,10 +30,10 @@ These are parameters that change with almost every run and define the *scope* of
 | :--- | :--- |
 | **Benefits** | |
 | **Reproducibility** | Each run configuration is a self-contained "recipe". Storing them in the project ensures anyone can recreate the results with 100% fidelity. |
-| **Batch Processing** | High-level configurations allow users to queue multiple "Runs" (e.g., same flow/params on multiple sites) efficiently. |
+| **Batch Processing** | High-level configurations allow users to queue multiple "Runs" (e.g., same flow/configuration on multiple stations) efficiently. |
 | **Traceability** | Results are linked to a specific run configuration, making it clear which parameters produced which transfer function. |
 | **Downsides** | |
-| **Abstraction Overhead** | Introducing Flows, Parameter Sets, and Run Configurations adds learning complexity for new users. |
+| **Abstraction Overhead** | Introducing Flows, Processing Configurations, and Run Configurations adds learning complexity for new users. |
 | **Management** | Over time, projects can accumulate many configuration files, requiring good organizational tools (e.g., the standard folder structure). |
 
 ---
@@ -46,17 +46,17 @@ To handle the distinction between static parameters and runtime arguments, the *
 # Example Run Configuration (configs/runs/siteA_robust.yaml)
 name: Site A Robust Processing
 flow: standard_mt.yaml
-parameters: robust_low_freq.yaml
+configuration: robust_low_freq.yaml
 runtime_args:
-  site: SiteA
-  remote: SiteB
+  station: StationA
+  remote: StationB
   start_time: "2024-01-01 00:00:00"
   end_time: "2024-01-01 12:00:00"
 ```
 
 ### Execution Logic:
-1. **Selection**: User selects a Flow and a Parameter Set in the App.
-2. **Dynamic Inputs**: The App inspects the Flow and asks for the required Runtime Arguments (Sites, Timeframes).
+1. **Selection**: User selects a Flow and a Processing Configuration in the App.
+2. **Dynamic Inputs**: The App inspects the Flow and asks for the required Runtime Arguments (Stations, Timeframes).
 3. **Binding**: These are combined into a temporary or saved **Run Configuration**.
 4. **Archival**: When the process runs, this configuration is written into the `results/[run_label]/` folder as `run_info.json`.
 
@@ -64,7 +64,7 @@ runtime_args:
 
 ## Batch Processing and Multi-site Runs
 
-To handle multiple sites efficiently, the system supports **Batch Runs**. This can be achieved in two ways:
+To handle multiple stations efficiently, the system supports **Batch Runs**. This can be achieved in two ways:
 
 ### 1. List-based Runtime Arguments
 A single Run Configuration can specify a list of values for a runtime argument.
@@ -72,9 +72,9 @@ A single Run Configuration can specify a list of values for a runtime argument.
 # configs/runs/multi_site_mt.yaml
 name: Robust Multi-site
 flow: standard_mt.yaml
-parameters: default.yaml
+configuration: default.yaml
 runtime_args:
-  site: ["Site01", "Site02", "Site03"]
+  station: ["Station01", "Station02", "Station03"]
   remote: "Remote01"
 ```
 The **Execution Engine** will automatically expand this into N individual runs.
@@ -87,13 +87,13 @@ name: Full Campaign
 flow: standard_mt.yaml
 parameters: robust.yaml
 batch:
-  - { site: SiteA, remote: SiteB, start_time: "..." }
-  - { site: SiteC, remote: SiteD, start_time: "..." }
+  - { station: StationA, remote: StationB, start_time: "..." }
+  - { station: StationC, remote: StationD, start_time: "..." }
 ```
 
 ### Result Organization:
 Results for batch runs will be grouped by the run label to keep the `results/` folder clean:
-`results/[run_label]/[site_name]/...`
+`results/[run_label]/[station_name]/...`
 
 ---
 
@@ -130,8 +130,8 @@ project/
 
 ### resistics library
 - **`Flow` class**: A new class to handle the DAG logic, likely utilizing `networkx` (as seen in `resistics-app`).
-- **`ParameterSet` class**: A wrapper around the existing `Configuration` or a new Pydantic model that holds step-specific settings.
-- **`RunConfiguration` class**: A model that links a Flow and a ParameterSet with Runtime Arguments.
+- **`ProcessingConfiguration` class**: A wrapper around the existing `Configuration` or a new Pydantic model that holds step-specific settings.
+- **`RunConfiguration` class**: A model that links a Flow and a ProcessingConfiguration with Runtime Arguments.
 - **`ExecutionEngine`**: A class to take a `RunConfiguration` and execute it on a `Project`.
 
 ---
@@ -143,12 +143,12 @@ To make resistics-app "commercial grade" and user-friendly, the GUI should empha
 ### 1. The Run Config Wizard
 Instead of a single complex page, the App will use a guided workflow:
 - **Card-based Flow Selection**: Users pick from a library of visual "Recipes" (Standard MT, Quick Check, QC only).
-- **Properties Pane for Parameters**: Selecting a "Recipe" opens a sidebar with categorized settings (Windowing, Solver, FFT). Changes here create a local `ParameterSet`.
+- **Properties Pane for Parameters**: Selecting a "Recipe" opens a sidebar with categorized settings (Windowing, Solver, FFT). Changes here create a local `ProcessingConfiguration`.
 - **Intelligent Site Selection**: Integrating the `Project Navigator` allows users to drag-and-drop sites/stations directly into the `Runtime Arguments` slot.
 
 ### 2. Batch Execution Interface
 When multiple stations are selected in the Project Tree, the "Run" button morphs into "Batch Run".
-- **Validation**: The App automatically checks if all selected sites have the required sampling frequency for the chosen Parameter Set.
+- **Validation**: The App automatically checks if all selected stations have the required sampling frequency for the chosen Processing Configuration.
 - **Queueing**: A background task manager (using Python's `multiprocessing` or `concurrent.futures`) processes the batch, updating a progress bar for each site.
 
 ---
@@ -169,7 +169,7 @@ Users can compare the impact of different algorithms (e.g., Comparing OLS with a
 ### 3. Iterative Refinement
 1. **Quick Run**: Run a standard flow with default parameters.
 2. **Inspect**: Use the `Spectra Viewer` to identify noise.
-3. **Adjust**: Create a new `ParameterSet` (e.g., add a Notch Filter).
+3. **Adjust**: Create a new `ProcessingConfiguration` (e.g., add a Notch Filter).
 4. **Re-run**: Execute the *same* Run Configuration with the updated parameters. The system automatically creates a new labeled folder in `results/`, allowing side-by-side comparison of the improvement.
 
 ---

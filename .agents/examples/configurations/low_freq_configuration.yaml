@@ -1,5 +1,5 @@
 name: Default Low Frequency
-description: Parameters optimized for low frequency recordings
+description: Configuration optimized for low-frequency recordings
 read:
   apply_scalings: true
 calibrate:
