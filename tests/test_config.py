@@ -1,5 +1,5 @@
 from resistics.config import Configuration
-from resistics.time import ShiftTimestamps, TimeReaderAscii, TimeReaderNumpy
+from resistics.time import ShiftTimestamps
 from resistics.time import InterpolateNans, RemoveMean, Add, Multiply, LowPass, HighPass
 from resistics.time import BandPass, Notch, Resample, Decimate
 from resistics.decimate import DecimationSetup, Decimator
@@ -15,7 +15,6 @@ def test_config_json():
     """Test converting configuration to JSON and then loading back in"""
     import json
 
-    time_readers = [TimeReaderNumpy(), TimeReaderAscii()]
     time_processors = [
         InterpolateNans(),
         RemoveMean(),
@@ -47,7 +46,6 @@ def test_config_json():
 
     config = Configuration(
         name="testing",
-        time_readers=time_readers,
         time_processors=time_processors,
         dec_setup=dec_setup,
         decimator=decimator,
@@ -67,7 +65,7 @@ def test_config_json():
     json_loaded = json.loads(json_data)
     config_test = Configuration(**json_loaded)
     assert config_test.name == "testing"
-    assert config_test.time_readers == time_readers
+    assert config_test.time_readers == []
     assert config_test.time_processors == time_processors
     assert config_test.dec_setup == dec_setup
     assert config_test.decimator == decimator

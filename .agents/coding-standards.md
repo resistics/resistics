@@ -49,7 +49,7 @@ Pydantic objects that can be used by any caller.
 - Public APIs should work from standalone Python without `resistics-app`.
 - App-facing APIs should return serializable Pydantic models or simple Python
   values.
-- Normal user mistakes in flows/configurations/runs should return validation
+- Normal user mistakes in flows/parameters/jobs should return validation
   results, not raw tracebacks.
 - Unexpected internal failures can raise exceptions, but execution wrappers
   should convert them into structured failure events for app use.
@@ -63,7 +63,7 @@ Pydantic objects that can be used by any caller.
 - Pass runtime data to `run(...)` or execution contexts.
 - Avoid hidden global state except explicit registries.
 - Make filesystem writes explicit and localized to writer/executor classes.
-- Write run metadata with outputs so results are reproducible.
+- Write job metadata with outputs so results are reproducible.
 
 ## MTH5
 

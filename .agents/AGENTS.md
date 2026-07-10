@@ -13,7 +13,7 @@ rules, coding standards, naming, and active migration plans.
 - Core resistics also provides app-safe backend contracts for `resistics-app`,
   but must not depend on `resistics-app`, GUI frameworks, web frameworks, IPC,
   or app-specific state.
-- Flow, processing configuration, and processing run are separate concepts.
+- Flow, parameter set, and processing job are separate concepts.
 - Numerical complex-domain regression belongs in `regressioninc`; resistics owns
   MT-specific preparation, adapters, and solution metadata.
 
@@ -23,15 +23,15 @@ rules, coding standards, naming, and active migration plans.
   rules.
 - `coding-standards.md`: formatting, Pydantic v2, public API, processing, MTH5,
   regression, and git hygiene standards.
-- `naming.md`: canonical names for MTH5, flow/configuration/run, time windows,
+- `naming.md`: canonical names for MTH5, flow/parameters/job, time windows,
   channels, regression, and filesystem values.
 - `plans/modernization.md`: current modernization plan for Pydantic v2,
-  MTH5-only input, flows/configurations/runs, and regression boundaries.
+  MTH5-only input, flows/parameters/jobs, and regression boundaries.
 - `plans/project-structure-and-flows.md`: design notes for project structure,
-  processing flows, configurations, runs, batching, and execution.
+  processing flows, parameters, jobs, batching, and execution.
 
 ## Examples
 
 Files under `examples/` are conceptual agent references for the target
-flow/configuration/run model. They are not guaranteed to be executable against
+flow/parameters/job model. They are not guaranteed to be executable against
 the current code until the relevant migration phase is complete.

@@ -1,6 +1,6 @@
-name: Station A Robust Run
+name: Station A Robust Job
 flow: ../flows/standard_mt_flow.yaml
-configuration: ../configurations/low_freq_configuration.yaml
+parameters: ../parameters/low_freq_parameters.yaml
 runtime_args:
   station: StationA
   remote: StationB

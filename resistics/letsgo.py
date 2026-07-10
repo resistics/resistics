@@ -5,16 +5,15 @@ This module is the main interface to resistics and includes:
 - Functions for processing data
 """
 from loguru import logger
-from typing import Optional, Dict, Union, Any
+from typing import Optional, Dict, Union, List
 from pathlib import Path
-from datetime import datetime
 import pandas as pd
 
-from resistics.errors import MetadataReadError, TimeDataReadError
-from resistics.common import ResisticsProcess, ResisticsModel
+from resistics.common import ResisticsModel
 from resistics.config import Configuration, get_default_configuration
-from resistics.project import PROJ_FILE, PROJ_DIRS, ProjectMetadata, Project
-from resistics.project import Site, Measurement
+from resistics.project import Project
+from resistics.project import init as init_project
+from resistics.project import load as load_project
 from resistics.sampling import DateTimeLike, HighResDateTime
 from resistics.time import TimeData
 from resistics.decimate import DecimationParameters
@@ -25,199 +24,41 @@ from resistics.gather import GatheredData
 from resistics.regression import RegressionInputData, Solution
 
 
-class ProjectCreator(ResisticsProcess):
-    """Process to create a project"""
-
-    dir_path: Path
-    metadata: ProjectMetadata
-
-    def run(self):
-        """
-        Create the project
-
-        Raises
-        ------
-        ProjectCreateError
-            If an existing project found
-        """
-        from resistics.errors import ProjectCreateError
-        from resistics.common import is_dir, assert_dir
-
-        metadata_path = self.dir_path / PROJ_FILE
-        if self.dir_path.exists() and is_dir(self.dir_path) and metadata_path.exists():
-            raise ProjectCreateError(
-                self.dir_path, "Existing project found, try loading"
-            )
-        elif self.dir_path.exists():
-            logger.warning("Directory already exists, the project will be saved here")
-            assert_dir(self.dir_path)
-        else:
-            logger.info("Making directory for project")
-            self.dir_path.mkdir(parents=True)
-        self._make_subdirs()
-        self.metadata.write(metadata_path)
-        logger.info(f"Project created in {self.dir_path}")
-
-    def _make_subdirs(self):
-        """Make project subdirectories"""
-        for data_type, subdir in PROJ_DIRS.items():
-            subdir_path = self.dir_path / subdir
-            if not subdir_path.exists():
-                logger.info(f"Making {data_type} data subdirectory: {subdir_path}")
-                subdir_path.mkdir()
-
-
-def new(dir_path: Union[Path, str], proj_info: Dict[str, Any]) -> bool:
+def new(
+    project_path: Union[Path, str],
+    mth5_path: Union[Path, str],
+    ref_time: DateTimeLike,
+    overwrite: bool = False,
+    plugin_paths: Optional[List[Union[Path, str]]] = None,
+) -> bool:
     """
-    Create a new project
+    Create a new MTH5-backed project.
 
     Parameters
     ----------
-    dir_path : Union[Path, str]
-        The directory to create the project in
-    proj_info : Dict[str, Any]
-        Any project details
+    project_path : Union[Path, str]
+        Directory to create the project in.
+    mth5_path : Union[Path, str]
+        Path to an existing MTH5 file.
+    ref_time : DateTimeLike
+        Project reference time.
+    overwrite : bool
+        Overwrite an existing project metadata file if present.
+    plugin_paths : Optional[List[Union[Path, str]]]
+        Optional project plugin paths.
 
     Returns
     -------
     bool
-        True if the creator was successful
+        True if the project was created.
     """
-    if isinstance(dir_path, str):
-        dir_path = Path(dir_path)
-    metadata = ProjectMetadata(**proj_info)
-    ProjectCreator(dir_path=dir_path, metadata=metadata).run()
-    return True
-
-
-class ProjectLoader(ResisticsProcess):
-    """Project loader"""
-
-    dir_path: Path
-
-    def run(self, config: Configuration) -> Project:
-        """
-        Load a project
-
-        Parameters
-        ----------
-        config : Configuration
-            The configuration for the purposes of getting the time readers
-
-        Returns
-        -------
-        Project
-            Project instance
-
-        Raises
-        ------
-        ProjectLoadError
-            If the resistcs project metadata is not found
-        """
-        from resistics.errors import ProjectLoadError
-        from resistics.common import assert_dir, dir_subdirs
-
-        assert_dir(self.dir_path)
-        metadata_path = self.dir_path / PROJ_FILE
-        if not metadata_path.exists():
-            raise ProjectLoadError(
-                self.dir_path, f"Resistics project file {metadata_path} not found"
-            )
-        self._check_subdirs()
-
-        metadata = ProjectMetadata.model_validate_json(metadata_path.read_bytes())
-        time_subdirs = dir_subdirs(self.dir_path / PROJ_DIRS["time"])
-        sites = {}
-        for site_dir in time_subdirs:
-            site = self._load_site(site_dir, config)
-            sites[site_dir.name] = site
-        if len(sites) > 0:
-            begin_time = min([x.begin_time for x in sites.values()])
-            end_time = max([x.end_time for x in sites.values()])
-        else:
-            begin_time = datetime.now()
-            end_time = datetime.now()
-        return Project(
-            dir_path=self.dir_path,
-            metadata=metadata,
-            begin_time=begin_time,
-            end_time=end_time,
-            sites=sites,
-        )
-
-    def _check_subdirs(self) -> bool:
-        """Returns True if all require project subdirectories exist otherwise False"""
-        from resistics.common import assert_dir
-
-        for subdir in PROJ_DIRS.values():
-            subdir_path = self.dir_path / subdir
-            assert_dir(subdir_path)
-            return False
-        return True
-
-    def _load_site(self, site_dir: Path, config: Configuration) -> Site:
-        """Load a Site"""
-        from resistics.common import dir_subdirs
-
-        subdirs = dir_subdirs(site_dir)
-        measurements = {}
-        for meas_dir in subdirs:
-            meas = self._load_measurement(site_dir.name, meas_dir, config)
-            if meas is not None:
-                measurements[meas_dir.name] = meas
-        if len(measurements) > 0:
-            begin_time = min([x.metadata.first_time for x in measurements.values()])
-            end_time = max([x.metadata.last_time for x in measurements.values()])
-        else:
-            begin_time = datetime.now()
-            end_time = datetime.now()
-        return Site(
-            dir_path=site_dir,
-            begin_time=begin_time,
-            end_time=end_time,
-            measurements=measurements,
-        )
-
-    def _load_measurement(
-        self, site_name: str, meas_dir: Path, config: Configuration
-    ) -> Union[Measurement, None]:
-        """
-        Load a measurement
-
-        The loader tries to use any TimeReader provided in the configuration to
-        load the measurement. If no compatible reader is found, the measurement
-        will be ignored.
-
-        Parameters
-        ----------
-        site_name : str
-            The name of the Site
-        meas_dir : Path
-            The measurement subdirectory in the site time directory
-        config : Configuration
-            Configuration which is used for the time readers
-
-        Returns
-        -------
-        Union[Measurement, None]
-            Measurement if reading was successful, else None
-        """
-        for reader in config.time_readers:
-            try:
-                metadata = reader.run(dir_path=meas_dir, metadata_only=True)
-                logger.info(f"Read measurement {meas_dir} with {reader.name}")
-                return Measurement(
-                    site_name=site_name,
-                    dir_path=meas_dir,
-                    metadata=metadata,
-                    reader=reader,
-                )
-            except Exception:
-                logger.debug(
-                    f"Failed to read measurement {meas_dir} with {reader.name}"
-                )
-        logger.error(f"No reader found for measurement {meas_dir}")
-        return None
+    return init_project(
+        project_path=project_path,
+        mth5_path=mth5_path,
+        ref_time=ref_time,
+        overwrite=overwrite,
+        plugin_paths=plugin_paths,
+    )
 
 
 class ResisticsEnvironment(ResisticsModel):
@@ -232,14 +73,14 @@ class ResisticsEnvironment(ResisticsModel):
 
 
 def load(
-    dir_path: Union[Path, str], config: Optional[Configuration] = None
+    project_path: Union[Path, str], config: Optional[Configuration] = None
 ) -> ResisticsEnvironment:
     """
     Load an existing project into a ResisticsEnvironment
 
     Parameters
     ----------
-    dir_path : Union[Path, str]
+    project_path : Union[Path, str]
         The project directory
     config : Optional[Configuration], optional
         A configuration of parameters to use
@@ -256,9 +97,7 @@ def load(
     """
     if config is None:
         config = get_default_configuration()
-    if isinstance(dir_path, str):
-        dir_path = Path(dir_path)
-    proj = ProjectLoader(dir_path=dir_path).run(config)
+    proj = load_project(project_path)
     return ResisticsEnvironment(proj=proj, config=config)
 
 
@@ -276,7 +115,7 @@ def reload(resenv: ResisticsEnvironment) -> ResisticsEnvironment:
     ResisticsEnvironment
         The resistics environment with the project reloaded
     """
-    return load(dir_path=resenv.proj.dir_path, config=resenv.config)
+    return load(project_path=resenv.proj.project_path, config=resenv.config)
 
 
 def run_time_processors(config: Configuration, time_data: TimeData) -> TimeData:
@@ -488,21 +327,40 @@ def run_solver(config: Configuration, reg_data: RegressionInputData) -> Solution
     return config.solver.run(reg_data)
 
 
+def _get_project(project: Union[ResisticsEnvironment, Project, Path, str]) -> Project:
+    """Resolve a project-like object to a loaded MTH5 project."""
+    if isinstance(project, ResisticsEnvironment):
+        return project.proj
+    if isinstance(project, Project):
+        return project
+    return load_project(project)
+
+
 def quick_read(
-    dir_path: Path,
+    project: Union[ResisticsEnvironment, Project, Path, str],
+    survey: str,
+    station: str,
+    run: str,
     config: Optional[Configuration] = None,
+    chans: Optional[List[str]] = None,
     from_time: Optional[DateTimeLike] = None,
     to_time: Optional[DateTimeLike] = None,
-    from_sample: Optional[None] = None,
-    to_sample: Optional[None] = None,
+    from_sample: Optional[int] = None,
+    to_sample: Optional[int] = None,
 ) -> TimeData:
     """
-    Read time data folder
+    Read an MTH5 run.
 
     Parameters
     ----------
-    dir_path : Path
-        The directory path to read
+    project : Union[ResisticsEnvironment, Project, Path, str]
+        Loaded project, resistics environment, or project path.
+    survey : str
+        MTH5 survey name.
+    station : str
+        MTH5 station name.
+    run : str
+        MTH5 run name.
     config : Optional[Configuration], optional
         Configuration with appropriate readers, by default None.
     from_time : Union[DateTimeLike, None], optional
@@ -524,35 +382,27 @@ def quick_read(
     TimeDataReadError
         If unable to read data
     """
-    logger.info(f"Reading data in {dir_path}")
-    if config is None:
-        config = get_default_configuration()
-
-    for reader in config.time_readers:
-        logger.info(f"Attempting to read data with reader {reader.name}")
-        try:
-            return reader.run(
-                dir_path,
-                from_time=from_time,
-                to_time=to_time,
-                from_sample=from_sample,
-                to_sample=to_sample,
-            )
-        except MetadataReadError:
-            logger.debug(f"Unable to read metadata with reader {reader.name}")
-        except TimeDataReadError:
-            logger.debug(f"Failed reading time data with reader {reader.name}")
-        except Exception:
-            logger.debug("Unknown problem reading time data")
-    reader_names = [reader.name for reader in config.time_readers]
-    raise TimeDataReadError(
-        dir_path, f"Unable to read time data with readers {reader_names}"
+    logger.info(f"Reading MTH5 run {survey}/{station}/{run}")
+    proj = _get_project(project)
+    return proj.read_run(
+        survey=survey,
+        station=station,
+        run=run,
+        chans=chans,
+        from_time=from_time,
+        to_time=to_time,
+        from_sample=from_sample,
+        to_sample=to_sample,
     )
 
 
 def quick_view(
-    dir_path: Path,
+    project: Union[ResisticsEnvironment, Project, Path, str],
+    survey: str,
+    station: str,
+    run: str,
     config: Optional[Configuration] = None,
+    chans: Optional[List[str]] = None,
     decimate: bool = False,
     max_pts: int = 10_000,
 ):
@@ -580,11 +430,11 @@ def quick_view(
     ValueError
         If time data fails reading
     """
-    logger.info(f"Plotting time data in {dir_path}")
+    logger.info(f"Plotting MTH5 run {survey}/{station}/{run}")
     if config is None:
         config = get_default_configuration()
 
-    time_data = quick_read(dir_path, config)
+    time_data = quick_read(project, survey, station, run, config, chans=chans)
     time_data = run_time_processors(config, time_data)
     if not decimate:
         return time_data.plot(max_pts=max_pts)
@@ -594,8 +444,12 @@ def quick_view(
 
 
 def quick_spectra(
-    dir_path: Path,
+    project: Union[ResisticsEnvironment, Project, Path, str],
+    survey: str,
+    station: str,
+    run: str,
     config: Optional[Configuration] = None,
+    chans: Optional[List[str]] = None,
 ) -> SpectraData:
     """
     Quick plotting of time data
@@ -617,11 +471,11 @@ def quick_spectra(
     ValueError
         If time data fails reading
     """
-    logger.info(f"Getting spectra for time data in {dir_path}")
+    logger.info(f"Getting spectra for MTH5 run {survey}/{station}/{run}")
     if config is None:
         config = get_default_configuration()
 
-    time_data = quick_read(dir_path, config)
+    time_data = quick_read(project, survey, station, run, config, chans=chans)
     ref_time = time_data.metadata.first_time
     time_data = run_time_processors(config, time_data)
     dec_params = config.dec_setup.run(time_data.metadata.fs)
@@ -631,8 +485,12 @@ def quick_spectra(
 
 
 def quick_tf(
-    dir_path: Path,
+    project: Union[ResisticsEnvironment, Project, Path, str],
+    survey: str,
+    station: str,
+    run: str,
     config: Optional[Configuration] = None,
+    chans: Optional[List[str]] = None,
     calibration_path: Optional[Path] = None,
 ) -> Solution:
     """
@@ -654,11 +512,11 @@ def quick_tf(
     """
     from resistics.gather import QuickGather
 
-    logger.info(f"Processing data in {dir_path}")
+    logger.info(f"Processing MTH5 run {survey}/{station}/{run}")
     if config is None:
         config = get_default_configuration()
 
-    time_data = quick_read(dir_path, config)
+    time_data = quick_read(project, survey, station, run, config, chans=chans)
     ref_time = time_data.metadata.first_time
     time_data = run_time_processors(config, time_data)
     dec_params = config.dec_setup.run(time_data.metadata.fs)
@@ -669,14 +527,20 @@ def quick_tf(
     eval_data = run_evals(config, dec_params, spec_data)
     if calibration_path is not None:
         eval_data = run_sensor_calibration(config, calibration_path, eval_data)
-    gathered_data = QuickGather().run(dir_path, dec_params, config.tf, eval_data)
+    gathered_data = QuickGather().run(
+        Path(survey) / station / run, dec_params, config.tf, eval_data
+    )
     reg_data = run_regression_preparer(config, gathered_data)
     return run_solver(config, reg_data)
 
 
 def profile_windowing(
-    dir_path: Path,
+    project: Union[ResisticsEnvironment, Project, Path, str],
+    survey: str,
+    station: str,
+    run: str,
     config: Optional[Configuration] = None,
+    chans: Optional[List[str]] = None,
     ref_time: Optional[DateTimeLike] = None,
 ) -> Dict[int, pd.DataFrame]:
     """
@@ -706,11 +570,11 @@ def profile_windowing(
     """
     from resistics.sampling import to_datetime
 
-    logger.info(f"Profiling windowing for {dir_path}")
+    logger.info(f"Profiling windowing for MTH5 run {survey}/{station}/{run}")
     if config is None:
         config = get_default_configuration()
 
-    time_data = quick_read(dir_path, config)
+    time_data = quick_read(project, survey, station, run, config, chans=chans)
     if ref_time is None:
         ref_time = time_data.metadata.first_time
     else:
@@ -770,38 +634,19 @@ def process_time(
         Time to output data to, by default None. If None, the last time of the
         input data is used.
     """
-    from resistics.time import TimeWriterNumpy
-    from resistics.project import get_meas_time_path
-
-    logger.info(f"Running time processors on meas {meas_name} from site {site_name}")
-    meas = resenv.proj[site_name][meas_name]
-    time_data = meas.reader.run(
-        meas.dir_path,
-        metadata=meas.metadata,
-        from_time=input_from_time,
-        to_time=input_to_time,
+    raise NotImplementedError(
+        "process_time writes directory-based NumPy measurements and is no longer "
+        "a public workflow. Public input is MTH5-only; use quick_read or "
+        "process_run_to_evals with survey, station, and run selections."
     )
-    time_data = run_time_processors(resenv.config, time_data)
-    # restrict output time if required
-    if output_from_time is not None or output_to_time is not None:
-        output_from_time = (
-            output_from_time
-            if output_from_time is not None
-            else time_data.metadata.first_time.isoformat()
-        )
-        output_to_time = (
-            output_to_time
-            if output_to_time is not None
-            else time_data.metadata.last_time.isoformat()
-        )
-        time_data = time_data.subsection(output_from_time, output_to_time)
-    out_path = get_meas_time_path(resenv.proj.dir_path, out_site, out_meas)
-    writer = TimeWriterNumpy()
-    writer.run(out_path, time_data)
 
 
-def process_time_to_evals(
-    resenv: ResisticsEnvironment, site_name: str, meas_name: str
+def process_run_to_evals(
+    resenv: ResisticsEnvironment,
+    survey: str,
+    station: str,
+    run: str,
+    chans: Optional[List[str]] = None,
 ) -> None:
     """
     Process from time data to Fourier spectra
@@ -815,37 +660,42 @@ def process_time_to_evals(
     meas_name : str
         The name of the measurement to process
     """
-    from resistics.project import get_calibration_path, get_meas_evals_path
+    from resistics.project import get_run_data_path
     from resistics.spectra import SpectraDataWriter
 
     proj = resenv.proj
     config = resenv.config
-    calibration_path = get_calibration_path(proj.dir_path)
+    calibration_path = proj.project_path / "calibrate"
 
-    logger.info(f"Processing measurement {site_name}, {meas_name}")
-    meas = proj[site_name][meas_name]
-    time_data = meas.reader.run(meas.dir_path, metadata=meas.metadata)
+    logger.info(f"Processing MTH5 run {survey}/{station}/{run}")
+    time_data = proj.read_run(survey=survey, station=station, run=run, chans=chans)
     time_data = run_time_processors(config, time_data)
     dec_params = config.dec_setup.run(time_data.metadata.fs)
     dec_data = run_decimation(config, time_data, dec_params=dec_params)
-    win_data = run_windowing(config, proj.metadata.ref_time, dec_data)
+    win_data = run_windowing(config, proj.ref_time, dec_data)
     spec_data = run_fft(config, win_data)
     spec_data = run_spectra_processors(config, spec_data)
     eval_data = run_evals(config, dec_params, spec_data)
     eval_data = run_sensor_calibration(config, calibration_path, eval_data)
-    evals_path = get_meas_evals_path(
-        proj.dir_path, meas.site_name, meas.name, config.name
-    )
+    evals_path = get_run_data_path(proj.project_path, survey, station, run) / config.name
     logger.info(f"Saving evaluation frequency data to {evals_path}")
     SpectraDataWriter().run(evals_path, eval_data)
+
+
+def process_time_to_evals(*args, **kwargs) -> None:
+    """Deprecated alias kept to fail with an actionable MTH5-only message."""
+    raise NotImplementedError(
+        "process_time_to_evals used legacy site/measurement inputs. Use "
+        "process_run_to_evals(resenv, survey, station, run) instead."
+    )
 
 
 def process_evals_to_tf(
     resenv: ResisticsEnvironment,
     fs: float,
-    out_site: str,
-    in_site: Optional[str] = None,
-    cross_site: Optional[str] = None,
+    station_path: str,
+    in_station_path: Optional[str] = None,
+    remote_station_path: Optional[str] = None,
     masks: Optional[Dict[str, str]] = None,
     postfix: Optional[str] = None,
 ) -> Solution:
@@ -876,46 +726,19 @@ def process_evals_to_tf(
     Solution
         Transfer function estimate
     """
-    from resistics.gather import Selector, ProjectGather
     from resistics.project import get_results_path, get_solution_name
 
-    proj = resenv.proj
-    config = resenv.config
-
-    sites = [out_site]
-    if in_site is not None:
-        sites.append(in_site)
-    if cross_site is not None:
-        sites.append(cross_site)
-
-    dec_params = config.dec_setup.run(fs)
-    selection = Selector().run(config.name, proj, sites, dec_params)
-    gathered_data = ProjectGather().run(
-        config.name,
-        proj,
-        selection,
-        config.tf,
-        out_name=out_site,
-        in_name=in_site,
-        cross_name=cross_site,
+    raise NotImplementedError(
+        "process_evals_to_tf still depends on legacy site/measurement gather "
+        "objects. The MTH5-only project API is in place; gathering needs the "
+        "next migration step to read derived run artifacts by station_path."
     )
-    # return gathered_data
-    reg_data = run_regression_preparer(config, gathered_data)
-    solution = run_solver(config, reg_data)
-    solution_path = get_results_path(proj.dir_path, out_site, config.name)
-    if not solution_path.exists():
-        solution_path.mkdir(parents=True)
-    solution_name = get_solution_name(
-        fs, solution.tf.name, solution.tf.variation, postfix
-    )
-    solution.write(solution_path / solution_name)
-    return solution
 
 
 def get_solution(
     resenv: ResisticsEnvironment,
-    site_name: str,
-    config_name: str,
+    station_path: str,
+    output_label: str,
     fs: float,
     tf_name: str,
     tf_var: str,
@@ -930,8 +753,8 @@ def get_solution(
         The resistics environment
     site_name : str
         The site for which to get the solution
-    config_name : str
-        The configuration that was used
+    output_label : str
+        The output label used by the processing job
     fs : float
         The sampling frequency
     tf_name : str
@@ -949,6 +772,7 @@ def get_solution(
     from resistics.project import get_results_path, get_solution_name
 
     proj = resenv.proj
-    solution_path = get_results_path(proj.dir_path, site_name, config_name)
+    survey, station = station_path.split("/", 1)
+    solution_path = get_results_path(proj.project_path, survey, station, output_label)
     solution_name = get_solution_name(fs, tf_name, tf_var, postfix)
     return Solution.model_validate_json((solution_path / solution_name).read_bytes())

@@ -29,12 +29,12 @@
 ## Flow and Execution Rules
 
 - A flow defines process order and connectivity.
-- A processing configuration defines parameter values.
-- A processing run binds a flow, configuration, runtime inputs, and output
+- A parameter set defines parameter values.
+- A processing job binds a flow, parameter set, runtime inputs, and output
   label.
-- Runtime inputs include MTH5 selection and run-specific scope, not static
+- Runtime inputs include MTH5 selection and job-specific scope, not static
   process parameters.
-- Execution must archive resolved run metadata with results.
+- Execution must archive resolved job metadata with results.
 - Execution should emit structured progress events.
 - Validation errors intended for users should be structured, not buried in raw
   tracebacks.
@@ -46,7 +46,7 @@
 - Project summary APIs should be cheap and avoid loading full time-series data.
 - Long-running execution should support progress, warnings, failures, and a
   future cancellation path.
-- The app should be able to validate flows/configurations/runs before execution.
+- The app should be able to validate flows/parameters/jobs before execution.
 
 ## Regression Rules
 

@@ -36,7 +36,7 @@ Avoid these public names in new code:
 Legacy names may remain temporarily in old code while migrating, but new public
 APIs should use the MTH5 terminology.
 
-## Flow, Configuration, and Run Names
+## Flow, Parameters, and Job Names
 
 Use:
 
@@ -47,11 +47,9 @@ Use:
 - `node_id`: Stable id of a node inside a flow.
 - `step_type`: Registered processing step type.
 - `type_id`: Registry id for a step definition.
-- `configuration`: A loaded processing configuration.
-- `configuration_path`: Path to a configuration YAML file.
-- `processing_run`: A loaded run definition.
-- `run_config`: Acceptable only as a local shorthand where it does not conflict
-  with MTH5 `run`.
+- `parameter_set`: A loaded set of processing parameters.
+- `parameters_path`: Path to a parameters YAML file.
+- `processing_job`: A loaded job definition.
 - `runtime`: Runtime input dictionary or model.
 - `output_label`: User-visible output label for result grouping.
 
@@ -60,7 +58,7 @@ Avoid:
 - `params` in public model fields; use `parameters` or `configuration`.
 - `config` for new persisted processing models when it can be confused with
   Python or package config. Use `configuration`.
-- `run` alone for processing runs in MTH5-facing code. Use `processing_run`.
+- `run` for processing jobs. Use `processing_job` or `job`.
 
 ## Time and Windowing Names
 
@@ -144,8 +142,9 @@ For app-facing schemas, prefer explicit names:
 
 - `project_path`
 - `flow_path`
-- `configuration_path`
-- `run_path`
+- `parameters_path`
+- `job_path`
+- `run_path` for an MTH5 recording
 - `result_path`
 
 ## Boolean Names

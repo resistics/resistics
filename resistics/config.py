@@ -11,9 +11,10 @@ work with data.
 Configurations can be saved to and loaded from JSON files.
 """
 from typing import List
+from pydantic import Field
 
 from resistics.common import ResisticsModel
-from resistics.time import TimeReader, TimeReaderNumpy, TimeReaderAscii
+from resistics.time import TimeReader
 from resistics.time import TimeProcess, InterpolateNans, RemoveMean
 from resistics.calibrate import Calibrator, SensorCalibrationJSON, SensorCalibrator
 from resistics.decimate import DecimationSetup
@@ -124,9 +125,11 @@ class Configuration(ResisticsModel):
 
     name: str
     """The name of the configuration"""
-    time_readers: List[TimeReader] = [TimeReaderAscii(), TimeReaderNumpy()]
-    """Time readers in the configuration"""
-    time_processors: List[TimeProcess] = [InterpolateNans(), RemoveMean()]
+    time_readers: List[TimeReader] = Field(default_factory=list)
+    """Legacy internal conversion readers; public input is MTH5-only."""
+    time_processors: List[TimeProcess] = Field(
+        default_factory=lambda: [InterpolateNans(), RemoveMean()]
+    )
     """List of time processors to run"""
     dec_setup: DecimationSetup = DecimationSetup()
     """Process to calculate decimation parameters"""
@@ -138,7 +141,7 @@ class Configuration(ResisticsModel):
     """Process to window the decimated data"""
     fourier: FourierTransform = FourierTransform()
     """Process to perform the fourier transform"""
-    spectra_processors: List[SpectraProcess] = []
+    spectra_processors: List[SpectraProcess] = Field(default_factory=list)
     """List of processors to run on spectra data"""
     evals: EvaluationFreqs = EvaluationFreqs()
     """Process to get the spectra data at the evaluation frequencies"""

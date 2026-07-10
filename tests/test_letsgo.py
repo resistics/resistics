@@ -1,12 +1,6 @@
 from pathlib import Path
-import os
-from datetime import datetime
-import pandas as pd
 import pytest
-from pydantic import ValidationError
 
-from resistics.errors import ProjectCreateError
-from resistics.common import WriteableMetadata
 from resistics.time import Add, Multiply
 from resistics.decimate import DecimationSetup
 from resistics.transfunc import TransferFunction, ImpedanceTensor
@@ -15,101 +9,37 @@ from resistics.testing import time_data_ones, solution_mt, solution_random_float
 from resistics.testing import transfer_function_random
 
 
-def mock_mkdir(*args, **kwargs):
-    """Mock the Path mkdir method"""
-    return True
-
-
-def mock_write(*args):
-    """Mock write from WriteableMetadata"""
-    return
-
-
-@pytest.mark.parametrize(
-    "dir_path, proj_info, dir_exists, raises",
-    [
-        (
-            Path("test", "project"),
-            {},
-            False,
-            ValidationError,
-        ),
-        (
-            Path("test", "project"),
-            {"ref_time": "2021-01-01 00:00:00"},
-            False,
-            None,
-        ),
-        (
-            Path("test", "project"),
-            {"ref_time": "2021-01-01 00:00:00"},
-            True,
-            None,
-        ),
-        (
-            os.path.join("test", "project"),
-            {"ref_time": "2021-01-01 00:00:00"},
-            False,
-            None,
-        ),
-        (
-            os.path.join("test", "project"),
-            {"ref_time": pd.Timestamp("2021-01-01 00:00:00")},
-            False,
-            None,
-        ),
-        (
-            os.path.join("test", "project"),
-            {"ref_time": datetime(2021, 1, 1, 0, 0, 0)},
-            False,
-            None,
-        ),
-    ],
-)
-def test_new_project_validation(monkeypatch, dir_path, proj_info, dir_exists, raises):
-    """Test creating a new project"""
+def test_new_mth5_project(tmp_path):
+    """Test creating an MTH5-backed project through letsgo."""
     from resistics.letsgo import new
 
-    def mock_exists(*args, **kwargs):
-        """Mock the Path exists function to return True"""
-        return dir_exists
+    mth5_path = tmp_path / "data.h5"
+    mth5_path.write_text("")
+    project_path = tmp_path / "project"
 
-    def mock_assert_dir(*args):
-        """Accept that the directory is real"""
-        return
-
-    monkeypatch.setattr(Path, "exists", mock_exists)
-    monkeypatch.setattr("resistics.common.assert_dir", mock_assert_dir)
-    monkeypatch.setattr(Path, "mkdir", mock_mkdir)
-    monkeypatch.setattr(WriteableMetadata, "write", mock_write)
-
-    if raises is not None:
-        with pytest.raises(raises):
-            assert new(dir_path, proj_info)
-        return
-    assert new(dir_path, proj_info)
+    assert new(project_path, mth5_path, "2021-01-01 00:00:00")
+    assert (project_path / "resistics.json").exists()
 
 
-def test_new_project_already_exists(monkeypatch):
-    """Test creating a new project when the project already exists"""
+def test_new_mth5_project_already_exists(tmp_path):
+    """Test creating an existing MTH5-backed project fails."""
     from resistics.letsgo import new
 
-    def mock_exists(*args, **kwargs):
-        """Mock the Path exists function to return True"""
-        return True
+    mth5_path = tmp_path / "data.h5"
+    mth5_path.write_text("")
+    project_path = tmp_path / "project"
+    assert new(project_path, mth5_path, "2021-01-01 00:00:00")
 
-    def mock_is_dir(*args):
-        """Get is directory to return True"""
-        return True
+    with pytest.raises(ValueError, match="Project already exists"):
+        new(project_path, mth5_path, "2021-01-01 00:00:00")
 
-    monkeypatch.setattr(Path, "exists", mock_exists)
-    monkeypatch.setattr("resistics.common.is_dir", mock_is_dir)
 
-    dir_path = Path("test", "project")
-    proj_info = {"ref_time": "2021-01-01 00:00:00"}
+def test_quick_read_requires_mth5_selection(tmp_path):
+    """Test legacy path-only quick_read calls fail at the Python signature."""
+    from resistics.letsgo import quick_read
 
-    with pytest.raises(ProjectCreateError):
-        new(dir_path, proj_info)
+    with pytest.raises(TypeError):
+        quick_read(tmp_path)
 
 
 @pytest.mark.parametrize(

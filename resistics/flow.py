@@ -114,7 +114,7 @@ class FlowDefinition(BaseModel):
         return {node.id: node for node in self.nodes}
 
 
-class ProcessingConfiguration(BaseModel):
+class ParameterSet(BaseModel):
     """Parameter values for nodes in a flow."""
 
     name: str
@@ -126,18 +126,14 @@ class ProcessingConfiguration(BaseModel):
         return dict(self.values.get(node_id, {}))
 
 
-class ParameterSet(ProcessingConfiguration):
-    """Backward-compatible name for processing configuration values."""
-
-
-class RunConfiguration(BaseModel):
+class ProcessingJob(BaseModel):
     """A runnable binding of flow, parameters, runtime data, and output name."""
 
     name: str
     flow: FlowDefinition
     parameters: ParameterSet
     runtime: Dict[str, Any] = Field(default_factory=dict)
-    output_label: str = "run"
+    output_label: str = "result"
 
 
 class StepRegistry:
@@ -167,7 +163,7 @@ class StepRegistry:
 
 
 class FlowValidationResult(BaseModel):
-    """Result of validating a run configuration."""
+    """Result of validating a processing job."""
 
     ok: bool
     errors: List[str] = Field(default_factory=list)
@@ -180,11 +176,11 @@ class FlowValidator:
     def __init__(self, registry: StepRegistry):
         self.registry = registry
 
-    def validate(self, run_config: RunConfiguration) -> FlowValidationResult:
-        """Validate a runnable flow configuration."""
+    def validate(self, processing_job: ProcessingJob) -> FlowValidationResult:
+        """Validate a processing job."""
         errors: List[str] = []
         warnings: List[str] = []
-        flow = run_config.flow
+        flow = processing_job.flow
         nodes = flow.node_map()
         if len(nodes) != len(flow.nodes):
             errors.append("Flow contains duplicate node ids")
@@ -208,12 +204,12 @@ class FlowValidator:
                     )
 
             try:
-                step.validate_parameters(run_config.parameters.for_node(node.id))
+                step.validate_parameters(processing_job.parameters.for_node(node.id))
             except ValueError as exc:
                 errors.append(f"Node '{node.id}': {exc}")
 
             for key in step.runtime_requirements:
-                if run_config.runtime.get(key) in (None, ""):
+                if processing_job.runtime.get(key) in (None, ""):
                     errors.append(f"Runtime value '{key}' is required by node '{node.id}'")
 
         try:
@@ -221,7 +217,7 @@ class FlowValidator:
         except ValueError as exc:
             errors.append(str(exc))
 
-        if not run_config.output_label.strip():
+        if not processing_job.output_label.strip():
             errors.append("output_label is required")
 
         return FlowValidationResult(ok=not errors, errors=errors, warnings=warnings)
@@ -268,21 +264,21 @@ class FlowExecutor:
         self.handlers = handlers or {}
         self.progress_callback = progress_callback
 
-    def run(self, run_config: RunConfiguration) -> Dict[str, Any]:
+    def run(self, processing_job: ProcessingJob) -> Dict[str, Any]:
         """Run a flow and return node results keyed by node id."""
-        validation = FlowValidator(self.registry).validate(run_config)
+        validation = FlowValidator(self.registry).validate(processing_job)
         if not validation.ok:
             raise ValueError("; ".join(validation.errors))
 
         results: Dict[str, Any] = {}
-        for node in topological_order(run_config.flow):
+        for node in topological_order(processing_job.flow):
             step = self.registry.get(node.type)
-            params = step.validate_parameters(run_config.parameters.for_node(node.id))
+            params = step.validate_parameters(processing_job.parameters.for_node(node.id))
             inputs = {input_id: results[input_id] for input_id in node.inputs}
             self._emit({"event": "started", "node_id": node.id, "step_type": node.type})
             try:
                 handler = self.handlers.get(node.type, _default_handler)
-                results[node.id] = handler(inputs, params, run_config.runtime)
+                results[node.id] = handler(inputs, params, processing_job.runtime)
             except Exception as exc:
                 self._emit(
                     {
@@ -441,9 +437,9 @@ def builtin_step_registry() -> StepRegistry:
             StepDefinition(
                 type_id="write_results",
                 display_name="Write Results",
-                description="Write run metadata and transfer-function result files.",
+                description="Write job metadata and transfer-function result files.",
                 input_types=["transfer_function"],
-                output_type="run_result",
+                output_type="job_result",
                 runtime_requirements=["project_path"],
                 parameters=[
                     ParameterDefinition(name="overwrite", kind="bool", default=False),

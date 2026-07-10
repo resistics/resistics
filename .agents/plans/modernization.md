@@ -12,8 +12,8 @@ This plan focuses on four connected changes:
 
 - Move all Pydantic models and serialization to Pydantic v2.
 - Make MTH5 the only public input format.
-- Replace monolithic processing configuration with flows, configurations, and
-  runs.
+- Replace monolithic processing configuration with flows, parameter sets, and
+  jobs.
 - Keep numerical complex-domain regression in `regressioninc`, with resistics
   owning MT-specific preparation and result packaging.
 
@@ -21,7 +21,7 @@ This plan focuses on four connected changes:
 
 - The environment is already resolving Pydantic `2.13.4`.
 - `resistics/flow.py` and `tests/test_flow.py` are active untracked work and
-  already prototype flow, parameter, and run concepts.
+  already prototype flow, parameter, and job concepts.
 - `tests/test_flow.py` passes with `UV_CACHE_DIR=/tmp/uv-cache uv run pytest
   tests/test_flow.py -q`, with one Pydantic v1 validator deprecation warning.
 - Full test collection currently fails early because Pydantic v2 treats
@@ -49,8 +49,8 @@ Required standalone capabilities:
 - Open and inspect MTH5-backed projects from Python.
 - List surveys, stations, runs, sample rates, time spans, and concurrent
   recordings.
-- Build, load, validate, and save processing flows, configurations, and runs.
-- Execute runs from scripts and notebooks with progress callbacks.
+- Build, load, validate, and save processing flows, parameter sets, and jobs.
+- Execute jobs from scripts and notebooks with progress callbacks.
 - Write reproducible result metadata and solution files.
 - Plot and inspect intermediate and final products where the existing package
   already supports that.
@@ -62,11 +62,11 @@ The same core APIs should be app-safe.
 Required backend capabilities:
 
 - Pydantic DTOs for project summaries, survey/station/run listings, flow
-  definitions, parameter schemas, run validation, progress events, run status,
+  definitions, parameter schemas, job validation, progress events, job status,
   and result summaries.
 - JSON schema generation for app forms and validation.
 - Deterministic serialization to YAML/JSON for user-authored configs and
-  archived run metadata.
+  archived job metadata.
 - No dependency on GUI frameworks, FastAPI, IPC libraries, or app-specific
   state.
 - Clear cancellation, error, warning, and progress status surfaces for
@@ -143,15 +143,15 @@ Acceptance criteria:
 ```text
 project/
 ├── resistics.json
-├── configs/
+├── processing/
 │   ├── flows/
-│   ├── configurations/
-│   └── runs/
+│   ├── parameters/
+│   └── jobs/
 ├── data/
 │   └── [survey]/[station]/
 │       ├── [run]/
 │       └── results/
-│           └── [processing_run]/
+│           └── [output_label]/
 ├── logs/
 └── plugins/
 ```
@@ -171,7 +171,7 @@ Acceptance criteria:
   without loading full time-series data.
 - Public docs no longer present ASCII/NumPy as supported input workflows.
 
-### Phase 4: Flow, Configuration, and Run Model
+### Phase 4: Flow, Parameters, and Job Model
 
 Use three separate concepts.
 
@@ -182,39 +182,39 @@ Use three separate concepts.
 - Does not contain user parameter values beyond structural defaults needed by
   the flow.
 
-`ProcessingConfiguration`:
+`ParameterSet`:
 
 - Defines parameter values for a flow.
 - Stores values by flow node id.
 - Does not define input sites, stations, runs, or time ranges.
 
-`ProcessingRun`:
+`ProcessingJob`:
 
 - Binds a flow reference, configuration reference, runtime inputs, and output
   label.
 - Runtime inputs include survey, station, run, sampling frequency, time range,
   remote reference, and project path as needed.
-- Batch runs are expanded into individual resolved runs before execution.
+- Batch jobs are expanded into individual resolved jobs before execution.
 
 Implementation steps:
 
 1. Keep the useful pieces of `resistics/flow.py`.
-2. Rename or alias `ParameterSet` to `ProcessingConfiguration`.
-3. Introduce unresolved and resolved run models:
-   - File-authored run references flow/configuration YAML paths.
-   - Resolved run contains the loaded flow/configuration models for execution.
+2. Use `ParameterSet` for reusable node parameter values.
+3. Introduce unresolved and resolved job models:
+   - File-authored job references flow/parameters YAML paths.
+   - Resolved job contains the loaded flow/parameter models for execution.
 4. Make YAML the preferred human-authored format and JSON schema the preferred
    app-form contract.
-5. Ensure execution writes resolved run metadata beside outputs.
+5. Ensure execution writes resolved job metadata beside outputs.
 6. Keep `FlowExecutor` pure Python with callbacks for progress events.
 7. Add app-safe validation results instead of raising exceptions for normal user
    configuration mistakes.
 
 Acceptance criteria:
 
-- Flows, configurations, and runs round trip through YAML.
-- The app can validate a run before execution and show field-level errors.
-- Standalone users can execute the same run from Python.
+- Flows, parameters, and jobs round trip through YAML.
+- The app can validate a job before execution and show field-level errors.
+- Standalone users can execute the same job from Python.
 
 ### Phase 5: Regression Boundary
 
@@ -235,7 +235,7 @@ Acceptance criteria:
 Acceptance criteria:
 
 - Existing synthetic regression tests pass through the adapter.
-- Solver choices are serializable in processing configurations.
+- Solver choices are serializable in parameter sets.
 - Future `regressioninc` layout changes affect only the adapter layer.
 
 ### Phase 6: Docs and Examples
@@ -243,11 +243,11 @@ Acceptance criteria:
 1. Update README and getting-started docs:
    - MTH5 is the public input format.
    - Resistics is both standalone and app-backend-ready.
-   - Flow/configuration/run replaces monolithic processing configuration.
+   - Flow/parameter set/job replaces monolithic processing configuration.
 2. Rewrite examples:
    - Project initialization from MTH5.
    - Listing project contents.
-   - Creating a flow, configuration, and run.
+   - Creating a flow, parameter set, and job.
    - Running standalone processing.
    - Loading results and plotting transfer functions.
 3. Remove or archive old read examples for ASCII, bz2, and NumPy.
@@ -276,8 +276,8 @@ Add focused tests for:
 - Registry and discriminator behavior.
 - MTH5 project initialization, loading, summary tables, and close behavior.
 - MTH5-to-`TimeData` adapter reads.
-- Flow/configuration/run YAML round trips.
-- Run validation and batch expansion.
+- Flow/parameter-set/job YAML round trips.
+- Job validation and batch expansion.
 - Progress events and failure events.
 - Regression adapter behavior.
 - App-facing DTO JSON schema generation.
@@ -289,7 +289,7 @@ Add focused tests for:
 3. Convert remaining v1 Pydantic APIs module by module.
 4. Establish canonical MTH5 project API.
 5. Wire MTH5 read adapter into existing processing internals.
-6. Finalize flow/configuration/run models.
+6. Finalize flow/parameters/job models.
 7. Add app-safe DTOs and progress/status surfaces.
 8. Update docs and examples.
 9. Remove or archive unsupported public reader workflows.

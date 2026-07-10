@@ -6,7 +6,7 @@ from resistics.flow import (
     FlowNode,
     FlowValidator,
     ParameterSet,
-    RunConfiguration,
+    ProcessingJob,
     builtin_step_registry,
     default_parameter_set,
     model_from_yaml,
@@ -16,10 +16,10 @@ from resistics.flow import (
 )
 
 
-def get_run_config(flow=None, params=None):
+def get_processing_job(flow=None, params=None):
     flow = flow or standard_mt_flow()
-    return RunConfiguration(
-        name="test-run",
+    return ProcessingJob(
+        name="test-job",
         flow=flow,
         parameters=params or default_parameter_set(flow),
         runtime={
@@ -34,7 +34,7 @@ def get_run_config(flow=None, params=None):
 
 def test_standard_mt_flow_validates():
     registry = builtin_step_registry()
-    result = FlowValidator(registry).validate(get_run_config())
+    result = FlowValidator(registry).validate(get_processing_job())
     assert result.ok
     assert result.errors == []
 
@@ -64,7 +64,7 @@ def test_unknown_step_is_invalid():
         ],
     )
     result = FlowValidator(builtin_step_registry()).validate(
-        get_run_config(flow=flow, params=ParameterSet(name="test"))
+        get_processing_job(flow=flow, params=ParameterSet(name="test"))
     )
     assert not result.ok
     assert "Unknown step type: not_real" in result.errors
@@ -78,15 +78,15 @@ def test_cycle_is_invalid():
             FlowNode(id="b", type="time_processors", inputs=["a"]),
         ],
     )
-    result = FlowValidator(builtin_step_registry()).validate(get_run_config(flow=flow))
+    result = FlowValidator(builtin_step_registry()).validate(get_processing_job(flow=flow))
     assert not result.ok
     assert "Flow contains a cycle" in result.errors
 
 
 def test_missing_runtime_is_invalid():
-    run_config = get_run_config()
-    run_config.runtime.pop("station")
-    result = FlowValidator(builtin_step_registry()).validate(run_config)
+    processing_job = get_processing_job()
+    processing_job.runtime.pop("station")
+    result = FlowValidator(builtin_step_registry()).validate(processing_job)
     assert not result.ok
     assert "Runtime value 'station' is required by node 'read'" in result.errors
 
@@ -95,7 +95,7 @@ def test_parameter_validation():
     flow = standard_mt_flow()
     params = default_parameter_set(flow)
     params.values["solve_tf"]["solver"] = "not-a-solver"
-    result = FlowValidator(builtin_step_registry()).validate(get_run_config(flow, params))
+    result = FlowValidator(builtin_step_registry()).validate(get_processing_job(flow, params))
     assert not result.ok
     assert "Node 'solve_tf': Parameter 'solver' must be one of" in result.errors[0]
 
@@ -105,7 +105,7 @@ def test_executor_emits_progress_events():
     results = FlowExecutor(
         builtin_step_registry(),
         progress_callback=events.append,
-    ).run(get_run_config())
+    ).run(get_processing_job())
 
     assert list(results) == [node.id for node in topological_order(standard_mt_flow())]
     assert events[0]["event"] == "started"
@@ -114,11 +114,19 @@ def test_executor_emits_progress_events():
     assert events[-1]["node_id"] == "write_results"
 
 
-def test_executor_rejects_invalid_run_config():
+def test_executor_rejects_invalid_processing_job():
     flow = standard_mt_flow()
     params = ParameterSet(name="bad", values={"decimate": {"n_levels": "nope"}})
     with pytest.raises(ValueError, match="Node 'decimate'"):
-        FlowExecutor(builtin_step_registry()).run(get_run_config(flow, params))
+        FlowExecutor(builtin_step_registry()).run(get_processing_job(flow, params))
+
+
+def test_processing_job_serialization_roundtrip():
+    job = get_processing_job()
+    loaded_yaml = model_from_yaml(ProcessingJob, model_to_yaml(job))
+    loaded_json = ProcessingJob.model_validate_json(job.model_dump_json())
+    assert loaded_yaml == job
+    assert loaded_json == job
 
 
 def test_flow_yaml_roundtrip():

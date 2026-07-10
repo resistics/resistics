@@ -10,43 +10,43 @@ A **Flow** defines the sequence and connectivity of processing steps. It specifi
 - **Format**: YAML or JSON.
 - **Logic**: A Directed Acyclic Graph (DAG) of process identifiers.
 
-### 2. Processing Configuration
-A **Processing Configuration** defines the specific values and settings for one or more processing steps. These are often "static" across multiple runs.
+### 2. Parameter Set
+A **Parameter Set** defines the specific values and settings for one or more processing steps. These are often "static" across multiple jobs.
 - **Examples**: Window sizes, window types, decimation factors, frequency bands.
 - **Format**: YAML or JSON.
 
-### 3. Run Configuration
-A **Run Configuration** binds a Flow with a Processing Configuration and specific **Runtime Arguments** to create an executable processing environment.
+### 3. Processing Job
+A **Processing Job** binds a Flow with a Parameter Set and specific **Runtime Arguments** to create an executable processing environment.
 
 ### 4. Runtime Arguments
-These are parameters that change with almost every run and define the *scope* of the processing.
+These are parameters that change with almost every job and define the *scope* of the processing.
 - **Examples**: Primary station, Remote reference station, Time range (Start/End), input data sampling frequency.
 
 ---
 
-## Run Configurations: Benefits and Downsides
+## Processing Jobs: Benefits and Downsides
 
 | Feature | Description |
 | :--- | :--- |
 | **Benefits** | |
-| **Reproducibility** | Each run configuration is a self-contained "recipe". Storing them in the project ensures anyone can recreate the results with 100% fidelity. |
-| **Batch Processing** | High-level configurations allow users to queue multiple "Runs" (e.g., same flow/configuration on multiple stations) efficiently. |
-| **Traceability** | Results are linked to a specific run configuration, making it clear which parameters produced which transfer function. |
+| **Reproducibility** | Each processing job is a self-contained "recipe". Storing jobs in the project ensures anyone can recreate the results with 100% fidelity. |
+| **Batch Processing** | High-level jobs allow users to queue the same flow and parameters on multiple stations efficiently. |
+| **Traceability** | Results are linked to a specific job, making it clear which parameters produced which transfer function. |
 | **Downsides** | |
-| **Abstraction Overhead** | Introducing Flows, Processing Configurations, and Run Configurations adds learning complexity for new users. |
+| **Abstraction Overhead** | Introducing Flows, Parameter Sets, and Processing Jobs adds learning complexity for new users. |
 | **Management** | Over time, projects can accumulate many configuration files, requiring good organizational tools (e.g., the standard folder structure). |
 
 ---
 
 ## Incorporating Runtime Arguments
 
-To handle the distinction between static parameters and runtime arguments, the **Run Configuration** will be the central point of integration:
+To handle the distinction between static parameters and runtime arguments, the **Processing Job** will be the central point of integration:
 
 ```yaml
-# Example Run Configuration (configs/runs/siteA_robust.yaml)
+# Example Processing Job (processing/jobs/siteA_robust.yaml)
 name: Site A Robust Processing
 flow: standard_mt.yaml
-configuration: robust_low_freq.yaml
+parameters: robust_low_freq.yaml
 runtime_args:
   station: StationA
   remote: StationB
@@ -55,34 +55,34 @@ runtime_args:
 ```
 
 ### Execution Logic:
-1. **Selection**: User selects a Flow and a Processing Configuration in the App.
+1. **Selection**: User selects a Flow and a Parameter Set in the App.
 2. **Dynamic Inputs**: The App inspects the Flow and asks for the required Runtime Arguments (Stations, Timeframes).
-3. **Binding**: These are combined into a temporary or saved **Run Configuration**.
-4. **Archival**: When the process runs, this configuration is written into the `results/[run_label]/` folder as `run_info.json`.
+3. **Binding**: These are combined into a temporary or saved **Processing Job**.
+4. **Archival**: When the job executes, its definition is written into the `results/[output_label]/` folder as `job_info.json`.
 
 ---
 
-## Batch Processing and Multi-site Runs
+## Batch Processing and Multi-site Jobs
 
-To handle multiple stations efficiently, the system supports **Batch Runs**. This can be achieved in two ways:
+To handle multiple stations efficiently, the system supports **Batch Jobs**. This can be achieved in two ways:
 
 ### 1. List-based Runtime Arguments
-A single Run Configuration can specify a list of values for a runtime argument.
+A single Processing Job can specify a list of values for a runtime argument.
 ```yaml
-# configs/runs/multi_site_mt.yaml
+# processing/jobs/multi_site_mt.yaml
 name: Robust Multi-site
 flow: standard_mt.yaml
-configuration: default.yaml
+parameters: default.yaml
 runtime_args:
   station: ["Station01", "Station02", "Station03"]
   remote: "Remote01"
 ```
-The **Execution Engine** will automatically expand this into N individual runs.
+The **Execution Engine** will automatically expand this into N individual job executions.
 
 ### 2. Batch Groups
 For more complex scenarios where sites have different remotes or time ranges, a **Batch Configuration** can be used:
 ```yaml
-# configs/runs/campaign_2024.yaml
+# processing/jobs/campaign_2024.yaml
 name: Full Campaign
 flow: standard_mt.yaml
 parameters: robust.yaml
@@ -92,8 +92,8 @@ batch:
 ```
 
 ### Result Organization:
-Results for batch runs will be grouped by the run label to keep the `results/` folder clean:
-`results/[run_label]/[station_name]/...`
+Results for batch jobs will be grouped by the output label to keep the `results/` folder clean:
+`results/[output_label]/[station_name]/...`
 
 ---
 
@@ -104,24 +104,24 @@ Based on `resistics/resp.py`, the project structure will be organized as follows
 ```text
 project/
 ├── resistics.json          # Project metadata (MTH5 path, reference time, plugin paths, etc.)
-├── configs/
+├── processing/
 │   ├── flows/              # Flow definitions
 │   │   ├── standard_mt.yaml
 │   │   └── quick_check.yaml
-│   ├── parameters/         # Parameter sets
-│   │   ├── default_params.yaml
-│   │   └── high_sampling_params.yaml
-│   └── runs/               # Pre-defined bindings of Flow + Parameters
+│   ├── parameters/         # Processing parameter sets
+│   │   ├── default_parameters.yaml
+│   │   └── high_sampling_parameters.yaml
+│   └── jobs/               # Pre-defined bindings of Flow + Parameters
 │       └── final_processing.yaml
 ├── data/
 │   └── [survey]/[station]/
-│       ├── [run_label]/    # Run-specific data (e.g., time series if processed)
+│       ├── [run]/          # MTH5 run-specific derived data
 │       └── results/        # Processing outputs (spectra, transfer functions)
-│           └── [run_label]/
+│           └── [output_label]/
 │               ├── solution.json
-│               └── run_info.json # Copy of the Run Configuration used
+│               └── job_info.json # Copy of the Processing Job used
 └── logs/
-    └── [run_label].log
+    └── [job_name].log
 ```
 
 ---
@@ -130,9 +130,9 @@ project/
 
 ### resistics library
 - **`Flow` class**: A new class to handle the DAG logic, likely utilizing `networkx` (as seen in `resistics-app`).
-- **`ProcessingConfiguration` class**: A wrapper around the existing `Configuration` or a new Pydantic model that holds step-specific settings.
-- **`RunConfiguration` class**: A model that links a Flow and a ProcessingConfiguration with Runtime Arguments.
-- **`ExecutionEngine`**: A class to take a `RunConfiguration` and execute it on a `Project`.
+- **`ParameterSet` class**: A Pydantic model that holds step-specific settings.
+- **`ProcessingJob` class**: A model that links a Flow and a ParameterSet with Runtime Arguments.
+- **`ExecutionEngine`**: A class to take a `ProcessingJob` and execute it on a `Project`.
 
 ---
 
@@ -140,15 +140,15 @@ project/
 
 To make resistics-app "commercial grade" and user-friendly, the GUI should emphasize visual assembly over manual YAML editing.
 
-### 1. The Run Config Wizard
+### 1. The Processing Job Wizard
 Instead of a single complex page, the App will use a guided workflow:
 - **Card-based Flow Selection**: Users pick from a library of visual "Recipes" (Standard MT, Quick Check, QC only).
-- **Properties Pane for Parameters**: Selecting a "Recipe" opens a sidebar with categorized settings (Windowing, Solver, FFT). Changes here create a local `ProcessingConfiguration`.
+- **Properties Pane for Parameters**: Selecting a "Recipe" opens a sidebar with categorized settings (Windowing, Solver, FFT). Changes here create a local `ParameterSet`.
 - **Intelligent Site Selection**: Integrating the `Project Navigator` allows users to drag-and-drop sites/stations directly into the `Runtime Arguments` slot.
 
 ### 2. Batch Execution Interface
-When multiple stations are selected in the Project Tree, the "Run" button morphs into "Batch Run".
-- **Validation**: The App automatically checks if all selected stations have the required sampling frequency for the chosen Processing Configuration.
+When multiple stations are selected in the Project Tree, the job becomes a batch job.
+- **Validation**: The App automatically checks if all selected stations have the required sampling frequency for the chosen Parameter Set.
 - **Queueing**: A background task manager (using Python's `multiprocessing` or `concurrent.futures`) processes the batch, updating a progress bar for each site.
 
 ---
@@ -161,16 +161,16 @@ Experimentation is at the heart of MT data processing. The decoupling of Flows a
 In the **Experimentation Page**, users can:
 - Fix a **Flow** (e.g., Standard MT).
 - Define a **Parameter Range** (e.g., Try window sizes: 512, 1024, 2048).
-- **Run & Compare**: The App executes all three runs and overlays the resulting Transfer Functions (Apparent Resistivity/Phase) on a single plot.
+- **Execute & Compare**: The App executes all three jobs and overlays the resulting Transfer Functions (Apparent Resistivity/Phase) on a single plot.
 
 ### 2. Flow Comparison
 Users can compare the impact of different algorithms (e.g., Comparing OLS with a new Robust Solver) by simply swapping the solver node in the flow designer while keeping parameters and data constant.
 
 ### 3. Iterative Refinement
-1. **Quick Run**: Run a standard flow with default parameters.
+1. **Quick Job**: Execute a standard flow with default parameters.
 2. **Inspect**: Use the `Spectra Viewer` to identify noise.
-3. **Adjust**: Create a new `ProcessingConfiguration` (e.g., add a Notch Filter).
-4. **Re-run**: Execute the *same* Run Configuration with the updated parameters. The system automatically creates a new labeled folder in `results/`, allowing side-by-side comparison of the improvement.
+3. **Adjust**: Create a new `ParameterSet` (e.g., add a Notch Filter).
+4. **Repeat**: Execute the *same* Processing Job with the updated parameters. The system automatically creates a new labeled folder in `results/`, allowing side-by-side comparison of the improvement.
 
 ---
 
