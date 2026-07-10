@@ -20,6 +20,7 @@ from resistics.project import (
     get_run_data_path,
     init,
     load,
+    open_mth5,
 )
 
 
@@ -57,13 +58,18 @@ class FakeMTH5(MTH5):
         self.path = path
         self._channel_summary = FakeChannelSummary()
         self.closed = False
+        self._file_version = "0.2.0"
 
     @property
     def channel_summary(self):
         """Return a fake channel summary."""
         return self._channel_summary
 
-    def open_mth5(self):
+    @property
+    def file_version(self):
+        return self._file_version
+
+    def open_mth5(self, mode="r"):
         """Open no-op."""
         return None
 
@@ -134,3 +140,21 @@ def test_missing_mth5_path_fails(tmp_path):
     """Test project creation validates MTH5 path existence."""
     with pytest.raises(ValueError, match="MTH5 data file not found"):
         init(tmp_path / "project", tmp_path / "missing.h5", "2020-01-01")
+
+
+def test_open_mth5_builds_serializable_read_only_summary(monkeypatch, tmp_path):
+    import resistics.project as project_module
+
+    monkeypatch.setattr(project_module, "MTH5", FakeMTH5)
+    mth5_path = tmp_path / "data.h5"
+    mth5_path.write_text("")
+
+    source = open_mth5(mth5_path)
+    summary = source.file_summary()
+
+    assert summary.n_surveys == 1
+    assert summary.n_stations == 2
+    assert summary.n_runs == 2
+    assert summary.model_validate_json(summary.model_dump_json()) == summary
+    source.close_mth5()
+    assert source.mth5_data.closed

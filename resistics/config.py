@@ -41,26 +41,15 @@ class Configuration(ResisticsModel):
 
     Examples
     --------
-    Frequently, configuration will be used to change data readers.
+    Public input is MTH5-only, so configurations no longer install legacy
+    directory readers by default.
 
     >>> from resistics.letsgo import get_default_configuration
     >>> config = get_default_configuration()
     >>> config.name
     'default'
-    >>> for tr in config.time_readers:
-    ...     tr.summary()
-    {
-        'name': 'TimeReaderAscii',
-        'apply_scalings': True,
-        'extension': '.txt',
-        'delimiter': None,
-        'n_header': 0
-    }
-    {
-        'name': 'TimeReaderNumpy',
-        'apply_scalings': True,
-        'extension': '.npy'
-    }
+    >>> config.time_readers
+    []
     >>> config.sensor_calibrator.summary()
     {
         'name': 'SensorCalibrator',

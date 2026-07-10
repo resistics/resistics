@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -19,7 +19,7 @@ from mth5.groups.run import RunGroup
 from mth5.groups.station import StationGroup
 from mth5.groups.survey import SurveyGroup
 from mth5.mth5 import MTH5
-from pydantic import Field
+from pydantic import Field, JsonValue
 
 from resistics.common import ResisticsModel
 from resistics.plot import plot_timeline
@@ -167,7 +167,193 @@ class ProjectMetadata(ResisticsModel):
     plugin_paths: List[Path] = Field(default_factory=list)
 
 
-class Project(ResisticsModel):
+class MTH5FileSummary(ResisticsModel):
+    """Cheap, serializable summary of an MTH5 file."""
+
+    mth5_path: Path
+    file_version: str
+    n_surveys: int
+    n_stations: int
+    n_runs: int
+    n_channels: int
+    sample_rates: List[float] = Field(default_factory=list)
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+
+
+class SurveySummary(ResisticsModel):
+    survey: str
+    n_stations: int
+    n_runs: int
+
+
+class StationSummary(ResisticsModel):
+    survey: str
+    station: str
+    station_path: str
+    n_runs: int
+    sample_rates: List[float] = Field(default_factory=list)
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    elevation: Optional[float] = None
+
+
+class RunSummary(ResisticsModel):
+    survey: str
+    station: str
+    run: str
+    run_path: str
+    sample_rate: float
+    n_samples: int
+    channels: List[str] = Field(default_factory=list)
+    start_time: str
+    end_time: str
+    has_data: bool = True
+
+
+class ChannelSummary(ResisticsModel):
+    survey: str
+    station: str
+    run: str
+    component: str
+    sample_rate: float
+    n_samples: int
+    start_time: str
+    end_time: str
+    measurement_type: str = ""
+    units: str = ""
+    has_data: bool = True
+
+
+class MetadataDetail(ResisticsModel):
+    object_type: Literal["survey", "station", "run", "channel"]
+    object_path: str
+    values: Dict[str, JsonValue] = Field(default_factory=dict)
+
+
+class _MTH5InspectionMixin:
+    """Shared app-safe inspection behavior for files and projects."""
+
+    mth5_path: Path
+    mth5_data: MTH5
+    table: pd.DataFrame
+
+    def file_summary(self) -> MTH5FileSummary:
+        table = self.table
+        return MTH5FileSummary(
+            mth5_path=self.mth5_path,
+            file_version=str(self.mth5_data.file_version),
+            n_surveys=int(table["survey"].nunique()) if not table.empty else 0,
+            n_stations=int(table["station_path"].nunique()) if not table.empty else 0,
+            n_runs=int(table["run_path"].nunique()) if not table.empty else 0,
+            n_channels=len(table.index),
+            sample_rates=self.fs(),
+            start_time=_iso_min(table, "start"),
+            end_time=_iso_max(table, "end"),
+        )
+
+    def list_surveys(self) -> List[SurveySummary]:
+        ans = []
+        for survey, table in self.table.groupby("survey"):
+            ans.append(SurveySummary(
+                survey=str(survey),
+                n_stations=int(table["station"].nunique()),
+                n_runs=int(table["run_path"].nunique()),
+            ))
+        return ans
+
+    def list_stations(self, survey: Optional[str] = None) -> List[StationSummary]:
+        table = self._filter_table(survey=survey)
+        ans = []
+        for (survey_name, station), rows in table.groupby(["survey", "station"]):
+            ans.append(StationSummary(
+                survey=str(survey_name), station=str(station),
+                station_path=f"{survey_name}/{station}",
+                n_runs=int(rows["run"].nunique()),
+                sample_rates=sorted(float(x) for x in rows["sample_rate"].unique()),
+                start_time=_iso_min(rows, "start"), end_time=_iso_max(rows, "end"),
+                latitude=_optional_float(rows, "latitude"),
+                longitude=_optional_float(rows, "longitude"),
+                elevation=_optional_float(rows, "elevation"),
+            ))
+        return ans
+
+    def list_runs(self, survey: Optional[str] = None, station: Optional[str] = None) -> List[RunSummary]:
+        table = self._filter_table(survey=survey, station=station)
+        ans = []
+        for (survey_name, station_name, run), rows in table.groupby(["survey", "station", "run"]):
+            ans.append(RunSummary(
+                survey=str(survey_name), station=str(station_name), run=str(run),
+                run_path=f"{survey_name}/{station_name}/{run}",
+                sample_rate=float(rows["sample_rate"].iloc[0]),
+                n_samples=int(rows["n_samples"].max()),
+                channels=[str(x) for x in rows["component"].tolist()],
+                start_time=str(rows["start"].min().isoformat()),
+                end_time=str(rows["end"].max().isoformat()),
+                has_data=bool(rows["has_data"].all()) if "has_data" in rows else True,
+            ))
+        return ans
+
+    def list_channels(self, survey: str, station: str, run: str) -> List[ChannelSummary]:
+        rows = self._filter_table(survey=survey, station=station)
+        rows = rows[rows["run"] == run]
+        return [ChannelSummary(
+            survey=survey, station=station, run=run, component=str(row["component"]),
+            sample_rate=float(row["sample_rate"]), n_samples=int(row["n_samples"]),
+            start_time=str(row["start"].isoformat()), end_time=str(row["end"].isoformat()),
+            measurement_type=str(row.get("measurement_type", "")), units=str(row.get("units", "")),
+            has_data=bool(row.get("has_data", True)),
+        ) for _, row in rows.iterrows()]
+
+    def get_metadata(self, object_path: str) -> MetadataDetail:
+        parts = object_path.split("/")
+        if len(parts) == 1:
+            obj, kind = self.get_survey(parts[0]), "survey"
+        elif len(parts) == 2:
+            obj, kind = self.get_station(parts[0], parts[1]), "station"
+        elif len(parts) == 3:
+            obj, kind = self.get_run(parts[0], parts[1], parts[2]), "run"
+        elif len(parts) == 4:
+            obj = self.mth5_data.get_channel(parts[1], parts[2], parts[3], survey=parts[0])
+            kind = "channel"
+        else:
+            raise ValueError(f"Unknown MTH5 object path {object_path!r}")
+        values = json.loads(obj.metadata.to_json())
+        return MetadataDetail(object_type=kind, object_path=object_path, values=values)
+
+
+class MTH5File(_MTH5InspectionMixin, ResisticsModel):
+    """Explicitly opened, read-only MTH5 inspection source."""
+
+    mth5_path: Path
+    mth5_data: MTH5 = Field(repr=False, exclude=True)
+    table: pd.DataFrame = Field(repr=False, exclude=True)
+
+    def fs(self) -> List[float]:
+        return sorted(float(x) for x in self.table["sample_rate"].dropna().unique())
+
+    def get_survey(self, survey: str) -> SurveyGroup:
+        return self.mth5_data.get_survey(survey)
+
+    def get_station(self, survey: str, station: str) -> StationGroup:
+        return self.mth5_data.get_station(station, survey=survey)
+
+    def get_run(self, survey: str, station: str, run: str) -> RunGroup:
+        return self.mth5_data.get_run(station, run, survey=survey)
+
+    def read_run(self, survey: str, station: str, run: str, **kwargs: Any) -> TimeData:
+        return _read_run(self, survey, station, run, **kwargs)
+
+    def close_mth5(self) -> None:
+        self.mth5_data.close_mth5()
+
+    def _filter_table(self, survey=None, station=None, fs=None) -> pd.DataFrame:
+        return _filter_table(self.table, survey, station, fs)
+
+
+class Project(_MTH5InspectionMixin, ResisticsModel):
     """An MTH5-backed resistics project."""
 
     project_path: Path
@@ -233,14 +419,14 @@ class Project(ResisticsModel):
         """Get an MTH5 survey group."""
         if survey not in self.surveys:
             raise ValueError(f"Survey {survey!r} not found in MTH5 data")
-        return self.mth5_data.surveys_group.get_survey(survey)
+        return self.mth5_data.get_survey(survey)
 
     def get_station(self, survey: str, station: str) -> StationGroup:
         """Get an MTH5 station group."""
         station_path = f"{survey}/{station}"
         if station_path not in self.stations:
             raise ValueError(f"Station {station_path!r} not found in MTH5 data")
-        return self.get_survey(survey).stations_group.get_station(station)
+        return self.mth5_data.get_station(station, survey=survey)
 
     def get_stations(
         self, survey: Optional[str] = None, fs: Optional[float] = None
@@ -258,7 +444,7 @@ class Project(ResisticsModel):
         run_path = f"{survey}/{station}/{run}"
         if run_path not in self.runs:
             raise ValueError(f"Run {run_path!r} not found in MTH5 data")
-        return self.get_station(survey, station).get_run(run)
+        return self.mth5_data.get_run(station, run, survey=survey)
 
     def get_runs(
         self,
@@ -303,29 +489,17 @@ class Project(ResisticsModel):
         to_sample: Optional[int] = None,
     ) -> TimeData:
         """Read an MTH5 run into existing resistics ``TimeData`` containers."""
-        run_group = self.get_run(survey, station, run)
-        run_ts = _run_group_to_run_ts(run_group)
-        time_data = _run_ts_to_time_data(run_ts, chans=chans)
-        if from_sample is not None or to_sample is not None:
-            data = time_data.data[:, from_sample:to_sample]
-            first_sample = 0 if from_sample is None else from_sample
-            metadata = time_data.metadata.model_copy(deep=True)
-            first_time = metadata.first_time
-            if first_sample != 0:
-                from resistics.sampling import to_timedelta
-
-                first_time = first_time + to_timedelta(first_sample / metadata.fs)
-            metadata.n_samples = data.shape[1]
-            metadata.first_time = first_time
-            from resistics.time import adjust_time_metadata
-
-            metadata = adjust_time_metadata(metadata, metadata.fs, first_time, data.shape[1])
-            time_data = TimeData(metadata, data)
-        if from_time is not None or to_time is not None:
-            from_time = from_time or time_data.metadata.first_time
-            to_time = to_time or time_data.metadata.last_time
-            time_data = time_data.subsection(from_time, to_time)
-        return time_data
+        return _read_run(
+            self,
+            survey,
+            station,
+            run,
+            chans=chans,
+            from_time=from_time,
+            to_time=to_time,
+            from_sample=from_sample,
+            to_sample=to_sample,
+        )
 
     def to_dataframe(self) -> pd.DataFrame:
         """Return the project MTH5 channel summary table."""
@@ -404,7 +578,7 @@ def load(project_path: Union[Path, str]) -> Project:
     check_project(project_path, metadata.mth5_path)
 
     mth5_data = MTH5(metadata.mth5_path)
-    mth5_data.open_mth5()
+    mth5_data.open_mth5(mode="r")
     table = _prepare_channel_summary(mth5_data.channel_summary.to_dataframe())
     return Project(
         project_path=project_path,
@@ -417,6 +591,21 @@ def load(project_path: Union[Path, str]) -> Project:
         stations=sorted(table["station_path"].dropna().unique().tolist()),
         runs=sorted(table["run_path"].dropna().unique().tolist()),
     )
+
+
+def open_mth5(mth5_path: Union[Path, str]) -> MTH5File:
+    """Open an existing MTH5 file as a read-only inspection source."""
+    mth5_path = _as_path(mth5_path)
+    if not mth5_path.exists():
+        raise ValueError(f"MTH5 data file not found: {mth5_path}")
+    mth5_data = MTH5(mth5_path)
+    mth5_data.open_mth5(mode="r")
+    try:
+        table = _prepare_channel_summary(mth5_data.channel_summary.to_dataframe())
+        return MTH5File(mth5_path=mth5_path, mth5_data=mth5_data, table=table)
+    except Exception:
+        mth5_data.close_mth5()
+        raise
 
 
 def check_project(project_path: Union[Path, str], mth5_path: Union[Path, str]) -> bool:
@@ -449,6 +638,72 @@ def _prepare_channel_summary(table: pd.DataFrame) -> pd.DataFrame:
     if "end" in table.columns:
         table["end"] = pd.to_datetime(table["end"])
     return table
+
+
+def _filter_table(
+    table: pd.DataFrame,
+    survey: Optional[str] = None,
+    station: Optional[str] = None,
+    fs: Optional[float] = None,
+) -> pd.DataFrame:
+    table = table.copy()
+    if survey is not None:
+        table = table[table["survey"] == survey]
+    if station is not None:
+        table = table[table["station"] == station]
+    if fs is not None:
+        table = table[table["sample_rate"] == fs]
+    return table
+
+
+def _optional_float(table: pd.DataFrame, column: str) -> Optional[float]:
+    if column not in table or table[column].dropna().empty:
+        return None
+    return float(table[column].dropna().iloc[0])
+
+
+def _iso_min(table: pd.DataFrame, column: str) -> Optional[str]:
+    if table.empty or column not in table:
+        return None
+    value = table[column].min()
+    return None if pd.isna(value) else str(value.isoformat())
+
+
+def _iso_max(table: pd.DataFrame, column: str) -> Optional[str]:
+    if table.empty or column not in table:
+        return None
+    value = table[column].max()
+    return None if pd.isna(value) else str(value.isoformat())
+
+
+def _read_run(
+    source: _MTH5InspectionMixin,
+    survey: str,
+    station: str,
+    run: str,
+    chans: Optional[Iterable[str]] = None,
+    from_time: Optional[DateTimeLike] = None,
+    to_time: Optional[DateTimeLike] = None,
+    from_sample: Optional[int] = None,
+    to_sample: Optional[int] = None,
+) -> TimeData:
+    """Read a bounded MTH5 run using MTH5's RunTS slicing API."""
+    run_group = source.get_run(survey, station, run)
+    start = None if from_time is None else str(to_timestamp(from_time).isoformat())
+    end = None if to_time is None else str(to_timestamp(to_time).isoformat())
+    n_samples = None
+    if from_sample is not None or to_sample is not None:
+        summary = source.list_runs(survey=survey, station=station)
+        selected = next(item for item in summary if item.run == run)
+        first = 0 if from_sample is None else from_sample
+        start_time = pd.Timestamp(selected.start_time) + pd.to_timedelta(
+            first / selected.sample_rate, unit="s"
+        )
+        start = start_time.isoformat()
+        if to_sample is not None:
+            n_samples = max(0, to_sample - first + 1)
+    run_ts = run_group.to_runts(start=start, end=end, n_samples=n_samples)
+    return _run_ts_to_time_data(run_ts, chans=chans)
 
 
 def _run_group_to_run_ts(run_group: RunGroup) -> Any:
@@ -486,7 +741,18 @@ def _run_ts_to_time_data(
     n_samples = data.shape[1]
     first_time = _get_first_time(first_chan)
     chans_metadata = {
-        chan: ChanMetadata(name=chan, data_files=None) for chan in chans
+        chan: ChanMetadata(
+            name=chan,
+            data_files=None,
+            chan_type=(
+                "electric"
+                if chan.lower().startswith("e")
+                else "magnetic"
+                if chan.lower().startswith(("h", "b"))
+                else "unknown"
+            ),
+        )
+        for chan in chans
     }
     metadata = TimeMetadata(
         fs=fs,
