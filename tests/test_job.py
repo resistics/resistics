@@ -1,6 +1,7 @@
 """Tests for project job discovery, validation, and execution."""
 
 from pathlib import Path
+import json
 from types import SimpleNamespace
 import warnings
 
@@ -13,6 +14,7 @@ from resistics.flow import (
 )
 from resistics.job import (
     JobDefinition,
+    JobRuntime,
     JobRunner,
     JobState,
     ProjectJobs,
@@ -31,21 +33,23 @@ def make_project(tmp_path):
         (project_path / path).mkdir(parents=True, exist_ok=True)
     return SimpleNamespace(
         project_path=project_path,
+        mth5_path=project_path / "data.h5",
         runs=["survey/station/run"],
     )
 
 
 def write_valid_job(project):
     flow = FlowDefinition(
+        id="read_only",
         name="read-only",
         nodes=[FlowNode(id="read", type="mth5_read")],
     )
-    parameters = ParameterSet(name="defaults")
+    parameters = ParameterSet(name="defaults", flow_id="read_only", flow_version="1")
     definition = JobDefinition(
         name="example",
         flow="standard",
         parameters="defaults.yaml",
-        runtime={"survey": "survey", "station": "station", "run": "run"},
+        runtime=JobRuntime(survey="survey", station="station", run="run"),
         output_label="result",
     )
     (project.project_path / "processing/flows/standard.yaml").write_text(
@@ -114,8 +118,10 @@ def test_job_runner_cancels_between_nodes(tmp_path):
     project.close_mth5 = lambda: None
     processing_job = ProcessingJob(
         name="cancelled",
-        flow=FlowDefinition(name="flow", nodes=[FlowNode(id="read", type="mth5_read")]),
-        parameters=ParameterSet(name="parameters"),
+        flow=FlowDefinition(
+            id="flow", name="flow", nodes=[FlowNode(id="read", type="mth5_read")]
+        ),
+        parameters=ParameterSet(name="parameters", flow_id="flow", flow_version="1"),
         runtime={
             "project_path": str(project.project_path),
             "survey": "survey",
@@ -129,7 +135,7 @@ def test_job_runner_cancels_between_nodes(tmp_path):
             name="cancelled",
             flow="flow.yaml",
             parameters="parameters.yaml",
-            runtime={"survey": "survey", "station": "station", "run": "run"},
+            runtime=JobRuntime(survey="survey", station="station", run="run"),
         ),
         processing_job=processing_job,
         flow_path=Path("flow.yaml"),
@@ -156,14 +162,37 @@ def test_job_runner_archives_completed_job(monkeypatch, tmp_path):
     monkeypatch.setattr(
         runner,
         "_handlers",
-        lambda job: {"mth5_read": lambda inputs, parameters, runtime: "done"},
+        lambda job, staging_path: {
+            "mth5_read": lambda inputs, parameters, runtime: "done"
+        },
     )
 
     state = runner.run(resolved)
 
     assert state == JobState.completed
     assert events[-1].state == JobState.completed
-    assert (resolved.output_path / "job_info.json").is_file()
+    archive_path = resolved.output_path / "job_info.json"
+    assert archive_path.is_file()
+    archive = json.loads(archive_path.read_text())
+    assert archive["flow_path"] == str(resolved.flow_path)
+    assert archive["processing_job"]["name"] == "example"
+
+
+def test_job_runner_never_replaces_existing_output(tmp_path):
+    project = make_project(tmp_path)
+    job_path = write_valid_job(project)
+    resolved = ProjectJobs(project).validate(job_path).resolved_job
+    assert resolved is not None
+    resolved.output_path.mkdir(parents=True)
+    sentinel = resolved.output_path / "keep.txt"
+    sentinel.write_text("existing result")
+
+    events = []
+    state = JobRunner(project, events.append).run(resolved)
+
+    assert state == JobState.failed
+    assert sentinel.read_text() == "existing result"
+    assert "Output already exists" in events[-1].message
 
 
 def test_job_runner_captures_python_warnings(monkeypatch, tmp_path):
@@ -179,7 +208,9 @@ def test_job_runner_captures_python_warnings(monkeypatch, tmp_path):
         return "done"
 
     monkeypatch.setattr(
-        runner, "_handlers", lambda job: {"mth5_read": warn_then_complete}
+        runner,
+        "_handlers",
+        lambda job, staging_path: {"mth5_read": warn_then_complete},
     )
 
     assert runner.run(resolved) == JobState.completed

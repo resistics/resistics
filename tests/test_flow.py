@@ -57,6 +57,7 @@ def test_topological_order():
 
 def test_unknown_step_is_invalid():
     flow = FlowDefinition(
+        id="bad",
         name="bad",
         nodes=[
             FlowNode(id="read", type="mth5_read"),
@@ -64,7 +65,10 @@ def test_unknown_step_is_invalid():
         ],
     )
     result = FlowValidator(builtin_step_registry()).validate(
-        get_processing_job(flow=flow, params=ParameterSet(name="test"))
+        get_processing_job(
+            flow=flow,
+            params=ParameterSet(name="test", flow_id="bad", flow_version="1"),
+        )
     )
     assert not result.ok
     assert "Unknown step type: not_real" in result.errors
@@ -72,13 +76,16 @@ def test_unknown_step_is_invalid():
 
 def test_cycle_is_invalid():
     flow = FlowDefinition(
+        id="cycle",
         name="cycle",
         nodes=[
             FlowNode(id="a", type="mth5_read", inputs=["b"]),
             FlowNode(id="b", type="time_processors", inputs=["a"]),
         ],
     )
-    result = FlowValidator(builtin_step_registry()).validate(get_processing_job(flow=flow))
+    result = FlowValidator(builtin_step_registry()).validate(
+        get_processing_job(flow=flow)
+    )
     assert not result.ok
     assert "Flow contains a cycle" in result.errors
 
@@ -95,7 +102,9 @@ def test_parameter_validation():
     flow = standard_mt_flow()
     params = default_parameter_set(flow)
     params.values["solve_tf"]["solver"] = "not-a-solver"
-    result = FlowValidator(builtin_step_registry()).validate(get_processing_job(flow, params))
+    result = FlowValidator(builtin_step_registry()).validate(
+        get_processing_job(flow, params)
+    )
     assert not result.ok
     assert "Node 'solve_tf': Parameter 'solver' must be one of" in result.errors[0]
 
@@ -104,6 +113,10 @@ def test_executor_emits_progress_events():
     events = []
     results = FlowExecutor(
         builtin_step_registry(),
+        handlers={
+            step.type_id: lambda inputs, params, runtime: {"inputs": inputs}
+            for step in builtin_step_registry().all()
+        },
         progress_callback=events.append,
     ).run(get_processing_job())
 
@@ -116,7 +129,12 @@ def test_executor_emits_progress_events():
 
 def test_executor_rejects_invalid_processing_job():
     flow = standard_mt_flow()
-    params = ParameterSet(name="bad", values={"decimate": {"n_levels": "nope"}})
+    params = ParameterSet(
+        name="bad",
+        flow_id=flow.id,
+        flow_version=flow.version,
+        values={"decimate": {"n_levels": "nope"}},
+    )
     with pytest.raises(ValueError, match="Node 'decimate'"):
         FlowExecutor(builtin_step_registry()).run(get_processing_job(flow, params))
 

@@ -30,6 +30,7 @@ multi site processing, the workflow follows:
     but the full spectral data might be useful for visualisation and analysis
     reasons.
 """
+
 from loguru import logger
 from typing import List, Dict, Optional, Tuple
 from pathlib import Path

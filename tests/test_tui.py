@@ -5,8 +5,17 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from textual.containers import VerticalScroll
-from textual.widgets import Button, DataTable, Input, Static, TabbedContent, Tree
+from textual.widgets import (
+    Button,
+    DataTable,
+    Input,
+    Static,
+    TabbedContent,
+    TabPane,
+    Tree,
+)
 
+from resistics.flow import default_parameter_set, model_to_yaml, standard_mt_flow
 from resistics.tui import CreateProjectScreen, DirectoryPickerScreen, ResisticsTui
 
 
@@ -49,6 +58,13 @@ class FakeProject:
 
 def test_tui_mounts_project_views(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
+    flow = standard_mt_flow()
+    flow_path = project.project_path / "processing/flows/standard_mt.yaml"
+    flow_path.parent.mkdir(parents=True)
+    flow_path.write_text(model_to_yaml(flow))
+    parameters_path = project.project_path / "processing/parameters/default_mt.yaml"
+    parameters_path.parent.mkdir(parents=True)
+    parameters_path.write_text(model_to_yaml(default_parameter_set(flow)))
     monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
@@ -58,10 +74,23 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
             overview = app.screen.query_one("#overview-content", Static)
             tree = app.screen.query_one("#project-tree", Tree)
             table = app.screen.query_one("#job-table", DataTable)
+            flow_table = app.screen.query_one("#flow-table", DataTable)
+            parameter_table = app.screen.query_one("#parameter-table", DataTable)
             metadata_details = app.screen.query_one("#metadata-details", VerticalScroll)
             assert "project" in str(overview.render())
             assert str(tree.root.label) == "project"
             assert table.row_count == 0
+            assert flow_table.row_count == 1
+            assert parameter_table.row_count == 1
+            assert app.screen.query_one("#flows", TabPane)
+            assert app.screen.query_one("#parameters", TabPane)
+            assert app.screen.query_one("#restore-flows", Button).label == (
+                "Restore missing flows"
+            )
+            assert app.screen.query_one("#restore-parameters", Button).label == (
+                "Restore missing parameter sets"
+            )
+            assert not app.screen.query("#install-defaults")
             assert app.sub_title == str(project.project_path)
             app.screen.query_one(TabbedContent).active = "project"
             await asyncio.sleep(0)
@@ -119,9 +148,10 @@ def test_directory_picker_starts_at_home_with_parent_navigation():
     assert ("u", "parent_directory", "Up") in picker.BINDINGS
     assert "Space: expand/collapse" in picker.navigation_instruction
     assert "project folder" in picker.selection_instruction
-    assert "MTH5 file" in DirectoryPickerScreen(
-        "Select an MTH5 file", True
-    ).selection_instruction
+    assert (
+        "MTH5 file"
+        in DirectoryPickerScreen("Select an MTH5 file", True).selection_instruction
+    )
 
 
 def test_invalid_startup_project_returns_to_home(monkeypatch, tmp_path):
@@ -213,8 +243,9 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
     assert ".launcher-layout { height: 1fr; align-horizontal: center; }" in (
         ResisticsTui.CSS
     )
-    assert "#job-details:focus, #metadata-details:focus { background: #343434; }" in (
+    assert "#flow-details:focus, #parameter-details:focus, #job-details:focus," in (
         ResisticsTui.CSS
     )
+    assert "#metadata-details:focus { background: #343434; }" in ResisticsTui.CSS
     assert "#faa881" in ResisticsTui.CSS
     assert "#ac3600" in ResisticsTui.CSS

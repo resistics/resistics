@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+import json
 from pathlib import Path
+from shutil import rmtree
 from threading import Event
 from time import monotonic
 from typing import Any, Callable, Dict, List, Optional, Union
@@ -14,6 +16,7 @@ import warnings
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from resistics import __version__
 from resistics.flow import (
     FlowCancelled,
     FlowDefinition,
@@ -33,8 +36,20 @@ class JobDefinition(BaseModel):
     name: str
     flow: str
     parameters: str
-    runtime: Dict[str, Any] = Field(default_factory=dict)
+    runtime: "JobRuntime"
     output_label: str = "result"
+
+
+class JobRuntime(BaseModel):
+    """MTH5 data selection authored for one processing job."""
+
+    survey: str
+    station: str
+    run: str
+    channels: List[str] = Field(default_factory=lambda: ["Ex", "Ey", "Hx", "Hy"])
+    from_time: Optional[str] = None
+    to_time: Optional[str] = None
+    remote_reference: Optional[str] = None
 
 
 class JobState(str, Enum):
@@ -150,7 +165,7 @@ class ProjectJobs:
             parameters_path = self._reference_path("parameters", definition.parameters)
             flow = model_from_yaml_file(FlowDefinition, flow_path)
             parameters = model_from_yaml_file(ParameterSet, parameters_path)
-            runtime = dict(definition.runtime)
+            runtime = definition.runtime.model_dump(exclude_none=True)
             runtime["project_path"] = str(self.project.project_path)
             processing_job = ProcessingJob(
                 name=definition.name,
@@ -178,23 +193,9 @@ class ProjectJobs:
         warnings.extend(flow_validation.warnings)
         errors.extend(self._validate_runtime(processing_job.runtime))
 
-        gather_values = processing_job.parameters.for_node("gather")
-        if gather_values.get("remote_reference"):
+        if definition.runtime.remote_reference:
             errors.append(
                 "Remote-reference gathering is not available for MTH5 jobs yet"
-            )
-        solve_values = processing_job.parameters.for_node("solve_tf")
-        if solve_values.get("solver", "ols") != "ols":
-            errors.append("Only the 'ols' solver is currently executable")
-        if solve_values.get("tf", "impedance") != "impedance":
-            errors.append("Only the 'impedance' transfer function is executable")
-        write_values = processing_job.parameters.for_node("write_results")
-        if write_values.get("overwrite", False):
-            errors.append("Overwrite is not available from the TUI")
-        eval_values = processing_job.parameters.for_node("evals")
-        if eval_values.get("f_min", 0.0) != 0.0 or eval_values.get("n_freqs", 0) != 0:
-            errors.append(
-                "Custom f_min and n_freqs evaluation selection is not executable yet"
             )
         if output_path.exists():
             errors.append(f"Output already exists: {output_path}")
@@ -280,9 +281,12 @@ class _PipelineValue:
 class _BuiltinHandlers:
     """Adapters from flow steps to the existing numerical processing classes."""
 
-    def __init__(self, project: Project, resolved_job: ResolvedJob):
+    def __init__(
+        self, project: Project, resolved_job: ResolvedJob, staging_output_path: Path
+    ):
         self.project = project
         self.resolved_job = resolved_job
+        self.staging_output_path = staging_output_path
 
     def as_dict(self) -> Dict[str, Callable]:
         """Return handlers keyed by built-in flow step type."""
@@ -309,9 +313,9 @@ class _BuiltinHandlers:
             runtime["survey"],
             runtime["station"],
             runtime["run"],
-            chans=parameters["channels"],
-            from_time=parameters["from_time"] or None,
-            to_time=parameters["to_time"] or None,
+            chans=runtime["channels"],
+            from_time=runtime.get("from_time"),
+            to_time=runtime.get("to_time"),
         )
         return _PipelineValue(data=data)
 
@@ -336,6 +340,7 @@ class _BuiltinHandlers:
             n_levels=parameters["n_levels"],
             per_level=parameters["per_level"],
             div_factor=parameters["div_factor"],
+            min_samples=parameters["min_samples"],
         )
         decimation_parameters = setup.run(value.data.metadata.fs)
         data = Decimator().run(decimation_parameters, value.data)
@@ -349,7 +354,10 @@ class _BuiltinHandlers:
         value = self._first(inputs)
         setup = WindowSetup(
             min_size=parameters["min_size"],
+            min_olap=parameters["min_olap"],
+            win_factor=parameters["win_factor"],
             olap_proportion=parameters["overlap"],
+            min_n_wins=parameters["min_n_wins"],
         )
         window_parameters = setup.run(
             value.data.metadata.n_levels, value.data.metadata.fs
@@ -375,21 +383,14 @@ class _BuiltinHandlers:
         return _PipelineValue(data=data, context=value.context)
 
     def calibrate(self, inputs, parameters, runtime):
-        from resistics.calibrate import SensorCalibrationJSON, SensorCalibrator
-
-        del runtime
         value = self._first(inputs)
         if not parameters["enabled"]:
             return value
-        calibration_path = parameters["calibration_path"]
-        path = (
-            Path(calibration_path)
-            if calibration_path
-            else self.project.project_path / "calibrate"
+        del runtime
+        raise NotImplementedError(
+            "MTH5 response calibration is not implemented yet; disable the "
+            "calibrate node for this job"
         )
-        calibrator = SensorCalibrator(readers=[SensorCalibrationJSON()])
-        data = calibrator.run(path, value.data)
-        return _PipelineValue(data=data, context=value.context)
 
     def gather(self, inputs, parameters, runtime):
         from resistics.gather import QuickGather
@@ -421,12 +422,10 @@ class _BuiltinHandlers:
         return _PipelineValue(data=solution, context=value.context)
 
     def write(self, inputs, parameters, runtime):
-        del runtime
-        if parameters["overwrite"]:
-            raise ValueError("Overwrite is not available from the TUI")
+        del parameters, runtime
         value = self._first(inputs)
-        self.resolved_job.output_path.mkdir(parents=True, exist_ok=False)
-        value.data.write(self.resolved_job.output_path / "solution.json")
+        self.staging_output_path.mkdir(parents=True, exist_ok=False)
+        value.data.write(self.staging_output_path / "solution.json")
         return _PipelineValue(
             data={"result_path": str(self.resolved_job.output_path)},
             context=value.context,
@@ -453,6 +452,25 @@ class JobRunner:
         """Run a resolved job synchronously."""
         processing_job = resolved_job.processing_job
         started = monotonic()
+        staging_output_path = resolved_job.output_path.with_name(
+            f".{resolved_job.output_path.name}.partial"
+        )
+        if resolved_job.output_path.exists():
+            self._emit(
+                JobState.failed,
+                processing_job.name,
+                f"Output already exists: {resolved_job.output_path}",
+                started,
+            )
+            return JobState.failed
+        if staging_output_path.exists():
+            self._emit(
+                JobState.failed,
+                processing_job.name,
+                f"Partial output already exists: {staging_output_path}",
+                started,
+            )
+            return JobState.failed
         log_path = self.project.project_path / "logs" / f"{processing_job.name}.log"
         log_path.parent.mkdir(parents=True, exist_ok=True)
         sink_id = logger.add(log_path, enqueue=True)
@@ -470,14 +488,15 @@ class JobRunner:
                 warnings.simplefilter("always")
                 executor = FlowExecutor(
                     builtin_step_registry(),
-                    handlers=self._handlers(resolved_job),
+                    handlers=self._handlers(resolved_job, staging_output_path),
                     progress_callback=lambda event: self._flow_event(
                         processing_job.name, event, started
                     ),
                     cancellation_callback=self._cancel_event.is_set,
                 )
                 executor.run(processing_job)
-                self._archive_job(resolved_job)
+                self._archive_job(resolved_job, staging_output_path)
+                staging_output_path.replace(resolved_job.output_path)
         except FlowCancelled:
             state = JobState.cancelled
         except Exception as exc:
@@ -486,6 +505,8 @@ class JobRunner:
             error = str(exc)
         finally:
             logger.remove(sink_id)
+            if state != JobState.completed and staging_output_path.exists():
+                rmtree(staging_output_path)
 
         self._record_warnings(log_path, caught_warnings, processing_job.name, started)
         if state == JobState.completed:
@@ -497,15 +518,25 @@ class JobRunner:
         self._emit(state, processing_job.name, message, started, error=error)
         return state
 
-    def _handlers(self, resolved_job: ResolvedJob) -> Dict[str, Callable]:
-        return _BuiltinHandlers(self.project, resolved_job).as_dict()
+    def _handlers(
+        self, resolved_job: ResolvedJob, staging_output_path: Path
+    ) -> Dict[str, Callable]:
+        return _BuiltinHandlers(
+            self.project, resolved_job, staging_output_path
+        ).as_dict()
 
-    def _archive_job(self, resolved_job: ResolvedJob) -> None:
-        resolved_job.output_path.mkdir(parents=True, exist_ok=True)
-        archive_path = resolved_job.output_path / "job_info.json"
-        archive_path.write_text(
-            resolved_job.processing_job.model_dump_json(indent=2), encoding="utf-8"
-        )
+    def _archive_job(self, resolved_job: ResolvedJob, output_path: Path) -> None:
+        output_path.mkdir(parents=True, exist_ok=True)
+        archive_path = output_path / "job_info.json"
+        archive = {
+            "resistics_version": __version__,
+            "mth5_path": str(self.project.mth5_path),
+            "job_path": str(resolved_job.path),
+            "flow_path": str(resolved_job.flow_path),
+            "parameters_path": str(resolved_job.parameters_path),
+            "processing_job": resolved_job.processing_job.model_dump(mode="json"),
+        }
+        archive_path.write_text(json.dumps(archive, indent=2), encoding="utf-8")
 
     def _record_warnings(
         self,

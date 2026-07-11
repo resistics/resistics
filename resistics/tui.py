@@ -34,8 +34,13 @@ from resistics.job import (
     JobValidation,
     ProjectJobs,
 )
+from resistics.flow import FlowDefinition, ParameterSet, model_from_yaml_file
 from resistics.project import Project, init as init_project, load, open_mth5
 from resistics.sampling import to_datetime
+from resistics.templates import (
+    install_builtin_flow_templates,
+    install_builtin_parameter_templates,
+)
 
 
 class TuiHeader(Static):
@@ -448,6 +453,8 @@ class ProjectExplorerScreen(Screen[None]):
         super().__init__()
         self.project = project
         self.project_jobs = ProjectJobs(project)
+        self.flow_paths: Dict[str, Path] = {}
+        self.parameter_paths: Dict[str, Path] = {}
         self.job_summaries: Dict[str, JobSummary] = {}
         self.selected_job_path: Optional[Path] = None
         self.selected_validation: Optional[JobValidation] = None
@@ -469,6 +476,29 @@ class ProjectExplorerScreen(Screen[None]):
                     with Vertical(classes="right"):
                         with VerticalScroll(id="metadata-details"):
                             yield Static("Select an item", id="metadata-content")
+            with TabPane("Flows", id="flows"):
+                with Horizontal(classes="pane split"):
+                    with Vertical(classes="left"):
+                        yield DataTable(id="flow-table", cursor_type="row")
+                    with Vertical(classes="right"):
+                        with VerticalScroll(id="flow-details"):
+                            yield Static("Select a flow", id="flow-content")
+                        with Horizontal(id="flow-actions"):
+                            yield Button("Restore missing flows", id="restore-flows")
+            with TabPane("Parameters", id="parameters"):
+                with Horizontal(classes="pane split"):
+                    with Vertical(classes="left"):
+                        yield DataTable(id="parameter-table", cursor_type="row")
+                    with Vertical(classes="right"):
+                        with VerticalScroll(id="parameter-details"):
+                            yield Static(
+                                "Select a parameter set", id="parameter-content"
+                            )
+                        with Horizontal(id="parameter-actions"):
+                            yield Button(
+                                "Restore missing parameter sets",
+                                id="restore-parameters",
+                            )
             with TabPane("Jobs", id="jobs"):
                 with Horizontal(classes="pane split"):
                     with Vertical(classes="left"):
@@ -492,6 +522,8 @@ class ProjectExplorerScreen(Screen[None]):
     def on_mount(self) -> None:
         self._populate_overview()
         self._populate_tree()
+        self._populate_flows()
+        self._populate_parameters()
         self._populate_jobs()
         if self.startup_warnings:
             self.query_one("#activity-log", RichLog).write(
@@ -579,6 +611,87 @@ class ProjectExplorerScreen(Screen[None]):
                 "No YAML jobs found in processing/jobs"
             )
 
+    @staticmethod
+    def _yaml_paths(directory: Path) -> list[Path]:
+        """Return project YAML files in a stable display order."""
+        return sorted(
+            path
+            for pattern in ("*.yaml", "*.yml")
+            for path in directory.glob(pattern)
+            if path.is_file()
+        )
+
+    def _populate_flows(self) -> None:
+        """Populate the read-only flow browser."""
+        table = self.query_one("#flow-table", DataTable)
+        table.clear(columns=True)
+        table.add_columns("Flow", "ID", "Version", "Nodes", "Status")
+        self.flow_paths.clear()
+        for path in self._yaml_paths(
+            self.project.project_path / "processing" / "flows"
+        ):
+            key = str(path)
+            self.flow_paths[key] = path
+            try:
+                flow = model_from_yaml_file(FlowDefinition, path)
+                table.add_row(
+                    flow.name,
+                    flow.id,
+                    flow.version,
+                    str(len(flow.nodes)),
+                    "[green]valid[/green]",
+                    key=key,
+                )
+            except Exception as exc:
+                table.add_row(
+                    path.stem,
+                    "-",
+                    "-",
+                    "-",
+                    "[red]invalid[/red]",
+                    key=key,
+                )
+                logger.debug(f"Unable to read flow {path}: {exc}")
+        if not self.flow_paths:
+            self.query_one("#flow-content", Static).update(
+                "No YAML flows found in processing/flows"
+            )
+
+    def _populate_parameters(self) -> None:
+        """Populate the read-only parameter-set browser."""
+        table = self.query_one("#parameter-table", DataTable)
+        table.clear(columns=True)
+        table.add_columns("Parameters", "Flow ID", "Version", "Overrides", "Status")
+        self.parameter_paths.clear()
+        directory = self.project.project_path / "processing" / "parameters"
+        for path in self._yaml_paths(directory):
+            key = str(path)
+            self.parameter_paths[key] = path
+            try:
+                parameters = model_from_yaml_file(ParameterSet, path)
+                table.add_row(
+                    parameters.name,
+                    parameters.flow_id,
+                    parameters.flow_version,
+                    str(len(parameters.values)),
+                    "[green]valid[/green]",
+                    key=key,
+                )
+            except Exception as exc:
+                table.add_row(
+                    path.stem,
+                    "-",
+                    "-",
+                    "-",
+                    "[red]invalid[/red]",
+                    key=key,
+                )
+                logger.debug(f"Unable to read parameter set {path}: {exc}")
+        if not self.parameter_paths:
+            self.query_one("#parameter-content", Static).update(
+                "No YAML parameter sets found in processing/parameters"
+            )
+
     @on(Tree.NodeSelected, "#project-tree")
     def show_metadata(self, event: Tree.NodeSelected) -> None:
         object_path = event.node.data
@@ -617,6 +730,28 @@ class ProjectExplorerScreen(Screen[None]):
             not validation.ok or self.job_state == JobState.running
         )
 
+    @on(DataTable.RowSelected, "#flow-table")
+    def show_flow(self, event: DataTable.RowSelected) -> None:
+        """Show the complete selected flow definition."""
+        path = self.flow_paths[str(event.row_key.value)]
+        details = self.query_one("#flow-content", Static)
+        try:
+            flow = model_from_yaml_file(FlowDefinition, path)
+            details.update(Pretty(flow.model_dump(mode="json"), expand_all=True))
+        except Exception as exc:
+            details.update(f"[red]Unable to read flow:[/] {exc}")
+
+    @on(DataTable.RowSelected, "#parameter-table")
+    def show_parameters(self, event: DataTable.RowSelected) -> None:
+        """Show the complete selected parameter set."""
+        path = self.parameter_paths[str(event.row_key.value)]
+        details = self.query_one("#parameter-content", Static)
+        try:
+            parameters = model_from_yaml_file(ParameterSet, path)
+            details.update(Pretty(parameters.model_dump(mode="json"), expand_all=True))
+        except Exception as exc:
+            details.update(f"[red]Unable to read parameter set:[/] {exc}")
+
     @on(Button.Pressed, "#run-job")
     def confirm_job(self) -> None:
         validation = self.selected_validation
@@ -624,6 +759,26 @@ class ProjectExplorerScreen(Screen[None]):
             self.notify("Select a valid job first", severity="warning")
             return
         self.app.push_screen(ConfirmJobScreen(validation), self._submission_confirmed)
+
+    @on(Button.Pressed, "#restore-flows")
+    def restore_flows(self) -> None:
+        """Restore only missing built-in flow templates."""
+        installed = install_builtin_flow_templates(self.project.project_path)
+        self._populate_flows()
+        if installed:
+            self.notify(f"Restored {len(installed)} flow template(s)")
+        else:
+            self.notify("All built-in flow templates are already present")
+
+    @on(Button.Pressed, "#restore-parameters")
+    def restore_parameters(self) -> None:
+        """Restore only missing built-in parameter-set templates."""
+        installed = install_builtin_parameter_templates(self.project.project_path)
+        self._populate_parameters()
+        if installed:
+            self.notify(f"Restored {len(installed)} parameter-set template(s)")
+        else:
+            self.notify("All built-in parameter-set templates are already present")
 
     @on(Button.Pressed, "#close-project")
     def close_project(self) -> None:
@@ -689,6 +844,8 @@ class ProjectExplorerScreen(Screen[None]):
             return
         self._populate_overview()
         self._populate_tree()
+        self._populate_flows()
+        self._populate_parameters()
         self._populate_jobs()
         self.notify("Project refreshed")
 
@@ -760,10 +917,14 @@ class ResisticsTui(App[None]):
     Tree, DataTable { background: #202020; color: #f7f4f2; }
     DataTable > .datatable--header { background: #0a009f; color: #f7f4f2; }
     DataTable > .datatable--cursor { background: #faa881; color: #101010; }
-    #project-tree, #job-table { height: 1fr; }
-    #job-details, #metadata-details { height: 1fr; background: #202020; }
-    #job-details:focus, #metadata-details:focus { background: #343434; }
-    #job-actions { height: auto; margin-top: 1; }
+    #project-tree, #flow-table, #parameter-table, #job-table { height: 1fr; }
+    #flow-details, #parameter-details, #job-details, #metadata-details {
+        height: 1fr;
+        background: #202020;
+    }
+    #flow-details:focus, #parameter-details:focus, #job-details:focus,
+    #metadata-details:focus { background: #343434; }
+    #flow-actions, #parameter-actions, #job-actions { height: auto; margin-top: 1; }
     #close-project { width: auto; margin-top: 1; }
     Button { background: #faa881; color: #101010; border: none; }
     Button.-success { background: #ac3600; color: #f7f4f2; }

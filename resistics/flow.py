@@ -10,6 +10,7 @@ stack at module import time.
 from __future__ import annotations
 
 from collections import deque
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Type, TypeVar
 
@@ -70,7 +71,7 @@ class StepDefinition(BaseModel):
 
     def default_parameters(self) -> Dict[str, Any]:
         """Return default parameter values keyed by parameter name."""
-        return {param.name: param.default for param in self.parameters}
+        return {param.name: deepcopy(param.default) for param in self.parameters}
 
     def validate_parameters(self, values: Dict[str, Any]) -> Dict[str, Any]:
         """Validate values for this step and fill omitted defaults."""
@@ -98,6 +99,7 @@ class FlowNode(BaseModel):
 class FlowDefinition(BaseModel):
     """Serializable processing DAG definition."""
 
+    id: str
     name: str
     description: str = ""
     version: str = "1"
@@ -118,6 +120,8 @@ class ParameterSet(BaseModel):
     """Parameter values for nodes in a flow."""
 
     name: str
+    flow_id: str
+    flow_version: str
     description: str = ""
     values: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
@@ -184,6 +188,23 @@ class FlowValidator:
         nodes = flow.node_map()
         if len(nodes) != len(flow.nodes):
             errors.append("Flow contains duplicate node ids")
+        if processing_job.parameters.flow_id != flow.id:
+            errors.append(
+                "Parameter set flow_id does not match flow: "
+                f"{processing_job.parameters.flow_id!r} != {flow.id!r}"
+            )
+        if processing_job.parameters.flow_version != flow.version:
+            errors.append(
+                "Parameter set flow_version does not match flow: "
+                f"{processing_job.parameters.flow_version!r} != {flow.version!r}"
+            )
+        unknown_parameter_nodes = sorted(
+            set(processing_job.parameters.values) - set(nodes)
+        )
+        if unknown_parameter_nodes:
+            errors.append(
+                "Parameter set contains unknown node ids: " f"{unknown_parameter_nodes}"
+            )
 
         for node in flow.nodes:
             try:
@@ -192,13 +213,17 @@ class FlowValidator:
                 errors.append(str(exc))
                 continue
 
-            for input_id in node.inputs:
+            for input_id in effective_input_ids(flow, node):
                 if input_id not in nodes:
                     errors.append(
                         f"Node '{node.id}' references missing input '{input_id}'"
                     )
                     continue
-                input_step = self.registry.get(nodes[input_id].type)
+                try:
+                    input_step = self.registry.get(nodes[input_id].type)
+                except ValueError as exc:
+                    errors.append(str(exc))
+                    continue
                 if step.input_types and input_step.output_type not in step.input_types:
                     errors.append(
                         f"Node '{node.id}' cannot accept output '{input_step.output_type}' "
@@ -210,6 +235,8 @@ class FlowValidator:
             except ValueError as exc:
                 errors.append(f"Node '{node.id}': {exc}")
 
+            if not node.enabled:
+                continue
             for key in step.runtime_requirements:
                 if processing_job.runtime.get(key) in (None, ""):
                     errors.append(
@@ -227,6 +254,27 @@ class FlowValidator:
         return FlowValidationResult(ok=not errors, errors=errors, warnings=warnings)
 
 
+def effective_input_ids(flow: FlowDefinition, node: FlowNode) -> List[str]:
+    """Return active upstream nodes, bypassing disabled nodes."""
+    nodes = flow.node_map()
+
+    def resolve(node_id: str, seen: set[str]) -> List[str]:
+        if node_id in seen:
+            raise ValueError("Flow contains a cycle")
+        upstream = nodes.get(node_id)
+        if upstream is None or upstream.enabled:
+            return [node_id]
+        resolved: List[str] = []
+        for input_id in upstream.inputs:
+            resolved.extend(resolve(input_id, seen | {node_id}))
+        return resolved
+
+    resolved = []
+    for input_id in node.inputs:
+        resolved.extend(resolve(input_id, set()))
+    return resolved
+
+
 def topological_order(flow: FlowDefinition) -> List[FlowNode]:
     """Return enabled nodes in topological order or raise for cycles."""
     nodes = {node.id: node for node in flow.nodes if node.enabled}
@@ -234,7 +282,7 @@ def topological_order(flow: FlowDefinition) -> List[FlowNode]:
     outgoing: Dict[str, List[str]] = {node_id: [] for node_id in nodes}
 
     for node in nodes.values():
-        for input_id in node.inputs:
+        for input_id in effective_input_ids(flow, node):
             if input_id not in nodes:
                 continue
             incoming[node.id] += 1
@@ -285,10 +333,15 @@ class FlowExecutor:
             params = step.validate_parameters(
                 processing_job.parameters.for_node(node.id)
             )
-            inputs = {input_id: results[input_id] for input_id in node.inputs}
+            inputs = {
+                input_id: results[input_id]
+                for input_id in effective_input_ids(processing_job.flow, node)
+            }
             self._emit({"event": "started", "node_id": node.id, "step_type": node.type})
             try:
-                handler = self.handlers.get(node.type, _default_handler)
+                handler = self.handlers.get(node.type)
+                if handler is None:
+                    raise ValueError(f"No execution handler registered for {node.type}")
                 results[node.id] = handler(inputs, params, processing_job.runtime)
             except Exception as exc:
                 self._emit(
@@ -314,13 +367,6 @@ class FlowCancelled(Exception):
     """Raised when execution is cancelled between processing nodes."""
 
 
-def _default_handler(
-    inputs: Dict[str, Any], params: Dict[str, Any], runtime: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Default dry-run handler used before real processing adapters are wired."""
-    return {"inputs": sorted(inputs), "params": params, "runtime": dict(runtime)}
-
-
 def builtin_step_registry() -> StepRegistry:
     """Return the built-in MT processing step registry."""
     return StepRegistry(
@@ -331,15 +377,7 @@ def builtin_step_registry() -> StepRegistry:
                 description="Read selected survey, station, run, and channels from MTH5.",
                 output_type="time_data",
                 runtime_requirements=["survey", "station", "run"],
-                parameters=[
-                    ParameterDefinition(
-                        name="channels",
-                        kind="list",
-                        default=["Ex", "Ey", "Hx", "Hy"],
-                    ),
-                    ParameterDefinition(name="from_time", kind="str", default=""),
-                    ParameterDefinition(name="to_time", kind="str", default=""),
-                ],
+                parameters=[],
             ),
             StepDefinition(
                 type_id="time_processors",
@@ -370,6 +408,9 @@ def builtin_step_registry() -> StepRegistry:
                     ParameterDefinition(
                         name="div_factor", kind="int", default=2, required=True
                     ),
+                    ParameterDefinition(
+                        name="min_samples", kind="int", default=256, required=True
+                    ),
                 ],
             ),
             StepDefinition(
@@ -385,6 +426,9 @@ def builtin_step_registry() -> StepRegistry:
                     ParameterDefinition(
                         name="overlap", kind="float", default=0.25, required=True
                     ),
+                    ParameterDefinition(name="min_olap", kind="int", default=32),
+                    ParameterDefinition(name="win_factor", kind="int", default=4),
+                    ParameterDefinition(name="min_n_wins", kind="int", default=5),
                 ],
             ),
             StepDefinition(
@@ -405,10 +449,7 @@ def builtin_step_registry() -> StepRegistry:
                 description="Select spectra at evaluation frequencies.",
                 input_types=["spectra_data"],
                 output_type="eval_data",
-                parameters=[
-                    ParameterDefinition(name="f_min", kind="float", default=0.0),
-                    ParameterDefinition(name="n_freqs", kind="int", default=0),
-                ],
+                parameters=[],
             ),
             StepDefinition(
                 type_id="calibrate",
@@ -418,10 +459,7 @@ def builtin_step_registry() -> StepRegistry:
                 output_type="eval_data",
                 optional=True,
                 parameters=[
-                    ParameterDefinition(name="enabled", kind="bool", default=True),
-                    ParameterDefinition(
-                        name="calibration_path", kind="str", default=""
-                    ),
+                    ParameterDefinition(name="enabled", kind="bool", default=False),
                 ],
             ),
             StepDefinition(
@@ -431,11 +469,7 @@ def builtin_step_registry() -> StepRegistry:
                 input_types=["eval_data"],
                 output_type="regression_input",
                 runtime_requirements=["station"],
-                parameters=[
-                    ParameterDefinition(
-                        name="remote_reference", kind="str", default=""
-                    ),
-                ],
+                parameters=[],
             ),
             StepDefinition(
                 type_id="solve_tf",
@@ -448,9 +482,14 @@ def builtin_step_registry() -> StepRegistry:
                         name="solver",
                         kind="str",
                         default="ols",
-                        choices=["ols", "robust"],
+                        choices=["ols"],
                     ),
-                    ParameterDefinition(name="tf", kind="str", default="impedance"),
+                    ParameterDefinition(
+                        name="tf",
+                        kind="str",
+                        default="impedance",
+                        choices=["impedance"],
+                    ),
                 ],
             ),
             StepDefinition(
@@ -460,9 +499,7 @@ def builtin_step_registry() -> StepRegistry:
                 input_types=["transfer_function"],
                 output_type="job_result",
                 runtime_requirements=["project_path"],
-                parameters=[
-                    ParameterDefinition(name="overwrite", kind="bool", default=False),
-                ],
+                parameters=[],
             ),
         ]
     )
@@ -471,6 +508,7 @@ def builtin_step_registry() -> StepRegistry:
 def standard_mt_flow() -> FlowDefinition:
     """Return the built-in Standard MT visual flow."""
     return FlowDefinition(
+        id="standard_mt",
         name="Standard MT",
         description="Single-station MT processing with optional remote reference.",
         nodes=[
@@ -537,6 +575,8 @@ def default_parameter_set(
     registry = registry or builtin_step_registry()
     return ParameterSet(
         name=f"{flow.name} defaults",
+        flow_id=flow.id,
+        flow_version=flow.version,
         values={
             node.id: registry.get(node.type).default_parameters() for node in flow.nodes
         },

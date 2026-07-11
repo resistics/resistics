@@ -1,6 +1,7 @@
 """
 Tests for the MTH5-backed project API.
 """
+
 from pathlib import Path
 
 import pandas as pd
@@ -21,6 +22,14 @@ from resistics.project import (
     init,
     load,
     open_mth5,
+)
+from resistics.flow import FlowDefinition, ParameterSet, model_from_yaml_file
+from resistics.templates import (
+    DEFAULT_FLOW_FILENAME,
+    DEFAULT_PARAMETERS_FILENAME,
+    QUICK_PARAMETERS_FILENAME,
+    install_builtin_flow_templates,
+    install_builtin_parameter_templates,
 )
 
 
@@ -109,8 +118,42 @@ def test_init_creates_canonical_project_structure(tmp_path):
     assert (project_path / PROJ_FILE).exists()
     for subdir in CANONICAL_PROJ_DIRS:
         assert (project_path / subdir).is_dir()
+    flow_path = project_path / "processing" / "flows" / DEFAULT_FLOW_FILENAME
+    default_parameters_path = (
+        project_path / "processing" / "parameters" / DEFAULT_PARAMETERS_FILENAME
+    )
+    quick_parameters_path = (
+        project_path / "processing" / "parameters" / QUICK_PARAMETERS_FILENAME
+    )
+    flow = model_from_yaml_file(FlowDefinition, flow_path)
+    default_parameters = model_from_yaml_file(ParameterSet, default_parameters_path)
+    quick_parameters = model_from_yaml_file(ParameterSet, quick_parameters_path)
+    assert default_parameters.flow_id == flow.id
+    assert quick_parameters.flow_version == flow.version
+    assert default_parameters.values["calibrate"]["enabled"] is False
+    assert quick_parameters.values["decimate"]["n_levels"] == 4
     assert not (project_path / "processing" / "runs").exists()
     assert check_project(project_path, mth5_path)
+
+
+def test_template_restoration_is_scoped_to_its_resource_type(tmp_path):
+    project_path = tmp_path / "project"
+    (project_path / "processing/flows").mkdir(parents=True)
+    (project_path / "processing/parameters").mkdir(parents=True)
+
+    flow_paths = install_builtin_flow_templates(project_path)
+
+    assert [path.name for path in flow_paths] == [DEFAULT_FLOW_FILENAME]
+    assert not (
+        project_path / "processing/parameters" / DEFAULT_PARAMETERS_FILENAME
+    ).exists()
+
+    parameter_paths = install_builtin_parameter_templates(project_path)
+
+    assert {path.name for path in parameter_paths} == {
+        DEFAULT_PARAMETERS_FILENAME,
+        QUICK_PARAMETERS_FILENAME,
+    }
 
 
 def test_load_builds_mth5_summary(monkeypatch, tmp_path):

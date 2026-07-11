@@ -5,6 +5,7 @@ The public project API is MTH5-only. Legacy directory readers may still exist as
 internal conversion helpers, but project discovery and letsgo workflows should
 use surveys, stations, and runs from an MTH5 file.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,8 +25,8 @@ from pydantic import Field, JsonValue
 from resistics.common import ResisticsModel
 from resistics.plot import plot_timeline
 from resistics.sampling import DateTimeLike, HighResDateTime, to_datetime, to_timestamp
+from resistics.templates import install_builtin_processing_templates
 from resistics.time import ChanMetadata, TimeData, TimeMetadata
-
 
 PROJ_FILE = "resistics.json"
 CANONICAL_PROJ_DIRS = (
@@ -37,25 +38,6 @@ CANONICAL_PROJ_DIRS = (
     "logs",
     "plugins",
 )
-
-PROJ_DIRS = {
-    "processing": "processing",
-    "flows": "processing/flows",
-    "parameters": "processing/parameters",
-    "jobs": "processing/jobs",
-    "data": "data",
-    "logs": "logs",
-    "plugins": "plugins",
-    # Legacy derived-artifact keys retained for internal conversion code/tests.
-    "time": "time",
-    "calibration": "calibrate",
-    "spectra": "spectra",
-    "evals": "evals",
-    "features": "features",
-    "masks": "masks",
-    "results": "results",
-    "images": "images",
-}
 
 
 def _as_path(value: Union[Path, str]) -> Path:
@@ -78,9 +60,7 @@ def get_job_path(project_path: Path, job_name: str) -> Path:
     return project_path / "processing" / "jobs" / job_name
 
 
-def get_run_data_path(
-    project_path: Path, survey: str, station: str, run: str
-) -> Path:
+def get_run_data_path(project_path: Path, survey: str, station: str, run: str) -> Path:
     """Get path to derived artifacts for an MTH5 run."""
     return project_path / "data" / survey / station / run
 
@@ -98,43 +78,43 @@ def get_results_path(
 
 
 def get_calibration_path(project_path: Path) -> Path:
-    """Get path to calibration data used by existing calibration processors."""
+    """Get the project calibration-data directory."""
     return project_path / "calibrate"
 
 
 def get_meas_time_path(project_path: Path, site_name: str, meas_name: str) -> Path:
-    """Legacy path helper retained for internal conversion code."""
+    """Get the legacy time-data directory for a measurement."""
     return project_path / "time" / site_name / meas_name
 
 
 def get_meas_spectra_path(
     project_path: Path, site_name: str, meas_name: str, config_name: str
 ) -> Path:
-    """Legacy path helper retained for internal conversion code."""
+    """Get the legacy spectra-data directory for a measurement."""
     return project_path / "spectra" / site_name / config_name / meas_name
 
 
 def get_meas_evals_path(
     project_path: Path, site_name: str, meas_name: str, config_name: str
 ) -> Path:
-    """Legacy path helper retained for internal conversion code."""
+    """Get the legacy evaluation-spectra directory for a measurement."""
     return project_path / "evals" / site_name / config_name / meas_name
 
 
 def get_meas_features_path(
     project_path: Path, site_name: str, meas_name: str, config_name: str
 ) -> Path:
-    """Legacy path helper retained for internal conversion code."""
+    """Get the legacy feature-data directory for a measurement."""
     return project_path / "features" / site_name / config_name / meas_name
 
 
 def get_mask_path(project_path: Path, site_name: str, config_name: str) -> Path:
-    """Legacy path helper retained for internal conversion code."""
+    """Get the legacy mask-data directory for a site configuration."""
     return project_path / "masks" / site_name / config_name
 
 
 def get_mask_name(fs: float, mask_name: str) -> str:
-    """Get a mask file name."""
+    """Get a sampling-rate-specific mask file name."""
     from resistics.common import fs_to_string
 
     return f"{fs_to_string(fs)}_{mask_name}.dat"
@@ -257,55 +237,82 @@ class _MTH5InspectionMixin:
     def list_surveys(self) -> List[SurveySummary]:
         ans = []
         for survey, table in self.table.groupby("survey"):
-            ans.append(SurveySummary(
-                survey=str(survey),
-                n_stations=int(table["station"].nunique()),
-                n_runs=int(table["run_path"].nunique()),
-            ))
+            ans.append(
+                SurveySummary(
+                    survey=str(survey),
+                    n_stations=int(table["station"].nunique()),
+                    n_runs=int(table["run_path"].nunique()),
+                )
+            )
         return ans
 
     def list_stations(self, survey: Optional[str] = None) -> List[StationSummary]:
         table = self._filter_table(survey=survey)
         ans = []
         for (survey_name, station), rows in table.groupby(["survey", "station"]):
-            ans.append(StationSummary(
-                survey=str(survey_name), station=str(station),
-                station_path=f"{survey_name}/{station}",
-                n_runs=int(rows["run"].nunique()),
-                sample_rates=sorted(float(x) for x in rows["sample_rate"].unique()),
-                start_time=_iso_min(rows, "start"), end_time=_iso_max(rows, "end"),
-                latitude=_optional_float(rows, "latitude"),
-                longitude=_optional_float(rows, "longitude"),
-                elevation=_optional_float(rows, "elevation"),
-            ))
+            ans.append(
+                StationSummary(
+                    survey=str(survey_name),
+                    station=str(station),
+                    station_path=f"{survey_name}/{station}",
+                    n_runs=int(rows["run"].nunique()),
+                    sample_rates=sorted(float(x) for x in rows["sample_rate"].unique()),
+                    start_time=_iso_min(rows, "start"),
+                    end_time=_iso_max(rows, "end"),
+                    latitude=_optional_float(rows, "latitude"),
+                    longitude=_optional_float(rows, "longitude"),
+                    elevation=_optional_float(rows, "elevation"),
+                )
+            )
         return ans
 
-    def list_runs(self, survey: Optional[str] = None, station: Optional[str] = None) -> List[RunSummary]:
+    def list_runs(
+        self, survey: Optional[str] = None, station: Optional[str] = None
+    ) -> List[RunSummary]:
         table = self._filter_table(survey=survey, station=station)
         ans = []
-        for (survey_name, station_name, run), rows in table.groupby(["survey", "station", "run"]):
-            ans.append(RunSummary(
-                survey=str(survey_name), station=str(station_name), run=str(run),
-                run_path=f"{survey_name}/{station_name}/{run}",
-                sample_rate=float(rows["sample_rate"].iloc[0]),
-                n_samples=int(rows["n_samples"].max()),
-                channels=[str(x) for x in rows["component"].tolist()],
-                start_time=str(rows["start"].min().isoformat()),
-                end_time=str(rows["end"].max().isoformat()),
-                has_data=bool(rows["has_data"].all()) if "has_data" in rows else True,
-            ))
+        for (survey_name, station_name, run), rows in table.groupby(
+            ["survey", "station", "run"]
+        ):
+            ans.append(
+                RunSummary(
+                    survey=str(survey_name),
+                    station=str(station_name),
+                    run=str(run),
+                    run_path=f"{survey_name}/{station_name}/{run}",
+                    sample_rate=float(rows["sample_rate"].iloc[0]),
+                    n_samples=int(rows["n_samples"].max()),
+                    channels=[str(x) for x in rows["component"].tolist()],
+                    start_time=str(rows["start"].min().isoformat()),
+                    end_time=str(rows["end"].max().isoformat()),
+                    has_data=(
+                        bool(rows["has_data"].all()) if "has_data" in rows else True
+                    ),
+                )
+            )
         return ans
 
-    def list_channels(self, survey: str, station: str, run: str) -> List[ChannelSummary]:
+    def list_channels(
+        self, survey: str, station: str, run: str
+    ) -> List[ChannelSummary]:
         rows = self._filter_table(survey=survey, station=station)
         rows = rows[rows["run"] == run]
-        return [ChannelSummary(
-            survey=survey, station=station, run=run, component=str(row["component"]),
-            sample_rate=float(row["sample_rate"]), n_samples=int(row["n_samples"]),
-            start_time=str(row["start"].isoformat()), end_time=str(row["end"].isoformat()),
-            measurement_type=str(row.get("measurement_type", "")), units=str(row.get("units", "")),
-            has_data=bool(row.get("has_data", True)),
-        ) for _, row in rows.iterrows()]
+        return [
+            ChannelSummary(
+                survey=survey,
+                station=station,
+                run=run,
+                component=str(row["component"]),
+                sample_rate=float(row["sample_rate"]),
+                n_samples=int(row["n_samples"]),
+                start_time=str(row["start"].isoformat()),
+                end_time=str(row["end"].isoformat()),
+                measurement_type=str(row.get("measurement_type", "")),
+                units=str(row.get("units", "")),
+                has_data=bool(row.get("has_data", True)),
+            )
+            for _, row in rows.iterrows()
+        ]
 
     def get_metadata(self, object_path: str) -> MetadataDetail:
         parts = object_path.split("/")
@@ -316,7 +323,9 @@ class _MTH5InspectionMixin:
         elif len(parts) == 3:
             obj, kind = self.get_run(parts[0], parts[1], parts[2]), "run"
         elif len(parts) == 4:
-            obj = self.mth5_data.get_channel(parts[1], parts[2], parts[3], survey=parts[0])
+            obj = self.mth5_data.get_channel(
+                parts[1], parts[2], parts[3], survey=parts[0]
+            )
             kind = "channel"
         else:
             raise ValueError(f"Unknown MTH5 object path {object_path!r}")
@@ -368,12 +377,12 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
 
     @property
     def dir_path(self) -> Path:
-        """Backward-compatible alias for existing processing helpers."""
+        """Alias for the project root used by the gathering implementation."""
         return self.project_path
 
     @property
     def metadata(self) -> ProjectMetadata:
-        """Backward-compatible metadata wrapper."""
+        """Project metadata view used by existing processing helpers."""
         return ProjectMetadata(
             mth5_path=self.mth5_path,
             ref_time=self.ref_time,
@@ -557,6 +566,7 @@ def init(
     project_path.mkdir(parents=True, exist_ok=True)
     for subdir in CANONICAL_PROJ_DIRS:
         (project_path / subdir).mkdir(parents=True, exist_ok=True)
+    install_builtin_processing_templates(project_path)
 
     metadata = ProjectMetadata(
         mth5_path=mth5_path,
@@ -631,8 +641,12 @@ def _prepare_channel_summary(table: pd.DataFrame) -> pd.DataFrame:
     for column in ["survey", "station", "run"]:
         if column not in table.columns:
             raise ValueError(f"MTH5 channel summary missing {column!r} column")
-    table["station_path"] = table[["survey", "station"]].astype(str).agg("/".join, axis=1)
-    table["run_path"] = table[["survey", "station", "run"]].astype(str).agg("/".join, axis=1)
+    table["station_path"] = (
+        table[["survey", "station"]].astype(str).agg("/".join, axis=1)
+    )
+    table["run_path"] = (
+        table[["survey", "station", "run"]].astype(str).agg("/".join, axis=1)
+    )
     if "start" in table.columns:
         table["start"] = pd.to_datetime(table["start"])
     if "end" in table.columns:
@@ -747,9 +761,7 @@ def _run_ts_to_time_data(
             chan_type=(
                 "electric"
                 if chan.lower().startswith("e")
-                else "magnetic"
-                if chan.lower().startswith(("h", "b"))
-                else "unknown"
+                else "magnetic" if chan.lower().startswith(("h", "b")) else "unknown"
             ),
         )
         for chan in chans
@@ -793,6 +805,7 @@ def _get_first_time(channel_data: Any) -> HighResDateTime:
     raise ValueError("Unable to determine MTH5 channel start time")
 
 
-# Legacy names kept only so imports fail less abruptly during migration.
+# The full gathering module still uses these type names while its MTH5
+# remote-reference adapter is being built out.
 Measurement = None
 Site = None
