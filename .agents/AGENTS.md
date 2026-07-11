@@ -25,6 +25,8 @@ rules, coding standards, naming, and active migration plans.
   regression, and git hygiene standards.
 - `naming.md`: canonical names for MTH5, flow/parameters/job, time windows,
   channels, regression, and filesystem values.
+- `tui-design-guidelines.md`: colour, focus, keyboard-navigation, and testing
+  guidance for the terminal UI.
 - `plans/modernization.md`: current modernization plan for Pydantic v2,
   MTH5-only input, flows/parameters/jobs, and regression boundaries.
 - `plans/project-structure-and-flows.md`: design notes for project structure,
