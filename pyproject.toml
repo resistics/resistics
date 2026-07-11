@@ -41,7 +41,7 @@ dependencies = [
 ]
 
 [project.scripts]
-resistics = "resistics.cli:main"
+resistics = "resistics.tui:main"
 
 [project.urls]
 Homepage = "https://www.resistics.io"

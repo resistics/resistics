@@ -1,23 +1,21 @@
-"""Tests for the resistics command-line entry point."""
+"""Tests for the resistics terminal application launcher."""
 
 from pathlib import Path
 
-from resistics.cli import build_parser, main
+from resistics.tui import main
 
 
-def test_tui_command_parses_project_path():
-    args = build_parser().parse_args(["tui", "example/project"])
-    assert args.command == "tui"
-    assert args.project_path == Path("example/project")
-
-
-def test_tui_command_reports_project_error(monkeypatch, capsys):
+def test_launcher_accepts_an_optional_project_path(monkeypatch):
     import resistics.tui
 
-    def fail(project_path):
-        raise ValueError("not a project")
+    paths = []
+    monkeypatch.setattr(resistics.tui, "run_tui", paths.append)
 
-    monkeypatch.setattr(resistics.tui, "run_tui", fail)
+    assert main([]) == 0
+    assert main(["example/project"]) == 0
+    assert paths == [None, Path("example/project")]
 
-    assert main(["tui", "missing"]) == 2
-    assert "Unable to open project: not a project" in capsys.readouterr().err
+
+def test_launcher_rejects_more_than_one_argument(capsys):
+    assert main(["tui", "example/project"]) == 2
+    assert "Usage: resistics [PROJECT_PATH]" in capsys.readouterr().err
