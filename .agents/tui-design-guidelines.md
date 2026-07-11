@@ -21,6 +21,10 @@ Use these guidelines for the resistics terminal user interface.
   focusable scroll container, not a non-focusable static widget.
 - Keyboard users must be able to reach each interactive panel with Tab and
   scroll a focused panel with arrow keys, Page Up/Down, Home, and End.
+- Choice menus should support Up/Down navigation in addition to Tab, using a
+  visible focus state and cyclic ordering where it helps rapid selection.
+- File pickers should start in the user's home directory and provide an
+  explicit keyboard-accessible action to move to the parent directory.
 - Use colour changes to make focus visible; do not rely only on pointer input
   or a border.
 
