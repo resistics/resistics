@@ -15,8 +15,8 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
 
-
 ProgressCallback = Callable[[Dict[str, Any]], None]
+CancellationCallback = Callable[[], bool]
 StepHandler = Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any]], Any]
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -194,7 +194,9 @@ class FlowValidator:
 
             for input_id in node.inputs:
                 if input_id not in nodes:
-                    errors.append(f"Node '{node.id}' references missing input '{input_id}'")
+                    errors.append(
+                        f"Node '{node.id}' references missing input '{input_id}'"
+                    )
                     continue
                 input_step = self.registry.get(nodes[input_id].type)
                 if step.input_types and input_step.output_type not in step.input_types:
@@ -210,7 +212,9 @@ class FlowValidator:
 
             for key in step.runtime_requirements:
                 if processing_job.runtime.get(key) in (None, ""):
-                    errors.append(f"Runtime value '{key}' is required by node '{node.id}'")
+                    errors.append(
+                        f"Runtime value '{key}' is required by node '{node.id}'"
+                    )
 
         try:
             topological_order(flow)
@@ -259,10 +263,12 @@ class FlowExecutor:
         registry: StepRegistry,
         handlers: Optional[Dict[str, StepHandler]] = None,
         progress_callback: Optional[ProgressCallback] = None,
+        cancellation_callback: Optional[CancellationCallback] = None,
     ):
         self.registry = registry
         self.handlers = handlers or {}
         self.progress_callback = progress_callback
+        self.cancellation_callback = cancellation_callback
 
     def run(self, processing_job: ProcessingJob) -> Dict[str, Any]:
         """Run a flow and return node results keyed by node id."""
@@ -272,8 +278,13 @@ class FlowExecutor:
 
         results: Dict[str, Any] = {}
         for node in topological_order(processing_job.flow):
+            if self.cancellation_callback is not None and self.cancellation_callback():
+                self._emit({"event": "cancelled", "node_id": node.id})
+                raise FlowCancelled("Processing job cancelled")
             step = self.registry.get(node.type)
-            params = step.validate_parameters(processing_job.parameters.for_node(node.id))
+            params = step.validate_parameters(
+                processing_job.parameters.for_node(node.id)
+            )
             inputs = {input_id: results[input_id] for input_id in node.inputs}
             self._emit({"event": "started", "node_id": node.id, "step_type": node.type})
             try:
@@ -289,12 +300,18 @@ class FlowExecutor:
                     }
                 )
                 raise
-            self._emit({"event": "completed", "node_id": node.id, "step_type": node.type})
+            self._emit(
+                {"event": "completed", "node_id": node.id, "step_type": node.type}
+            )
         return results
 
     def _emit(self, event: Dict[str, Any]) -> None:
         if self.progress_callback is not None:
             self.progress_callback(event)
+
+
+class FlowCancelled(Exception):
+    """Raised when execution is cancelled between processing nodes."""
 
 
 def _default_handler(
@@ -377,7 +394,9 @@ def builtin_step_registry() -> StepRegistry:
                 input_types=["windowed_data"],
                 output_type="spectra_data",
                 parameters=[
-                    ParameterDefinition(name="window_type", kind="str", default="parzen"),
+                    ParameterDefinition(
+                        name="window_type", kind="str", default="parzen"
+                    ),
                 ],
             ),
             StepDefinition(
@@ -474,7 +493,9 @@ def standard_mt_flow() -> FlowDefinition:
                 inputs=["decimate"],
                 position={"x": 700, "y": 120},
             ),
-            FlowNode(id="fft", type="fft", inputs=["window"], position={"x": 920, "y": 120}),
+            FlowNode(
+                id="fft", type="fft", inputs=["window"], position={"x": 920, "y": 120}
+            ),
             FlowNode(
                 id="evals",
                 type="evals",
@@ -517,8 +538,7 @@ def default_parameter_set(
     return ParameterSet(
         name=f"{flow.name} defaults",
         values={
-            node.id: registry.get(node.type).default_parameters()
-            for node in flow.nodes
+            node.id: registry.get(node.type).default_parameters() for node in flow.nodes
         },
     )
 
