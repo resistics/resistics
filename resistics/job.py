@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from enum import Enum
 import json
 from pathlib import Path
+import re
 from shutil import rmtree
 from threading import Event
 from time import monotonic
@@ -133,10 +134,23 @@ class JobValidation(BaseModel):
 
 
 ProgressCallback = Callable[[JobProgressEvent], None]
+_JOB_TEMPLATE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+def validate_job_template_name(name: str) -> str:
+    """Return a filename-safe template name or raise a user-facing error."""
+    value = name.strip()
+    if not _JOB_TEMPLATE_NAME.fullmatch(value):
+        raise ValueError(
+            "Job name must use letters, numbers, dots, underscores, or hyphens"
+        )
+    if Path(value).suffix in {".yaml", ".yml"}:
+        raise ValueError("Job name must not include a YAML extension")
+    return value
 
 
 class ProjectJobs:
-    """Read-only access to job definitions belonging to one project."""
+    """Access and create job definitions belonging to one project."""
 
     def __init__(self, project: Project):
         self.project = project
@@ -177,6 +191,24 @@ class ProjectJobs:
                     )
                 )
         return summaries
+
+    def create_template(self, definition: JobDefinition) -> Path:
+        """Create a new editable YAML job template without overwriting a job."""
+        name = validate_job_template_name(definition.name)
+        definition = definition.model_copy(update={"name": name})
+        for suffix in (".yaml", ".yml"):
+            path = self.jobs_path / f"{name}{suffix}"
+            if path.exists():
+                raise ValueError(f"Job file already exists: {path.name}")
+        path = self.jobs_path / f"{name}.yaml"
+        import yaml
+
+        self.jobs_path.mkdir(parents=True, exist_ok=True)
+        with path.open("x", encoding="utf-8") as job_file:
+            yaml.safe_dump(
+                definition.model_dump(exclude_none=True), job_file, sort_keys=False
+            )
+        return path
 
     def validate(self, job: Union[Path, str]) -> JobValidation:
         """Resolve and validate a job, returning user-facing errors."""

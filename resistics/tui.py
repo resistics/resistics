@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 import sys
 from tempfile import NamedTemporaryFile
 from typing import Dict, Optional, Sequence
@@ -22,6 +23,7 @@ from textual.widgets import (
     Footer,
     Input,
     RichLog,
+    Select,
     Static,
     TabbedContent,
     TabPane,
@@ -37,6 +39,7 @@ from resistics.job import (
     JobSummary,
     JobValidation,
     ProjectJobs,
+    validate_job_template_name,
 )
 from resistics.flow import (
     FlowDefinition,
@@ -117,6 +120,323 @@ class ConfirmJobScreen(ModalScreen[bool]):
     @on(Button.Pressed, "#confirm")
     def confirm(self) -> None:
         self.dismiss(True)
+
+
+_NO_CRITERIA_VALUE = "__no_criteria__"
+_YAML_FILE_STEM = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+class CreateJobScreen(ModalScreen[Optional[JobDefinition]]):
+    """Create a minimal job template from project YAML resources."""
+
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        Binding("left", "previous_action", "Previous action", priority=True),
+        Binding("right", "next_action", "Next action", priority=True),
+    ]
+
+    CSS = """
+    CreateJobScreen { align: center middle; }
+    #create-job-dialog {
+        width: 72;
+        height: auto;
+        padding: 1 2;
+        border: round #faa881;
+        background: #202020;
+        color: #f7f4f2;
+    }
+    #create-job-dialog Input, #create-job-dialog Select { margin-bottom: 1; }
+    #create-job-status { height: auto; color: #faa881; }
+    #create-job-actions { height: auto; align-horizontal: right; margin-top: 1; }
+    #create-job-actions Button { margin-left: 1; }
+    """
+
+    def __init__(
+        self,
+        flow_options: Sequence[tuple[str, str]],
+        parameter_options: Sequence[tuple[str, str]],
+        criteria_options: Sequence[tuple[str, str]],
+        existing_names: set[str],
+    ):
+        super().__init__()
+        self.flow_options = list(flow_options)
+        self.parameter_options = list(parameter_options)
+        self.criteria_options = [("No criteria", _NO_CRITERIA_VALUE)] + list(
+            criteria_options
+        )
+        self.existing_names = existing_names
+
+    def compose(self) -> ComposeResult:
+        can_create = bool(self.flow_options and self.parameter_options)
+        flow_value = self.flow_options[0][1] if self.flow_options else Select.NULL
+        parameter_value = (
+            self.parameter_options[0][1] if self.parameter_options else Select.NULL
+        )
+        with Vertical(id="create-job-dialog"):
+            yield Static("[bold]Create job template[/bold]")
+            yield Static("Job name")
+            yield Input(placeholder="my_job", id="job-name")
+            yield Static("Flow")
+            yield Select(
+                self.flow_options,
+                prompt="Select a flow",
+                allow_blank=not self.flow_options,
+                value=flow_value,
+                id="job-flow",
+            )
+            yield Static("Parameters")
+            yield Select(
+                self.parameter_options,
+                prompt="Select parameters",
+                allow_blank=not self.parameter_options,
+                value=parameter_value,
+                id="job-parameters",
+            )
+            yield Static("Criteria")
+            yield Select(
+                self.criteria_options,
+                allow_blank=False,
+                value=_NO_CRITERIA_VALUE,
+                id="job-criteria",
+            )
+            yield Static("", id="create-job-status")
+            with Horizontal(id="create-job-actions"):
+                yield Button("Cancel", id="cancel-job-template", classes="dialog-action")
+                yield Button(
+                    "Create job",
+                    id="create-job-template",
+                    variant="success",
+                    classes="dialog-action",
+                    disabled=not can_create,
+                )
+
+    def on_mount(self) -> None:
+        self.query_one("#job-name", Input).focus()
+        if not self.flow_options or not self.parameter_options:
+            self._set_status(
+                "Add valid flow and parameter YAML files before creating a job"
+            )
+
+    @on(Button.Pressed, "#cancel-job-template")
+    def cancel(self) -> None:
+        self.action_cancel()
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def action_next_action(self) -> None:
+        self._focus_action(1)
+
+    def action_previous_action(self) -> None:
+        self._focus_action(-1)
+
+    @on(Button.Pressed, "#create-job-template")
+    def create(self) -> None:
+        name = self.query_one("#job-name", Input).value
+        try:
+            name = validate_job_template_name(name)
+        except ValueError as exc:
+            self._set_status(str(exc))
+            return
+        if name in self.existing_names:
+            self._set_status(f"A job named '{name}' already exists")
+            return
+        flow = self._select_value("#job-flow")
+        parameters = self._select_value("#job-parameters")
+        criteria = self._select_value("#job-criteria")
+        if flow is None or parameters is None:
+            self._set_status("Choose a flow and parameters file")
+            return
+        self.dismiss(
+            JobDefinition(
+                name=name,
+                flow=flow,
+                parameters=parameters,
+                criteria=None if criteria == _NO_CRITERIA_VALUE else criteria,
+            )
+        )
+
+    def _select_value(self, selector: str) -> Optional[str]:
+        value = self.query_one(selector, Select).value
+        return None if value is Select.NULL else str(value)
+
+    def _set_status(self, message: str) -> None:
+        self.query_one("#create-job-status", Static).update(message)
+
+    def _focus_action(self, increment: int) -> None:
+        actions = [
+            self.query_one("#cancel-job-template", Button),
+            self.query_one("#create-job-template", Button),
+        ]
+        if self.focused not in actions:
+            return
+        actions[(actions.index(self.focused) + increment) % len(actions)].focus()
+
+
+class CopyYamlFileScreen(ModalScreen[Optional[str]]):
+    """Ask for the filename stem of a YAML copy."""
+
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        Binding("left", "previous_action", "Previous action", priority=True),
+        Binding("right", "next_action", "Next action", priority=True),
+    ]
+
+    CSS = """
+    CopyYamlFileScreen { align: center middle; background: transparent; }
+    #copy-yaml-dialog {
+        width: 72;
+        height: auto;
+        padding: 1 2;
+        border: round #faa881;
+        background: #202020;
+        color: #f7f4f2;
+    }
+    #copy-yaml-name { margin-top: 1; }
+    #copy-yaml-status { height: auto; margin-top: 1; color: #faa881; }
+    #copy-yaml-actions { height: auto; align-horizontal: right; margin-top: 1; }
+    #copy-yaml-actions Button { margin-left: 1; }
+    """
+
+    def __init__(self, source: Path):
+        super().__init__()
+        self.source = source
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="copy-yaml-dialog"):
+            yield Static(f"[bold]Copy {self.source.name}[/bold]")
+            yield Static("The YAML content will be copied unchanged.")
+            yield Input(value=f"{self.source.stem}_copy", id="copy-yaml-name")
+            yield Static("", id="copy-yaml-status")
+            with Horizontal(id="copy-yaml-actions"):
+                yield Button("Cancel", id="cancel-copy-yaml", classes="dialog-action")
+                yield Button(
+                    "Copy file",
+                    id="confirm-copy-yaml",
+                    variant="success",
+                    classes="dialog-action",
+                )
+
+    def on_mount(self) -> None:
+        self.query_one("#copy-yaml-name", Input).focus()
+
+    @on(Button.Pressed, "#cancel-copy-yaml")
+    def cancel(self) -> None:
+        self.action_cancel()
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def action_next_action(self) -> None:
+        self._focus_action(1)
+
+    def action_previous_action(self) -> None:
+        self._focus_action(-1)
+
+    @on(Button.Pressed, "#confirm-copy-yaml")
+    def copy(self) -> None:
+        try:
+            self.dismiss(_validate_yaml_file_stem(self.query_one("#copy-yaml-name", Input).value))
+        except ValueError as exc:
+            self.query_one("#copy-yaml-status", Static).update(str(exc))
+
+    def _focus_action(self, increment: int) -> None:
+        actions = [
+            self.query_one("#cancel-copy-yaml", Button),
+            self.query_one("#confirm-copy-yaml", Button),
+        ]
+        try:
+            index = actions.index(self.focused)
+        except ValueError:
+            index = 0
+        actions[(index + increment) % len(actions)].focus()
+
+
+class DeleteYamlFileScreen(ModalScreen[bool]):
+    """Require explicit confirmation before deleting a project YAML file."""
+
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        Binding("left", "previous_action", "Previous action", priority=True),
+        Binding("right", "next_action", "Next action", priority=True),
+    ]
+
+    CSS = """
+    DeleteYamlFileScreen { align: center middle; background: transparent; }
+    #delete-yaml-dialog {
+        width: 72;
+        height: auto;
+        padding: 1 2;
+        border: round #ac3600;
+        background: #202020;
+        color: #f7f4f2;
+    }
+    #delete-yaml-actions { height: auto; align-horizontal: right; margin-top: 1; }
+    #delete-yaml-actions Button { margin-left: 1; }
+    """
+
+    def __init__(self, source: Path):
+        super().__init__()
+        self.source = source
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="delete-yaml-dialog"):
+            yield Static(
+                f"Delete [bold]{self.source.name}[/bold]?\n\nThis cannot be undone."
+            )
+            with Horizontal(id="delete-yaml-actions"):
+                yield Button(
+                    "Cancel", id="cancel-delete-yaml", classes="dialog-action"
+                )
+                yield Button(
+                    "Delete file",
+                    id="confirm-delete-yaml",
+                    variant="error",
+                    classes="dialog-action",
+                )
+
+    def on_mount(self) -> None:
+        self.query_one("#cancel-delete-yaml", Button).focus()
+
+    @on(Button.Pressed, "#cancel-delete-yaml")
+    def cancel(self) -> None:
+        self.action_cancel()
+
+    def action_cancel(self) -> None:
+        self.dismiss(False)
+
+    def action_next_action(self) -> None:
+        self._focus_action(1)
+
+    def action_previous_action(self) -> None:
+        self._focus_action(-1)
+
+    @on(Button.Pressed, "#confirm-delete-yaml")
+    def delete(self) -> None:
+        self.dismiss(True)
+
+    def _focus_action(self, increment: int) -> None:
+        actions = [
+            self.query_one("#cancel-delete-yaml", Button),
+            self.query_one("#confirm-delete-yaml", Button),
+        ]
+        try:
+            index = actions.index(self.focused)
+        except ValueError:
+            index = 0
+        actions[(index + increment) % len(actions)].focus()
+
+
+def _validate_yaml_file_stem(value: str) -> str:
+    """Validate a filename stem used when copying a project YAML file."""
+    value = value.strip()
+    if not _YAML_FILE_STEM.fullmatch(value):
+        raise ValueError(
+            "New name must use letters, numbers, dots, underscores, or hyphens"
+        )
+    if Path(value).suffix in {".yaml", ".yml"}:
+        raise ValueError("New name must not include a YAML extension")
+    return value
 
 
 class DirectoryPickerScreen(ModalScreen[Optional[Path]]):
@@ -464,7 +784,10 @@ class ProjectExplorerScreen(Screen[None]):
     BINDINGS = [
         ("r", "refresh", "Refresh"),
         ("d", "restore_defaults", "Restore defaults"),
+        ("n", "create_job", "New job"),
         ("e", "edit_yaml", "Edit YAML"),
+        ("y", "copy_yaml", "Copy YAML"),
+        ("delete", "delete_yaml", "Delete YAML"),
         ("ctrl+s", "save_yaml", "Save YAML"),
         Binding("escape", "discard_yaml", "Discard YAML", priority=True),
         ("j", "run_selected_job", "Run job"),
@@ -673,6 +996,57 @@ class ProjectExplorerScreen(Screen[None]):
             if path.is_file()
         )
 
+    def _job_resource_options(
+        self, resource_type: str, model_type
+    ) -> list[tuple[str, str]]:
+        """Return valid resource files as dropdown labels and exact filenames."""
+        directory = self.project.project_path / "processing" / resource_type
+        options = []
+        for path in self._yaml_paths(directory):
+            try:
+                model = model_from_yaml_file(model_type, path)
+            except Exception as exc:
+                logger.debug(f"Unable to use {resource_type} resource {path}: {exc}")
+                continue
+            display_name = getattr(model, "name", None) or path.stem
+            options.append((f"{display_name} ({path.name})", path.name))
+        return options
+
+    def action_create_job(self) -> None:
+        """Open the Jobs-tab form for a new editable job template."""
+        if self.job_state == JobState.running:
+            self.notify(
+                "Job creation is unavailable while a job is running", severity="warning"
+            )
+            return
+        flow_options = self._job_resource_options("flows", FlowDefinition)
+        parameter_options = self._job_resource_options("parameters", ParameterSet)
+        criteria_options = self._job_resource_options("criteria", GatherCriteria)
+        existing_names = {
+            path.stem for path in self._yaml_paths(self.project_jobs.jobs_path)
+        }
+        self.app.push_screen(
+            CreateJobScreen(
+                flow_options, parameter_options, criteria_options, existing_names
+            ),
+            self._job_template_created,
+        )
+
+    def _job_template_created(self, definition: Optional[JobDefinition]) -> None:
+        """Persist a completed creation form and present the generated YAML."""
+        if definition is None:
+            return
+        try:
+            path = self.project_jobs.create_template(definition)
+        except Exception as exc:
+            self.notify(f"Unable to create job: {exc}", severity="error")
+            return
+        self._populate_jobs()
+        self.selected_job_path = path
+        self.selected_validation = self.project_jobs.validate(path)
+        self._show_yaml("#job-content", path)
+        self.notify(f"Created {path.name}")
+
     def _populate_flows(self) -> None:
         """Populate the read-only flow browser."""
         table = self.query_one("#flow-table", DataTable)
@@ -875,6 +1249,117 @@ class ProjectExplorerScreen(Screen[None]):
         if active == "jobs" and self.selected_job_path is not None:
             return self.selected_job_path, JobDefinition, "#job-content"
         return None
+
+    def _selected_yaml_file(self) -> Optional[tuple[Path, str]]:
+        """Return the selected YAML source and its editor selector."""
+        target = self._yaml_edit_target()
+        if target is None:
+            return None
+        path, _, editor_id = target
+        return path, editor_id
+
+    @staticmethod
+    def _copy_yaml_file(source: Path, name: str) -> Path:
+        """Copy source verbatim to a new, non-overwriting YAML filename."""
+        name = _validate_yaml_file_stem(name)
+        for suffix in (".yaml", ".yml"):
+            if (source.parent / f"{name}{suffix}").exists():
+                raise ValueError(f"A YAML file named {name!r} already exists")
+        destination = source.with_name(f"{name}{source.suffix}")
+        with source.open("rb") as input_file, destination.open("xb") as output_file:
+            output_file.write(input_file.read())
+        return destination
+
+    def action_copy_yaml(self) -> None:
+        """Prompt for a new filename and copy the selected YAML source verbatim."""
+        selected = self._selected_yaml_file()
+        if selected is None:
+            self.notify("Select a YAML file first", severity="warning")
+            return
+        source, editor_id = selected
+        self.app.push_screen(
+            CopyYamlFileScreen(source),
+            lambda name: self._yaml_file_copied(source, editor_id, name),
+        )
+
+    def _yaml_file_copied(
+        self, source: Path, editor_id: str, name: Optional[str]
+    ) -> None:
+        if name is None:
+            return
+        try:
+            destination = self._copy_yaml_file(source, name)
+        except Exception as exc:
+            self.notify(f"Unable to copy YAML: {exc}", severity="error")
+            return
+        self._refresh_yaml_resource(editor_id)
+        self._select_yaml_file(editor_id, destination)
+        self.notify(f"Copied {source.name} to {destination.name}")
+
+    def action_delete_yaml(self) -> None:
+        """Confirm deletion of the currently selected YAML source."""
+        selected = self._selected_yaml_file()
+        if selected is None:
+            self.notify("Select a YAML file first", severity="warning")
+            return
+        source, editor_id = selected
+        self.app.push_screen(
+            DeleteYamlFileScreen(source),
+            lambda confirmed: self._yaml_file_deleted(source, editor_id, confirmed),
+        )
+
+    def _yaml_file_deleted(
+        self, source: Path, editor_id: str, confirmed: bool
+    ) -> None:
+        if not confirmed:
+            return
+        try:
+            source.unlink()
+        except FileNotFoundError:
+            self.notify(f"{source.name} was already deleted", severity="warning")
+            return
+        except Exception as exc:
+            self.notify(f"Unable to delete YAML: {exc}", severity="error")
+            return
+        self._refresh_yaml_resource(editor_id)
+        self._clear_selected_yaml_file(editor_id)
+        self.notify(f"Deleted {source.name}")
+
+    def _select_yaml_file(self, editor_id: str, path: Path) -> None:
+        """Make path the current selection and display its source."""
+        if editor_id == "#flow-content":
+            self.selected_flow_path = path
+        elif editor_id == "#parameter-content":
+            self.selected_parameter_path = path
+        elif editor_id == "#criteria-content":
+            self.selected_criteria_path = path
+        elif editor_id == "#job-content":
+            self.selected_job_path = path
+            self.selected_validation = self.project_jobs.validate(path)
+        self._show_yaml(editor_id, path)
+        self.refresh_bindings()
+
+    def _clear_selected_yaml_file(self, editor_id: str) -> None:
+        """Clear the deleted source selection and restore its placeholder."""
+        placeholders = {
+            "#flow-content": "Select a flow",
+            "#parameter-content": "Select a parameter set",
+            "#criteria-content": "Select a criteria file",
+            "#job-content": "Select a job",
+        }
+        if editor_id == "#flow-content":
+            self.selected_flow_path = None
+        elif editor_id == "#parameter-content":
+            self.selected_parameter_path = None
+        elif editor_id == "#criteria-content":
+            self.selected_criteria_path = None
+        elif editor_id == "#job-content":
+            self.selected_job_path = None
+            self.selected_validation = None
+        editor = self.query_one(editor_id, TextArea)
+        editor.text = placeholders[editor_id]
+        editor.read_only = True
+        self.refresh_bindings()
 
     def action_edit_yaml(self) -> None:
         """Make the selected YAML source editable."""
@@ -1092,6 +1577,18 @@ class ProjectExplorerScreen(Screen[None]):
                 and self.job_state != JobState.running
                 and self._yaml_edit_target() is not None
             )
+        if action == "create_job":
+            return (
+                active == "jobs"
+                and not self.editing_yaml
+                and self.job_state != JobState.running
+            )
+        if action in {"copy_yaml", "delete_yaml"}:
+            return (
+                not self.editing_yaml
+                and self.job_state != JobState.running
+                and self._selected_yaml_file() is not None
+            )
         if action in {"save_yaml", "discard_yaml"}:
             return self.editing_yaml
         if action == "close_project":
@@ -1257,6 +1754,17 @@ class ResisticsTui(App[None]):
         text-style: none;
     }
     Button:disabled { background: #343434; color: #aaa6ad; }
+    Button.dialog-action {
+        background: #343434;
+        color: #f7f4f2;
+        text-style: none;
+    }
+    Button.dialog-action:focus {
+        background: #faa881;
+        color: #101010;
+        border: none;
+        text-style: bold;
+    }
     #activity-log {
         height: 1fr;
         border: round #ac3600;

@@ -4,10 +4,12 @@ import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 
+import pandas as pd
 from textual.widgets import (
     Button,
     DataTable,
     Input,
+    Select,
     Static,
     TabbedContent,
     TabPane,
@@ -16,7 +18,15 @@ from textual.widgets import (
 )
 
 from resistics.flow import default_parameter_set, model_to_yaml, standard_mt_flow
-from resistics.tui import CreateProjectScreen, DirectoryPickerScreen, ResisticsTui
+from resistics.gather import GatherCriteria
+from resistics.tui import (
+    CopyYamlFileScreen,
+    CreateJobScreen,
+    CreateProjectScreen,
+    DeleteYamlFileScreen,
+    DirectoryPickerScreen,
+    ResisticsTui,
+)
 
 
 class FakeProject:
@@ -153,6 +163,109 @@ def test_close_project_returns_to_home(monkeypatch, tmp_path):
             await pilot.pause()
             assert app.sub_title == "project launcher"
             assert app.screen.query_one("#open-project", Button)
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
+def test_tui_creates_a_job_template_from_dropdowns(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    project.table = pd.DataFrame(
+        columns=["survey", "station", "sample_rate", "run_path"]
+    )
+    flow_path = project.project_path / "processing/flows/standard.yaml"
+    flow_path.parent.mkdir(parents=True)
+    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    parameters_path = project.project_path / "processing/parameters/default.yaml"
+    parameters_path.parent.mkdir(parents=True)
+    parameters_path.write_text(model_to_yaml(default_parameter_set()))
+    criteria_path = project.project_path / "processing/criteria/field.yaml"
+    criteria_path.parent.mkdir(parents=True)
+    criteria_path.write_text(model_to_yaml(GatherCriteria()))
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            app.screen.query_one(TabbedContent).active = "jobs"
+            await pilot.press("n")
+            await pilot.pause()
+            form = app.screen
+            assert isinstance(form, CreateJobScreen)
+            assert form.query_one("#job-flow", Select).value == "standard.yaml"
+            assert form.query_one("#job-parameters", Select).value == "default.yaml"
+            form.query_one("#cancel-job-template", Button).focus()
+            await pilot.press("right")
+            assert form.focused is form.query_one("#create-job-template", Button)
+            await pilot.press("left")
+            assert form.focused is form.query_one("#cancel-job-template", Button)
+            form.query_one("#job-name", Input).value = "field_job"
+            form.query_one("#job-criteria", Select).value = "field.yaml"
+            form.create()
+            await pilot.pause()
+            assert app.screen.query_one("#job-table", DataTable).row_count == 1
+            yaml_text = (
+                project.project_path / "processing/jobs/field_job.yaml"
+            ).read_text()
+            assert "flow: standard.yaml" in yaml_text
+            assert "parameters: default.yaml" in yaml_text
+            assert "criteria: field.yaml" in yaml_text
+            assert "scope:" in yaml_text
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
+def test_tui_copies_and_deletes_selected_yaml_files(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    flow_path = project.project_path / "processing/flows/standard.yaml"
+    flow_path.parent.mkdir(parents=True)
+    flow_path.write_text("# Retain this comment when copied\n" + model_to_yaml(standard_mt_flow()))
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            app.screen.query_one(TabbedContent).active = "flows"
+            app.screen.selected_flow_path = flow_path
+            app.screen._show_yaml("#flow-content", flow_path)
+            await pilot.press("y")
+            await pilot.pause()
+            copy_form = app.screen
+            assert isinstance(copy_form, CopyYamlFileScreen)
+            copy_form.query_one("#copy-yaml-name", Input).value = "standard_copy"
+            await pilot.press("right")
+            assert copy_form.focused is copy_form.query_one("#confirm-copy-yaml", Button)
+            await pilot.press("left")
+            assert copy_form.focused is copy_form.query_one("#cancel-copy-yaml", Button)
+            copy_form.copy()
+            await pilot.pause()
+            copied_path = flow_path.with_name("standard_copy.yaml")
+            assert copied_path.read_bytes() == flow_path.read_bytes()
+            assert app.screen.selected_flow_path == copied_path
+            assert app.screen.check_action("copy_yaml", ())
+            assert app.screen.check_action("delete_yaml", ())
+            await pilot.press("delete")
+            await pilot.pause()
+            delete_form = app.screen
+            assert isinstance(delete_form, DeleteYamlFileScreen)
+            cancel_button = delete_form.query_one("#cancel-delete-yaml", Button)
+            delete_button = delete_form.query_one("#confirm-delete-yaml", Button)
+            assert delete_form.focused is cancel_button
+            await pilot.press("right")
+            assert delete_form.focused is delete_button
+            await pilot.press("left")
+            assert delete_form.focused is cancel_button
+            delete_form.delete()
+            await pilot.pause()
+            assert not copied_path.exists()
+            assert flow_path.exists()
+            assert app.screen.selected_flow_path is None
+            assert app.screen.query_one("#flow-content", TextArea).text == "Select a flow"
+            assert not app.screen.check_action("copy_yaml", ())
+            assert not app.screen.check_action("delete_yaml", ())
 
     asyncio.run(run_test())
     assert project.closed
@@ -304,3 +417,9 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
     assert "Tree:focus > .tree--cursor" in ResisticsTui.CSS
     assert "DataTable:focus > .datatable--cursor" in ResisticsTui.CSS
     assert "text-style: none;" in ResisticsTui.CSS
+    assert "background: transparent;" in CopyYamlFileScreen.CSS
+    assert "background: transparent;" in DeleteYamlFileScreen.CSS
+    assert "Button.dialog-action {" in ResisticsTui.CSS
+    assert "background: #343434;" in ResisticsTui.CSS
+    assert "Button.dialog-action:focus" in ResisticsTui.CSS
+    assert "text-style: bold;" in ResisticsTui.CSS

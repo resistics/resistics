@@ -4,6 +4,7 @@ from datetime import datetime, time, timezone
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from resistics.common import ResisticsProcess
 from resistics.flow import (
@@ -126,6 +127,42 @@ def test_empty_scope_batches_every_station_rate(tmp_path):
         ("a", 128.0, ["survey/a/run1", "survey/a/run2"]),
         ("b", 4.0, ["survey/b/run3"]),
     ]
+
+
+def test_create_template_writes_a_new_editable_job_without_criteria(tmp_path):
+    project = make_project(tmp_path)
+    write_job(project)
+
+    path = ProjectJobs(project).create_template(
+        JobDefinition(name="new_job", flow="standard.yaml", parameters="defaults.yaml")
+    )
+
+    assert path == project.project_path / "processing/jobs/new_job.yaml"
+    yaml_text = path.read_text()
+    assert "criteria:" not in yaml_text
+    definition = model_from_yaml(JobDefinition, yaml_text)
+    assert definition.name == "new_job"
+    assert definition.flow == "standard.yaml"
+    assert definition.parameters == "defaults.yaml"
+    assert definition.scope == JobScope()
+
+
+@pytest.mark.parametrize("name", ["", "with space", "job.yaml", "../job"])
+def test_create_template_rejects_unsafe_job_names(tmp_path, name):
+    project = make_project(tmp_path)
+    definition = JobDefinition(name=name, flow="standard", parameters="defaults")
+
+    with pytest.raises(ValueError):
+        ProjectJobs(project).create_template(definition)
+
+
+def test_create_template_does_not_overwrite_an_existing_job(tmp_path):
+    project = make_project(tmp_path)
+    write_job(project)
+    definition = JobDefinition(name="example", flow="standard", parameters="defaults")
+
+    with pytest.raises(ValueError, match="already exists"):
+        ProjectJobs(project).create_template(definition)
 
 
 def test_scope_limits_the_station_rate_batches(tmp_path):
