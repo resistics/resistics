@@ -137,5 +137,7 @@ modern-python-boilerplate/
 .vscode
 
 # resistics specific
-artifacts/
+.artifacts/
+.codex
 docs/source/tutorial-*
+
