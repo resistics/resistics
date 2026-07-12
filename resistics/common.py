@@ -1,13 +1,13 @@
 """
 Common resistics functions and classes used throughout the package
 """
+
 from loguru import logger
 from collections.abc import Callable
 from typing import ClassVar, List, Tuple, Union, Dict
 from typing import Any, Collection, Optional, Type
 from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from pydantic_core import core_schema
 from datetime import UTC, datetime
 import numpy as np
 
@@ -21,6 +21,7 @@ def json_fallback(value: Any) -> Any:
     if isinstance(value, Callable):
         return getattr(value, "__name__", str(value))
     return str(value)
+
 
 ELECTRIC_CHANS = ["Ex", "Ey", "E1", "E2", "E3", "E4"]
 MAGNETIC_CHANS = ["Hx", "Hy", "Hz", "Bx", "By", "Bz"]
@@ -769,141 +770,11 @@ class ResisticsProcess(ResisticsModel):
     a process record to the dataset
     """
 
-    _types: ClassVar[Dict[str, type["ResisticsProcess"]]] = {}
+    input_types: ClassVar[Dict[str, str]] = {}
+    output_type: ClassVar[Optional[str]] = None
+    runtime_requirements: ClassVar[List[str]] = []
+    include_in_default_parameters: ClassVar[bool] = False
     name: Optional[str] = None
-
-    def __init_subclass__(cls) -> None:
-        """
-        Used to automatically register child processors in `_types`
-
-        When a resistics process is imported, it is added to the base
-        ResisticsProcess _types variable. Later, this dictionary of class types
-        can be used to initialise processes from a dictonary.
-
-        The intention of this method is to support initialising processes from
-        JSON files.
-        """
-        cls._types[cls.__name__] = cls
-
-    @classmethod
-    def __get_pydantic_core_schema__(cls, source_type, handler):
-        """Get the validator schema that will be used by pydantic v2."""
-        return core_schema.no_info_before_validator_function(
-            cls.validate_model_input, handler(source_type)
-        )
-
-    @classmethod
-    def validate_model_input(cls, value: Any) -> Any:
-        """Resolve registered process dictionaries during pydantic validation."""
-        if isinstance(value, ResisticsProcess):
-            return value
-        if isinstance(value, dict) and "name" in value:
-            return cls.validate(value)
-        return value
-
-    @classmethod
-    def __get_validators__(cls):
-        """Get the validators that will be used by pydantic"""
-        yield cls.validate
-
-    @classmethod
-    def validate(
-        cls, value: Union["ResisticsProcess", Dict[str, Any]]
-    ) -> "ResisticsProcess":
-        """
-        Validate a ResisticsProcess in another pydantic class
-
-        Parameters
-        ----------
-        value : Union[ResisticsProcess, Dict[str, Any]]
-            A ResisticsProcess child class or a dictionary
-
-        Returns
-        -------
-        ResisticsProcess
-            A ResisticsProcess child class
-
-        Raises
-        ------
-        ValueError
-            If the value is neither a ResisticsProcess or a dictionary
-        KeyError
-            If name is not in the dictionary
-        ValueError
-            If initialising from dictionary fails
-
-        Examples
-        --------
-        The following example will show how a generic ResisticsProcess child
-        class can be instantiated from ResisticsProcess using a dictionary,
-        which might be read in from a JSON configuration file.
-
-        >>> from resistics.common import ResisticsProcess
-        >>> from resistics.decimate import DecimationSetup
-        >>> process = {"name": 'DecimationSetup', "n_levels": 8, "per_level": 5, "min_samples": 256, "div_factor": 2, "eval_freqs": None}
-        >>> ResisticsProcess(**process) # doctest: +ELLIPSIS
-        Traceback (most recent call last):
-        ...
-        pydantic_core._pydantic_core.ValidationError: ...
-
-        To get the right concrete process class, the class validate method
-        needs to be used. This is done automatically by pydantic for fields
-        typed as ResisticsProcess.
-
-        >>> ResisticsProcess.validate(process)
-        DecimationSetup(name='DecimationSetup', n_levels=8, per_level=5, min_samples=256, div_factor=2, eval_freqs=None)
-
-        That's better. Note that errors will be raised if the dictionary is not
-        formatted as expected.
-
-        >>> process = {"n_levels": 8, "per_level": 5, "min_samples": 256, "div_factor": 2, "eval_freqs": None}
-        >>> ResisticsProcess.validate(process)
-        Traceback (most recent call last):
-        ...
-        KeyError: 'No name provided for initialisation of process'
-
-        This functionality is most useful in the resistics configurations which
-        can be saved as JSON files. The default configuration uses the default
-        parameterisation of DecimationSetup.
-
-        >>> from resistics.letsgo import Configuration
-        >>> config = Configuration(name="example1")
-        >>> config.dec_setup
-        DecimationSetup(name='DecimationSetup', n_levels=8, per_level=5, min_samples=256, div_factor=2, eval_freqs=None)
-
-        Now create another configuration with a different setup by passing a
-        dictionary. In practise, this dictionary will most likely be read in
-        from a configuration file.
-
-        >>> setup = DecimationSetup(n_levels=4, per_level=3)
-        >>> test_dict = setup.dict()
-        >>> test_dict
-        {'name': 'DecimationSetup', 'n_levels': 4, 'per_level': 3, 'min_samples': 256, 'div_factor': 2, 'eval_freqs': None}
-        >>> config2 = Configuration(name="example2", dec_setup=test_dict)
-        >>> config2.dec_setup
-        DecimationSetup(name='DecimationSetup', n_levels=4, per_level=3, min_samples=256, div_factor=2, eval_freqs=None)
-
-        This method allows the saving of a configuration with custom processors
-        in a JSON file which can be loaded and used again.
-        """
-        if isinstance(value, ResisticsProcess):
-            return value
-        if not isinstance(value, dict):
-            raise ValueError(
-                "ResisticsProcess unable to initialise from type {type(value)}"
-            )
-        if "name" not in value:
-            raise KeyError("No name provided for initialisation of process")
-        data = dict(value)
-        name = data.get("name")
-        if name == cls.__name__:
-            data.pop("name")
-            return data
-        try:
-            data.pop("name")
-            return cls._types[name](**data)
-        except Exception:
-            raise ValueError(f"Unable to initialise {name} from dictionary")
 
     @model_validator(mode="after")
     def validate_name(self) -> "ResisticsProcess":
@@ -928,6 +799,16 @@ class ResisticsProcess(ResisticsModel):
         import json
 
         return json.loads(self.model_dump_json())
+
+    def execute(self, inputs: Dict[str, Any], context: Any) -> Any:
+        """Execute this process as a flow node.
+
+        The default preserves existing numerical ``run`` methods. Readers,
+        writers, and selectors that require project or batch context override
+        this method in their owning modules.
+        """
+        del context
+        return self.run(**inputs)
 
     def _get_record(self, messages: Union[str, List[str]]) -> Record:
         """

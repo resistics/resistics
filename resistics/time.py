@@ -6,8 +6,9 @@ Classes and methods for storing and manipulating time data, including:
 - Implementations of time data readers for numpy and ascii formatted TimeData
 - TimeData processors
 """
+
 from loguru import logger
-from typing import List, Dict, Literal, Union, Any, Tuple, Optional, Callable
+from typing import ClassVar, List, Dict, Literal, Union, Any, Tuple, Optional, Callable
 import types
 from pathlib import Path
 from pydantic import ConfigDict, ValidationInfo, conint, field_validator, PositiveFloat
@@ -21,7 +22,12 @@ from resistics.common import Metadata, WriteableMetadata
 from resistics.common import History, Record, ResisticsWriter
 from resistics.common import get_chan_type
 from resistics.sampling import RSDateTime, RSTimeDelta, DateTimeLike
-from resistics.sampling import HighResDateTime, datetime_to_string
+from resistics.sampling import (
+    HighResDateTime,
+    datetime_to_string,
+    to_datetime,
+    to_timestamp,
+)
 
 
 class ChanMetadata(Metadata):
@@ -973,6 +979,116 @@ class TimeReader(ResisticsProcess):
         return adjust_time_metadata(metadata, metadata.fs, from_time, n_read)
 
 
+class MTH5TimeReader(TimeReader):
+    """Read a selected MTH5 ``RunGroup`` into :class:`TimeData`.
+
+    Unlike directory-backed readers, MTH5 selection is performed by the
+    project before the reader receives the concrete run group.
+    """
+
+    output_type: ClassVar[str] = "time_data"
+    runtime_requirements: ClassVar[List[str]] = ["project", "run_batch"]
+
+    def execute(self, inputs: Dict[str, Any], context: Any) -> TimeData:
+        """Read the concrete run selected by the current flow batch."""
+        del inputs
+        batch = context["run_batch"]
+        return context["project"].read_run(
+            batch["survey"],
+            batch["station"],
+            batch["run"],
+            chans=context.get("channels"),
+            from_time=context.get("from_time"),
+            to_time=context.get("to_time"),
+        )
+
+    def run(
+        self,
+        run_group: Any,
+        chans: Optional[List[str]] = None,
+        from_time: Optional[DateTimeLike] = None,
+        to_time: Optional[DateTimeLike] = None,
+        from_sample: Optional[int] = None,
+        to_sample: Optional[int] = None,
+        sample_rate: Optional[float] = None,
+    ) -> TimeData:
+        """Read one bounded MTH5 run."""
+        start = None if from_time is None else str(to_timestamp(from_time).isoformat())
+        end = None if to_time is None else str(to_timestamp(to_time).isoformat())
+        n_samples = None
+        if from_sample is not None or to_sample is not None:
+            if sample_rate is None:
+                raise ValueError("sample_rate is required for MTH5 sample bounds")
+            first = 0 if from_sample is None else from_sample
+            run_ts = run_group.to_runts()
+            full_data = _mth5_run_ts_to_time_data(run_ts, chans=chans)
+            start = str(
+                to_timestamp(full_data.metadata.first_time)
+                + pd.to_timedelta(first / sample_rate, unit="s")
+            )
+            if to_sample is not None:
+                n_samples = max(0, to_sample - first + 1)
+        run_ts = run_group.to_runts(start=start, end=end, n_samples=n_samples)
+        return _mth5_run_ts_to_time_data(run_ts, chans=chans)
+
+
+def _mth5_run_ts_to_time_data(
+    run_ts: Any, chans: Optional[List[str]] = None
+) -> TimeData:
+    """Convert an MTH5 RunTS-like object to resistics time data."""
+    if hasattr(run_ts, "dataset"):
+        dataset = run_ts.dataset
+    elif hasattr(run_ts, "to_xarray"):
+        dataset = run_ts.to_xarray()
+    elif hasattr(run_ts, "to_dataset"):
+        dataset = run_ts.to_dataset()
+    else:
+        raise NotImplementedError("Unable to convert MTH5 RunTS to a dataset")
+    if chans is None:
+        chans = list(getattr(dataset, "data_vars", []))
+    else:
+        dataset = dataset[chans]
+    if not chans:
+        raise ValueError("No channels found in MTH5 run")
+    data = np.vstack([np.asarray(dataset[chan].data) for chan in chans])
+    first_chan = dataset[chans[0]]
+    fs = float(
+        getattr(first_chan, "sample_rate", None)
+        or first_chan.attrs.get("sample_rate")
+        or first_chan.attrs.get("sampling_rate")
+    )
+    if getattr(first_chan, "start", None) is not None:
+        first_time = to_datetime(first_chan.start)
+    elif "time" in getattr(first_chan, "coords", {}):
+        first_time = to_datetime(pd.to_datetime(first_chan.coords["time"].values[0]))
+    else:
+        raise ValueError("Unable to determine MTH5 channel start time")
+    metadata = TimeMetadata(
+        fs=fs,
+        chans=chans,
+        n_chans=len(chans),
+        n_samples=data.shape[1],
+        first_time=first_time,
+        last_time=first_time,
+        chans_metadata={
+            chan: ChanMetadata(
+                name=chan,
+                data_files=None,
+                chan_type=(
+                    "electric"
+                    if chan.lower().startswith("e")
+                    else (
+                        "magnetic" if chan.lower().startswith(("h", "b")) else "unknown"
+                    )
+                ),
+            )
+            for chan in chans
+        },
+    )
+    metadata = adjust_time_metadata(metadata, fs, first_time, data.shape[1])
+    return TimeData(metadata, data)
+
+
 class TimeReaderJSON(TimeReader):
     """Base class for TimeReaders that use a resistics JSON header"""
 
@@ -1242,6 +1358,10 @@ def new_time_data(
 
 
 class TimeProcess(ResisticsProcess):
+
+    input_types: ClassVar[Dict[str, str]] = {"time_data": "time_data"}
+    output_type: ClassVar[str] = "time_data"
+    include_in_default_parameters: ClassVar[bool] = False
     """Parent class for processing time data"""
 
     def run(self, time_data: TimeData) -> TimeData:
@@ -1490,6 +1610,8 @@ class Subsamples(TimeProcess):
 
 
 class InterpolateNans(TimeProcess):
+
+    include_in_default_parameters: ClassVar[bool] = True
     """
     Interpolate nan values in the data
 
@@ -1559,6 +1681,8 @@ class InterpolateNans(TimeProcess):
 
 
 class RemoveMean(TimeProcess):
+
+    include_in_default_parameters: ClassVar[bool] = True
     """
     Remove channel mean value from each channel
 

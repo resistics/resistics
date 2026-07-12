@@ -27,7 +27,11 @@ from resistics.flow import FlowDefinition, ParameterSet, model_from_yaml_file
 from resistics.templates import (
     DEFAULT_FLOW_FILENAME,
     DEFAULT_PARAMETERS_FILENAME,
-    QUICK_PARAMETERS_FILENAME,
+    REMOTE_REFERENCE_CRITERIA_FILENAME,
+    REMOTE_REFERENCE_FLOW_FILENAME,
+    SINGLE_SITE_CRITERIA_FILENAME,
+    SINGLE_SITE_TARGET_FLOW_FILENAME,
+    install_builtin_criteria_templates,
     install_builtin_flow_templates,
     install_builtin_parameter_templates,
 )
@@ -122,16 +126,21 @@ def test_init_creates_canonical_project_structure(tmp_path):
     default_parameters_path = (
         project_path / "processing" / "parameters" / DEFAULT_PARAMETERS_FILENAME
     )
-    quick_parameters_path = (
-        project_path / "processing" / "parameters" / QUICK_PARAMETERS_FILENAME
-    )
     flow = model_from_yaml_file(FlowDefinition, flow_path)
     default_parameters = model_from_yaml_file(ParameterSet, default_parameters_path)
-    quick_parameters = model_from_yaml_file(ParameterSet, quick_parameters_path)
-    assert default_parameters.flow_id == flow.id
-    assert quick_parameters.flow_version == flow.version
-    assert default_parameters.values["calibrate"]["enabled"] is False
-    assert quick_parameters.values["decimate"]["n_levels"] == 4
+    assert "resistics.decimate.DecimationSetup" in default_parameters.processes
+    for flow_filename in (
+        SINGLE_SITE_TARGET_FLOW_FILENAME,
+        REMOTE_REFERENCE_FLOW_FILENAME,
+    ):
+        installed_flow = model_from_yaml_file(
+            FlowDefinition, project_path / "processing" / "flows" / flow_filename
+        )
+        assert installed_flow.flow_stages()
+        assert len(installed_flow.flow_stages()) == 2
+    assert (
+        default_parameters.processes["resistics.window.WindowerTarget"]["target"] == 500
+    )
     assert not (project_path / "processing" / "runs").exists()
     assert check_project(project_path, mth5_path)
 
@@ -143,16 +152,24 @@ def test_template_restoration_is_scoped_to_its_resource_type(tmp_path):
 
     flow_paths = install_builtin_flow_templates(project_path)
 
-    assert [path.name for path in flow_paths] == [DEFAULT_FLOW_FILENAME]
+    assert {path.name for path in flow_paths} == {
+        DEFAULT_FLOW_FILENAME,
+        SINGLE_SITE_TARGET_FLOW_FILENAME,
+        REMOTE_REFERENCE_FLOW_FILENAME,
+    }
     assert not (
         project_path / "processing/parameters" / DEFAULT_PARAMETERS_FILENAME
     ).exists()
 
     parameter_paths = install_builtin_parameter_templates(project_path)
 
-    assert {path.name for path in parameter_paths} == {
-        DEFAULT_PARAMETERS_FILENAME,
-        QUICK_PARAMETERS_FILENAME,
+    assert [path.name for path in parameter_paths] == [DEFAULT_PARAMETERS_FILENAME]
+
+    criteria_paths = install_builtin_criteria_templates(project_path)
+
+    assert {path.name for path in criteria_paths} == {
+        SINGLE_SITE_CRITERIA_FILENAME,
+        REMOTE_REFERENCE_CRITERIA_FILENAME,
     }
 
 

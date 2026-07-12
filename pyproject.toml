@@ -34,7 +34,7 @@ dependencies = [
     "prettyprinter>=0.18.0",
     "PyYAML>=5.4.1",
     "tqdm>=4.61.0",
-    "textual>=1.0.0",
+    "textual[syntax]>=1.0.0",
     "regressioninc",
     "mth5>=0.4.1",
     "obspy>=1.4.2",

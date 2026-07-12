@@ -5,7 +5,7 @@ Module for time data decimation including classes and for the following
 - Performing decimation on time data
 """
 from loguru import logger
-from typing import Any, Optional, Tuple, Union, Dict, List
+from typing import Any, ClassVar, Optional, Tuple, Union, Dict, List
 from pathlib import Path
 from pydantic import ConfigDict, PositiveInt, conint, model_validator
 import numpy as np
@@ -357,11 +357,20 @@ class DecimationSetup(ResisticsProcess):
     2                  8.0   5.656854   32.0        4           2
     """
 
+    input_types: ClassVar[Dict[str, str]] = {"time_data": "time_data"}
+    output_type: ClassVar[str] = "decimation_parameters"
+    include_in_default_parameters: ClassVar[bool] = True
+
     n_levels: int = 8
     per_level: int = 5
     min_samples: int = 256
     div_factor: int = 2
     eval_freqs: Optional[List[float]] = None
+
+    def execute(self, inputs: Dict[str, Any], context: Any) -> DecimationParameters:
+        """Build parameters from the sampling frequency of flow time data."""
+        del context
+        return self.run(inputs["time_data"].metadata.fs)
 
     def run(self, fs: float) -> DecimationParameters:
         """
@@ -719,6 +728,13 @@ class Decimator(ResisticsProcess):
     There are two options for decimation, using time data Resample or using
     time data Decimate. The default is to use Resample.
     """
+
+    input_types: ClassVar[Dict[str, str]] = {
+        "dec_params": "decimation_parameters",
+        "time_data": "time_data",
+    }
+    output_type: ClassVar[str] = "decimated_data"
+    include_in_default_parameters: ClassVar[bool] = True
 
     resample: bool = True
     """Boolean flag for using resampling instead of decimation"""

@@ -96,7 +96,7 @@ using a window size of 8 samples per window and a 2 sample overlap.
 """
 from loguru import logger
 from pathlib import Path
-from typing import Optional, List, Tuple, Dict, Union, Any
+from typing import Any, ClassVar, Optional, List, Tuple, Dict, Union
 from pydantic import ConfigDict, PositiveInt
 import numpy as np
 import pandas as pd
@@ -890,6 +890,10 @@ class WindowSetup(ResisticsProcess):
     ValueError: Invalid overlaps found [ True  True False]
     """
 
+    input_types: ClassVar[Dict[str, str]] = {"dec_data": "decimated_data"}
+    output_type: ClassVar[str] = "window_parameters"
+    include_in_default_parameters: ClassVar[bool] = True
+
     min_size: int = 128
     min_olap: int = 32
     win_factor: int = 4
@@ -897,6 +901,12 @@ class WindowSetup(ResisticsProcess):
     min_n_wins: int = 5
     win_sizes: Optional[List[int]] = None
     olap_sizes: Optional[List[int]] = None
+
+    def execute(self, inputs: Dict[str, Any], context: Any) -> WindowParameters:
+        """Build window parameters from flow decimated data."""
+        del context
+        dec_data = inputs["dec_data"]
+        return self.run(dec_data.metadata.n_levels, dec_data.metadata.fs)
 
     def run(self, n_levels: int, dec_fs: List[float]) -> WindowParameters:
         """
@@ -1289,6 +1299,20 @@ class Windower(ResisticsProcess):
     >>> win_data.data[0][2, 0]
     array([24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39])
     """
+
+    input_types: ClassVar[Dict[str, str]] = {
+        "win_params": "window_parameters",
+        "dec_data": "decimated_data",
+    }
+    output_type: ClassVar[str] = "windowed_data"
+    runtime_requirements: ClassVar[List[str]] = ["reference_time"]
+    include_in_default_parameters: ClassVar[bool] = True
+
+    def execute(self, inputs: Dict[str, Any], context: Any) -> WindowedData:
+        """Window flow data using the project reference time from context."""
+        return self.run(
+            context["reference_time"], inputs["win_params"], inputs["dec_data"]
+        )
 
     def run(
         self,

@@ -1,153 +1,198 @@
+"""Tests for direct-process, staged flow definitions."""
+
 import pytest
 
+from resistics.common import ResisticsProcess
 from resistics.flow import (
     FlowDefinition,
     FlowExecutor,
     FlowNode,
+    FlowStage,
     FlowValidator,
     ParameterSet,
+    ProcessCatalog,
     ProcessingJob,
-    builtin_step_registry,
     default_parameter_set,
+    evals_to_tf_flow,
     model_from_yaml,
     model_to_yaml,
+    remote_reference_mt_flow,
+    resolve_process_class,
+    single_site_mt_target_flow,
     standard_mt_flow,
+    time_to_evals_flow,
     topological_order,
 )
 
+RUNTIME = {
+    "project_path",
+    "project",
+    "reference_time",
+    "run_batch",
+    "station_rate_batch",
+    "staging_output_path",
+    "criteria",
+}
+
+
+class Source(ResisticsProcess):
+    output_type = "number"
+
+    def run(self):
+        return 2
+
+
+class Double(ResisticsProcess):
+    input_types = {"value": "number"}
+    output_type = "number"
+
+    def run(self, value):
+        return value * 2
+
 
 def get_processing_job(flow=None, params=None):
-    flow = flow or standard_mt_flow()
     return ProcessingJob(
         name="test-job",
-        flow=flow,
-        parameters=params or default_parameter_set(flow),
-        runtime={
-            "project_path": "/tmp/project",
-            "survey": "survey",
-            "station": "station",
-            "run": "run",
-        },
+        flow=flow or standard_mt_flow(),
+        parameters=params or default_parameter_set(),
+        runtime={"project_path": "/tmp/project"},
         output_label="test",
     )
 
 
-def test_standard_mt_flow_validates():
-    registry = builtin_step_registry()
-    result = FlowValidator(registry).validate(get_processing_job())
-    assert result.ok
-    assert result.errors == []
+@pytest.mark.parametrize(
+    "flow",
+    [
+        standard_mt_flow(),
+        single_site_mt_target_flow(),
+        remote_reference_mt_flow(),
+        time_to_evals_flow(),
+        evals_to_tf_flow(),
+    ],
+)
+def test_default_flows_validate_with_shared_defaults(flow):
+    result = FlowValidator(RUNTIME).validate(get_processing_job(flow))
+    assert result.ok, result.errors
 
 
-def test_topological_order():
-    order = [node.id for node in topological_order(standard_mt_flow())]
-    assert order == [
-        "read",
-        "time_processors",
-        "decimate",
-        "window",
-        "fft",
-        "evals",
-        "calibrate",
-        "gather",
-        "solve_tf",
-        "write_results",
+def test_standard_flow_has_durable_run_and_station_rate_stages():
+    stages = standard_mt_flow().flow_stages()
+
+    assert [(stage.stage_id, stage.scope) for stage in stages] == [
+        ("time_to_evals", "run"),
+        ("evals_to_tf", "station_rate"),
     ]
+    assert stages[0].nodes[-1].process == "resistics.spectra.EvaluationFrequencyWriter"
+    assert stages[1].nodes[0].configuration_source == "criteria"
 
 
-def test_unknown_step_is_invalid():
+def test_flow_serialization_has_no_ui_or_process_parameters():
+    yaml_text = model_to_yaml(standard_mt_flow())
+
+    assert "position:" not in yaml_text
+    assert "parameters:" not in yaml_text
+    assert "process: resistics." in yaml_text
+    assert model_from_yaml(FlowDefinition, yaml_text) == standard_mt_flow()
+
+
+def test_flow_requires_explicit_stages():
+    with pytest.raises(ValueError):
+        model_from_yaml(
+            FlowDefinition,
+            """
+id: old_shape
+name: Old shape
+nodes: []
+""",
+        )
+
+
+def test_parameter_defaults_are_discovered_not_flow_aligned():
+    params = default_parameter_set()
+
+    assert "resistics.decimate.DecimationSetup" in params.processes
+    assert "resistics.regression.SolverOLS" in params.processes
+    assert "resistics.gather.EvaluationFrequencyGather" not in params.processes
+    assert params.processes["resistics.window.WindowerTarget"]["target"] == 500
+
+
+def test_catalog_discovers_a_project_plugin_without_execution_registry(tmp_path):
+    plugin_path = tmp_path / "plugins"
+    plugin_path.mkdir()
+    (plugin_path / "example.py").write_text(
+        "from resistics.common import ResisticsProcess\n"
+        "class PassThrough(ResisticsProcess):\n"
+        "    input_types = {'time_data': 'time_data'}\n"
+        "    output_type = 'time_data'\n"
+        "    include_in_default_parameters = True\n"
+        "    def run(self, time_data): return time_data\n"
+    )
+
+    catalog = ProcessCatalog(tmp_path).discover()
+    descriptor = next(
+        item for item in catalog if item.path == "plugins.example.PassThrough"
+    )
+
+    assert descriptor.input_types == {"time_data": "time_data"}
+    assert resolve_process_class(descriptor.path).output_type == "time_data"
+    assert "plugins.example.PassThrough" in default_parameter_set(tmp_path).processes
+
+
+def test_unqualified_process_is_rejected():
     flow = FlowDefinition(
         id="bad",
         name="bad",
-        nodes=[
-            FlowNode(id="read", type="mth5_read"),
-            FlowNode(id="bad", type="not_real", inputs=["read"]),
+        stages=[
+            FlowStage(
+                stage_id="bad",
+                scope="run",
+                nodes=[FlowNode(id="bad", process="Windower")],
+            )
         ],
     )
-    result = FlowValidator(builtin_step_registry()).validate(
-        get_processing_job(
-            flow=flow,
-            params=ParameterSet(name="test", flow_id="bad", flow_version="1"),
-        )
-    )
+    result = FlowValidator(RUNTIME).validate(get_processing_job(flow))
+
     assert not result.ok
-    assert "Unknown step type: not_real" in result.errors
+    assert "qualified class path" in result.errors[0]
 
 
-def test_cycle_is_invalid():
+def test_invalid_real_process_parameter_is_rejected():
+    params = default_parameter_set()
+    params.processes["resistics.decimate.DecimationSetup"]["n_levels"] = "bad"
+
+    result = FlowValidator(RUNTIME).validate(get_processing_job(params=params))
+
+    assert not result.ok
+    assert "resistics.decimate.DecimationSetup" in result.errors[0]
+
+
+def test_executor_runs_direct_process_class():
     flow = FlowDefinition(
-        id="cycle",
-        name="cycle",
-        nodes=[
-            FlowNode(id="a", type="mth5_read", inputs=["b"]),
-            FlowNode(id="b", type="time_processors", inputs=["a"]),
+        id="direct",
+        name="direct",
+        stages=[
+            FlowStage(
+                stage_id="run",
+                scope="run",
+                nodes=[
+                    FlowNode(id="source", process=f"{__name__}.Source"),
+                    FlowNode(
+                        id="double",
+                        process=f"{__name__}.Double",
+                        inputs={"value": "source"},
+                    ),
+                ],
+            )
         ],
     )
-    result = FlowValidator(builtin_step_registry()).validate(
-        get_processing_job(flow=flow)
-    )
-    assert not result.ok
-    assert "Flow contains a cycle" in result.errors
-
-
-def test_missing_runtime_is_invalid():
-    processing_job = get_processing_job()
-    processing_job.runtime.pop("station")
-    result = FlowValidator(builtin_step_registry()).validate(processing_job)
-    assert not result.ok
-    assert "Runtime value 'station' is required by node 'read'" in result.errors
-
-
-def test_parameter_validation():
-    flow = standard_mt_flow()
-    params = default_parameter_set(flow)
-    params.values["solve_tf"]["solver"] = "not-a-solver"
-    result = FlowValidator(builtin_step_registry()).validate(
-        get_processing_job(flow, params)
-    )
-    assert not result.ok
-    assert "Node 'solve_tf': Parameter 'solver' must be one of" in result.errors[0]
-
-
-def test_executor_emits_progress_events():
     events = []
-    results = FlowExecutor(
-        builtin_step_registry(),
-        handlers={
-            step.type_id: lambda inputs, params, runtime: {"inputs": inputs}
-            for step in builtin_step_registry().all()
-        },
-        progress_callback=events.append,
-    ).run(get_processing_job())
-
-    assert list(results) == [node.id for node in topological_order(standard_mt_flow())]
-    assert events[0]["event"] == "started"
-    assert events[0]["node_id"] == "read"
-    assert events[-1]["event"] == "completed"
-    assert events[-1]["node_id"] == "write_results"
-
-
-def test_executor_rejects_invalid_processing_job():
-    flow = standard_mt_flow()
-    params = ParameterSet(
-        name="bad",
-        flow_id=flow.id,
-        flow_version=flow.version,
-        values={"decimate": {"n_levels": "nope"}},
+    result = FlowExecutor(progress_callback=events.append).run(
+        get_processing_job(flow, ParameterSet(name="empty"))
     )
-    with pytest.raises(ValueError, match="Node 'decimate'"):
-        FlowExecutor(builtin_step_registry()).run(get_processing_job(flow, params))
 
-
-def test_processing_job_serialization_roundtrip():
-    job = get_processing_job()
-    loaded_yaml = model_from_yaml(ProcessingJob, model_to_yaml(job))
-    loaded_json = ProcessingJob.model_validate_json(job.model_dump_json())
-    assert loaded_yaml == job
-    assert loaded_json == job
-
-
-def test_flow_yaml_roundtrip():
-    flow = standard_mt_flow()
-    loaded = model_from_yaml(FlowDefinition, model_to_yaml(flow))
-    assert loaded == flow
+    assert result["run"]["double"] == 4
+    assert events[0]["process"] == f"{__name__}.Source"
+    assert [node.id for node in topological_order(flow.flow_stages()[0])] == [
+        "source",
+        "double",
+    ]

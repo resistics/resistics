@@ -2,8 +2,8 @@
 MTH5-backed resistics project model and path helpers.
 
 The public project API is MTH5-only. Legacy directory readers may still exist as
-internal conversion helpers, but project discovery and letsgo workflows should
-use surveys, stations, and runs from an MTH5 file.
+internal conversion helpers, but project discovery and processing workflows use
+surveys, stations, and runs from an MTH5 file.
 """
 
 from __future__ import annotations
@@ -12,7 +12,6 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Literal, Optional, Union
 
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from loguru import logger
@@ -26,13 +25,14 @@ from resistics.common import ResisticsModel
 from resistics.plot import plot_timeline
 from resistics.sampling import DateTimeLike, HighResDateTime, to_datetime, to_timestamp
 from resistics.templates import install_builtin_processing_templates
-from resistics.time import ChanMetadata, TimeData, TimeMetadata
+from resistics.time import MTH5TimeReader, TimeData
 
 PROJ_FILE = "resistics.json"
 CANONICAL_PROJ_DIRS = (
     "processing",
     "processing/flows",
     "processing/parameters",
+    "processing/criteria",
     "processing/jobs",
     "data",
     "logs",
@@ -701,108 +701,19 @@ def _read_run(
     from_sample: Optional[int] = None,
     to_sample: Optional[int] = None,
 ) -> TimeData:
-    """Read a bounded MTH5 run using MTH5's RunTS slicing API."""
+    """Resolve an MTH5 run and delegate its reading to ``MTH5TimeReader``."""
     run_group = source.get_run(survey, station, run)
-    start = None if from_time is None else str(to_timestamp(from_time).isoformat())
-    end = None if to_time is None else str(to_timestamp(to_time).isoformat())
-    n_samples = None
-    if from_sample is not None or to_sample is not None:
-        summary = source.list_runs(survey=survey, station=station)
-        selected = next(item for item in summary if item.run == run)
-        first = 0 if from_sample is None else from_sample
-        start_time = pd.Timestamp(selected.start_time) + pd.to_timedelta(
-            first / selected.sample_rate, unit="s"
-        )
-        start = start_time.isoformat()
-        if to_sample is not None:
-            n_samples = max(0, to_sample - first + 1)
-    run_ts = run_group.to_runts(start=start, end=end, n_samples=n_samples)
-    return _run_ts_to_time_data(run_ts, chans=chans)
-
-
-def _run_group_to_run_ts(run_group: RunGroup) -> Any:
-    """Convert a RunGroup to the MTH5 run time-series object."""
-    if hasattr(run_group, "to_runts"):
-        return run_group.to_runts()
-    if hasattr(run_group, "to_run_ts"):
-        return run_group.to_run_ts()
-    raise NotImplementedError(
-        "Unable to read MTH5 run: expected RunGroup.to_runts() or to_run_ts()."
+    summary = source.list_runs(survey=survey, station=station)
+    selected = next(item for item in summary if item.run == run)
+    return MTH5TimeReader().run(
+        run_group,
+        chans=None if chans is None else list(chans),
+        from_time=from_time,
+        to_time=to_time,
+        from_sample=from_sample,
+        to_sample=to_sample,
+        sample_rate=selected.sample_rate,
     )
-
-
-def _run_ts_to_time_data(
-    run_ts: Any, chans: Optional[Iterable[str]] = None
-) -> TimeData:
-    """Convert a run time-series object to ``TimeData``."""
-    dataset = _extract_run_ts_dataset(run_ts)
-    if chans is not None:
-        chans = list(chans)
-        dataset = dataset[chans]
-    else:
-        chans = list(getattr(dataset, "data_vars", []))
-    if not chans:
-        raise ValueError("No channels found in MTH5 run")
-
-    arrays = [np.asarray(dataset[chan].data) for chan in chans]
-    data = np.vstack(arrays)
-    first_chan = dataset[chans[0]]
-    fs = float(
-        getattr(first_chan, "sample_rate", None)
-        or first_chan.attrs.get("sample_rate")
-        or first_chan.attrs.get("sampling_rate")
-    )
-    n_samples = data.shape[1]
-    first_time = _get_first_time(first_chan)
-    chans_metadata = {
-        chan: ChanMetadata(
-            name=chan,
-            data_files=None,
-            chan_type=(
-                "electric"
-                if chan.lower().startswith("e")
-                else "magnetic" if chan.lower().startswith(("h", "b")) else "unknown"
-            ),
-        )
-        for chan in chans
-    }
-    metadata = TimeMetadata(
-        fs=fs,
-        chans=chans,
-        n_chans=len(chans),
-        n_samples=n_samples,
-        first_time=first_time,
-        last_time=first_time,
-        chans_metadata=chans_metadata,
-    )
-    from resistics.time import adjust_time_metadata
-
-    metadata = adjust_time_metadata(metadata, fs, metadata.first_time, n_samples)
-    return TimeData(metadata, data)
-
-
-def _extract_run_ts_dataset(run_ts: Any) -> Any:
-    """Return the xarray-like dataset from an MTH5 run time-series object."""
-    if hasattr(run_ts, "dataset"):
-        return run_ts.dataset
-    if hasattr(run_ts, "to_xarray"):
-        return run_ts.to_xarray()
-    if hasattr(run_ts, "to_dataset"):
-        return run_ts.to_dataset()
-    raise NotImplementedError(
-        "Unable to convert MTH5 RunTS to data: no dataset/to_xarray/to_dataset API."
-    )
-
-
-def _get_first_time(channel_data: Any) -> HighResDateTime:
-    """Extract a first timestamp from an xarray-like channel."""
-    for attr in ("start", "start_time"):
-        value = getattr(channel_data, attr, None) or channel_data.attrs.get(attr)
-        if value is not None:
-            return to_datetime(value)
-    if "time" in getattr(channel_data, "coords", {}):
-        return to_datetime(pd.to_datetime(channel_data.coords["time"].values[0]))
-    raise ValueError("Unable to determine MTH5 channel start time")
 
 
 # The full gathering module still uses these type names while its MTH5

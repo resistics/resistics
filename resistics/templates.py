@@ -8,46 +8,55 @@ from resistics.flow import (
     FlowDefinition,
     ParameterSet,
     default_parameter_set,
+    model_from_yaml_file,
     model_to_yaml_file,
-    standard_mt_flow,
+    remote_reference_mt_flow,
+    single_site_mt_flow,
+    single_site_mt_target_flow,
 )
 
-DEFAULT_FLOW_FILENAME = "standard_mt.yaml"
-DEFAULT_PARAMETERS_FILENAME = "default_mt.yaml"
-QUICK_PARAMETERS_FILENAME = "quick_mt.yaml"
+SINGLE_SITE_FLOW_FILENAME = "single_site_mt_standard.yaml"
+SINGLE_SITE_TARGET_FLOW_FILENAME = "single_site_mt_target.yaml"
+REMOTE_REFERENCE_FLOW_FILENAME = "remote_reference_mt.yaml"
+
+SINGLE_SITE_CRITERIA_FILENAME = "single_site.yaml"
+REMOTE_REFERENCE_CRITERIA_FILENAME = "remote_reference.yaml"
+
+DEFAULT_FLOW_FILENAME = SINGLE_SITE_FLOW_FILENAME
+DEFAULT_PARAMETERS_FILENAME = "default.yaml"
 
 
-def builtin_processing_templates() -> dict[str, FlowDefinition | ParameterSet]:
-    """Return fresh models for the processing templates installed in projects."""
-    flow = standard_mt_flow()
-    default_parameters = default_parameter_set(flow)
-    default_parameters.name = "Default MT"
-    default_parameters.description = "Conservative single-run OLS impedance processing."
+def builtin_processing_templates(
+    project_path: Path | None = None,
+) -> dict[str, dict[str, FlowDefinition | ParameterSet | "GatherCriteria"]]:
+    """Return fresh models for the default flows and parameter sets."""
+    from resistics.gather import GatherCriteria
 
-    quick_parameters = default_parameters.model_copy(deep=True)
-    quick_parameters.name = "Quick MT"
-    quick_parameters.description = "Faster exploratory MT processing for a single run."
-    quick_parameters.values["decimate"].update({"n_levels": 4, "per_level": 3})
-
-    return {
-        DEFAULT_FLOW_FILENAME: flow,
-        DEFAULT_PARAMETERS_FILENAME: default_parameters,
-        QUICK_PARAMETERS_FILENAME: quick_parameters,
+    flows: dict[str, FlowDefinition] = {
+        SINGLE_SITE_FLOW_FILENAME: single_site_mt_flow(),
+        SINGLE_SITE_TARGET_FLOW_FILENAME: single_site_mt_target_flow(),
+        REMOTE_REFERENCE_FLOW_FILENAME: remote_reference_mt_flow(),
     }
-
-
-def _install_builtin_templates(project_path: Path, filenames: set[str]) -> list[Path]:
-    """Write selected missing built-in templates without replacing user files."""
-    destinations = {
-        DEFAULT_FLOW_FILENAME: project_path / "processing" / "flows",
-        DEFAULT_PARAMETERS_FILENAME: project_path / "processing" / "parameters",
-        QUICK_PARAMETERS_FILENAME: project_path / "processing" / "parameters",
+    parameters: dict[str, ParameterSet] = {
+        DEFAULT_PARAMETERS_FILENAME: default_parameter_set(project_path),
     }
+    criteria: dict[str, GatherCriteria] = {
+        SINGLE_SITE_CRITERIA_FILENAME: GatherCriteria(),
+        REMOTE_REFERENCE_CRITERIA_FILENAME: GatherCriteria(
+            remote_references={"survey/target": "survey/remote"}
+        ),
+    }
+    return {"flows": flows, "parameters": parameters, "criteria": criteria}
+
+
+def _install_builtin_templates(project_path: Path, resource_type: str) -> list[Path]:
+    """Write missing templates of one type without replacing user files."""
+    templates = builtin_processing_templates(project_path)[resource_type]
+    destination = project_path / "processing" / resource_type
+    destination.mkdir(parents=True, exist_ok=True)
     installed = []
-    for filename, model in builtin_processing_templates().items():
-        if filename not in filenames:
-            continue
-        path = destinations[filename] / filename
+    for filename, model in templates.items():
+        path = destination / filename
         if path.exists():
             continue
         model_to_yaml_file(model, path)
@@ -56,24 +65,41 @@ def _install_builtin_templates(project_path: Path, filenames: set[str]) -> list[
 
 
 def install_builtin_flow_templates(project_path: Path) -> list[Path]:
-    """Write missing built-in flow templates without modifying parameter sets."""
-    return _install_builtin_templates(project_path, {DEFAULT_FLOW_FILENAME})
+    """Write all missing built-in flow templates without modifying user flows."""
+    return _install_builtin_templates(project_path, "flows")
 
 
 def install_builtin_parameter_templates(project_path: Path) -> list[Path]:
-    """Write missing built-in parameter templates without modifying flows."""
-    return _install_builtin_templates(
-        project_path, {DEFAULT_PARAMETERS_FILENAME, QUICK_PARAMETERS_FILENAME}
-    )
+    """Install or extend the shared defaults without replacing user values."""
+    directory = project_path / "processing" / "parameters"
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / DEFAULT_PARAMETERS_FILENAME
+    defaults = default_parameter_set(project_path)
+    if not path.exists():
+        model_to_yaml_file(defaults, path)
+        return [path]
+    current = model_from_yaml_file(ParameterSet, path)
+    missing = {
+        process: values
+        for process, values in defaults.processes.items()
+        if process not in current.processes
+    }
+    if not missing:
+        return []
+    current.processes.update(missing)
+    model_to_yaml_file(current, path)
+    return [path]
+
+
+def install_builtin_criteria_templates(project_path: Path) -> list[Path]:
+    """Write missing criteria examples without modifying user criteria."""
+    return _install_builtin_templates(project_path, "criteria")
 
 
 def install_builtin_processing_templates(project_path: Path) -> list[Path]:
     """Write all missing built-in templates without replacing user files."""
-    return _install_builtin_templates(
-        project_path,
-        {
-            DEFAULT_FLOW_FILENAME,
-            DEFAULT_PARAMETERS_FILENAME,
-            QUICK_PARAMETERS_FILENAME,
-        },
+    return (
+        install_builtin_flow_templates(project_path)
+        + install_builtin_parameter_templates(project_path)
+        + install_builtin_criteria_templates(project_path)
     )

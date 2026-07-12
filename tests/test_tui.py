@@ -4,7 +4,6 @@ import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 
-from textual.containers import VerticalScroll
 from textual.widgets import (
     Button,
     DataTable,
@@ -12,6 +11,7 @@ from textual.widgets import (
     Static,
     TabbedContent,
     TabPane,
+    TextArea,
     Tree,
 )
 
@@ -64,7 +64,7 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
     flow_path.write_text(model_to_yaml(flow))
     parameters_path = project.project_path / "processing/parameters/default_mt.yaml"
     parameters_path.parent.mkdir(parents=True)
-    parameters_path.write_text(model_to_yaml(default_parameter_set(flow)))
+    parameters_path.write_text(model_to_yaml(default_parameter_set()))
     monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
@@ -76,20 +76,55 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
             table = app.screen.query_one("#job-table", DataTable)
             flow_table = app.screen.query_one("#flow-table", DataTable)
             parameter_table = app.screen.query_one("#parameter-table", DataTable)
-            metadata_details = app.screen.query_one("#metadata-details", VerticalScroll)
+            metadata_details = app.screen.query_one("#metadata-content", TextArea)
             assert "project" in str(overview.render())
             assert str(tree.root.label) == "project"
             assert table.row_count == 0
             assert flow_table.row_count == 1
+            assert flow_table.cell_padding == 1
             assert parameter_table.row_count == 1
             assert app.screen.query_one("#flows", TabPane)
             assert app.screen.query_one("#parameters", TabPane)
-            assert app.screen.query_one("#restore-flows", Button).label == (
-                "Restore missing flows"
-            )
-            assert app.screen.query_one("#restore-parameters", Button).label == (
-                "Restore missing parameter sets"
-            )
+            assert app.screen.query_one("#criteria", TabPane)
+            assert app.screen.query_one("#criteria-table", DataTable)
+            flow_editor = app.screen.query_one("#flow-content", TextArea)
+            metadata_editor = app.screen.query_one("#metadata-content", TextArea)
+            assert metadata_editor.language == "json"
+            assert metadata_editor.theme == "vscode_dark"
+            assert metadata_editor.read_only
+            assert metadata_editor.show_line_numbers
+            assert flow_editor.language == "yaml"
+            assert flow_editor.theme == "vscode_dark"
+            assert flow_editor.read_only
+            assert flow_editor.show_line_numbers
+            app.screen.query_one(TabbedContent).active = "flows"
+            await asyncio.sleep(0)
+            assert "restore_defaults" in {
+                binding.binding.action
+                for binding in app.screen.active_bindings.values()
+            }
+            app.screen.selected_flow_path = flow_path
+            app.screen._show_yaml("#flow-content", flow_path)
+            await pilot.press("e")
+            assert not flow_editor.read_only
+            flow_editor.text = "# edited in the TUI\n" + flow_editor.text
+            await pilot.press("ctrl+s")
+            assert flow_editor.read_only
+            assert flow_path.read_text().startswith("# edited in the TUI\n")
+            app.screen.action_edit_yaml()
+            flow_editor.text = "id: incomplete\n"
+            app.screen.action_save_yaml()
+            assert not flow_editor.read_only
+            assert flow_path.read_text().startswith("# edited in the TUI\n")
+            await pilot.press("escape")
+            assert flow_editor.read_only
+            assert not app.screen.editing_yaml
+            app.screen.query_one(TabbedContent).active = "activity"
+            await asyncio.sleep(0)
+            assert "cancel_job" not in {
+                binding.binding.action
+                for binding in app.screen.active_bindings.values()
+            }
             assert not app.screen.query("#install-defaults")
             assert app.sub_title == str(project.project_path)
             app.screen.query_one(TabbedContent).active = "project"
@@ -110,7 +145,10 @@ def test_close_project_returns_to_home(monkeypatch, tmp_path):
     async def run_test():
         async with app.run_test(size=(100, 40)) as pilot:
             await pilot.pause()
-            assert app.screen.query_one("#close-project", Button)
+            assert "close_project" in {
+                binding.binding.action
+                for binding in app.screen.active_bindings.values()
+            }
             await pilot.press("x")
             await pilot.pause()
             assert app.sub_title == "project launcher"
@@ -142,10 +180,15 @@ def test_tui_starts_on_the_project_home_screen():
     asyncio.run(run_test())
 
 
+def test_tui_uses_a_four_second_notification_timeout():
+    assert ResisticsTui.NOTIFICATION_TIMEOUT == 4.0
+
+
 def test_directory_picker_starts_at_home_with_parent_navigation():
     picker = DirectoryPickerScreen("Select a project", False)
     assert picker.start_path == Path.home()
     assert ("u", "parent_directory", "Up") in picker.BINDINGS
+    assert ("escape", "cancel", "Cancel") in picker.BINDINGS
     assert "Space: expand/collapse" in picker.navigation_instruction
     assert "project folder" in picker.selection_instruction
     assert (
@@ -240,12 +283,24 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
     """Keep the project explorer dark without losing the brand accents."""
     assert "background: #101010" in ResisticsTui.CSS
     assert "background: #202020" in ResisticsTui.CSS
+    assert "ToastRack {" in ResisticsTui.CSS
+    assert "align: right bottom;" in ResisticsTui.CSS
+    assert "Toast {" in ResisticsTui.CSS
+    assert "width: 48;" in ResisticsTui.CSS
     assert ".launcher-layout { height: 1fr; align-horizontal: center; }" in (
         ResisticsTui.CSS
     )
-    assert "#flow-details:focus, #parameter-details:focus, #job-details:focus," in (
+    assert (
+        "#metadata-content, #flow-content, #parameter-content, #criteria-content,"
+        in (ResisticsTui.CSS)
+    )
+    assert "Input:focus { background: #202020; border: tall #0a009f; }" in (
         ResisticsTui.CSS
     )
-    assert "#metadata-details:focus { background: #343434; }" in ResisticsTui.CSS
     assert "#faa881" in ResisticsTui.CSS
     assert "#ac3600" in ResisticsTui.CSS
+    assert "Button:focus" in ResisticsTui.CSS
+    assert "background: #0a009f;" in ResisticsTui.CSS
+    assert "Tree:focus > .tree--cursor" in ResisticsTui.CSS
+    assert "DataTable:focus > .datatable--cursor" in ResisticsTui.CSS
+    assert "text-style: none;" in ResisticsTui.CSS

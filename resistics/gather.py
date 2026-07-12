@@ -32,18 +32,225 @@ multi site processing, the workflow follows:
 """
 
 from loguru import logger
-from typing import List, Dict, Optional, Tuple
+from datetime import datetime, time, timezone
+from typing import Any, ClassVar, List, Dict, Optional, Tuple
 from pathlib import Path
 import numpy as np
 import pandas as pd
+from pydantic import Field
 
-from resistics.common import ResisticsProcess, ResisticsData
+from resistics.common import ResisticsModel, ResisticsProcess, ResisticsData
 from resistics.common import WriteableMetadata, History
 from resistics.project import Project, Site
 from resistics.decimate import DecimationParameters
 from resistics.spectra import SpectraLevelMetadata, SpectraMetadata, SpectraData
 from resistics.spectra import SpectraDataReader
 from resistics.transfunc import TransferFunction
+
+
+class AbsoluteTimeRange(ResisticsModel):
+    """One inclusive UTC interval used to admit or reject gather windows."""
+
+    from_time: str
+    to_time: str
+
+
+class DailyTimeRange(ResisticsModel):
+    """One recurring inclusive UTC time-of-day interval."""
+
+    from_time: time
+    to_time: time
+
+
+class GatherSelection(ResisticsData):
+    """Resolved target/rate inputs and admissible global windows for gathering."""
+
+    def __init__(
+        self,
+        station_rate_batch: Dict[str, Any],
+        remote_station: Optional[str],
+        criteria: "GatherCriteria",
+        automatic_remote: bool = False,
+    ) -> None:
+        self.station_rate_batch = dict(station_rate_batch)
+        self.remote_station = remote_station
+        self.criteria = criteria
+        self.automatic_remote = automatic_remote
+
+
+class GatherCriteria(ResisticsProcess):
+    """Reusable rules that determine data admitted to transfer-function gather."""
+
+    output_type: ClassVar[str] = "gather_selection"
+    runtime_requirements: ClassVar[List[str]] = ["station_rate_batch"]
+
+    remote_references: Dict[str, str] = Field(default_factory=dict)
+    absolute_include: List[AbsoluteTimeRange] = Field(default_factory=list)
+    absolute_exclude: List[AbsoluteTimeRange] = Field(default_factory=list)
+    daily_include: List[DailyTimeRange] = Field(default_factory=list)
+    daily_exclude: List[DailyTimeRange] = Field(default_factory=list)
+    automatic_remote: bool = False
+
+    def run(self, station_rate_batch: Dict[str, Any]) -> GatherSelection:
+        """Resolve the remote assignment for one target station/rate batch."""
+        target = station_rate_batch["station_path"]
+        remote_station = self.remote_references.get(target)
+        return GatherSelection(
+            station_rate_batch,
+            remote_station,
+            self,
+            automatic_remote=self.automatic_remote and remote_station is None,
+        )
+
+    def execute(self, inputs: Dict[str, Any], context: Any) -> GatherSelection:
+        """Resolve criteria from the station-rate batch supplied by the executor."""
+        del inputs
+        return self.run(context["station_rate_batch"])
+
+    def includes(self, timestamp: datetime) -> bool:
+        """Return whether a UTC window timestamp passes the configured rules."""
+        timestamp = timestamp.astimezone(timezone.utc) if timestamp.tzinfo else timestamp
+        value = pd.Timestamp(timestamp)
+        if value.tzinfo is None:
+            value = value.tz_localize("UTC")
+
+        def utc(value: str) -> pd.Timestamp:
+            parsed = pd.Timestamp(value)
+            return (
+                parsed.tz_localize("UTC")
+                if parsed.tzinfo is None
+                else parsed.tz_convert("UTC")
+            )
+
+        absolute = [
+            (utc(item.from_time), utc(item.to_time))
+            for item in self.absolute_include
+        ]
+        excluded = [
+            (utc(item.from_time), utc(item.to_time))
+            for item in self.absolute_exclude
+        ]
+        if absolute and not any(start <= value <= end for start, end in absolute):
+            return False
+        if any(start <= value <= end for start, end in excluded):
+            return False
+        current = value.time()
+        if self.daily_include and not any(
+            _time_in_range(current, item.from_time, item.to_time)
+            for item in self.daily_include
+        ):
+            return False
+        return not any(
+            _time_in_range(current, item.from_time, item.to_time)
+            for item in self.daily_exclude
+        )
+
+
+def _time_in_range(value: time, start: time, end: time) -> bool:
+    """Test a time-of-day interval, including an interval crossing midnight."""
+    return start <= value <= end if start <= end else value >= start or value <= end
+
+
+class EvaluationFrequencyGather(ResisticsProcess):
+    """Gather every persisted target-run evaluation artifact for regression.
+
+    The selection is deliberately a separate input: it makes the persisted
+    evaluation artifact boundary explicit and leaves window-selection policy in
+    :class:`GatherCriteria`, not in a job or parameter file.  Remote-reference
+    alignment is intentionally not guessed; an explicit resolved remote is
+    rejected until the cross-station aligner is implemented.
+    """
+
+    input_types: ClassVar[Dict[str, str]] = {"selection": "gather_selection"}
+    output_type: ClassVar[str] = "gathered_data"
+    runtime_requirements: ClassVar[List[str]] = ["project_path"]
+
+    def execute(self, inputs: Dict[str, Any], context: Any) -> "GatheredData":
+        """Load and concatenate all selected local-run evaluation artifacts."""
+        from resistics.spectra import EvaluationFrequencyReader
+        from resistics.transfunc import ImpedanceTensor
+
+        selection = inputs["selection"]
+        if not isinstance(selection, GatherSelection):
+            raise ValueError("EvaluationFrequencyGather requires GatherSelection")
+        if selection.automatic_remote:
+            raise NotImplementedError(
+                "Automatic remote selection is declared but has not been implemented"
+            )
+        if selection.remote_station is not None:
+            raise NotImplementedError(
+                "Remote-reference gathering is not implemented yet; the criteria "
+                "mapping was resolved but cannot be applied"
+            )
+        batch = selection.station_rate_batch
+        gathered = []
+        for run_path in batch["run_paths"]:
+            survey, station, run = run_path.split("/", 2)
+            artifact = EvaluationFrequencyReader(label=context.get("evaluation_label", "default")).execute(
+                {},
+                {
+                    "project_path": context["project_path"],
+                    "run_batch": {"survey": survey, "station": station, "run": run},
+                },
+            )
+            artifact = self._apply_criteria(artifact, selection.criteria)
+            gathered.append(
+                QuickGather().run(
+                    Path(run_path),
+                    artifact.decimation_parameters,
+                    ImpedanceTensor(),
+                    artifact.spectra_data,
+                )
+            )
+        if not gathered:
+            raise ValueError("No evaluation-frequency artifacts selected for gather")
+        return self._combine(gathered)
+
+    @staticmethod
+    def _apply_criteria(
+        artifact: Any, criteria: GatherCriteria
+    ) -> Any:
+        """Drop persisted evaluation windows excluded by the reusable criteria."""
+        data = artifact.spectra_data
+        metadata = data.metadata.model_copy(deep=True)
+        selected = {}
+        for level in range(metadata.n_levels):
+            timestamps = data.get_timestamps(level)
+            mask = np.array(
+                [criteria.includes(timestamp.to_pydatetime()) for timestamp in timestamps]
+            )
+            selected[level] = data.get_level(level)[mask]
+            metadata.levels_metadata[level].n_wins = int(mask.sum())
+        if not any(level_data.shape[0] for level_data in selected.values()):
+            raise ValueError("Gather criteria excludes every evaluation window")
+        artifact.spectra_data = SpectraData(metadata, selected)
+        return artifact
+
+    @staticmethod
+    def _combine(values: List["GatheredData"]) -> "GatheredData":
+        def combine(kind: str) -> SiteCombinedData:
+            first = getattr(values[0], kind)
+            metadata = first.metadata.model_copy(
+                update={
+                    "measurements": [
+                        measurement
+                        for value in values
+                        for measurement in (getattr(value, kind).metadata.measurements or [])
+                    ],
+                    "histories": {
+                        name: history
+                        for value in values
+                        for name, history in getattr(value, kind).metadata.histories.items()
+                    },
+                }
+            )
+            keys = first.data
+            return SiteCombinedData(
+                metadata,
+                {key: np.concatenate([getattr(value, kind).data[key] for value in values]) for key in keys},
+            )
+
+        return GatheredData(combine("out_data"), combine("in_data"), combine("cross_data"))
 
 
 def get_site_evals_metadata(

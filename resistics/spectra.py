@@ -6,16 +6,22 @@ Spectra are calculated from the windowed, decimated time data. The inbuilt
 Fourier transform implementation is inspired by the implementation of the
 scipy stft function.
 """
+
 from loguru import logger
 from pathlib import Path
-from typing import Union, Tuple, Dict, List, Any, Optional
+from typing import Any, ClassVar, Union, Tuple, Dict, List, Optional
 from pydantic import ConfigDict, PositiveInt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-from resistics.common import ResisticsData, ResisticsProcess, History
+from resistics.common import (
+    ResisticsData,
+    ResisticsModel,
+    ResisticsProcess,
+    History,
+)
 from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
 from resistics.sampling import HighResDateTime
 from resistics.time import ChanMetadata
@@ -69,6 +75,7 @@ class SpectraMetadata(WriteableMetadata):
     levels_metadata: List[SpectraLevelMetadata]
     ref_time: HighResDateTime
     history: History = History()
+
 
 class SpectraData(ResisticsData):
     """
@@ -453,6 +460,10 @@ class FourierTransform(ResisticsProcess):
         >>> plt.show() # doctest: +SKIP
     """
 
+    input_types: ClassVar[Dict[str, str]] = {"win_data": "windowed_data"}
+    output_type: ClassVar[str] = "spectra_data"
+    include_in_default_parameters: ClassVar[bool] = True
+
     win_fnc: Union[str, Tuple[str, float]] = ("kaiser", 14)
     detrend: Union[str, None] = "linear"
     workers: int = -2
@@ -650,6 +661,24 @@ class EvaluationFreqs(ResisticsProcess):
       6.8+8.8j  7.9+9.9j]
     """
 
+    input_types: ClassVar[Dict[str, str]] = {
+        "dec_params": "decimation_parameters",
+        "spec_data": "spectra_data",
+    }
+    output_type: ClassVar[str] = "eval_data"
+    include_in_default_parameters: ClassVar[bool] = True
+
+    def execute(
+        self, inputs: Dict[str, Any], context: Any
+    ) -> "EvaluationFrequencyData":
+        """Keep the decimation setup with the spectra artifact for persistence."""
+        del context
+        dec_params = inputs["dec_params"]
+        return EvaluationFrequencyData(
+            spectra_data=self.run(dec_params, inputs["spec_data"]),
+            decimation_parameters=dec_params,
+        )
+
     def run(
         self, dec_params: DecimationParameters, spec_data: SpectraData
     ) -> SpectraData:
@@ -831,6 +860,96 @@ class SpectraDataReader(ResisticsProcess):
         messages = [f"Spectra data read from {dir_path}"]
         metadata.history.add_record(self._get_record(messages))
         return SpectraData(metadata, data)
+
+
+class EvaluationFrequencyData(ResisticsModel):
+    """Persisted evaluation-frequency spectra and their decimation setup."""
+
+    spectra_data: SpectraData
+    decimation_parameters: DecimationParameters
+
+
+class EvaluationFrequencyReader(ResisticsProcess):
+    """Read evaluation-frequency data stored for an MTH5 project run."""
+
+    output_type: ClassVar[str] = "eval_data"
+    runtime_requirements: ClassVar[List[str]] = ["project_path", "run_batch"]
+    label: str = "default"
+
+    def execute(
+        self, inputs: Dict[str, Any], runtime: Dict[str, Any]
+    ) -> EvaluationFrequencyData:
+        """Read the spectra and persisted decimation parameters."""
+        del inputs
+        batch = runtime["run_batch"]
+        path = (
+            Path(runtime["project_path"])
+            / "data"
+            / batch["survey"]
+            / batch["station"]
+            / batch["run"]
+            / "evals"
+            / self.label
+        )
+        return EvaluationFrequencyData(
+            spectra_data=SpectraDataReader().run(path),
+            decimation_parameters=DecimationParameters.model_validate_json(
+                (path / "decimation_parameters.json").read_bytes()
+            ),
+        )
+
+
+class EvaluationFrequencyWriter(ResisticsProcess):
+    """Write evaluation-frequency data for later processing."""
+
+    input_types: ClassVar[Dict[str, str]] = {"eval_data": "eval_data"}
+    output_type: ClassVar[str] = "job_result"
+    runtime_requirements: ClassVar[List[str]] = ["project_path", "run_batch"]
+    label: str = "default"
+
+    def execute(
+        self, inputs: Dict[str, Any], runtime: Dict[str, Any]
+    ) -> Dict[str, str]:
+        """Persist spectra and their decimation parameters."""
+        value = inputs["eval_data"]
+        if isinstance(value, EvaluationFrequencyData):
+            artifact = value
+        else:
+            raise ValueError(
+                "EvaluationFrequencyWriter requires EvaluationFrequencyData"
+            )
+        batch = runtime["run_batch"]
+        path = (
+            Path(runtime["project_path"])
+            / "data"
+            / batch["survey"]
+            / batch["station"]
+            / batch["run"]
+            / "evals"
+            / self.label
+        )
+        SpectraDataWriter().run(path, artifact.spectra_data)
+        (path / "decimation_parameters.json").write_text(
+            artifact.decimation_parameters.model_dump_json(indent=2), encoding="utf-8"
+        )
+        return {"evaluation_path": str(path)}
+
+
+class EvaluationFrequencyParameters(ResisticsProcess):
+    """Return decimation parameters carried by evaluation-frequency data."""
+
+    input_types: ClassVar[Dict[str, str]] = {"eval_data": "eval_data"}
+    output_type: ClassVar[str] = "decimation_parameters"
+
+    def execute(
+        self, inputs: Dict[str, Any], runtime: Dict[str, Any]
+    ) -> DecimationParameters:
+        """Extract the persisted decimation setup."""
+        del runtime
+        artifact = inputs["eval_data"]
+        if not isinstance(artifact, EvaluationFrequencyData):
+            raise ValueError("EvaluationFrequencyParameters requires evaluation data")
+        return artifact.decimation_parameters
 
 
 class SpectraProcess(ResisticsProcess):

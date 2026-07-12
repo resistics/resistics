@@ -7,8 +7,10 @@ The regression module provides functions and classes for the following:
 Resistics has a few built in solvers, but makes it possible to define custom
 solvers as required
 """
+
 from loguru import logger
-from typing import List, Dict, Tuple, Union
+from pathlib import Path
+from typing import Any, ClassVar, List, Dict, Tuple, Union
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
@@ -158,6 +160,18 @@ class RegressionInputData(ResisticsData):
         return self.obs[freq_idx][out_chan], self.preds[freq_idx]
 
 
+class ImpedanceTensorSetup(ResisticsProcess):
+    """Create the standard MT impedance transfer-function definition."""
+
+    output_type: ClassVar[str] = "transfer_function"
+
+    def run(self) -> TransferFunction:
+        """Return the default impedance tensor channel definition."""
+        from resistics.transfunc import ImpedanceTensor
+
+        return ImpedanceTensor()
+
+
 class RegressionPreparerGathered(ResisticsProcess):
     """
     Regression preparer for gathered data
@@ -165,6 +179,13 @@ class RegressionPreparerGathered(ResisticsProcess):
     In nearly all cases, this is the regresson preparer to use. As input, it
     requires GatheredData.
     """
+
+    input_types: ClassVar[Dict[str, str]] = {
+        "tf": "transfer_function",
+        "gathered_data": "gathered_data",
+    }
+    output_type: ClassVar[str] = "regression_input"
+    include_in_default_parameters: ClassVar[bool] = True
 
     def run(
         self, tf: TransferFunction, gathered_data: GatheredData
@@ -566,6 +587,12 @@ class Solution(WriteableMetadata):
 class Solver(ResisticsProcess):
     """General resistics solver"""
 
+    input_types: ClassVar[Dict[str, str]] = {
+        "regression_input": "regression_input"
+    }
+    output_type: ClassVar[str] = "transfer_function"
+    include_in_default_parameters: ClassVar[bool] = False
+
     def run(self, regression_input: RegressionInputData) -> Solution:
         """Every solver should have a run method"""
         raise NotImplementedError("Run not implemented in parent Solver class")
@@ -670,7 +697,9 @@ class SolverLinear(Solver):
             contributors=regression_input.metadata.contributors,
         )
 
+
 class SolverOLS(SolverLinear):
+    include_in_default_parameters: ClassVar[bool] = True
     n_jobs: int = -2
     """Number of jobs to run"""
 
@@ -678,3 +707,20 @@ class SolverOLS(SolverLinear):
         """Run ordinary least squares regression on the RegressionInputData"""
         model = get_least_squares_regressor()
         return self._solve(regression_input, model)
+
+
+class SolutionWriter(ResisticsProcess):
+    """Write a transfer-function solution to a job's staging output."""
+
+    input_types: ClassVar[Dict[str, str]] = {"solution": "transfer_function"}
+    output_type: ClassVar[str] = "job_result"
+    runtime_requirements: ClassVar[List[str]] = ["staging_output_path"]
+
+    def execute(
+        self, inputs: Dict[str, Any], runtime: Dict[str, Any]
+    ) -> Dict[str, str]:
+        """Write the supplied solution to ``solution.json``."""
+        path = Path(runtime["staging_output_path"])
+        path.mkdir(parents=True, exist_ok=False)
+        inputs["solution"].write(path / "solution.json")
+        return {"result_path": str(path)}

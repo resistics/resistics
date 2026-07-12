@@ -1,137 +1,102 @@
-"""
-Processing flow definitions for app-authored resistics workflows.
+"""Portable, library-first processing flow definitions.
 
-The classes in this module deliberately model a constrained MT processing DAG
-rather than a general workflow platform.  They are safe to use from the desktop
-app and from standalone scripts because they do not import the legacy processing
-stack at module import time.
+Flows name concrete Python process classes and their data dependencies.  They
+deliberately contain no UI layout or process parameter values.
 """
 
 from __future__ import annotations
 
 from collections import deque
-from copy import deepcopy
+import inspect
+from importlib import import_module
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Type, TypeVar
+import sys
+from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Type, TypeVar
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+
+from resistics.common import ResisticsProcess
 
 ProgressCallback = Callable[[Dict[str, Any]], None]
 CancellationCallback = Callable[[], bool]
-StepHandler = Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any]], Any]
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
-class ParameterDefinition(BaseModel):
-    """A user-editable parameter exposed by a processing step."""
-
-    name: str
-    kind: str = "str"
-    description: str = ""
-    default: Any = None
-    required: bool = False
-    choices: Optional[List[Any]] = None
-
-    def validate_value(self, value: Any) -> Any:
-        """Validate and lightly coerce a parameter value."""
-        if value is None:
-            if self.required and self.default is None:
-                raise ValueError(f"Parameter '{self.name}' is required")
-            return self.default
-        if self.choices is not None and value not in self.choices:
-            raise ValueError(
-                f"Parameter '{self.name}' must be one of {self.choices}, got {value!r}"
-            )
-        if self.kind == "int":
-            return int(value)
-        if self.kind == "float":
-            return float(value)
-        if self.kind == "bool":
-            if isinstance(value, bool):
-                return value
-            if isinstance(value, str):
-                return value.lower() in {"1", "true", "yes", "on"}
-            return bool(value)
-        if self.kind == "list" and not isinstance(value, list):
-            raise ValueError(f"Parameter '{self.name}' must be a list")
-        return value
-
-
-class StepDefinition(BaseModel):
-    """Registry metadata for a processing step type."""
-
-    type_id: str
-    display_name: str
-    description: str = ""
-    input_types: List[str] = Field(default_factory=list)
-    output_type: str
-    parameters: List[ParameterDefinition] = Field(default_factory=list)
-    runtime_requirements: List[str] = Field(default_factory=list)
-    optional: bool = False
-
-    def default_parameters(self) -> Dict[str, Any]:
-        """Return default parameter values keyed by parameter name."""
-        return {param.name: deepcopy(param.default) for param in self.parameters}
-
-    def validate_parameters(self, values: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate values for this step and fill omitted defaults."""
-        values = dict(values)
-        valid_names = {param.name for param in self.parameters}
-        unknown = sorted(set(values) - valid_names)
-        if unknown:
-            raise ValueError(f"Unknown parameter(s) for {self.type_id}: {unknown}")
-        return {
-            param.name: param.validate_value(values.get(param.name, param.default))
-            for param in self.parameters
-        }
-
-
 class FlowNode(BaseModel):
-    """A node instance in a processing flow."""
+    """One concrete process invocation in a processing DAG."""
+
+    model_config = ConfigDict(extra="forbid")
 
     id: str
-    type: str
-    inputs: List[str] = Field(default_factory=list)
-    enabled: bool = True
-    position: Dict[str, float] = Field(default_factory=dict)
+    process: str
+    inputs: Dict[str, str] = Field(default_factory=dict)
+    configuration_source: Literal["parameters", "criteria"] = "parameters"
 
 
-class FlowDefinition(BaseModel):
-    """Serializable processing DAG definition."""
+class FlowStage(BaseModel):
+    """A DAG executed once for each run or station/rate batch."""
 
-    id: str
-    name: str
-    description: str = ""
-    version: str = "1"
+    model_config = ConfigDict(extra="forbid")
+
+    stage_id: str
+    scope: Literal["run", "station_rate"]
     nodes: List[FlowNode]
 
     @field_validator("nodes")
+    @classmethod
     def validate_nodes_not_empty(cls, value: List[FlowNode]) -> List[FlowNode]:
         if not value:
-            raise ValueError("A flow must contain at least one node")
+            raise ValueError("A flow stage must contain at least one node")
         return value
 
     def node_map(self) -> Dict[str, FlowNode]:
-        """Return nodes keyed by id."""
         return {node.id: node for node in self.nodes}
 
 
+class FlowDefinition(BaseModel):
+    """Serializable staged processing definition."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+    description: str = ""
+    version: str = "2"
+    stages: List[FlowStage]
+
+    @model_validator(mode="after")
+    def validate_stages(self) -> "FlowDefinition":
+        if not self.stages:
+            raise ValueError("A flow must contain at least one stage")
+        return self
+
+    def flow_stages(self) -> List[FlowStage]:
+        """Return the explicitly declared flow stages."""
+        return list(self.stages)
+
+
 class ParameterSet(BaseModel):
-    """Parameter values for nodes in a flow."""
+    """Process-class configuration shared by one or more flows."""
+
+    model_config = ConfigDict(extra="forbid")
 
     name: str
-    flow_id: str
-    flow_version: str
     description: str = ""
-    values: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+    processes: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
-    def for_node(self, node_id: str) -> Dict[str, Any]:
-        """Return parameter values for a node."""
-        return dict(self.values.get(node_id, {}))
+    def for_process(self, process: str) -> Dict[str, Any]:
+        return dict(self.processes.get(process, {}))
 
 
 class ProcessingJob(BaseModel):
-    """A runnable binding of flow, parameters, runtime data, and output name."""
+    """A runnable binding of flow, process parameters, runtime, and output."""
 
     name: str
     flow: FlowDefinition
@@ -140,221 +105,321 @@ class ProcessingJob(BaseModel):
     output_label: str = "result"
 
 
-class StepRegistry:
-    """Registry of known processing steps."""
+class ProcessDescriptor(BaseModel):
+    """App-safe description of one flow-exposed process."""
 
-    def __init__(self, steps: Optional[Iterable[StepDefinition]] = None):
-        self._steps: Dict[str, StepDefinition] = {}
-        for step in steps or []:
-            self.register(step)
+    path: str
+    display_name: str
+    description: str
+    input_types: Dict[str, str]
+    output_type: str
+    runtime_requirements: List[str]
+    parameter_schema: Dict[str, Any]
 
-    def register(self, step: StepDefinition) -> None:
-        """Register a step definition."""
-        if step.type_id in self._steps:
-            raise ValueError(f"Step type already registered: {step.type_id}")
-        self._steps[step.type_id] = step
 
-    def get(self, type_id: str) -> StepDefinition:
-        """Get a step definition by type id."""
-        try:
-            return self._steps[type_id]
-        except KeyError as exc:
-            raise ValueError(f"Unknown step type: {type_id}") from exc
+BUILTIN_PROCESS_MODULES = (
+    "resistics.time",
+    "resistics.decimate",
+    "resistics.window",
+    "resistics.spectra",
+    "resistics.gather",
+    "resistics.regression",
+)
 
-    def all(self) -> List[StepDefinition]:
-        """Return all registered step definitions."""
-        return list(self._steps.values())
+
+def process_path(process_class: type[ResisticsProcess]) -> str:
+    """Return the stable qualified path used in flow and parameter YAML."""
+    return f"{process_class.__module__}.{process_class.__name__}"
+
+
+def resolve_process_class(path: str) -> type[ResisticsProcess]:
+    """Resolve and validate a process class named directly by a flow node."""
+    module_name, separator, class_name = path.rpartition(".")
+    if not separator:
+        raise ValueError(f"Process must be a qualified class path: {path!r}")
+    try:
+        process_class = getattr(import_module(module_name), class_name)
+    except Exception as exc:
+        raise ValueError(f"Unable to import process {path!r}: {exc}") from exc
+    if not isinstance(process_class, type) or not issubclass(
+        process_class, ResisticsProcess
+    ):
+        raise ValueError(f"Process {path!r} must subclass ResisticsProcess")
+    if process_class is ResisticsProcess or process_class.output_type is None:
+        raise ValueError(f"Process {path!r} does not declare a flow output_type")
+    return process_class
+
+
+def process_descriptor(path: str) -> ProcessDescriptor:
+    """Build a UI-safe descriptor from a directly resolved process path."""
+    process_class = resolve_process_class(path)
+    try:
+        parameter_schema = process_class.model_json_schema()
+    except Exception:
+        # A legacy process can contain a callable or another value that has no
+        # JSON-schema representation. It remains executable; the app simply
+        # cannot render a strongly typed editor for that parameter set yet.
+        parameter_schema = {"type": "object", "additionalProperties": True}
+    return ProcessDescriptor(
+        path=path,
+        display_name=process_class.__name__,
+        description=inspect.getdoc(process_class) or "",
+        input_types=dict(process_class.input_types),
+        output_type=process_class.output_type,
+        runtime_requirements=list(process_class.runtime_requirements),
+        parameter_schema=parameter_schema,
+    )
+
+
+class ProcessCatalog:
+    """Discover flow processes for a project without governing execution."""
+
+    def __init__(self, project_path: Optional[Path] = None):
+        self.project_path = None if project_path is None else Path(project_path)
+
+    def discover(self) -> List[ProcessDescriptor]:
+        """Return all built-in and trusted-plugin process descriptors."""
+        classes = {}
+        for module in self._modules():
+            for _, value in inspect.getmembers(module, inspect.isclass):
+                if (
+                    value is ResisticsProcess
+                    or not issubclass(value, ResisticsProcess)
+                    or value.output_type is None
+                ):
+                    continue
+                classes[process_path(value)] = value
+        return [process_descriptor(path) for path in sorted(classes)]
+
+    def _modules(self) -> Iterable[Any]:
+        for module_name in BUILTIN_PROCESS_MODULES:
+            yield import_module(module_name)
+        if self.project_path is None:
+            return
+        plugins_path = self.project_path / "plugins"
+        if not plugins_path.is_dir():
+            return
+        parent = str(self.project_path)
+        if parent not in sys.path:
+            sys.path.insert(0, parent)
+        for path in sorted(plugins_path.rglob("*.py")):
+            if path.name == "__init__.py":
+                continue
+            module_name = "plugins." + ".".join(
+                path.relative_to(plugins_path).with_suffix("").parts
+            )
+            yield import_module(module_name)
 
 
 class FlowValidationResult(BaseModel):
-    """Result of validating a processing job."""
-
     ok: bool
     errors: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
 
 
 class FlowValidator:
-    """Validate flow graph shape, parameters, and runtime bindings."""
+    """Validate graph dependencies, concrete processes, and configurations."""
 
-    def __init__(self, registry: StepRegistry):
-        self.registry = registry
+    def __init__(self, available_runtime: Optional[Iterable[str]] = None):
+        self.available_runtime = set(available_runtime or [])
 
-    def validate(self, processing_job: ProcessingJob) -> FlowValidationResult:
-        """Validate a processing job."""
+    @staticmethod
+    def _process(path: str) -> type[ResisticsProcess]:
+        return resolve_process_class(path)
+
+    def validate(
+        self,
+        processing_job: ProcessingJob,
+        stages: Optional[Iterable[FlowStage]] = None,
+    ) -> FlowValidationResult:
         errors: List[str] = []
-        warnings: List[str] = []
         flow = processing_job.flow
-        nodes = flow.node_map()
-        if len(nodes) != len(flow.nodes):
-            errors.append("Flow contains duplicate node ids")
-        if processing_job.parameters.flow_id != flow.id:
-            errors.append(
-                "Parameter set flow_id does not match flow: "
-                f"{processing_job.parameters.flow_id!r} != {flow.id!r}"
-            )
-        if processing_job.parameters.flow_version != flow.version:
-            errors.append(
-                "Parameter set flow_version does not match flow: "
-                f"{processing_job.parameters.flow_version!r} != {flow.version!r}"
-            )
-        unknown_parameter_nodes = sorted(
-            set(processing_job.parameters.values) - set(nodes)
-        )
-        if unknown_parameter_nodes:
-            errors.append(
-                "Parameter set contains unknown node ids: " f"{unknown_parameter_nodes}"
-            )
-
-        for node in flow.nodes:
+        selected_stages = list(stages) if stages is not None else flow.flow_stages()
+        for process_path in processing_job.parameters.processes:
             try:
-                step = self.registry.get(node.type)
+                self._process(process_path)
             except ValueError as exc:
                 errors.append(str(exc))
-                continue
-
-            for input_id in effective_input_ids(flow, node):
-                if input_id not in nodes:
-                    errors.append(
-                        f"Node '{node.id}' references missing input '{input_id}'"
-                    )
-                    continue
+        for stage in selected_stages:
+            nodes = stage.node_map()
+            if len(nodes) != len(stage.nodes):
+                errors.append(f"Stage '{stage.stage_id}' contains duplicate node ids")
+            for node in stage.nodes:
                 try:
-                    input_step = self.registry.get(nodes[input_id].type)
+                    process = self._process(node.process)
                 except ValueError as exc:
                     errors.append(str(exc))
                     continue
-                if step.input_types and input_step.output_type not in step.input_types:
+                if set(node.inputs) != set(process.input_types):
                     errors.append(
-                        f"Node '{node.id}' cannot accept output '{input_step.output_type}' "
-                        f"from '{input_id}'"
+                        f"Node '{node.id}' inputs must be {sorted(process.input_types)}, "
+                        f"got {sorted(node.inputs)}"
                     )
-
+                for port, upstream_id in node.inputs.items():
+                    if port not in process.input_types:
+                        continue
+                    upstream = nodes.get(upstream_id)
+                    if upstream is None:
+                        errors.append(
+                            f"Node '{node.id}' references missing input '{upstream_id}'"
+                        )
+                        continue
+                    try:
+                        upstream_process = self._process(upstream.process)
+                    except ValueError as exc:
+                        errors.append(str(exc))
+                        continue
+                    expected = process.input_types[port]
+                    if upstream_process.output_type != expected:
+                        errors.append(
+                            f"Node '{node.id}' port '{port}' requires '{expected}', got "
+                            f"'{upstream_process.output_type}' from '{upstream_id}'"
+                        )
+                try:
+                    process(**processing_job.parameters.for_process(node.process))
+                except ValidationError as exc:
+                    errors.append(f"Process '{node.process}': {exc}")
+                if (
+                    node.configuration_source == "criteria"
+                    and "criteria" not in self.available_runtime
+                    and processing_job.runtime.get("criteria") is None
+                ):
+                    errors.append(
+                        f"Criteria configuration is required by node '{node.id}'"
+                    )
+                for key in process.runtime_requirements:
+                    if (
+                        processing_job.runtime.get(key) in (None, "")
+                        and key not in self.available_runtime
+                    ):
+                        errors.append(
+                            f"Runtime value '{key}' is required by node '{node.id}'"
+                        )
             try:
-                step.validate_parameters(processing_job.parameters.for_node(node.id))
+                topological_order(stage)
             except ValueError as exc:
-                errors.append(f"Node '{node.id}': {exc}")
-
-            if not node.enabled:
-                continue
-            for key in step.runtime_requirements:
-                if processing_job.runtime.get(key) in (None, ""):
-                    errors.append(
-                        f"Runtime value '{key}' is required by node '{node.id}'"
-                    )
-
-        try:
-            topological_order(flow)
-        except ValueError as exc:
-            errors.append(str(exc))
-
+                errors.append(str(exc))
         if not processing_job.output_label.strip():
             errors.append("output_label is required")
+        return FlowValidationResult(ok=not errors, errors=errors)
 
-        return FlowValidationResult(ok=not errors, errors=errors, warnings=warnings)
 
-
-def effective_input_ids(flow: FlowDefinition, node: FlowNode) -> List[str]:
-    """Return active upstream nodes, bypassing disabled nodes."""
+def topological_order(flow: FlowStage) -> List[FlowNode]:
+    """Return nodes in dependency order or raise for a cycle."""
     nodes = flow.node_map()
-
-    def resolve(node_id: str, seen: set[str]) -> List[str]:
-        if node_id in seen:
-            raise ValueError("Flow contains a cycle")
-        upstream = nodes.get(node_id)
-        if upstream is None or upstream.enabled:
-            return [node_id]
-        resolved: List[str] = []
-        for input_id in upstream.inputs:
-            resolved.extend(resolve(input_id, seen | {node_id}))
-        return resolved
-
-    resolved = []
-    for input_id in node.inputs:
-        resolved.extend(resolve(input_id, set()))
-    return resolved
-
-
-def topological_order(flow: FlowDefinition) -> List[FlowNode]:
-    """Return enabled nodes in topological order or raise for cycles."""
-    nodes = {node.id: node for node in flow.nodes if node.enabled}
     incoming = {node_id: 0 for node_id in nodes}
     outgoing: Dict[str, List[str]] = {node_id: [] for node_id in nodes}
-
-    for node in nodes.values():
-        for input_id in effective_input_ids(flow, node):
-            if input_id not in nodes:
-                continue
-            incoming[node.id] += 1
-            outgoing[input_id].append(node.id)
-
-    queue = deque([node_id for node_id, count in incoming.items() if count == 0])
-    ordered: List[FlowNode] = []
-    while queue:
-        node_id = queue.popleft()
+    for node in flow.nodes:
+        for upstream_id in node.inputs.values():
+            if upstream_id in nodes:
+                incoming[node.id] += 1
+                outgoing[upstream_id].append(node.id)
+    ready = deque(node_id for node_id, count in incoming.items() if count == 0)
+    ordered = []
+    while ready:
+        node_id = ready.popleft()
         ordered.append(nodes[node_id])
-        for child_id in outgoing[node_id]:
-            incoming[child_id] -= 1
-            if incoming[child_id] == 0:
-                queue.append(child_id)
-
+        for downstream_id in outgoing[node_id]:
+            incoming[downstream_id] -= 1
+            if incoming[downstream_id] == 0:
+                ready.append(downstream_id)
     if len(ordered) != len(nodes):
         raise ValueError("Flow contains a cycle")
     return ordered
 
 
+class FlowCancelled(Exception):
+    """Raised when execution is cancelled between nodes."""
+
+
 class FlowExecutor:
-    """Execute a validated flow locally in topological order."""
+    """Execute directly resolved processes in a flow stage.
+
+    A flow contains only importable process paths.  The executor deliberately
+    has no registry or built-in dispatch table: processes are instantiated from
+    those paths and receive the batch context supplied by the job runner.
+    """
 
     def __init__(
         self,
-        registry: StepRegistry,
-        handlers: Optional[Dict[str, StepHandler]] = None,
         progress_callback: Optional[ProgressCallback] = None,
         cancellation_callback: Optional[CancellationCallback] = None,
     ):
-        self.registry = registry
-        self.handlers = handlers or {}
         self.progress_callback = progress_callback
         self.cancellation_callback = cancellation_callback
 
-    def run(self, processing_job: ProcessingJob) -> Dict[str, Any]:
-        """Run a flow and return node results keyed by node id."""
-        validation = FlowValidator(self.registry).validate(processing_job)
+    def run(
+        self,
+        processing_job: ProcessingJob,
+        contexts: Optional[Dict[str, Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Run every stage once with optional stage-specific runtime context."""
+        contexts = contexts or {}
+        available = set(processing_job.runtime)
+        for context in contexts.values():
+            available.update(context)
+        validation = FlowValidator(available).validate(processing_job)
         if not validation.ok:
             raise ValueError("; ".join(validation.errors))
+        stage_results: Dict[str, Any] = {}
+        for stage in processing_job.flow.flow_stages():
+            stage_results[stage.stage_id] = self.run_stage(
+                processing_job, stage, contexts.get(stage.stage_id, {})
+            )
+        return stage_results
 
+    def run_stage(
+        self,
+        processing_job: ProcessingJob,
+        stage: FlowStage,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Run one stage for one concrete run or station/rate batch."""
+        runtime = dict(processing_job.runtime)
+        runtime.update(context or {})
         results: Dict[str, Any] = {}
-        for node in topological_order(processing_job.flow):
+        for node in topological_order(stage):
             if self.cancellation_callback is not None and self.cancellation_callback():
                 self._emit({"event": "cancelled", "node_id": node.id})
                 raise FlowCancelled("Processing job cancelled")
-            step = self.registry.get(node.type)
-            params = step.validate_parameters(
-                processing_job.parameters.for_node(node.id)
+            process_class = resolve_process_class(node.process)
+            params = processing_job.parameters.for_process(node.process)
+            self._emit(
+                {
+                    "event": "started",
+                    "stage_id": stage.stage_id,
+                    "node_id": node.id,
+                    "process": node.process,
+                }
             )
-            inputs = {
-                input_id: results[input_id]
-                for input_id in effective_input_ids(processing_job.flow, node)
-            }
-            self._emit({"event": "started", "node_id": node.id, "step_type": node.type})
             try:
-                handler = self.handlers.get(node.type)
-                if handler is None:
-                    raise ValueError(f"No execution handler registered for {node.type}")
-                results[node.id] = handler(inputs, params, processing_job.runtime)
+                inputs = {
+                    port: results[node_id] for port, node_id in node.inputs.items()
+                }
+                instance = (
+                    runtime["criteria"]
+                    if node.configuration_source == "criteria"
+                    else process_class(**params)
+                )
+                results[node.id] = instance.execute(inputs, runtime)
             except Exception as exc:
                 self._emit(
                     {
                         "event": "failed",
+                        "stage_id": stage.stage_id,
                         "node_id": node.id,
-                        "step_type": node.type,
+                        "process": node.process,
                         "error": str(exc),
                     }
                 )
                 raise
             self._emit(
-                {"event": "completed", "node_id": node.id, "step_type": node.type}
+                {
+                    "event": "completed",
+                    "stage_id": stage.stage_id,
+                    "node_id": node.id,
+                    "process": node.process,
+                }
             )
         return results
 
@@ -363,251 +428,303 @@ class FlowExecutor:
             self.progress_callback(event)
 
 
-class FlowCancelled(Exception):
-    """Raised when execution is cancelled between processing nodes."""
+def _node(id: str, process: str, **inputs: str) -> FlowNode:
+    return FlowNode(id=id, process=process, inputs=inputs)
 
 
-def builtin_step_registry() -> StepRegistry:
-    """Return the built-in MT processing step registry."""
-    return StepRegistry(
-        [
-            StepDefinition(
-                type_id="mth5_read",
-                display_name="Read MTH5",
-                description="Read selected survey, station, run, and channels from MTH5.",
-                output_type="time_data",
-                runtime_requirements=["survey", "station", "run"],
-                parameters=[],
-            ),
-            StepDefinition(
-                type_id="time_processors",
-                display_name="Time Processors",
-                description="Apply time-domain cleaning before decimation.",
-                input_types=["time_data"],
-                output_type="time_data",
-                parameters=[
-                    ParameterDefinition(name="remove_mean", kind="bool", default=True),
-                    ParameterDefinition(
-                        name="interpolate_nans", kind="bool", default=True
-                    ),
-                ],
-            ),
-            StepDefinition(
-                type_id="decimate",
-                display_name="Decimate",
-                description="Create decimation levels for spectral processing.",
-                input_types=["time_data"],
-                output_type="decimated_data",
-                parameters=[
-                    ParameterDefinition(
-                        name="n_levels", kind="int", default=8, required=True
-                    ),
-                    ParameterDefinition(
-                        name="per_level", kind="int", default=5, required=True
-                    ),
-                    ParameterDefinition(
-                        name="div_factor", kind="int", default=2, required=True
-                    ),
-                    ParameterDefinition(
-                        name="min_samples", kind="int", default=256, required=True
-                    ),
-                ],
-            ),
-            StepDefinition(
-                type_id="window",
-                display_name="Window",
-                description="Window decimated data.",
-                input_types=["decimated_data"],
-                output_type="windowed_data",
-                parameters=[
-                    ParameterDefinition(
-                        name="min_size", kind="int", default=256, required=True
-                    ),
-                    ParameterDefinition(
-                        name="overlap", kind="float", default=0.25, required=True
-                    ),
-                    ParameterDefinition(name="min_olap", kind="int", default=32),
-                    ParameterDefinition(name="win_factor", kind="int", default=4),
-                    ParameterDefinition(name="min_n_wins", kind="int", default=5),
-                ],
-            ),
-            StepDefinition(
-                type_id="fft",
-                display_name="FFT",
-                description="Transform windowed data to spectra.",
-                input_types=["windowed_data"],
-                output_type="spectra_data",
-                parameters=[
-                    ParameterDefinition(
-                        name="window_type", kind="str", default="parzen"
-                    ),
-                ],
-            ),
-            StepDefinition(
-                type_id="evals",
-                display_name="Evaluation Frequencies",
-                description="Select spectra at evaluation frequencies.",
-                input_types=["spectra_data"],
-                output_type="eval_data",
-                parameters=[],
-            ),
-            StepDefinition(
-                type_id="calibrate",
-                display_name="Calibrate",
-                description="Apply sensor calibration when calibration data is available.",
-                input_types=["eval_data"],
-                output_type="eval_data",
-                optional=True,
-                parameters=[
-                    ParameterDefinition(name="enabled", kind="bool", default=False),
-                ],
-            ),
-            StepDefinition(
-                type_id="gather",
-                display_name="Gather",
-                description="Gather output, input, and optional remote reference data.",
-                input_types=["eval_data"],
-                output_type="regression_input",
-                runtime_requirements=["station"],
-                parameters=[],
-            ),
-            StepDefinition(
-                type_id="solve_tf",
-                display_name="Solve Transfer Function",
-                description="Estimate transfer-function components.",
-                input_types=["regression_input"],
-                output_type="transfer_function",
-                parameters=[
-                    ParameterDefinition(
-                        name="solver",
-                        kind="str",
-                        default="ols",
-                        choices=["ols"],
-                    ),
-                    ParameterDefinition(
-                        name="tf",
-                        kind="str",
-                        default="impedance",
-                        choices=["impedance"],
-                    ),
-                ],
-            ),
-            StepDefinition(
-                type_id="write_results",
-                display_name="Write Results",
-                description="Write job metadata and transfer-function result files.",
-                input_types=["transfer_function"],
-                output_type="job_result",
-                runtime_requirements=["project_path"],
-                parameters=[],
-            ),
-        ]
+def _time_to_evals_nodes(windower: str) -> List[FlowNode]:
+    nodes = [
+        _node("read", "resistics.time.MTH5TimeReader"),
+        _node("interpolate_nans", "resistics.time.InterpolateNans", time_data="read"),
+        _node("remove_mean", "resistics.time.RemoveMean", time_data="interpolate_nans"),
+        _node(
+            "decimation_setup",
+            "resistics.decimate.DecimationSetup",
+            time_data="remove_mean",
+        ),
+        _node(
+            "decimator",
+            "resistics.decimate.Decimator",
+            dec_params="decimation_setup",
+            time_data="remove_mean",
+        ),
+        _node("window_setup", "resistics.window.WindowSetup", dec_data="decimator"),
+        _node(
+            "windower",
+            windower,
+            win_params="window_setup",
+            dec_data="decimator",
+        ),
+        _node(
+            "fourier_transform",
+            "resistics.spectra.FourierTransform",
+            win_data="windower",
+        ),
+        _node(
+            "evaluation_frequencies",
+            "resistics.spectra.EvaluationFreqs",
+            dec_params="decimation_setup",
+            spec_data="fourier_transform",
+        ),
+    ]
+    nodes.append(
+        _node(
+            "write_evaluation_frequencies",
+            "resistics.spectra.EvaluationFrequencyWriter",
+            eval_data="evaluation_frequencies",
+        )
     )
+    return nodes
 
 
-def standard_mt_flow() -> FlowDefinition:
-    """Return the built-in Standard MT visual flow."""
+def _evals_to_tf_nodes() -> List[FlowNode]:
+    """Nodes that gather persisted run artifacts for one station/rate batch."""
+    return [
+        FlowNode(
+            id="criteria",
+            process="resistics.gather.GatherCriteria",
+            configuration_source="criteria",
+        ),
+        _node(
+            "gather",
+            "resistics.gather.EvaluationFrequencyGather",
+            selection="criteria",
+        ),
+        _node("transfer_function", "resistics.regression.ImpedanceTensorSetup"),
+        _node(
+            "regression_preparer",
+            "resistics.regression.RegressionPreparerGathered",
+            tf="transfer_function",
+            gathered_data="gather",
+        ),
+        _node(
+            "solver",
+            "resistics.regression.SolverOLS",
+            regression_input="regression_preparer",
+        ),
+        _node(
+            "write_solution",
+            "resistics.regression.SolutionWriter",
+            solution="solver",
+        ),
+    ]
+
+
+def single_site_mt_flow() -> FlowDefinition:
+    """Run all time-to-evaluations work before station/rate regression."""
     return FlowDefinition(
-        id="standard_mt",
-        name="Standard MT",
-        description="Single-station MT processing with optional remote reference.",
-        nodes=[
-            FlowNode(id="read", type="mth5_read", position={"x": 40, "y": 120}),
-            FlowNode(
-                id="time_processors",
-                type="time_processors",
-                inputs=["read"],
-                position={"x": 260, "y": 120},
+        id="single_site_mt_standard",
+        name="Single-Site MT (Standard Windowing)",
+        description="Persist all run evaluation artifacts, then gather them for one station/rate regression.",
+        stages=[
+            FlowStage(
+                stage_id="time_to_evals",
+                scope="run",
+                nodes=_time_to_evals_nodes("resistics.window.Windower"),
             ),
-            FlowNode(
-                id="decimate",
-                type="decimate",
-                inputs=["time_processors"],
-                position={"x": 480, "y": 120},
-            ),
-            FlowNode(
-                id="window",
-                type="window",
-                inputs=["decimate"],
-                position={"x": 700, "y": 120},
-            ),
-            FlowNode(
-                id="fft", type="fft", inputs=["window"], position={"x": 920, "y": 120}
-            ),
-            FlowNode(
-                id="evals",
-                type="evals",
-                inputs=["fft"],
-                position={"x": 1140, "y": 120},
-            ),
-            FlowNode(
-                id="calibrate",
-                type="calibrate",
-                inputs=["evals"],
-                position={"x": 1360, "y": 120},
-            ),
-            FlowNode(
-                id="gather",
-                type="gather",
-                inputs=["calibrate"],
-                position={"x": 1580, "y": 120},
-            ),
-            FlowNode(
-                id="solve_tf",
-                type="solve_tf",
-                inputs=["gather"],
-                position={"x": 1800, "y": 120},
-            ),
-            FlowNode(
-                id="write_results",
-                type="write_results",
-                inputs=["solve_tf"],
-                position={"x": 2020, "y": 120},
+            FlowStage(
+                stage_id="evals_to_tf",
+                scope="station_rate",
+                nodes=_evals_to_tf_nodes(),
             ),
         ],
     )
 
 
-def default_parameter_set(
-    flow: FlowDefinition, registry: Optional[StepRegistry] = None
-) -> ParameterSet:
-    """Return defaults for all nodes in a flow."""
-    registry = registry or builtin_step_registry()
+def single_site_mt_target_flow() -> FlowDefinition:
+    """Single-site MT with target-count windows and durable stage boundary."""
+    return FlowDefinition(
+        id="single_site_mt_target",
+        name="Single-Site MT (Target Windowing)",
+        description="Persist all target-window evaluation artifacts, then gather them by station/rate.",
+        stages=[
+            FlowStage(
+                stage_id="time_to_evals",
+                scope="run",
+                nodes=_time_to_evals_nodes("resistics.window.WindowerTarget"),
+            ),
+            FlowStage(
+                stage_id="evals_to_tf",
+                scope="station_rate",
+                nodes=_evals_to_tf_nodes(),
+            ),
+        ],
+    )
+
+
+def remote_reference_mt_flow() -> FlowDefinition:
+    """Remote-reference MT using criteria to select each reference station.
+
+    The durable evaluation-frequency stage is deliberately the same as the
+    standard single-site flow.  The second stage receives a criteria file,
+    whose ``remote_references`` mapping selects the reference station for each
+    target station/rate batch.
+    """
+    return FlowDefinition(
+        id="remote_reference_mt",
+        name="Remote-Reference MT",
+        description="Persist evaluation frequencies for every selected run, then use criteria to gather each target with its remote reference.",
+        stages=[
+            FlowStage(
+                stage_id="time_to_evals",
+                scope="run",
+                nodes=_time_to_evals_nodes("resistics.window.Windower"),
+            ),
+            FlowStage(
+                stage_id="evals_to_tf",
+                scope="station_rate",
+                nodes=_evals_to_tf_nodes(),
+            ),
+        ],
+    )
+
+
+def time_to_evals_flow() -> FlowDefinition:
+    """Return the legacy standalone first-stage flow.
+
+    Kept for library compatibility; it is not a built-in project template now
+    that the supported defaults are complete two-stage flows.
+    """
+    return FlowDefinition(
+        id="time_to_evals",
+        name="Time to Evaluation Frequencies",
+        description="Create aligned evaluation-frequency data for later processing.",
+        stages=[
+            FlowStage(
+                stage_id="time_to_evals",
+                scope="run",
+                nodes=_time_to_evals_nodes("resistics.window.Windower"),
+            )
+        ],
+    )
+
+
+def evals_to_tf_flow() -> FlowDefinition:
+    """Return the legacy standalone second-stage flow."""
+    return FlowDefinition(
+        id="evals_to_tf",
+        name="Evaluation Frequencies to Transfer Function",
+        description="Estimate a single-site impedance transfer function.",
+        stages=[
+            FlowStage(
+                stage_id="evals_to_tf",
+                scope="station_rate",
+                nodes=_evals_to_tf_nodes(),
+            )
+        ],
+    )
+
+
+def standard_mt_flow() -> FlowDefinition:
+    """Backward-compatible name for the standard single-site flow."""
+    return single_site_mt_flow()
+
+
+def default_parameter_set(project_path: Optional[Path] = None) -> ParameterSet:
+    """Return defaults for all discovered opted-in process classes."""
+    processes = {}
+    for descriptor in ProcessCatalog(project_path).discover():
+        process_class = resolve_process_class(descriptor.path)
+        if not process_class.include_in_default_parameters:
+            continue
+        try:
+            processes[descriptor.path] = process_class().model_dump(
+                mode="json", exclude={"name"}
+            )
+        except Exception as exc:
+            raise ValueError(
+                f"Default parameters unavailable for {descriptor.path}: {exc}"
+            ) from exc
+    if "resistics.window.WindowerTarget" in processes:
+        processes["resistics.window.WindowerTarget"]["target"] = 500
     return ParameterSet(
-        name=f"{flow.name} defaults",
-        flow_id=flow.id,
-        flow_version=flow.version,
-        values={
-            node.id: registry.get(node.type).default_parameters() for node in flow.nodes
-        },
+        name="Default processing parameters",
+        description="Shared defaults for built-in concrete processes.",
+        processes=processes,
+    )
+
+
+def parameter_set_for_flow(
+    flow: FlowDefinition,
+    name: str,
+    description: str,
+    project_path: Optional[Path] = None,
+) -> ParameterSet:
+    """Return default parameters for only the configurable processes in ``flow``."""
+    defaults = default_parameter_set(project_path)
+    processes = {
+        process: values
+        for process, values in defaults.processes.items()
+        if process
+        in {
+            node.process
+            for stage in flow.flow_stages()
+            for node in stage.nodes
+            if node.configuration_source == "parameters"
+        }
+    }
+    return ParameterSet(name=name, description=description, processes=processes)
+
+
+def single_site_mt_parameter_set(project_path: Optional[Path] = None) -> ParameterSet:
+    """Default parameters for the standard single-site MT flow."""
+    return parameter_set_for_flow(
+        single_site_mt_flow(),
+        "Single-Site MT (Standard Windowing)",
+        "Defaults for the standard single-site MT processing flow.",
+        project_path,
+    )
+
+
+def single_site_mt_target_parameter_set(
+    project_path: Optional[Path] = None,
+) -> ParameterSet:
+    """Default parameters for the target-window single-site MT flow."""
+    return parameter_set_for_flow(
+        single_site_mt_target_flow(),
+        "Single-Site MT (Target Windowing)",
+        "Defaults for the target-window single-site MT processing flow.",
+        project_path,
+    )
+
+
+def remote_reference_mt_parameter_set(
+    project_path: Optional[Path] = None,
+) -> ParameterSet:
+    """Default parameters for the remote-reference MT flow."""
+    return parameter_set_for_flow(
+        remote_reference_mt_flow(),
+        "Remote-Reference MT",
+        "Defaults for remote-reference MT processing; choose references in criteria.",
+        project_path,
     )
 
 
 def model_to_dict(model: BaseModel) -> Dict[str, Any]:
-    """Return a dict for a pydantic v2 model."""
     return model.model_dump()
 
 
 def model_to_yaml(model: BaseModel) -> str:
-    """Serialize a model to YAML."""
     import yaml
 
     return yaml.safe_dump(model_to_dict(model), sort_keys=False)
 
 
 def model_from_yaml(model_type: Type[ModelT], yaml_text: str) -> ModelT:
-    """Parse a model from YAML text."""
     import yaml
 
     data = yaml.safe_load(yaml_text) or {}
+    if model_type is ParameterSet and {"values", "step_values"}.intersection(data):
+        raise ValueError(
+            "Legacy parameter YAML is not supported. Replace the parameter file "
+            "and restore the current defaults."
+        )
     return model_type.model_validate(data)
 
 
 def model_to_yaml_file(model: BaseModel, path: Path) -> None:
-    """Write a model to a YAML file."""
     path.write_text(model_to_yaml(model))
 
 
 def model_from_yaml_file(model_type: Type[ModelT], path: Path) -> ModelT:
-    """Read a model from a YAML file."""
     return model_from_yaml(model_type, path.read_text())

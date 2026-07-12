@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
+from tempfile import NamedTemporaryFile
 from typing import Dict, Optional, Sequence
 import warnings
 
 from loguru import logger
-from rich.pretty import Pretty
 from textual import on, work
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.binding import Binding
+from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.widgets import (
     Button,
@@ -23,10 +25,12 @@ from textual.widgets import (
     Static,
     TabbedContent,
     TabPane,
+    TextArea,
     Tree,
 )
 
 from resistics.job import (
+    JobDefinition,
     JobProgressEvent,
     JobRunner,
     JobState,
@@ -34,10 +38,17 @@ from resistics.job import (
     JobValidation,
     ProjectJobs,
 )
-from resistics.flow import FlowDefinition, ParameterSet, model_from_yaml_file
+from resistics.flow import (
+    FlowDefinition,
+    ParameterSet,
+    model_from_yaml,
+    model_from_yaml_file,
+)
+from resistics.gather import GatherCriteria
 from resistics.project import Project, init as init_project, load, open_mth5
 from resistics.sampling import to_datetime
 from resistics.templates import (
+    install_builtin_criteria_templates,
     install_builtin_flow_templates,
     install_builtin_parameter_templates,
 )
@@ -55,6 +66,8 @@ class TuiHeader(Static):
 
 class ConfirmJobScreen(ModalScreen[bool]):
     """Confirm submission of an already validated job."""
+
+    BINDINGS = [("escape", "cancel", "Cancel")]
 
     CSS = """
     ConfirmJobScreen { align: center middle; }
@@ -79,14 +92,14 @@ class ConfirmJobScreen(ModalScreen[bool]):
         if resolved is None:
             raise ValueError("A resolved job is required for confirmation")
         definition = resolved.definition
-        runtime = definition.runtime
+        stages = ", ".join(definition.scope.stages) or "all stages"
         details = (
             f"Submit [bold]{definition.name}[/bold]?\n\n"
             f"Flow: {definition.flow}\n"
             f"Parameters: {definition.parameters}\n"
-            f"Run: {runtime.get('survey', '')}/{runtime.get('station', '')}/"
-            f"{runtime.get('run', '')}\n"
-            f"Output: {resolved.output_path}"
+            f"Criteria: {definition.criteria or '-'}\n"
+            f"Stages: {stages}\n"
+            f"Output label: {definition.output_label}"
         )
         with Vertical(id="confirm-dialog"):
             yield Static(details)
@@ -96,6 +109,9 @@ class ConfirmJobScreen(ModalScreen[bool]):
 
     @on(Button.Pressed, "#cancel")
     def cancel(self) -> None:
+        self.action_cancel()
+
+    def action_cancel(self) -> None:
         self.dismiss(False)
 
     @on(Button.Pressed, "#confirm")
@@ -106,7 +122,7 @@ class ConfirmJobScreen(ModalScreen[bool]):
 class DirectoryPickerScreen(ModalScreen[Optional[Path]]):
     """Select either a directory or file with the terminal file browser."""
 
-    BINDINGS = [("u", "parent_directory", "Up")]
+    BINDINGS = [("u", "parent_directory", "Up"), ("escape", "cancel", "Cancel")]
 
     CSS = """
     DirectoryPickerScreen { align: center middle; }
@@ -176,6 +192,9 @@ class DirectoryPickerScreen(ModalScreen[Optional[Path]]):
 
     @on(Button.Pressed, "#cancel-picker")
     def cancel(self) -> None:
+        self.action_cancel()
+
+    def action_cancel(self) -> None:
         self.dismiss(None)
 
     @on(DirectoryTree.DirectorySelected, "#path-picker")
@@ -440,13 +459,18 @@ class CreateProjectScreen(Screen[None]):
 
 
 class ProjectExplorerScreen(Screen[None]):
-    """Read-only project browser with managed processing-job execution."""
+    """Project browser and YAML editor with managed processing-job execution."""
 
     BINDINGS = [
-        ("q", "quit", "Quit"),
-        ("x", "close_project", "Close project"),
         ("r", "refresh", "Refresh"),
+        ("d", "restore_defaults", "Restore defaults"),
+        ("e", "edit_yaml", "Edit YAML"),
+        ("ctrl+s", "save_yaml", "Save YAML"),
+        Binding("escape", "discard_yaml", "Discard YAML", priority=True),
+        ("j", "run_selected_job", "Run job"),
         ("c", "cancel_job", "Cancel job"),
+        ("x", "close_project", "Close project"),
+        ("q", "quit", "Quit"),
     ]
 
     def __init__(self, project: Project, startup_warnings: Optional[list[str]] = None):
@@ -455,11 +479,19 @@ class ProjectExplorerScreen(Screen[None]):
         self.project_jobs = ProjectJobs(project)
         self.flow_paths: Dict[str, Path] = {}
         self.parameter_paths: Dict[str, Path] = {}
+        self.criteria_paths: Dict[str, Path] = {}
+        self.selected_flow_path: Optional[Path] = None
+        self.selected_parameter_path: Optional[Path] = None
+        self.selected_criteria_path: Optional[Path] = None
         self.job_summaries: Dict[str, JobSummary] = {}
         self.selected_job_path: Optional[Path] = None
         self.selected_validation: Optional[JobValidation] = None
         self.job_runner: Optional[JobRunner] = None
         self.job_state: Optional[JobState] = None
+        self.editing_yaml = False
+        self.editing_path: Optional[Path] = None
+        self.editing_model = None
+        self.editing_editor_id: Optional[str] = None
         self.startup_warnings = startup_warnings or []
 
     def compose(self) -> ComposeResult:
@@ -468,50 +500,69 @@ class ProjectExplorerScreen(Screen[None]):
             with TabPane("Overview", id="overview"):
                 with Vertical(classes="pane"):
                     yield Static(id="overview-content")
-                    yield Button("Close project", id="close-project")
             with TabPane("Project", id="project"):
                 with Horizontal(classes="pane split"):
                     with Vertical(classes="left"):
                         yield Tree("Project", id="project-tree")
                     with Vertical(classes="right"):
-                        with VerticalScroll(id="metadata-details"):
-                            yield Static("Select an item", id="metadata-content")
+                        yield TextArea.code_editor(
+                            '{\n  "message": "Select an item"\n}',
+                            language="json",
+                            theme="vscode_dark",
+                            read_only=True,
+                            id="metadata-content",
+                        )
             with TabPane("Flows", id="flows"):
-                with Horizontal(classes="pane split"):
-                    with Vertical(classes="left"):
-                        yield DataTable(id="flow-table", cursor_type="row")
-                    with Vertical(classes="right"):
-                        with VerticalScroll(id="flow-details"):
-                            yield Static("Select a flow", id="flow-content")
-                        with Horizontal(id="flow-actions"):
-                            yield Button("Restore missing flows", id="restore-flows")
-            with TabPane("Parameters", id="parameters"):
-                with Horizontal(classes="pane split"):
-                    with Vertical(classes="left"):
-                        yield DataTable(id="parameter-table", cursor_type="row")
-                    with Vertical(classes="right"):
-                        with VerticalScroll(id="parameter-details"):
-                            yield Static(
-                                "Select a parameter set", id="parameter-content"
+                with Vertical(classes="pane"):
+                    with Horizontal(classes="split"):
+                        with Vertical(classes="left"):
+                            yield DataTable(id="flow-table", cursor_type="row")
+                        with Vertical(classes="right"):
+                            yield TextArea.code_editor(
+                                "Select a flow",
+                                language="yaml",
+                                theme="vscode_dark",
+                                read_only=True,
+                                id="flow-content",
                             )
-                        with Horizontal(id="parameter-actions"):
-                            yield Button(
-                                "Restore missing parameter sets",
-                                id="restore-parameters",
+            with TabPane("Parameters", id="parameters"):
+                with Vertical(classes="pane"):
+                    with Horizontal(classes="split"):
+                        with Vertical(classes="left"):
+                            yield DataTable(id="parameter-table", cursor_type="row")
+                        with Vertical(classes="right"):
+                            yield TextArea.code_editor(
+                                "Select a parameter set",
+                                language="yaml",
+                                theme="vscode_dark",
+                                read_only=True,
+                                id="parameter-content",
+                            )
+            with TabPane("Criteria", id="criteria"):
+                with Vertical(classes="pane"):
+                    with Horizontal(classes="split"):
+                        with Vertical(classes="left"):
+                            yield DataTable(id="criteria-table", cursor_type="row")
+                        with Vertical(classes="right"):
+                            yield TextArea.code_editor(
+                                "Select a criteria file",
+                                language="yaml",
+                                theme="vscode_dark",
+                                read_only=True,
+                                id="criteria-content",
                             )
             with TabPane("Jobs", id="jobs"):
-                with Horizontal(classes="pane split"):
-                    with Vertical(classes="left"):
-                        yield DataTable(id="job-table", cursor_type="row")
-                    with Vertical(classes="right"):
-                        with VerticalScroll(id="job-details"):
-                            yield Static("Select a job", id="job-content")
-                        with Horizontal(id="job-actions"):
-                            yield Button(
-                                "Run selected job",
-                                id="run-job",
-                                variant="success",
-                                disabled=True,
+                with Vertical(classes="pane"):
+                    with Horizontal(classes="split"):
+                        with Vertical(classes="left"):
+                            yield DataTable(id="job-table", cursor_type="row")
+                        with Vertical(classes="right"):
+                            yield TextArea.code_editor(
+                                "Select a job",
+                                language="yaml",
+                                theme="vscode_dark",
+                                read_only=True,
+                                id="job-content",
                             )
             with TabPane("Activity", id="activity"):
                 with Vertical(classes="pane"):
@@ -524,6 +575,7 @@ class ProjectExplorerScreen(Screen[None]):
         self._populate_tree()
         self._populate_flows()
         self._populate_parameters()
+        self._populate_criteria()
         self._populate_jobs()
         if self.startup_warnings:
             self.query_one("#activity-log", RichLog).write(
@@ -591,7 +643,7 @@ class ProjectExplorerScreen(Screen[None]):
         self.job_summaries.clear()
         self.selected_job_path = None
         self.selected_validation = None
-        self.query_one("#run-job", Button).disabled = True
+        self.refresh_bindings()
         for summary in self.project_jobs.list():
             key = str(summary.path)
             self.job_summaries[key] = summary
@@ -607,7 +659,7 @@ class ProjectExplorerScreen(Screen[None]):
                 key=key,
             )
         if not self.job_summaries:
-            self.query_one("#job-content", Static).update(
+            self.query_one("#job-content", TextArea).text = (
                 "No YAML jobs found in processing/jobs"
             )
 
@@ -634,11 +686,12 @@ class ProjectExplorerScreen(Screen[None]):
             self.flow_paths[key] = path
             try:
                 flow = model_from_yaml_file(FlowDefinition, path)
+                n_nodes = sum(len(stage.nodes) for stage in flow.flow_stages())
                 table.add_row(
                     flow.name,
                     flow.id,
                     flow.version,
-                    str(len(flow.nodes)),
+                    str(n_nodes),
                     "[green]valid[/green]",
                     key=key,
                 )
@@ -653,7 +706,7 @@ class ProjectExplorerScreen(Screen[None]):
                 )
                 logger.debug(f"Unable to read flow {path}: {exc}")
         if not self.flow_paths:
-            self.query_one("#flow-content", Static).update(
+            self.query_one("#flow-content", TextArea).text = (
                 "No YAML flows found in processing/flows"
             )
 
@@ -661,7 +714,7 @@ class ProjectExplorerScreen(Screen[None]):
         """Populate the read-only parameter-set browser."""
         table = self.query_one("#parameter-table", DataTable)
         table.clear(columns=True)
-        table.add_columns("Parameters", "Flow ID", "Version", "Overrides", "Status")
+        table.add_columns("Parameters", "Processes", "Status")
         self.parameter_paths.clear()
         directory = self.project.project_path / "processing" / "parameters"
         for path in self._yaml_paths(directory):
@@ -671,9 +724,7 @@ class ProjectExplorerScreen(Screen[None]):
                 parameters = model_from_yaml_file(ParameterSet, path)
                 table.add_row(
                     parameters.name,
-                    parameters.flow_id,
-                    parameters.flow_version,
-                    str(len(parameters.values)),
+                    str(len(parameters.processes)),
                     "[green]valid[/green]",
                     key=key,
                 )
@@ -681,87 +732,261 @@ class ProjectExplorerScreen(Screen[None]):
                 table.add_row(
                     path.stem,
                     "-",
-                    "-",
-                    "-",
                     "[red]invalid[/red]",
                     key=key,
                 )
                 logger.debug(f"Unable to read parameter set {path}: {exc}")
         if not self.parameter_paths:
-            self.query_one("#parameter-content", Static).update(
+            self.query_one("#parameter-content", TextArea).text = (
                 "No YAML parameter sets found in processing/parameters"
+            )
+
+    def _populate_criteria(self) -> None:
+        """Populate the read-only criteria browser."""
+        table = self.query_one("#criteria-table", DataTable)
+        table.clear(columns=True)
+        table.add_columns("Criteria", "Remote references", "Status")
+        self.criteria_paths.clear()
+        directory = self.project.project_path / "processing" / "criteria"
+        for path in self._yaml_paths(directory):
+            key = str(path)
+            self.criteria_paths[key] = path
+            try:
+                criteria = model_from_yaml_file(GatherCriteria, path)
+                table.add_row(
+                    path.stem,
+                    str(len(criteria.remote_references)),
+                    "[green]valid[/green]",
+                    key=key,
+                )
+            except Exception as exc:
+                table.add_row(path.stem, "-", "[red]invalid[/red]", key=key)
+                logger.debug(f"Unable to read criteria {path}: {exc}")
+        if not self.criteria_paths:
+            self.query_one("#criteria-content", TextArea).text = (
+                "No YAML criteria files found in processing/criteria"
             )
 
     @on(Tree.NodeSelected, "#project-tree")
     def show_metadata(self, event: Tree.NodeSelected) -> None:
         object_path = event.node.data
-        details = self.query_one("#metadata-content", Static)
+        details = self.query_one("#metadata-content", TextArea)
         if object_path is None:
-            details.update("Select a survey, station, run, or channel")
+            details.text = json.dumps(
+                {"message": "Select a survey, station, run, or channel"}, indent=2
+            )
             return
         try:
             metadata = self.project.get_metadata(str(object_path))
-            details.update(Pretty(metadata.model_dump(mode="json"), expand_all=True))
+            details.text = metadata.model_dump_json(indent=2)
         except Exception as exc:
-            details.update(f"[red]Unable to read metadata:[/red] {exc}")
+            details.text = json.dumps({"error": str(exc)}, indent=2)
 
     @on(DataTable.RowSelected, "#job-table")
     def show_job(self, event: DataTable.RowSelected) -> None:
+        if self.editing_yaml:
+            self.notify(
+                "Save or discard the current YAML edits first", severity="warning"
+            )
+            return
         key = str(event.row_key.value)
         summary = self.job_summaries[key]
         self.selected_job_path = summary.path
         self.selected_validation = self.project_jobs.validate(summary.path)
         validation = self.selected_validation
-        content = {
-            "name": summary.name,
-            "path": str(summary.path),
-            "flow": summary.flow,
-            "parameters": summary.parameters,
-            "output_label": summary.output_label,
-            "valid": validation.ok,
-            "errors": validation.errors,
-            "warnings": validation.warnings,
-        }
-        if validation.resolved_job is not None:
-            content["runtime"] = validation.resolved_job.definition.runtime
-            content["output_path"] = str(validation.resolved_job.output_path)
-        self.query_one("#job-content", Static).update(Pretty(content, expand_all=True))
-        self.query_one("#run-job", Button).disabled = (
-            not validation.ok or self.job_state == JobState.running
-        )
+        self._show_yaml("#job-content", summary.path)
+        if validation.ok:
+            self.notify("Job YAML is valid")
+        else:
+            self.notify("; ".join(validation.errors), severity="warning")
+        self.refresh_bindings()
 
     @on(DataTable.RowSelected, "#flow-table")
     def show_flow(self, event: DataTable.RowSelected) -> None:
         """Show the complete selected flow definition."""
+        if self.editing_yaml:
+            self.notify(
+                "Save or discard the current YAML edits first", severity="warning"
+            )
+            return
         path = self.flow_paths[str(event.row_key.value)]
-        details = self.query_one("#flow-content", Static)
+        self.selected_flow_path = path
         try:
-            flow = model_from_yaml_file(FlowDefinition, path)
-            details.update(Pretty(flow.model_dump(mode="json"), expand_all=True))
+            model_from_yaml_file(FlowDefinition, path)
         except Exception as exc:
-            details.update(f"[red]Unable to read flow:[/] {exc}")
+            self.notify(f"Invalid flow YAML: {exc}", severity="warning")
+        self._show_yaml("#flow-content", path)
+        self.refresh_bindings()
 
     @on(DataTable.RowSelected, "#parameter-table")
     def show_parameters(self, event: DataTable.RowSelected) -> None:
         """Show the complete selected parameter set."""
+        if self.editing_yaml:
+            self.notify(
+                "Save or discard the current YAML edits first", severity="warning"
+            )
+            return
         path = self.parameter_paths[str(event.row_key.value)]
-        details = self.query_one("#parameter-content", Static)
+        self.selected_parameter_path = path
         try:
-            parameters = model_from_yaml_file(ParameterSet, path)
-            details.update(Pretty(parameters.model_dump(mode="json"), expand_all=True))
+            model_from_yaml_file(ParameterSet, path)
         except Exception as exc:
-            details.update(f"[red]Unable to read parameter set:[/] {exc}")
+            self.notify(f"Invalid parameter YAML: {exc}", severity="warning")
+        self._show_yaml("#parameter-content", path)
+        self.refresh_bindings()
 
-    @on(Button.Pressed, "#run-job")
-    def confirm_job(self) -> None:
+    @on(DataTable.RowSelected, "#criteria-table")
+    def show_criteria(self, event: DataTable.RowSelected) -> None:
+        """Show the complete selected criteria definition."""
+        if self.editing_yaml:
+            self.notify(
+                "Save or discard the current YAML edits first", severity="warning"
+            )
+            return
+        path = self.criteria_paths[str(event.row_key.value)]
+        self.selected_criteria_path = path
+        try:
+            model_from_yaml_file(GatherCriteria, path)
+        except Exception as exc:
+            self.notify(f"Invalid criteria YAML: {exc}", severity="warning")
+        self._show_yaml("#criteria-content", path)
+        self.refresh_bindings()
+
+    @staticmethod
+    def _yaml_source(path: Path) -> str:
+        """Return YAML source exactly as authored, including comments."""
+        return path.read_text(encoding="utf-8")
+
+    def _show_yaml(self, editor_id: str, path: Path) -> None:
+        """Load YAML source into one read-only, syntax-aware editor."""
+        editor = self.query_one(editor_id, TextArea)
+        editor.text = self._yaml_source(path)
+        editor.read_only = True
+
+    def _yaml_edit_target(self):
+        """Return the selected YAML source and model for the active resource tab."""
+        active = self.query_one(TabbedContent).active
+        if active == "flows" and self.selected_flow_path is not None:
+            return self.selected_flow_path, FlowDefinition, "#flow-content"
+        if active == "parameters" and self.selected_parameter_path is not None:
+            return self.selected_parameter_path, ParameterSet, "#parameter-content"
+        if active == "criteria" and self.selected_criteria_path is not None:
+            return self.selected_criteria_path, GatherCriteria, "#criteria-content"
+        if active == "jobs" and self.selected_job_path is not None:
+            return self.selected_job_path, JobDefinition, "#job-content"
+        return None
+
+    def action_edit_yaml(self) -> None:
+        """Make the selected YAML source editable."""
+        if self.job_state == JobState.running:
+            self.notify(
+                "Editing is unavailable while a job is running", severity="warning"
+            )
+            return
+        target = self._yaml_edit_target()
+        if target is None:
+            self.notify("Select a YAML file first", severity="warning")
+            return
+        self.editing_path, self.editing_model, self.editing_editor_id = target
+        self.editing_yaml = True
+        editor = self.query_one(self.editing_editor_id, TextArea)
+        editor.read_only = False
+        editor.focus()
+        self.notify("Editing YAML — Ctrl+S saves; Esc discards")
+        self.refresh_bindings()
+
+    def action_save_yaml(self) -> None:
+        """Validate and atomically save the active YAML editor."""
+        if (
+            not self.editing_yaml
+            or self.editing_path is None
+            or self.editing_model is None
+            or self.editing_editor_id is None
+        ):
+            return
+        editor = self.query_one(self.editing_editor_id, TextArea)
+        try:
+            model_from_yaml(self.editing_model, editor.text)
+        except Exception as exc:
+            self.notify(f"YAML was not saved: {exc}", severity="error")
+            return
+        try:
+            self._write_yaml(self.editing_path, editor.text)
+        except Exception as exc:
+            self.notify(f"Unable to save YAML: {exc}", severity="error")
+            return
+        editor.read_only = True
+        saved_path = self.editing_path
+        editor_id = self.editing_editor_id
+        self._clear_yaml_editing()
+        self._refresh_yaml_resource(editor_id)
+        self._show_yaml(editor_id, saved_path)
+        if editor_id == "#job-content":
+            self.selected_job_path = saved_path
+            self.selected_validation = self.project_jobs.validate(saved_path)
+        self.notify(f"Saved {saved_path.name}")
+
+    def action_discard_yaml(self) -> None:
+        """Discard the active YAML draft and restore its saved source."""
+        if (
+            not self.editing_yaml
+            or self.editing_path is None
+            or self.editing_editor_id is None
+        ):
+            return
+        self._show_yaml(self.editing_editor_id, self.editing_path)
+        self._clear_yaml_editing()
+        self.notify("YAML edits discarded")
+
+    @staticmethod
+    def _write_yaml(path: Path, content: str) -> None:
+        """Atomically replace a YAML file after validation has succeeded."""
+        temporary_path = None
+        try:
+            with NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=path.parent,
+                prefix=f".{path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temporary_file:
+                temporary_file.write(content)
+                temporary_path = Path(temporary_file.name)
+            temporary_path.replace(path)
+        except Exception:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
+            raise
+
+    def _clear_yaml_editing(self) -> None:
+        """Clear YAML edit state and restore normal footer actions."""
+        self.editing_yaml = False
+        self.editing_path = None
+        self.editing_model = None
+        self.editing_editor_id = None
+        self.refresh_bindings()
+
+    def _refresh_yaml_resource(self, editor_id: str) -> None:
+        """Refresh the table associated with a saved YAML resource."""
+        if editor_id == "#flow-content":
+            self._populate_flows()
+        elif editor_id == "#parameter-content":
+            self._populate_parameters()
+        elif editor_id == "#criteria-content":
+            self._populate_criteria()
+        elif editor_id == "#job-content":
+            self._populate_jobs()
+
+    def action_run_selected_job(self) -> None:
+        """Confirm and run the valid job selected in the Jobs tab."""
         validation = self.selected_validation
         if validation is None or not validation.ok:
             self.notify("Select a valid job first", severity="warning")
             return
         self.app.push_screen(ConfirmJobScreen(validation), self._submission_confirmed)
 
-    @on(Button.Pressed, "#restore-flows")
-    def restore_flows(self) -> None:
+    def _restore_flows(self) -> None:
         """Restore only missing built-in flow templates."""
         installed = install_builtin_flow_templates(self.project.project_path)
         self._populate_flows()
@@ -770,8 +995,7 @@ class ProjectExplorerScreen(Screen[None]):
         else:
             self.notify("All built-in flow templates are already present")
 
-    @on(Button.Pressed, "#restore-parameters")
-    def restore_parameters(self) -> None:
+    def _restore_parameters(self) -> None:
         """Restore only missing built-in parameter-set templates."""
         installed = install_builtin_parameter_templates(self.project.project_path)
         self._populate_parameters()
@@ -780,9 +1004,24 @@ class ProjectExplorerScreen(Screen[None]):
         else:
             self.notify("All built-in parameter-set templates are already present")
 
-    @on(Button.Pressed, "#close-project")
-    def close_project(self) -> None:
-        self.action_close_project()
+    def _restore_criteria(self) -> None:
+        """Restore only missing criteria examples."""
+        installed = install_builtin_criteria_templates(self.project.project_path)
+        self._populate_criteria()
+        if installed:
+            self.notify(f"Restored {len(installed)} criteria example(s)")
+        else:
+            self.notify("All built-in criteria examples are already present")
+
+    def action_restore_defaults(self) -> None:
+        """Restore defaults for the active Flows or Parameters tab."""
+        active = self.query_one(TabbedContent).active
+        if active == "flows":
+            self._restore_flows()
+        elif active == "parameters":
+            self._restore_parameters()
+        elif active == "criteria":
+            self._restore_criteria()
 
     def _submission_confirmed(self, confirmed: Optional[bool]) -> None:
         if confirmed:
@@ -820,7 +1059,7 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _set_running(self) -> None:
         self.job_state = JobState.running
-        self.query_one("#run-job", Button).disabled = True
+        self.refresh_bindings()
         self.query_one("#activity-status", Static).update("Job running")
         self.query_one("#activity-log", RichLog).clear()
         self.query_one(TabbedContent).active = "activity"
@@ -837,15 +1076,58 @@ class ProjectExplorerScreen(Screen[None]):
         if event.state in {JobState.completed, JobState.failed, JobState.cancelled}:
             self.job_runner = None
             self._populate_jobs()
+        self.refresh_bindings()
+
+    @on(TabbedContent.TabActivated)
+    def refresh_tab_bindings(self) -> None:
+        """Refresh the Footer when the active tab changes."""
+        self.refresh_bindings()
+
+    def check_action(self, action: str, parameters: tuple[object, ...]):
+        """Expose only Footer actions relevant to the active tab and job state."""
+        active = self.query_one(TabbedContent).active
+        if action == "edit_yaml":
+            return (
+                not self.editing_yaml
+                and self.job_state != JobState.running
+                and self._yaml_edit_target() is not None
+            )
+        if action in {"save_yaml", "discard_yaml"}:
+            return self.editing_yaml
+        if action == "close_project":
+            return self.job_state != JobState.running and not self.editing_yaml
+        if action == "restore_defaults":
+            return not self.editing_yaml and active in {
+                "flows",
+                "parameters",
+                "criteria",
+            }
+        if action == "run_selected_job":
+            if active != "jobs":
+                return False
+            return (
+                True
+                if self.selected_validation is not None and self.selected_validation.ok
+                else None
+            )
+        if action == "cancel_job":
+            return active == "activity" and self.job_state == JobState.running
+        return super().check_action(action, parameters)
 
     def action_refresh(self) -> None:
         if self.job_state == JobState.running:
             self.notify("Refresh is unavailable while a job is running")
             return
+        if self.editing_yaml:
+            self.notify(
+                "Save or discard the current YAML edits first", severity="warning"
+            )
+            return
         self._populate_overview()
         self._populate_tree()
         self._populate_flows()
         self._populate_parameters()
+        self._populate_criteria()
         self._populate_jobs()
         self.notify("Project refreshed")
 
@@ -863,6 +1145,11 @@ class ProjectExplorerScreen(Screen[None]):
                 severity="warning",
             )
             return
+        if self.editing_yaml:
+            self.notify(
+                "Save or discard the current YAML edits first", severity="warning"
+            )
+            return
         self.app.show_home()
 
     def action_quit(self) -> None:
@@ -870,6 +1157,11 @@ class ProjectExplorerScreen(Screen[None]):
             self.notify(
                 "A job is running. Press C to request cancellation before quitting.",
                 severity="warning",
+            )
+            return
+        if self.editing_yaml:
+            self.notify(
+                "Save or discard the current YAML edits first", severity="warning"
             )
             return
         self.app.exit()
@@ -880,6 +1172,7 @@ class ResisticsTui(App[None]):
 
     TITLE = "resistics"
     SUB_TITLE = ""
+    NOTIFICATION_TIMEOUT = 4.0
     CSS = """
     Screen { layout: vertical; background: #101010; color: #f7f4f2; }
     #app-header {
@@ -890,6 +1183,19 @@ class ResisticsTui(App[None]):
     }
     Footer { background: #070066; color: #faa881; }
     Footer > .footer--key { background: #ac3600; color: #f7f4f2; }
+    ToastRack {
+        dock: bottom;
+        align: right bottom;
+        width: auto;
+        margin: 0 1 1 0;
+    }
+    Toast {
+        width: 48;
+        max-width: 45%;
+        margin-top: 0;
+        padding: 0 1;
+        background: #202020;
+    }
     .launcher-layout { height: 1fr; align-horizontal: center; }
     #home, #create-project-form {
         width: 72;
@@ -904,30 +1210,52 @@ class ResisticsTui(App[None]):
     #create-actions { height: auto; align-horizontal: right; margin-top: 1; }
     #create-actions Button { margin-left: 1; }
     Input { background: #101010; color: #f7f4f2; border: tall #343434; }
-    Input:focus { background: #343434; border: tall #faa881; }
+    Input:focus { background: #202020; border: tall #0a009f; }
     TabbedContent { height: 1fr; background: #101010; color: #f7f4f2; }
     Tabs { background: #202020; color: #f7f4f2; }
     Tab { color: #f7f4f2; }
     Tab.-active { background: #faa881; color: #101010; text-style: bold; }
     TabPane { background: #101010; color: #f7f4f2; }
-    .pane { padding: 1; background: #101010; color: #f7f4f2; }
+    .pane { height: 1fr; padding: 1; background: #101010; color: #f7f4f2; }
     .split { height: 1fr; }
     .left { width: 2fr; border-right: solid #faa881; padding-right: 1; }
-    .right { width: 3fr; padding-left: 1; }
+    .right { width: 3fr; }
     Tree, DataTable { background: #202020; color: #f7f4f2; }
     DataTable > .datatable--header { background: #0a009f; color: #f7f4f2; }
-    DataTable > .datatable--cursor { background: #faa881; color: #101010; }
-    #project-tree, #flow-table, #parameter-table, #job-table { height: 1fr; }
-    #flow-details, #parameter-details, #job-details, #metadata-details {
+    Tree > .tree--label, DataTable > .datatable--cursor,
+    Tree > .tree--cursor, Tree:focus > .tree--cursor,
+    DataTable:focus > .datatable--cursor {
+        text-style: none;
+    }
+    Tree > .tree--cursor, Tree:focus > .tree--cursor,
+    DataTable > .datatable--cursor, DataTable:focus > .datatable--cursor {
+        background: #faa881;
+        color: #101010;
+    }
+    Tree > .tree--highlight-line, DataTable > .datatable--hover {
+        background: #343434;
+    }
+    Tree > .tree--guides-selected { color: #faa881; }
+    #project-tree, #flow-table, #parameter-table, #criteria-table, #job-table {
+        height: 1fr;
+    }
+    #metadata-content, #flow-content, #parameter-content, #criteria-content,
+    #job-content {
         height: 1fr;
         background: #202020;
+        color: #f7f4f2;
+        border: tall #343434;
     }
-    #flow-details:focus, #parameter-details:focus, #job-details:focus,
-    #metadata-details:focus { background: #343434; }
-    #flow-actions, #parameter-actions, #job-actions { height: auto; margin-top: 1; }
-    #close-project { width: auto; margin-top: 1; }
+    #metadata-content:focus, #flow-content:focus, #parameter-content:focus,
+    #criteria-content:focus, #job-content:focus { border: tall #343434; }
     Button { background: #faa881; color: #101010; border: none; }
     Button.-success { background: #ac3600; color: #f7f4f2; }
+    Button:focus {
+        background: #0a009f;
+        color: #f7f4f2;
+        border: none;
+        text-style: none;
+    }
     Button:disabled { background: #343434; color: #aaa6ad; }
     #activity-log {
         height: 1fr;

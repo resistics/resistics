@@ -216,39 +216,3 @@ def test_array_to_string(
 
     data = np.array(data)
     assert array_to_string(data, sep, precision, scientific) == expected
-
-
-def test_resistics_process():
-    """Test initialising a resistics process"""
-    from resistics.common import ResisticsProcess
-    from resistics.decimate import DecimationSetup
-
-    process = {
-        "name": "DecimationSetup",
-        "n_levels": 8,
-        "per_level": 5,
-        "min_samples": 256,
-        "div_factor": 2,
-        "eval_freqs": None,
-    }
-    assert ResisticsProcess.validate(process) == DecimationSetup(**process)
-
-
-def test_resistics_process_errors():
-    """Test errors when initialising a resistics process"""
-    from resistics.common import ResisticsProcess
-
-    process = {
-        "n_levels": 8,
-        "per_level": 5,
-        "min_samples": 256,
-        "div_factor": 2,
-        "eval_freqs": None,
-    }
-    with pytest.raises(KeyError):
-        ResisticsProcess.validate(process)
-    with pytest.raises(ValueError):
-        ResisticsProcess.validate(5)
-    process["name"] = "Unknown"
-    with pytest.raises(ValueError):
-        ResisticsProcess.validate(process)

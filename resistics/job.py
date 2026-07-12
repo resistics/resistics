@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 import json
@@ -14,20 +13,22 @@ from typing import Any, Callable, Dict, List, Optional, Union
 import warnings
 
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from resistics import __version__
 from resistics.flow import (
     FlowCancelled,
     FlowDefinition,
     FlowExecutor,
+    FlowStage,
     FlowValidator,
     ParameterSet,
     ProcessingJob,
-    builtin_step_registry,
     model_from_yaml_file,
 )
+from resistics.gather import GatherCriteria
 from resistics.project import Project, get_results_path
+from resistics.common import fs_to_string
 
 
 class JobDefinition(BaseModel):
@@ -36,20 +37,40 @@ class JobDefinition(BaseModel):
     name: str
     flow: str
     parameters: str
-    runtime: "JobRuntime"
+    criteria: Optional[str] = None
+    scope: "JobScope" = Field(default_factory=lambda: JobScope())
     output_label: str = "result"
+    overwrite: bool = False
 
 
-class JobRuntime(BaseModel):
-    """MTH5 data selection authored for one processing job."""
+class JobScope(BaseModel):
+    """Survey, station, rate, and flow-stage restrictions for a submission."""
+
+    surveys: List[str] = Field(default_factory=list)
+    stations: List[str] = Field(default_factory=list)
+    sampling_frequencies: List[float] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("sampling_frequencies", "sample_rates"),
+        serialization_alias="sampling_frequencies",
+    )
+    stages: List[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("stages", "stage_scope"),
+        serialization_alias="stages",
+    )
+
+
+class StationRateBatch(BaseModel):
+    """One planned target station and recording-rate processing unit."""
 
     survey: str
     station: str
-    run: str
-    channels: List[str] = Field(default_factory=lambda: ["Ex", "Ey", "Hx", "Hy"])
-    from_time: Optional[str] = None
-    to_time: Optional[str] = None
-    remote_reference: Optional[str] = None
+    sample_rate: float
+    run_paths: List[str]
+
+    @property
+    def station_path(self) -> str:
+        return f"{self.survey}/{self.station}"
 
 
 class JobState(str, Enum):
@@ -96,6 +117,9 @@ class ResolvedJob(BaseModel):
     processing_job: ProcessingJob
     flow_path: Path
     parameters_path: Path
+    criteria_path: Optional[Path] = None
+    criteria: Optional[GatherCriteria] = None
+    stages: List[FlowStage]
     output_path: Path
 
 
@@ -165,8 +189,12 @@ class ProjectJobs:
             parameters_path = self._reference_path("parameters", definition.parameters)
             flow = model_from_yaml_file(FlowDefinition, flow_path)
             parameters = model_from_yaml_file(ParameterSet, parameters_path)
-            runtime = definition.runtime.model_dump(exclude_none=True)
-            runtime["project_path"] = str(self.project.project_path)
+            criteria_path = None
+            criteria = None
+            if definition.criteria:
+                criteria_path = self._reference_path("criteria", definition.criteria)
+                criteria = model_from_yaml_file(GatherCriteria, criteria_path)
+            runtime = {"project_path": str(self.project.project_path)}
             processing_job = ProcessingJob(
                 name=definition.name,
                 flow=flow,
@@ -174,6 +202,7 @@ class ProjectJobs:
                 runtime=runtime,
                 output_label=definition.output_label,
             )
+            stages = self.selected_stages(definition, flow)
             output_path = self._output_path(processing_job)
             resolved = ResolvedJob(
                 path=job_path,
@@ -181,24 +210,34 @@ class ProjectJobs:
                 processing_job=processing_job,
                 flow_path=flow_path,
                 parameters_path=parameters_path,
+                criteria_path=criteria_path,
+                criteria=criteria,
+                stages=stages,
                 output_path=output_path,
             )
         except Exception as exc:
             return JobValidation(ok=False, errors=[str(exc)])
 
-        flow_validation = FlowValidator(builtin_step_registry()).validate(
-            processing_job
-        )
+        flow_validation = FlowValidator(
+            {
+                "project",
+                "reference_time",
+                "run_batch",
+                "station_rate_batch",
+                "staging_output_path",
+                "criteria",
+            }
+        ).validate(processing_job, stages=resolved.stages)
         errors.extend(flow_validation.errors)
         warnings.extend(flow_validation.warnings)
-        errors.extend(self._validate_runtime(processing_job.runtime))
-
-        if definition.runtime.remote_reference:
-            errors.append(
-                "Remote-reference gathering is not available for MTH5 jobs yet"
-            )
-        if output_path.exists():
-            errors.append(f"Output already exists: {output_path}")
+        batches = self.plan_batches(definition)
+        if not batches:
+            errors.append("Job scope does not select any project station/rate batches")
+        if not definition.overwrite and self._writes_results(resolved.stages):
+            for batch in batches:
+                path = self.batch_output_path(batch, definition.output_label)
+                if path.exists():
+                    errors.append(f"Output already exists: {path}")
 
         return JobValidation(
             ok=not errors,
@@ -206,6 +245,23 @@ class ProjectJobs:
             warnings=warnings,
             resolved_job=resolved,
         )
+
+    @staticmethod
+    def selected_stages(
+        definition: JobDefinition, flow: FlowDefinition
+    ) -> List[FlowStage]:
+        """Resolve the optional stage scope, preserving flow execution order."""
+        available = flow.flow_stages()
+        requested = definition.scope.stages
+        if not requested:
+            return available
+        known = {stage.stage_id for stage in available}
+        unknown = sorted(set(requested) - known)
+        if unknown:
+            raise ValueError(f"Unknown flow stage(s): {', '.join(unknown)}")
+        if len(set(requested)) != len(requested):
+            raise ValueError("Job stage scope contains duplicate stage ids")
+        return [stage for stage in available if stage.stage_id in set(requested)]
 
     def _job_path(self, job: Union[Path, str]) -> Path:
         value = Path(job)
@@ -248,16 +304,6 @@ class ProjectJobs:
             raise ValueError(f"Ambiguous {kind} file name: {name}")
         return candidates[0]
 
-    def _validate_runtime(self, runtime: Dict[str, Any]) -> List[str]:
-        required = ["survey", "station", "run"]
-        values = [runtime.get(key) for key in required]
-        if any(value in (None, "") for value in values):
-            return []
-        run_path = "/".join(str(runtime[key]) for key in required)
-        if run_path not in self.project.runs:
-            return [f"MTH5 run not found in project: {run_path}"]
-        return []
-
     def _output_path(self, processing_job: ProcessingJob) -> Path:
         runtime = processing_job.runtime
         survey = str(runtime.get("survey", "unknown"))
@@ -269,166 +315,45 @@ class ProjectJobs:
             processing_job.output_label,
         )
 
+    def plan_batches(self, definition: JobDefinition) -> List[StationRateBatch]:
+        """Expand a job scope into deterministic station/rate batches."""
+        table = self.project.table.copy()
+        scope = definition.scope
+        if scope.surveys:
+            table = table[table["survey"].isin(scope.surveys)]
+        if scope.stations:
+            table = table[table["station"].isin(scope.stations)]
+        if scope.sampling_frequencies:
+            table = table[table["sample_rate"].isin(scope.sampling_frequencies)]
+        batches = []
+        for (survey, station, sample_rate), rows in table.groupby(
+            ["survey", "station", "sample_rate"], sort=True
+        ):
+            run_paths = sorted(rows["run_path"].unique().tolist())
+            batches.append(
+                StationRateBatch(
+                    survey=str(survey),
+                    station=str(station),
+                    sample_rate=float(sample_rate),
+                    run_paths=run_paths,
+                )
+            )
+        return batches
 
-@dataclass
-class _PipelineValue:
-    """Internal processing value with shared intermediate context."""
-
-    data: Any
-    context: Dict[str, Any] = field(default_factory=dict)
-
-
-class _BuiltinHandlers:
-    """Adapters from flow steps to the existing numerical processing classes."""
-
-    def __init__(
-        self, project: Project, resolved_job: ResolvedJob, staging_output_path: Path
-    ):
-        self.project = project
-        self.resolved_job = resolved_job
-        self.staging_output_path = staging_output_path
-
-    def as_dict(self) -> Dict[str, Callable]:
-        """Return handlers keyed by built-in flow step type."""
-        return {
-            "mth5_read": self.read,
-            "time_processors": self.time_processors,
-            "decimate": self.decimate,
-            "window": self.window,
-            "fft": self.fft,
-            "evals": self.evals,
-            "calibrate": self.calibrate,
-            "gather": self.gather,
-            "solve_tf": self.solve,
-            "write_results": self.write,
-        }
+    def batch_output_path(self, batch: StationRateBatch, output_label: str) -> Path:
+        """Return the station-centric output path for one rate batch."""
+        return get_results_path(
+            self.project.project_path, batch.survey, batch.station, output_label
+        ) / fs_to_string(batch.sample_rate)
 
     @staticmethod
-    def _first(inputs: Dict[str, _PipelineValue]) -> _PipelineValue:
-        return next(iter(inputs.values()))
-
-    def read(self, inputs, parameters, runtime):
-        del inputs
-        data = self.project.read_run(
-            runtime["survey"],
-            runtime["station"],
-            runtime["run"],
-            chans=runtime["channels"],
-            from_time=runtime.get("from_time"),
-            to_time=runtime.get("to_time"),
-        )
-        return _PipelineValue(data=data)
-
-    def time_processors(self, inputs, parameters, runtime):
-        from resistics.time import InterpolateNans, RemoveMean
-
-        del runtime
-        value = self._first(inputs)
-        data = value.data
-        if parameters["interpolate_nans"]:
-            data = InterpolateNans().run(data)
-        if parameters["remove_mean"]:
-            data = RemoveMean().run(data)
-        return _PipelineValue(data=data, context=value.context)
-
-    def decimate(self, inputs, parameters, runtime):
-        from resistics.decimate import DecimationSetup, Decimator
-
-        del runtime
-        value = self._first(inputs)
-        setup = DecimationSetup(
-            n_levels=parameters["n_levels"],
-            per_level=parameters["per_level"],
-            div_factor=parameters["div_factor"],
-            min_samples=parameters["min_samples"],
-        )
-        decimation_parameters = setup.run(value.data.metadata.fs)
-        data = Decimator().run(decimation_parameters, value.data)
-        context = dict(value.context, decimation_parameters=decimation_parameters)
-        return _PipelineValue(data=data, context=context)
-
-    def window(self, inputs, parameters, runtime):
-        from resistics.window import WindowSetup, Windower
-
-        del runtime
-        value = self._first(inputs)
-        setup = WindowSetup(
-            min_size=parameters["min_size"],
-            min_olap=parameters["min_olap"],
-            win_factor=parameters["win_factor"],
-            olap_proportion=parameters["overlap"],
-            min_n_wins=parameters["min_n_wins"],
-        )
-        window_parameters = setup.run(
-            value.data.metadata.n_levels, value.data.metadata.fs
-        )
-        data = Windower().run(self.project.ref_time, window_parameters, value.data)
-        return _PipelineValue(data=data, context=value.context)
-
-    def fft(self, inputs, parameters, runtime):
-        from resistics.spectra import FourierTransform
-
-        del runtime
-        value = self._first(inputs)
-        data = FourierTransform(win_fnc=parameters["window_type"]).run(value.data)
-        return _PipelineValue(data=data, context=value.context)
-
-    def evals(self, inputs, parameters, runtime):
-        from resistics.spectra import EvaluationFreqs
-
-        del parameters, runtime
-        value = self._first(inputs)
-        decimation_parameters = value.context["decimation_parameters"]
-        data = EvaluationFreqs().run(decimation_parameters, value.data)
-        return _PipelineValue(data=data, context=value.context)
-
-    def calibrate(self, inputs, parameters, runtime):
-        value = self._first(inputs)
-        if not parameters["enabled"]:
-            return value
-        del runtime
-        raise NotImplementedError(
-            "MTH5 response calibration is not implemented yet; disable the "
-            "calibrate node for this job"
-        )
-
-    def gather(self, inputs, parameters, runtime):
-        from resistics.gather import QuickGather
-        from resistics.transfunc import ImpedanceTensor
-
-        del parameters
-        value = self._first(inputs)
-        transfer_function = ImpedanceTensor()
-        run_path = Path(runtime["survey"]) / runtime["station"] / runtime["run"]
-        data = QuickGather().run(
-            run_path,
-            value.context["decimation_parameters"],
-            transfer_function,
-            value.data,
-        )
-        context = dict(value.context, transfer_function=transfer_function)
-        return _PipelineValue(data=data, context=context)
-
-    def solve(self, inputs, parameters, runtime):
-        from resistics.regression import RegressionPreparerGathered, SolverOLS
-
-        del parameters, runtime
-        value = self._first(inputs)
-        transfer_function = value.context["transfer_function"]
-        regression_input = RegressionPreparerGathered().run(
-            transfer_function, value.data
-        )
-        solution = SolverOLS().run(regression_input)
-        return _PipelineValue(data=solution, context=value.context)
-
-    def write(self, inputs, parameters, runtime):
-        del parameters, runtime
-        value = self._first(inputs)
-        self.staging_output_path.mkdir(parents=True, exist_ok=False)
-        value.data.write(self.staging_output_path / "solution.json")
-        return _PipelineValue(
-            data={"result_path": str(self.resolved_job.output_path)},
-            context=value.context,
+    def _writes_results(stages: List[FlowStage]) -> bool:
+        """Whether a flow has a process that creates a staged final result."""
+        return any(
+            "staging_output_path"
+            in FlowValidator._process(node.process).runtime_requirements
+            for stage in stages
+            for node in stage.nodes
         )
 
 
@@ -449,28 +374,9 @@ class JobRunner:
         self._cancel_event.set()
 
     def run(self, resolved_job: ResolvedJob) -> JobState:
-        """Run a resolved job synchronously."""
+        """Run every selected run and station/rate stage synchronously."""
         processing_job = resolved_job.processing_job
         started = monotonic()
-        staging_output_path = resolved_job.output_path.with_name(
-            f".{resolved_job.output_path.name}.partial"
-        )
-        if resolved_job.output_path.exists():
-            self._emit(
-                JobState.failed,
-                processing_job.name,
-                f"Output already exists: {resolved_job.output_path}",
-                started,
-            )
-            return JobState.failed
-        if staging_output_path.exists():
-            self._emit(
-                JobState.failed,
-                processing_job.name,
-                f"Partial output already exists: {staging_output_path}",
-                started,
-            )
-            return JobState.failed
         log_path = self.project.project_path / "logs" / f"{processing_job.name}.log"
         log_path.parent.mkdir(parents=True, exist_ok=True)
         sink_id = logger.add(log_path, enqueue=True)
@@ -483,20 +389,23 @@ class JobRunner:
         )
         state = JobState.completed
         error = None
+        partial_paths: List[Path] = []
         try:
             with warnings.catch_warnings(record=True) as caught_warnings:
                 warnings.simplefilter("always")
                 executor = FlowExecutor(
-                    builtin_step_registry(),
-                    handlers=self._handlers(resolved_job, staging_output_path),
                     progress_callback=lambda event: self._flow_event(
                         processing_job.name, event, started
                     ),
                     cancellation_callback=self._cancel_event.is_set,
                 )
-                executor.run(processing_job)
-                self._archive_job(resolved_job, staging_output_path)
-                staging_output_path.replace(resolved_job.output_path)
+                criteria = resolved_job.criteria or GatherCriteria()
+                batches = ProjectJobs(self.project).plan_batches(
+                    resolved_job.definition
+                )
+                self._run_batches(
+                    executor, resolved_job, batches, criteria, partial_paths
+                )
         except FlowCancelled:
             state = JobState.cancelled
         except Exception as exc:
@@ -505,8 +414,10 @@ class JobRunner:
             error = str(exc)
         finally:
             logger.remove(sink_id)
-            if state != JobState.completed and staging_output_path.exists():
-                rmtree(staging_output_path)
+            if state != JobState.completed:
+                for path in partial_paths:
+                    if path.exists():
+                        rmtree(path)
 
         self._record_warnings(log_path, caught_warnings, processing_job.name, started)
         if state == JobState.completed:
@@ -518,14 +429,69 @@ class JobRunner:
         self._emit(state, processing_job.name, message, started, error=error)
         return state
 
-    def _handlers(
-        self, resolved_job: ResolvedJob, staging_output_path: Path
-    ) -> Dict[str, Callable]:
-        return _BuiltinHandlers(
-            self.project, resolved_job, staging_output_path
-        ).as_dict()
+    def _run_batches(
+        self,
+        executor: FlowExecutor,
+        resolved_job: ResolvedJob,
+        batches: List[StationRateBatch],
+        criteria: GatherCriteria,
+        partial_paths: List[Path],
+    ) -> None:
+        """Run durable run stages before their station/rate gather stages."""
+        for stage in resolved_job.stages:
+            if stage.scope == "run":
+                for batch in batches:
+                    for run_path in batch.run_paths:
+                        survey, station, run = run_path.split("/", 2)
+                        executor.run_stage(
+                            resolved_job.processing_job,
+                            stage,
+                            {
+                                "project": self.project,
+                                "project_path": str(self.project.project_path),
+                                "reference_time": self.project.ref_time,
+                                "run_batch": {
+                                    "survey": survey,
+                                    "station": station,
+                                    "run": run,
+                                },
+                            },
+                        )
+                continue
+            for batch in batches:
+                output_path = ProjectJobs(self.project).batch_output_path(
+                    batch, resolved_job.definition.output_label
+                )
+                staging_path = output_path.with_name(f".{output_path.name}.partial")
+                if staging_path.exists():
+                    raise ValueError(f"Partial output already exists: {staging_path}")
+                if output_path.exists():
+                    if not resolved_job.definition.overwrite:
+                        raise ValueError(f"Output already exists: {output_path}")
+                    rmtree(output_path)
+                partial_paths.append(staging_path)
+                executor.run_stage(
+                    resolved_job.processing_job,
+                    stage,
+                    {
+                        "project": self.project,
+                        "project_path": str(self.project.project_path),
+                        "reference_time": self.project.ref_time,
+                        "station_rate_batch": batch.model_dump(),
+                        "criteria": criteria,
+                        "staging_output_path": str(staging_path),
+                    },
+                )
+                if staging_path.exists():
+                    self._archive_job(resolved_job, staging_path, batch)
+                    staging_path.replace(output_path)
 
-    def _archive_job(self, resolved_job: ResolvedJob, output_path: Path) -> None:
+    def _archive_job(
+        self,
+        resolved_job: ResolvedJob,
+        output_path: Path,
+        batch: StationRateBatch,
+    ) -> None:
         output_path.mkdir(parents=True, exist_ok=True)
         archive_path = output_path / "job_info.json"
         archive = {
@@ -534,6 +500,12 @@ class JobRunner:
             "job_path": str(resolved_job.path),
             "flow_path": str(resolved_job.flow_path),
             "parameters_path": str(resolved_job.parameters_path),
+            "criteria_path": (
+                None
+                if resolved_job.criteria_path is None
+                else str(resolved_job.criteria_path)
+            ),
+            "batch": batch.model_dump(),
             "processing_job": resolved_job.processing_job.model_dump(mode="json"),
         }
         archive_path.write_text(json.dumps(archive, indent=2), encoding="utf-8")
