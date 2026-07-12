@@ -70,10 +70,14 @@ class TuiHeader(Static):
 class ConfirmJobScreen(ModalScreen[bool]):
     """Confirm submission of an already validated job."""
 
-    BINDINGS = [("escape", "cancel", "Cancel")]
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        Binding("left", "previous_action", "Previous action", priority=True),
+        Binding("right", "next_action", "Next action", priority=True),
+    ]
 
     CSS = """
-    ConfirmJobScreen { align: center middle; }
+    ConfirmJobScreen { align: center middle; background: transparent; }
     #confirm-dialog {
         width: 72;
         height: auto;
@@ -107,8 +111,16 @@ class ConfirmJobScreen(ModalScreen[bool]):
         with Vertical(id="confirm-dialog"):
             yield Static(details)
             with Horizontal(id="confirm-actions"):
-                yield Button("Cancel", id="cancel")
-                yield Button("Run job", id="confirm", variant="success")
+                yield Button("Cancel", id="cancel", classes="dialog-action")
+                yield Button(
+                    "Run job",
+                    id="confirm",
+                    variant="success",
+                    classes="dialog-action",
+                )
+
+    def on_mount(self) -> None:
+        self.query_one("#cancel", Button).focus()
 
     @on(Button.Pressed, "#cancel")
     def cancel(self) -> None:
@@ -117,9 +129,26 @@ class ConfirmJobScreen(ModalScreen[bool]):
     def action_cancel(self) -> None:
         self.dismiss(False)
 
+    def action_next_action(self) -> None:
+        self._focus_action(1)
+
+    def action_previous_action(self) -> None:
+        self._focus_action(-1)
+
     @on(Button.Pressed, "#confirm")
     def confirm(self) -> None:
         self.dismiss(True)
+
+    def _focus_action(self, increment: int) -> None:
+        actions = [
+            self.query_one("#cancel", Button),
+            self.query_one("#confirm", Button),
+        ]
+        try:
+            index = actions.index(self.focused)
+        except ValueError:
+            index = 0
+        actions[(index + increment) % len(actions)].focus()
 
 
 _NO_CRITERIA_VALUE = "__no_criteria__"

@@ -21,6 +21,7 @@ from resistics.flow import default_parameter_set, model_to_yaml, standard_mt_flo
 from resistics.gather import GatherCriteria
 from resistics.tui import (
     CopyYamlFileScreen,
+    ConfirmJobScreen,
     CreateJobScreen,
     CreateProjectScreen,
     DeleteYamlFileScreen,
@@ -271,6 +272,41 @@ def test_tui_copies_and_deletes_selected_yaml_files(monkeypatch, tmp_path):
     assert project.closed
 
 
+def test_run_job_confirmation_uses_dialog_navigation():
+    validation = SimpleNamespace(
+        resolved_job=SimpleNamespace(
+            definition=SimpleNamespace(
+                name="field_job",
+                flow="standard.yaml",
+                parameters="default.yaml",
+                criteria=None,
+                scope=SimpleNamespace(stages=[]),
+                output_label="field_job",
+            )
+        )
+    )
+    app = ResisticsTui()
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            app.push_screen(ConfirmJobScreen(validation))
+            await pilot.pause()
+            dialog = app.screen
+            assert isinstance(dialog, ConfirmJobScreen)
+            cancel_button = dialog.query_one("#cancel", Button)
+            run_button = dialog.query_one("#confirm", Button)
+            assert dialog.focused is cancel_button
+            await pilot.press("right")
+            assert dialog.focused is run_button
+            await pilot.press("left")
+            assert dialog.focused is cancel_button
+            dialog.cancel()
+            await pilot.pause()
+
+    asyncio.run(run_test())
+
+
 def test_tui_starts_on_the_project_home_screen():
     app = ResisticsTui()
 
@@ -419,6 +455,7 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
     assert "text-style: none;" in ResisticsTui.CSS
     assert "background: transparent;" in CopyYamlFileScreen.CSS
     assert "background: transparent;" in DeleteYamlFileScreen.CSS
+    assert "background: transparent;" in ConfirmJobScreen.CSS
     assert "Button.dialog-action {" in ResisticsTui.CSS
     assert "background: #343434;" in ResisticsTui.CSS
     assert "Button.dialog-action:focus" in ResisticsTui.CSS
