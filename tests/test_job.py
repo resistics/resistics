@@ -276,8 +276,12 @@ def test_runner_runs_all_run_batches_before_station_rate_results(tmp_path):
     resolved = ProjectJobs(project).validate(path).resolved_job
     assert resolved is not None
 
+    progress = []
     RUN_BATCHES.clear()
-    assert JobRunner(project).run(resolved) == JobState.completed
+    assert (
+        JobRunner(project, progress_callback=progress.append).run(resolved)
+        == JobState.completed
+    )
 
     assert RUN_BATCHES == ["run1", "run2", "run3"]
     assert (
@@ -286,6 +290,44 @@ def test_runner_runs_all_run_batches_before_station_rate_results(tmp_path):
     assert (
         project.project_path / "data/survey/b/results/result/4_000000/result.txt"
     ).is_file()
+    run_events = [
+        event
+        for event in progress
+        if event.message == "Started: runs"
+    ]
+    assert [
+        (event.survey, event.station, event.run, event.sample_rate)
+        for event in run_events
+    ] == [
+        ("survey", "a", "run1", None),
+        ("survey", "a", "run2", None),
+        ("survey", "b", "run3", None),
+    ]
+    station_rate_events = [
+        event
+        for event in progress
+        if event.message == "Started: results"
+    ]
+    assert [
+        (event.survey, event.station, event.run, event.sample_rate)
+        for event in station_rate_events
+    ] == [
+        ("survey", "a", None, 128.0),
+        ("survey", "b", None, 4.0),
+    ]
+    node_events = [
+        event
+        for event in progress
+        if event.message
+        in {"Started: mark", "Completed: mark", "Started: write", "Completed: write"}
+    ]
+    assert all(
+        event.survey is None
+        and event.station is None
+        and event.run is None
+        and event.sample_rate is None
+        for event in node_events
+    )
 
 
 def test_stage_scope_runs_only_the_requested_stage(tmp_path):

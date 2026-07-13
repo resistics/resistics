@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Literal, Optional, Union
 
+import h5py
 import pandas as pd
 import plotly.graph_objects as go
 from loguru import logger
@@ -213,6 +214,79 @@ class MetadataDetail(ResisticsModel):
     values: Dict[str, JsonValue] = Field(default_factory=dict)
 
 
+DataSource = Literal["project", "mth5"]
+DataType = Literal["time", "spectra", "transfer_function", "other"]
+
+
+class ProjectDataItem(ResisticsModel):
+    """One metadata-only entry in a project's Data browser."""
+
+    source: DataSource
+    path: str
+    parent_path: Optional[str] = None
+    name: str
+    kind: Literal["directory", "file", "group", "dataset"]
+    data_type: DataType
+
+
+class ProjectDataMetadata(ResisticsModel):
+    """Metadata displayed for one item in a project's Data browser."""
+
+    source: DataSource
+    path: str
+    kind: Literal["directory", "file", "group", "dataset"]
+    data_type: DataType
+    values: Dict[str, JsonValue] = Field(default_factory=dict)
+
+
+def _metadata_value(value: Any) -> JsonValue:
+    """Convert HDF5 and filesystem metadata into a JSON-safe value."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, dict):
+        return {str(key): _metadata_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_metadata_value(item) for item in value]
+    if hasattr(value, "tolist"):
+        return _metadata_value(value.tolist())
+    return str(value)
+
+
+def _mth5_data_type(path: str) -> DataType:
+    """Classify known MTH5 dataset locations, preserving unknown entries."""
+    value = path.lower()
+    if "transfer" in value or "tf_summary" in value:
+        return "transfer_function"
+    if "fourier" in value or "fc_summary" in value or "eval" in value:
+        return "spectra"
+    parts = [part for part in value.split("/") if part]
+    if "stations" in parts:
+        after_station = parts[parts.index("stations") + 2 :]
+        if after_station and after_station[0] == "runs":
+            after_station = after_station[1:]
+        if after_station and after_station[0] not in {
+            "features",
+            "fourier_coefficients",
+            "transfer_functions",
+        }:
+            return "time"
+    return "other"
+
+
+def _project_data_type(path: Path) -> DataType:
+    """Classify project artifacts using their stable storage conventions."""
+    parts = {part.lower() for part in path.parts}
+    if "evals" in parts:
+        return "spectra"
+    if path.name == "solution.json" or (
+        path.is_dir() and (path / "solution.json").is_file()
+    ):
+        return "transfer_function"
+    return "other"
+
+
 class _MTH5InspectionMixin:
     """Shared app-safe inspection behavior for files and projects."""
 
@@ -388,6 +462,131 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
             ref_time=self.ref_time,
             plugin_paths=self.plugin_paths,
         )
+
+    def list_mth5_data_items(self) -> List[ProjectDataItem]:
+        """List the MTH5 group and dataset hierarchy without reading data values."""
+        items = []
+        with h5py.File(self.mth5_path, "r") as mth5_file:
+            def add_item(name: str, value: h5py.Group | h5py.Dataset) -> None:
+                path = f"/{name}"
+                parent = "/" if "/" not in name else f"/{name.rsplit('/', 1)[0]}"
+                items.append(
+                    ProjectDataItem(
+                        source="mth5",
+                        path=path,
+                        parent_path=parent,
+                        name=name.rsplit("/", 1)[-1],
+                        kind="group" if isinstance(value, h5py.Group) else "dataset",
+                        data_type=_mth5_data_type(path),
+                    )
+                )
+
+            mth5_file.visititems(add_item)
+        return sorted(items, key=lambda item: item.path)
+
+    def get_mth5_data_metadata(self, path: str) -> ProjectDataMetadata:
+        """Return serializable metadata for one MTH5 group or dataset."""
+        with h5py.File(self.mth5_path, "r") as mth5_file:
+            value = mth5_file[path]
+            kind = "group" if isinstance(value, h5py.Group) else "dataset"
+            values: Dict[str, JsonValue] = {
+                "attributes": {
+                    str(key): _metadata_value(item)
+                    for key, item in value.attrs.items()
+                }
+            }
+            if isinstance(value, h5py.Dataset):
+                values.update(
+                    {
+                        "shape": list(value.shape),
+                        "dtype": str(value.dtype),
+                        "size_bytes": int(value.nbytes),
+                        "chunks": None if value.chunks is None else list(value.chunks),
+                        "compression": value.compression,
+                    }
+                )
+            return ProjectDataMetadata(
+                source="mth5",
+                path=path,
+                kind=kind,
+                data_type=_mth5_data_type(path),
+                values=values,
+            )
+
+    @property
+    def _data_path(self) -> Path:
+        """Return the project data root used by generated artifacts."""
+        return self.project_path / "data"
+
+    def list_project_data_items(self) -> List[ProjectDataItem]:
+        """List saved project artifacts without opening their data payloads."""
+        data_path = self._data_path
+        if not data_path.is_dir():
+            return []
+        items = []
+        for item_path in sorted(data_path.rglob("*")):
+            relative = item_path.relative_to(data_path)
+            path = relative.as_posix()
+            parent = (
+                None if relative.parent == Path(".") else relative.parent.as_posix()
+            )
+            items.append(
+                ProjectDataItem(
+                    source="project",
+                    path=path,
+                    parent_path=parent,
+                    name=item_path.name,
+                    kind="directory" if item_path.is_dir() else "file",
+                    data_type=_project_data_type(item_path),
+                )
+            )
+        return items
+
+    def get_project_data_metadata(self, path: str) -> ProjectDataMetadata:
+        """Return generic and recognized metadata for one saved project artifact."""
+        item_path = self._project_data_item_path(path)
+        kind = "directory" if item_path.is_dir() else "file"
+        values: Dict[str, JsonValue] = {
+            "size_bytes": None if item_path.is_dir() else item_path.stat().st_size,
+        }
+        values.update(self._project_data_descriptors(item_path))
+        return ProjectDataMetadata(
+            source="project",
+            path=path,
+            kind=kind,
+            data_type=_project_data_type(item_path),
+            values=values,
+        )
+
+    def _project_data_item_path(self, path: str) -> Path:
+        """Resolve a browser path and keep it within the project data root."""
+        data_path = self._data_path.resolve()
+        item_path = (data_path / path).resolve()
+        if item_path != data_path and data_path not in item_path.parents:
+            raise ValueError("Project data path must be inside project/data")
+        if not item_path.exists():
+            raise ValueError(f"Project data item not found: {path}")
+        return item_path
+
+    @staticmethod
+    def _project_data_descriptors(item_path: Path) -> Dict[str, JsonValue]:
+        """Read recognized, small JSON descriptors associated with an artifact."""
+        descriptors = (
+            [item_path / "metadata.json", item_path / "job_info.json"]
+            if item_path.is_dir()
+            else [item_path]
+            if item_path.name in {"metadata.json", "job_info.json"}
+            else []
+        )
+        values = {}
+        for descriptor in (path for path in descriptors if path.is_file()):
+            try:
+                values[descriptor.name] = _metadata_value(
+                    json.loads(descriptor.read_text(encoding="utf-8"))
+                )
+            except (OSError, ValueError, json.JSONDecodeError) as exc:
+                values[f"{descriptor.name}_error"] = str(exc)
+        return values
 
     def __getitem__(self, obj_path: str) -> SurveyGroup | StationGroup | RunGroup:
         """Get an MTH5 survey, station, or run by slash-separated path."""

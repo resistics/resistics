@@ -14,7 +14,7 @@ from loguru import logger
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen, Screen
 from textual.widgets import (
     Button,
@@ -30,6 +30,8 @@ from textual.widgets import (
     TextArea,
     Tree,
 )
+
+import plotly.io as pio
 
 from resistics.job import (
     JobDefinition,
@@ -48,13 +50,22 @@ from resistics.flow import (
     model_from_yaml_file,
 )
 from resistics.gather import GatherCriteria
-from resistics.project import Project, init as init_project, load, open_mth5
+from resistics.regression import Solution
+from resistics.project import (
+    Project,
+    ProjectDataItem,
+    init as init_project,
+    load,
+    open_mth5,
+)
 from resistics.sampling import to_datetime
+from resistics.spectra import SpectraDataReader
 from resistics.templates import (
     install_builtin_criteria_templates,
     install_builtin_flow_templates,
     install_builtin_parameter_templates,
 )
+from resistics.transfunc import ImpedanceTensor, Tipper
 
 
 class TuiHeader(Static):
@@ -820,9 +831,19 @@ class ProjectExplorerScreen(Screen[None]):
         ("ctrl+s", "save_yaml", "Save YAML"),
         Binding("escape", "discard_yaml", "Discard YAML", priority=True),
         ("j", "run_selected_job", "Run job"),
+        ("p", "plot", "Plot"),
+        ("right_square_bracket", "expand_data_node", "Expand"),
+        ("left_square_bracket", "collapse_data_node", "Collapse"),
         ("c", "cancel_job", "Cancel job"),
         ("x", "close_project", "Close project"),
         ("q", "quit", "Quit"),
+    ]
+
+    DATA_CATEGORIES = [
+        ("Time data", "time"),
+        ("Spectra/evaluations", "spectra"),
+        ("Transfer functions", "transfer_function"),
+        ("Other", "other"),
     ]
 
     def __init__(self, project: Project, startup_warnings: Optional[list[str]] = None):
@@ -840,6 +861,7 @@ class ProjectExplorerScreen(Screen[None]):
         self.selected_validation: Optional[JobValidation] = None
         self.job_runner: Optional[JobRunner] = None
         self.job_state: Optional[JobState] = None
+        self.data_items: Dict[str, ProjectDataItem] = {}
         self.editing_yaml = False
         self.editing_path: Optional[Path] = None
         self.editing_model = None
@@ -848,21 +870,23 @@ class ProjectExplorerScreen(Screen[None]):
 
     def compose(self) -> ComposeResult:
         yield TuiHeader(id="app-header")
-        with TabbedContent(initial="overview"):
-            with TabPane("Overview", id="overview"):
-                with Vertical(classes="pane"):
-                    yield Static(id="overview-content")
+        with TabbedContent(initial="project"):
             with TabPane("Project", id="project"):
+                with VerticalScroll(classes="pane"):
+                    yield Static(id="project-content")
+            with TabPane("Data", id="data"):
                 with Horizontal(classes="pane split"):
                     with Vertical(classes="left"):
-                        yield Tree("Project", id="project-tree")
+                        data_tree = Tree("Data", id="data-tree")
+                        data_tree.show_root = False
+                        yield data_tree
                     with Vertical(classes="right"):
                         yield TextArea.code_editor(
-                            '{\n  "message": "Select an item"\n}',
+                            '{\n  "message": "Select Project or MTH5 data"\n}',
                             language="json",
                             theme="vscode_dark",
                             read_only=True,
-                            id="metadata-content",
+                            id="data-metadata",
                         )
             with TabPane("Flows", id="flows"):
                 with Vertical(classes="pane"):
@@ -924,11 +948,12 @@ class ProjectExplorerScreen(Screen[None]):
 
     def on_mount(self) -> None:
         self._populate_overview()
-        self._populate_tree()
+        self._populate_data_tree()
         self._populate_flows()
         self._populate_parameters()
         self._populate_criteria()
         self._populate_jobs()
+        self._update_plot_controls()
         if self.startup_warnings:
             self.query_one("#activity-log", RichLog).write(
                 f"[yellow]Suppressed {len(self.startup_warnings)} warning(s) "
@@ -945,7 +970,7 @@ class ProjectExplorerScreen(Screen[None]):
             f"Project: {self.project.project_path}\n"
             f"MTH5: {summary.mth5_path}\n"
             f"MTH5 version: {summary.file_version}\n"
-            f"Reference time: {self.project.ref_time}\n"
+            f"Reference time: {str(self.project.ref_time)}\n"
             f"Time span: {summary.start_time or '-'} → {summary.end_time or '-'}\n"
             "Sample rates: "
             f"{', '.join(str(value) for value in summary.sample_rates) or '-'}\n\n"
@@ -954,39 +979,260 @@ class ProjectExplorerScreen(Screen[None]):
             f"Runs: {summary.n_runs}\n"
             f"Channels: {summary.n_channels}"
         )
-        self.query_one("#overview-content", Static).update(content)
+        self.query_one("#project-content", Static).update(content)
 
-    def _populate_tree(self) -> None:
-        tree = self.query_one("#project-tree", Tree)
+    def _populate_data_tree(self) -> None:
+        """Populate the filtered Project and MTH5 data hierarchy."""
+        tree = self.query_one("#data-tree", Tree)
         tree.clear()
-        tree.root.label = self.project.project_path.name
+        tree.root.label = "Data"
         tree.root.data = None
-        for survey_summary in self.project.list_surveys():
-            survey_path = survey_summary.survey
-            survey_node = tree.root.add(
-                f"{survey_summary.survey} ({survey_summary.n_stations} stations)",
-                data=survey_path,
-            )
-            for station_summary in self.project.list_stations(survey_summary.survey):
-                station_node = survey_node.add(
-                    f"{station_summary.station} ({station_summary.n_runs} runs)",
-                    data=station_summary.station_path,
-                )
-                for run_summary in self.project.list_runs(
-                    survey_summary.survey, station_summary.station
-                ):
-                    run_node = station_node.add(
-                        f"{run_summary.run} ({run_summary.sample_rate:g} Hz)",
-                        data=run_summary.run_path,
-                    )
-                    for channel in self.project.list_channels(
-                        run_summary.survey, run_summary.station, run_summary.run
-                    ):
-                        run_node.add_leaf(
-                            channel.component,
-                            data=f"{run_summary.run_path}/{channel.component}",
-                        )
+        project_node = tree.root.add("Project", data=("project", "."))
+        mth5_node = tree.root.add("MTH5", data=("mth5", "/"))
+        self.data_items.clear()
+        try:
+            project_items = self.project.list_project_data_items()
+        except Exception as exc:
+            project_items = []
+            self.notify(f"Unable to inspect project data: {exc}", severity="warning")
+        try:
+            mth5_items = self.project.list_mth5_data_items()
+        except Exception as exc:
+            mth5_items = []
+            self.notify(f"Unable to inspect MTH5 data: {exc}", severity="warning")
+        self._add_data_catalog(project_node, project_items)
+        self._add_data_catalog(mth5_node, mth5_items)
         tree.root.expand()
+        project_node.expand()
+        mth5_node.expand()
+        self.refresh_bindings()
+
+    def _add_data_catalog(self, root, items: list[ProjectDataItem]) -> None:
+        """Add each persistent data-type category below one source root."""
+        for label, data_type in self.DATA_CATEGORIES:
+            matching = [item for item in items if item.data_type == data_type]
+            category = root.add(
+                f"{label} ({len(matching)})", data=("category", label)
+            )
+            self._add_data_items(category, items, data_type)
+
+    def _add_data_items(
+        self, root, items: list[ProjectDataItem], data_type: str
+    ) -> None:
+        """Add one category's items, retaining their path ancestors."""
+        visible = self._visible_data_paths(items, data_type)
+        nodes = {None: root}
+        for item in sorted(
+            (item for item in items if item.path in visible),
+            key=lambda value: (value.path.count("/"), value.path),
+        ):
+            parent = nodes.get(item.parent_path, root)
+            key = f"{item.source}:{item.path}"
+            self.data_items[key] = item
+            if item.kind in {"directory", "group"}:
+                nodes[item.path] = parent.add(item.name, data=(item.source, item.path))
+            else:
+                parent.add_leaf(item.name, data=(item.source, item.path))
+
+    def _visible_data_paths(
+        self, items: list[ProjectDataItem], data_type: str
+    ) -> set[str]:
+        """Return matching entries and the ancestors required to display them."""
+        by_path = {item.path: item for item in items}
+        visible = set()
+        for item in items:
+            if data_type == item.data_type:
+                self._add_data_ancestors(item, by_path, visible)
+        return visible
+
+    @staticmethod
+    def _add_data_ancestors(
+        item: ProjectDataItem,
+        by_path: Dict[str, ProjectDataItem],
+        visible: set[str],
+    ) -> None:
+        """Include one item and each represented parent in the filtered tree."""
+        current: Optional[ProjectDataItem] = item
+        while current is not None:
+            visible.add(current.path)
+            current = (
+                None if current.parent_path is None else by_path.get(current.parent_path)
+            )
+
+    def _project_data_path(self, path: str) -> Optional[Path]:
+        """Resolve an internal data-browser path without leaving project/data."""
+        data_root = (self.project.project_path / "data").resolve()
+        item_path = (data_root / path).resolve()
+        if item_path != data_root and data_root not in item_path.parents:
+            return None
+        return item_path
+
+    def _find_project_artifact(
+        self, item: ProjectDataItem, required_files: tuple[str, ...]
+    ) -> Optional[Path]:
+        """Find the containing saved artifact for a selected project item."""
+        item_path = self._project_data_path(item.path)
+        if item_path is None:
+            return None
+        data_root = (self.project.project_path / "data").resolve()
+        current = item_path if item_path.is_dir() else item_path.parent
+        while current != data_root.parent:
+            if all((current / filename).is_file() for filename in required_files):
+                return current
+            if current == data_root:
+                break
+            current = current.parent
+        return None
+
+    @staticmethod
+    def _load_solution(solution_path: Path) -> Optional[Solution]:
+        """Read a saved solution for a lightweight plot eligibility check."""
+        try:
+            return Solution.model_validate_json(solution_path.read_bytes())
+        except Exception:
+            return None
+
+    def _mth5_time_plot_target(
+        self, item: ProjectDataItem
+    ) -> Optional[tuple[str, object]]:
+        """Turn a canonical MTH5 time path into a resistics run selection."""
+        parts = [part for part in item.path.split("/") if part]
+        lower_parts = [part.lower() for part in parts]
+        try:
+            survey_index = lower_parts.index("surveys")
+            station_index = lower_parts.index("stations")
+            survey = parts[survey_index + 1]
+            station = parts[station_index + 1]
+            run_index = station_index + 2
+            if lower_parts[run_index] == "runs":
+                run_index += 1
+            run = parts[run_index]
+        except (ValueError, IndexError):
+            return None
+
+        if not any(
+            summary.run == run
+            for summary in self.project.list_runs(survey=survey, station=station)
+        ):
+            return None
+
+        channel = None
+        if item.kind == "dataset":
+            channel_parts = parts[run_index + 1 :]
+            if channel_parts and channel_parts[0].lower() == "channels":
+                channel_parts = channel_parts[1:]
+            if len(channel_parts) != 1:
+                return None
+            channel = channel_parts[0]
+        return ("time", (survey, station, run, channel))
+
+    def _data_item_for_node(self, node=None) -> Optional[ProjectDataItem]:
+        """Return the browsed data item for a tree node, excluding tree chrome."""
+        if node is None:
+            node = self.query_one("#data-tree", Tree).cursor_node
+        data = None if node is None else node.data
+        if not isinstance(data, tuple) or len(data) != 2:
+            return None
+        source, path = data
+        if source not in {"project", "mth5"}:
+            return None
+        return self.data_items.get(f"{source}:{path}")
+
+    def _data_tree_cursor(self):
+        """Return the focused Data-tree node, if there is one."""
+        if self.query_one(TabbedContent).active != "data":
+            return None
+        tree = self.query_one("#data-tree", Tree)
+        if self.focused is not tree:
+            return None
+        return tree.cursor_node
+
+    def _data_plot_target(self, node=None) -> Optional[tuple[str, object]]:
+        """Return a plot target for the highlighted item, if it is supported."""
+        item = self._data_item_for_node(node)
+        if item is None:
+            return None
+        if item.source == "mth5" and item.data_type == "time":
+            return self._mth5_time_plot_target(item)
+        if item.source != "project":
+            return None
+        if item.data_type == "spectra":
+            artifact = self._find_project_artifact(
+                item, ("metadata.json", "data.npz")
+            )
+            return None if artifact is None else ("spectra", artifact)
+        if item.data_type == "transfer_function":
+            artifact = self._find_project_artifact(item, ("solution.json",))
+            if artifact is None:
+                return None
+            solution_path = artifact / "solution.json"
+            solution = self._load_solution(solution_path)
+            if solution is None or not isinstance(
+                solution.tf, (ImpedanceTensor, Tipper)
+            ):
+                return None
+            return ("transfer_function", solution_path)
+        return None
+
+    def _has_project_timeline(self) -> bool:
+        """Return whether there are any project runs to display."""
+        return self.project.file_summary().n_runs > 0
+
+    def _update_plot_controls(self) -> None:
+        """Refresh the Footer after project data or tab state changes."""
+        self.refresh_bindings()
+
+    def _start_project_plot(self) -> None:
+        if not self._has_project_timeline():
+            return
+        self.notify("Opening project timeline")
+        self._open_plot(("project", None))
+
+    def _start_selected_data_plot(self) -> None:
+        target = self._data_plot_target()
+        if target is None:
+            return
+        self.notify("Opening plot")
+        self._open_plot(target)
+
+    @work(thread=True, exclusive=True, group="plotting")
+    def _open_plot(self, target: tuple[str, object]) -> None:
+        """Load the selected data and hand its existing Plotly figure to Plotly."""
+        plot_project = None
+        try:
+            plot_project = load(self.project.project_path)
+            figure = self._build_plot_figure(plot_project, target)
+            pio.show(figure)
+        except Exception as exc:
+            self.app.call_from_thread(
+                self.notify, f"Unable to plot data: {exc}", severity="error"
+            )
+        finally:
+            if plot_project is not None and plot_project is not self.project:
+                plot_project.close_mth5()
+
+    @staticmethod
+    def _build_plot_figure(project: Project, target: tuple[str, object]):
+        """Build a Plotly figure through the data type's existing plot API."""
+        target_type, payload = target
+        if target_type == "project":
+            return project.plot()
+        if target_type == "time":
+            survey, station, run, channel = payload
+            time_data = project.read_run(
+                survey,
+                station,
+                run,
+                chans=None if channel is None else [channel],
+            )
+            return time_data.plot()
+        if target_type == "spectra":
+            return SpectraDataReader().run(payload).plot()
+        if target_type == "transfer_function":
+            solution = Solution.model_validate_json(Path(payload).read_bytes())
+            if isinstance(solution.tf, (ImpedanceTensor, Tipper)):
+                return solution.tf.plot(solution.freqs, solution.components)
+        raise ValueError("The selected data is not plottable")
 
     def _populate_jobs(self) -> None:
         table = self.query_one("#job-table", DataTable)
@@ -1170,20 +1416,38 @@ class ProjectExplorerScreen(Screen[None]):
                 "No YAML criteria files found in processing/criteria"
             )
 
-    @on(Tree.NodeSelected, "#project-tree")
-    def show_metadata(self, event: Tree.NodeSelected) -> None:
-        object_path = event.node.data
-        details = self.query_one("#metadata-content", TextArea)
-        if object_path is None:
+    @on(Tree.NodeSelected, "#data-tree")
+    def show_data_metadata(self, event: Tree.NodeSelected) -> None:
+        item = event.node.data
+        details = self.query_one("#data-metadata", TextArea)
+        if item is None:
             details.text = json.dumps(
-                {"message": "Select a survey, station, run, or channel"}, indent=2
+                {"message": "Select Project or MTH5 data"}, indent=2
             )
+            self.refresh_bindings()
             return
         try:
-            metadata = self.project.get_metadata(str(object_path))
+            source, path = item
+            if source == "category":
+                details.text = json.dumps(
+                    {"message": f"Expand {path} to inspect its data."}, indent=2
+                )
+                return
+            metadata = (
+                self.project.get_project_data_metadata(path)
+                if source == "project"
+                else self.project.get_mth5_data_metadata(path)
+            )
             details.text = metadata.model_dump_json(indent=2)
         except Exception as exc:
             details.text = json.dumps({"error": str(exc)}, indent=2)
+        finally:
+            self.refresh_bindings()
+
+    @on(Tree.NodeHighlighted, "#data-tree")
+    def update_data_plot_selection(self, event: Tree.NodeHighlighted) -> None:
+        """Refresh the Footer when the highlighted item changes."""
+        self.refresh_bindings()
 
     @on(DataTable.RowSelected, "#job-table")
     def show_job(self, event: DataTable.RowSelected) -> None:
@@ -1546,19 +1810,19 @@ class ProjectExplorerScreen(Screen[None]):
         validation = self.selected_validation
         if validation is None or validation.resolved_job is None:
             raise ValueError("A resolved job is required for execution")
-        self.call_from_thread(self._set_running)
+        self.app.call_from_thread(self._set_running)
         processing_project = None
         try:
             processing_project = load(self.project.project_path)
             self.job_runner = JobRunner(
                 processing_project,
-                progress_callback=lambda event: self.call_from_thread(
+                progress_callback=lambda event: self.app.call_from_thread(
                     self._show_progress, event
                 ),
             )
             self.job_runner.run(validation.resolved_job)
         except Exception as exc:
-            self.call_from_thread(
+            self.app.call_from_thread(
                 self._show_progress,
                 JobProgressEvent(
                     state=JobState.failed,
@@ -1580,7 +1844,23 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _show_progress(self, event: JobProgressEvent) -> None:
         self.job_state = event.state
-        line = f"[{event.state.value}] {event.message} ({event.elapsed_seconds:.1f}s)"
+        context = []
+        if event.station:
+            station = (
+                f"{event.survey}/{event.station}" if event.survey else event.station
+            )
+            context.append(f"station {station}")
+        elif event.survey:
+            context.append(f"survey {event.survey}")
+        if event.run:
+            context.append(f"run {event.run}")
+        if event.sample_rate is not None:
+            context.append(f"sample rate {event.sample_rate:g} Hz")
+        target = f" — {', '.join(context)}" if context else ""
+        line = (
+            f"[{event.state.value}] {event.message}{target} "
+            f"({event.elapsed_seconds:.1f}s)"
+        )
         if event.error:
             line += f"\n[red]{event.error}[/red]"
         self.query_one("#activity-log", RichLog).write(line)
@@ -1595,6 +1875,7 @@ class ProjectExplorerScreen(Screen[None]):
     @on(TabbedContent.TabActivated)
     def refresh_tab_bindings(self) -> None:
         """Refresh the Footer when the active tab changes."""
+        self._update_plot_controls()
         self.refresh_bindings()
 
     def check_action(self, action: str, parameters: tuple[object, ...]):
@@ -1638,7 +1919,44 @@ class ProjectExplorerScreen(Screen[None]):
             )
         if action == "cancel_job":
             return active == "activity" and self.job_state == JobState.running
+        if action in {"expand_data_node", "collapse_data_node"}:
+            node = self._data_tree_cursor()
+            if node is None or not node.allow_expand:
+                return False
+            return (
+                not node.is_expanded
+                if action == "expand_data_node"
+                else node.is_expanded
+            )
+        if action == "plot":
+            if active == "project":
+                return self._has_project_timeline()
+            if active == "data":
+                return self._data_plot_target() is not None
+            return False
         return super().check_action(action, parameters)
+
+    def action_plot(self) -> None:
+        """Plot the project timeline or the highlighted supported data item."""
+        active = self.query_one(TabbedContent).active
+        if active == "project":
+            self._start_project_plot()
+        elif active == "data":
+            self._start_selected_data_plot()
+
+    def action_expand_data_node(self) -> None:
+        """Expand the highlighted Data-tree branch and all of its descendants."""
+        node = self._data_tree_cursor()
+        if node is not None and node.allow_expand:
+            node.expand_all()
+            self.refresh_bindings()
+
+    def action_collapse_data_node(self) -> None:
+        """Collapse the highlighted Data-tree branch and all of its descendants."""
+        node = self._data_tree_cursor()
+        if node is not None and node.allow_expand:
+            node.collapse_all()
+            self.refresh_bindings()
 
     def action_refresh(self) -> None:
         if self.job_state == JobState.running:
@@ -1650,11 +1968,12 @@ class ProjectExplorerScreen(Screen[None]):
             )
             return
         self._populate_overview()
-        self._populate_tree()
+        self._populate_data_tree()
         self._populate_flows()
         self._populate_parameters()
         self._populate_criteria()
         self._populate_jobs()
+        self._update_plot_controls()
         self.notify("Project refreshed")
 
     def action_cancel_job(self) -> None:
@@ -1762,17 +2081,17 @@ class ResisticsTui(App[None]):
         background: #343434;
     }
     Tree > .tree--guides-selected { color: #faa881; }
-    #project-tree, #flow-table, #parameter-table, #criteria-table, #job-table {
+    #data-tree, #flow-table, #parameter-table, #criteria-table, #job-table {
         height: 1fr;
     }
-    #metadata-content, #flow-content, #parameter-content, #criteria-content,
+    #data-metadata, #flow-content, #parameter-content, #criteria-content,
     #job-content {
         height: 1fr;
         background: #202020;
         color: #f7f4f2;
         border: tall #343434;
     }
-    #metadata-content:focus, #flow-content:focus, #parameter-content:focus,
+    #data-metadata:focus, #flow-content:focus, #parameter-content:focus,
     #criteria-content:focus, #job-content:focus { border: tall #343434; }
     Button { background: #faa881; color: #101010; border: none; }
     Button.-success { background: #ac3600; color: #f7f4f2; }

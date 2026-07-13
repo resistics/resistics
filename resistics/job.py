@@ -90,6 +90,10 @@ class JobProgressEvent(BaseModel):
     state: JobState
     message: str
     job_name: str
+    survey: Optional[str] = None
+    station: Optional[str] = None
+    run: Optional[str] = None
+    sample_rate: Optional[float] = None
     node_id: Optional[str] = None
     step_type: Optional[str] = None
     error: Optional[str] = None
@@ -436,7 +440,7 @@ class JobRunner:
                     resolved_job.definition
                 )
                 self._run_batches(
-                    executor, resolved_job, batches, criteria, partial_paths
+                    executor, resolved_job, batches, criteria, partial_paths, started
                 )
         except FlowCancelled:
             state = JobState.cancelled
@@ -468,6 +472,7 @@ class JobRunner:
         batches: List[StationRateBatch],
         criteria: GatherCriteria,
         partial_paths: List[Path],
+        started: float,
     ) -> None:
         """Run durable run stages before their station/rate gather stages."""
         for stage in resolved_job.stages:
@@ -475,6 +480,15 @@ class JobRunner:
                 for batch in batches:
                     for run_path in batch.run_paths:
                         survey, station, run = run_path.split("/", 2)
+                        self._emit(
+                            JobState.running,
+                            resolved_job.definition.name,
+                            f"Started: {stage.stage_id}",
+                            started,
+                            survey=survey,
+                            station=station,
+                            run=run,
+                        )
                         executor.run_stage(
                             resolved_job.processing_job,
                             stage,
@@ -502,6 +516,15 @@ class JobRunner:
                         raise ValueError(f"Output already exists: {output_path}")
                     rmtree(output_path)
                 partial_paths.append(staging_path)
+                self._emit(
+                    JobState.running,
+                    resolved_job.definition.name,
+                    f"Started: {stage.stage_id}",
+                    started,
+                    survey=batch.survey,
+                    station=batch.station,
+                    sample_rate=batch.sample_rate,
+                )
                 executor.run_stage(
                     resolved_job.processing_job,
                     stage,
@@ -587,6 +610,10 @@ class JobRunner:
         job_name: str,
         message: str,
         started: float,
+        survey: Optional[str] = None,
+        station: Optional[str] = None,
+        run: Optional[str] = None,
+        sample_rate: Optional[float] = None,
         node_id: Optional[str] = None,
         step_type: Optional[str] = None,
         error: Optional[str] = None,
@@ -598,6 +625,10 @@ class JobRunner:
                 state=state,
                 message=message,
                 job_name=job_name,
+                survey=survey,
+                station=station,
+                run=run,
+                sample_rate=sample_rate,
                 node_id=node_id,
                 step_type=step_type,
                 error=error,

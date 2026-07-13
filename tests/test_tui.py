@@ -2,13 +2,17 @@
 
 import asyncio
 from pathlib import Path
+from threading import Thread
 from types import SimpleNamespace
 
 import pandas as pd
+import plotly.graph_objects as go
+import resistics.tui as tui_module
 from textual.widgets import (
     Button,
     DataTable,
     Input,
+    RichLog,
     Select,
     Static,
     TabbedContent,
@@ -19,6 +23,10 @@ from textual.widgets import (
 
 from resistics.flow import default_parameter_set, model_to_yaml, standard_mt_flow
 from resistics.gather import GatherCriteria
+from resistics.job import JobProgressEvent, JobState
+from resistics.project import ProjectDataItem
+from resistics.sampling import to_datetime
+from resistics.testing import solution_mt
 from resistics.tui import (
     CopyYamlFileScreen,
     ConfirmJobScreen,
@@ -26,6 +34,7 @@ from resistics.tui import (
     CreateProjectScreen,
     DeleteYamlFileScreen,
     DirectoryPickerScreen,
+    ProjectExplorerScreen,
     ResisticsTui,
 )
 
@@ -35,9 +44,12 @@ class FakeProject:
 
     def __init__(self, project_path, create_jobs=True):
         self.project_path = project_path
-        self.ref_time = "2020-01-01T00:00:00"
+        self.ref_time = to_datetime("2020-01-01T00:00:00")
         self.runs = []
+        self.n_runs = 0
         self.closed = False
+        self.project_data_items = []
+        self.mth5_data_items = []
         if create_jobs:
             (project_path / "processing/jobs").mkdir(parents=True)
 
@@ -50,7 +62,7 @@ class FakeProject:
             sample_rates=[],
             n_surveys=0,
             n_stations=0,
-            n_runs=0,
+            n_runs=self.n_runs,
             n_channels=0,
         )
 
@@ -62,6 +74,12 @@ class FakeProject:
 
     def list_runs(self, survey=None, station=None):
         return []
+
+    def list_project_data_items(self):
+        return self.project_data_items
+
+    def list_mth5_data_items(self):
+        return self.mth5_data_items
 
     def close_mth5(self):
         self.closed = True
@@ -82,14 +100,22 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
     async def run_test():
         async with app.run_test(size=(100, 40)) as pilot:
             await pilot.pause()
-            overview = app.screen.query_one("#overview-content", Static)
-            tree = app.screen.query_one("#project-tree", Tree)
+            project_overview = app.screen.query_one("#project-content", Static)
+            tree = app.screen.query_one("#data-tree", Tree)
             table = app.screen.query_one("#job-table", DataTable)
             flow_table = app.screen.query_one("#flow-table", DataTable)
             parameter_table = app.screen.query_one("#parameter-table", DataTable)
-            metadata_details = app.screen.query_one("#metadata-content", TextArea)
-            assert "project" in str(overview.render())
-            assert str(tree.root.label) == "project"
+            metadata_details = app.screen.query_one("#data-metadata", TextArea)
+            assert "project" in str(project_overview.render())
+            assert "Reference time: 2020-01-01 00:00:00" in str(
+                project_overview.render()
+            )
+            assert str(tree.root.label) == "Data"
+            assert not tree.show_root
+            assert [str(node.label) for node in tree.root.children] == [
+                "Project",
+                "MTH5",
+            ]
             assert table.row_count == 0
             assert flow_table.row_count == 1
             assert flow_table.cell_padding == 1
@@ -99,7 +125,7 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
             assert app.screen.query_one("#criteria", TabPane)
             assert app.screen.query_one("#criteria-table", DataTable)
             flow_editor = app.screen.query_one("#flow-content", TextArea)
-            metadata_editor = app.screen.query_one("#metadata-content", TextArea)
+            metadata_editor = app.screen.query_one("#data-metadata", TextArea)
             assert metadata_editor.language == "json"
             assert metadata_editor.theme == "vscode_dark"
             assert metadata_editor.read_only
@@ -138,7 +164,7 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
             }
             assert not app.screen.query("#install-defaults")
             assert app.sub_title == str(project.project_path)
-            app.screen.query_one(TabbedContent).active = "project"
+            app.screen.query_one(TabbedContent).active = "data"
             await asyncio.sleep(0)
             app.screen.set_focus(tree)
             app.action_focus_next()
@@ -146,6 +172,251 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
 
     asyncio.run(run_test())
     assert project.closed
+
+
+def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    project.project_data_items = [
+        ProjectDataItem(
+            source="project",
+            path="run/evals/default",
+            parent_path="run/evals",
+            name="default",
+            kind="directory",
+            data_type="spectra",
+        ),
+        ProjectDataItem(
+            source="project",
+            path="run/evals",
+            parent_path="run",
+            name="evals",
+            kind="directory",
+            data_type="spectra",
+        ),
+        ProjectDataItem(
+            source="project",
+            path="run",
+            name="run",
+            kind="directory",
+            data_type="other",
+        ),
+    ]
+    project.mth5_data_items = [
+        ProjectDataItem(
+            source="mth5",
+            path="/Time/ex",
+            parent_path="/Time",
+            name="ex",
+            kind="dataset",
+            data_type="time",
+        ),
+        ProjectDataItem(
+            source="mth5",
+            path="/Experiment/fc_summary",
+            parent_path="/Experiment",
+            name="fc_summary",
+            kind="dataset",
+            data_type="spectra",
+        ),
+        ProjectDataItem(
+            source="mth5",
+            path="/Experiment",
+            parent_path="/",
+            name="Experiment",
+            kind="group",
+            data_type="other",
+        ),
+        ProjectDataItem(
+            source="mth5",
+            path="/Time",
+            parent_path="/",
+            name="Time",
+            kind="group",
+            data_type="other",
+        ),
+    ]
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            screen = app.screen
+            data_tree = screen.query_one("#data-tree", Tree)
+            assert [str(node.label) for node in data_tree.root.children] == [
+                "Project",
+                "MTH5",
+            ]
+            project_node, mth5_node = data_tree.root.children
+            assert project_node.is_expanded
+            assert mth5_node.is_expanded
+            assert [str(node.label) for node in project_node.children] == [
+                "Time data (0)",
+                "Spectra/evaluations (2)",
+                "Transfer functions (0)",
+                "Other (1)",
+            ]
+            assert [str(node.label) for node in mth5_node.children] == [
+                "Time data (1)",
+                "Spectra/evaluations (1)",
+                "Transfer functions (0)",
+                "Other (2)",
+            ]
+            assert set(screen.data_items) == {
+                "project:run",
+                "project:run/evals",
+                "project:run/evals/default",
+                "mth5:/Experiment",
+                "mth5:/Experiment/fc_summary",
+                "mth5:/Time",
+                "mth5:/Time/ex",
+            }
+            screen.query_one(TabbedContent).active = "data"
+            data_tree.focus()
+            time_category = mth5_node.children[0]
+            data_tree.move_cursor(time_category)
+            await pilot.pause()
+            assert screen.check_action("expand_data_node", ())
+            await pilot.press("right_square_bracket")
+            assert time_category.is_expanded
+            assert time_category.children[0].is_expanded
+            assert screen.check_action("collapse_data_node", ())
+            await pilot.press("left_square_bracket")
+            assert time_category.is_collapsed
+            assert time_category.children[0].is_collapsed
+
+    asyncio.run(run_test())
+
+
+def test_tui_plot_controls_follow_supported_data_selection(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    project.n_runs = 1
+    project.list_runs = lambda survey=None, station=None: [
+        SimpleNamespace(survey="survey", station="station", run="run")
+    ]
+    project.mth5_data_items = [
+        ProjectDataItem(
+            source="mth5",
+            path=(
+                "/Experiment/Surveys/survey/Stations/station/Runs/run/Channels/ex"
+            ),
+            name="ex",
+            kind="dataset",
+            data_type="time",
+        ),
+        ProjectDataItem(
+            source="mth5",
+            path="/Experiment/fc_summary",
+            name="fc_summary",
+            kind="dataset",
+            data_type="spectra",
+        ),
+    ]
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    def find_node(node, data):
+        if node.data == data:
+            return node
+        for child in node.children:
+            found = find_node(child, data)
+            if found is not None:
+                return found
+        return None
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            screen = app.screen
+            data_tree = screen.query_one("#data-tree", Tree)
+            assert screen.check_action("plot", ())
+            screen.query_one(TabbedContent).active = "data"
+            await pilot.pause()
+            assert not screen.check_action("plot", ())
+
+            time_node = find_node(
+                data_tree.root,
+                (
+                    "mth5",
+                    "/Experiment/Surveys/survey/Stations/station/Runs/run/Channels/ex",
+                ),
+            )
+            assert time_node is not None
+            time_node.parent.expand()
+            await pilot.pause()
+            data_tree.focus()
+            data_tree.move_cursor(time_node)
+            await pilot.pause()
+            assert screen.check_action("plot", ())
+
+            raw_spectra_node = find_node(
+                data_tree.root, ("mth5", "/Experiment/fc_summary")
+            )
+            assert raw_spectra_node is not None
+            raw_spectra_node.parent.expand()
+            await pilot.pause()
+            data_tree.move_cursor(raw_spectra_node)
+            await pilot.pause()
+            assert not screen.check_action("plot", ())
+
+    asyncio.run(run_test())
+
+
+def test_tui_builds_figures_with_existing_plotters(monkeypatch, tmp_path):
+    class FakeTimeData:
+        def plot(self):
+            return "time figure"
+
+    class FakeProjectForPlot:
+        def __init__(self):
+            self.read_calls = []
+
+        def plot(self):
+            return "timeline figure"
+
+        def read_run(self, survey, station, run, chans=None):
+            self.read_calls.append((survey, station, run, chans))
+            return FakeTimeData()
+
+    project = FakeProjectForPlot()
+    assert ProjectExplorerScreen._build_plot_figure(project, ("project", None)) == (
+        "timeline figure"
+    )
+    assert ProjectExplorerScreen._build_plot_figure(
+        project, ("time", ("survey", "station", "run", "ex"))
+    ) == "time figure"
+    assert project.read_calls == [("survey", "station", "run", ["ex"])]
+
+    spectra_path = tmp_path / "evaluation"
+    spectra_path.mkdir()
+    spectra_figure = go.Figure()
+
+    class FakeSpectraData:
+        def plot(self):
+            return spectra_figure
+
+    class FakeSpectraReader:
+        def __init__(self):
+            self.paths = []
+
+        def run(self, path):
+            self.paths.append(path)
+            return FakeSpectraData()
+
+    reader = FakeSpectraReader()
+    monkeypatch.setattr(tui_module, "SpectraDataReader", lambda: reader)
+    assert (
+        ProjectExplorerScreen._build_plot_figure(project, ("spectra", spectra_path))
+        is spectra_figure
+    )
+    assert reader.paths == [spectra_path]
+
+    solution_path = tmp_path / "solution.json"
+    solution_mt().write(solution_path)
+    figure = ProjectExplorerScreen._build_plot_figure(
+        project, ("transfer_function", solution_path)
+    )
+    assert isinstance(figure, go.Figure)
 
 
 def test_close_project_returns_to_home(monkeypatch, tmp_path):
@@ -307,6 +578,94 @@ def test_run_job_confirmation_uses_dialog_navigation():
     asyncio.run(run_test())
 
 
+def test_tui_runs_job_worker_and_reports_threaded_progress(monkeypatch, tmp_path):
+    project_path = tmp_path / "project"
+    project = FakeProject(project_path)
+    processing_project = FakeProject(project_path, create_jobs=False)
+    loaded_projects = iter((project, processing_project))
+
+    class FakeJobRunner:
+        def __init__(self, project, progress_callback):
+            self.project = project
+            self.progress_callback = progress_callback
+
+        def run(self, resolved_job):
+            self.progress_callback(
+                JobProgressEvent(
+                    state=JobState.running,
+                    message="Started: runs",
+                    job_name=resolved_job.definition.name,
+                    survey="survey",
+                    station="a",
+                    run="run1",
+                )
+            )
+            self.progress_callback(
+                JobProgressEvent(
+                    state=JobState.running,
+                    message="Started: results",
+                    job_name=resolved_job.definition.name,
+                    survey="survey",
+                    station="a",
+                    sample_rate=128.0,
+                )
+            )
+            self.progress_callback(
+                JobProgressEvent(
+                    state=JobState.completed,
+                    message="Job complete",
+                    job_name=resolved_job.definition.name,
+                )
+            )
+
+    monkeypatch.setattr("resistics.tui.load", lambda path: next(loaded_projects))
+    monkeypatch.setattr("resistics.tui.JobRunner", FakeJobRunner)
+    app = ResisticsTui(project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            explorer = app.screen
+            explorer.selected_validation = SimpleNamespace(
+                resolved_job=SimpleNamespace(
+                    definition=SimpleNamespace(name="field_job")
+                )
+            )
+            errors = []
+
+            def run_job():
+                try:
+                    explorer._execute_selected_job.__wrapped__(explorer)
+                except Exception as exc:
+                    errors.append(exc)
+
+            thread = Thread(target=run_job)
+            thread.start()
+
+            async def wait_for_job_thread():
+                while thread.is_alive():
+                    await asyncio.sleep(0.01)
+
+            await asyncio.wait_for(wait_for_job_thread(), timeout=2)
+            thread.join()
+            await pilot.pause()
+
+            assert errors == []
+            assert explorer.job_state == JobState.completed
+            assert explorer.job_runner is None
+            assert (
+                str(explorer.query_one("#activity-status", Static).render())
+                == "field_job: completed"
+            )
+            activity_log = explorer.query_one("#activity-log", RichLog)
+            activity = "\n".join(line.text for line in activity_log.lines)
+            assert "station survey/a, run run1" in activity
+            assert "station survey/a, sample rate 128 Hz" in activity
+
+    asyncio.run(run_test())
+    assert processing_project.closed
+
+
 def test_tui_starts_on_the_project_home_screen():
     app = ResisticsTui()
 
@@ -420,7 +779,7 @@ def test_create_project_opens_the_new_project(monkeypatch, tmp_path):
             form.create()
             await pilot.pause()
             assert app.sub_title == str(project_path)
-            assert app.screen.query_one("#overview-content", Static)
+            assert app.screen.query_one("#project-content", Static)
 
     asyncio.run(run_test())
     assert source.closed
@@ -440,7 +799,7 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
         ResisticsTui.CSS
     )
     assert (
-        "#metadata-content, #flow-content, #parameter-content, #criteria-content,"
+        "#data-metadata, #flow-content, #parameter-content, #criteria-content,"
         in (ResisticsTui.CSS)
     )
     assert "Input:focus { background: #202020; border: tall #0a009f; }" in (

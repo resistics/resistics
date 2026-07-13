@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+import h5py
 from mth5.mth5 import MTH5
 
 from resistics.project import (
@@ -110,6 +111,71 @@ def test_mth5_project_paths():
         project_path / "data" / "survey" / "station" / "results" / "proc1"
     )
     assert get_log_path(project_path, "proc1") == project_path / "logs" / "proc1.log"
+
+
+def test_project_data_browser_lists_mth5_and_project_artifacts(tmp_path):
+    project_path = tmp_path / "project"
+    data_path = project_path / "data"
+    mth5_path = tmp_path / "data.h5"
+    with h5py.File(mth5_path, "w") as mth5_file:
+        channel = mth5_file.create_dataset(
+            "Experiment/Surveys/survey/Stations/station/Runs/run/Channels/ex",
+            data=[1.0, 2.0],
+        )
+        channel.attrs["units"] = "nT"
+        mth5_file.create_dataset(
+            "Experiment/Surveys/survey/Stations/station/direct_run/ex",
+            data=[1.0, 2.0],
+        )
+        mth5_file.create_dataset("Experiment/fc_summary", data=[1])
+        mth5_file.create_dataset("Experiment/tf_summary", data=[1])
+    evaluation_path = data_path / "survey" / "station" / "run" / "evals" / "default"
+    evaluation_path.mkdir(parents=True)
+    (evaluation_path / "metadata.json").write_text('{"name": "evaluation"}')
+    solution_path = data_path / "survey" / "station" / "results" / "mt"
+    solution_path.mkdir(parents=True)
+    (solution_path / "solution.json").write_text('{"name": "solution"}')
+    project = Project.model_construct(
+        project_path=project_path,
+        mth5_path=mth5_path,
+        ref_time="2020-01-01T00:00:00",
+        mth5_data=FakeMTH5(mth5_path),
+        table=pd.DataFrame(),
+        plugin_paths=[],
+        surveys=[],
+        stations=[],
+        runs=[],
+    )
+
+    mth5_items = {item.path: item for item in project.list_mth5_data_items()}
+    assert (
+        mth5_items["/Experiment/Surveys/survey/Stations/station/Runs/run/Channels/ex"]
+        .data_type
+        == "time"
+    )
+    assert mth5_items["/Experiment/fc_summary"].data_type == "spectra"
+    assert mth5_items["/Experiment/tf_summary"].data_type == "transfer_function"
+    assert (
+        mth5_items[
+            "/Experiment/Surveys/survey/Stations/station/direct_run/ex"
+        ].data_type
+        == "time"
+    )
+    mth5_metadata = project.get_mth5_data_metadata(
+        "/Experiment/Surveys/survey/Stations/station/Runs/run/Channels/ex"
+    )
+    assert mth5_metadata.values["shape"] == [2]
+    assert mth5_metadata.values["attributes"] == {"units": "nT"}
+
+    project_items = {item.path: item for item in project.list_project_data_items()}
+    assert project_items["survey/station/run/evals/default"].data_type == "spectra"
+    assert project_items["survey/station/results/mt"].data_type == "transfer_function"
+    project_metadata = project.get_project_data_metadata(
+        "survey/station/run/evals/default"
+    )
+    assert project_metadata.values["metadata.json"] == {"name": "evaluation"}
+    with pytest.raises(ValueError, match="inside project/data"):
+        project.get_project_data_metadata("../outside")
 
 
 def test_init_creates_canonical_project_structure(tmp_path):
