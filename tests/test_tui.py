@@ -292,13 +292,20 @@ def test_tui_plot_controls_follow_supported_data_selection(monkeypatch, tmp_path
     project = FakeProject(tmp_path / "project")
     project.n_runs = 1
     project.list_runs = lambda survey=None, station=None: [
-        SimpleNamespace(survey="survey", station="station", run="run")
+        SimpleNamespace(survey="CONUS South", station="CAS04", run="a")
     ]
     project.mth5_data_items = [
         ProjectDataItem(
             source="mth5",
+            path="/Experiment/Surveys/CONUS_South/Stations/CAS04/a",
+            name="a",
+            kind="group",
+            data_type="time",
+        ),
+        ProjectDataItem(
+            source="mth5",
             path=(
-                "/Experiment/Surveys/survey/Stations/station/Runs/run/Channels/ex"
+                "/Experiment/Surveys/CONUS_South/Stations/CAS04/a/ex"
             ),
             name="ex",
             kind="dataset",
@@ -338,7 +345,7 @@ def test_tui_plot_controls_follow_supported_data_selection(monkeypatch, tmp_path
                 data_tree.root,
                 (
                     "mth5",
-                    "/Experiment/Surveys/survey/Stations/station/Runs/run/Channels/ex",
+                    "/Experiment/Surveys/CONUS_South/Stations/CAS04/a/ex",
                 ),
             )
             assert time_node is not None
@@ -346,6 +353,15 @@ def test_tui_plot_controls_follow_supported_data_selection(monkeypatch, tmp_path
             await pilot.pause()
             data_tree.focus()
             data_tree.move_cursor(time_node)
+            await pilot.pause()
+            assert screen.check_action("plot", ())
+
+            run_node = find_node(
+                data_tree.root,
+                ("mth5", "/Experiment/Surveys/CONUS_South/Stations/CAS04/a"),
+            )
+            assert run_node is not None
+            data_tree.move_cursor(run_node)
             await pilot.pause()
             assert screen.check_action("plot", ())
 
@@ -363,8 +379,11 @@ def test_tui_plot_controls_follow_supported_data_selection(monkeypatch, tmp_path
 
 
 def test_tui_builds_figures_with_existing_plotters(monkeypatch, tmp_path):
+    time_plot_calls = []
+
     class FakeTimeData:
-        def plot(self):
+        def plot(self, max_pts):
+            time_plot_calls.append(max_pts)
             return "time figure"
 
     class FakeProjectForPlot:
@@ -386,6 +405,7 @@ def test_tui_builds_figures_with_existing_plotters(monkeypatch, tmp_path):
         project, ("time", ("survey", "station", "run", "ex"))
     ) == "time figure"
     assert project.read_calls == [("survey", "station", "run", ["ex"])]
+    assert time_plot_calls == [5_000]
 
     spectra_path = tmp_path / "evaluation"
     spectra_path.mkdir()

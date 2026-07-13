@@ -11,6 +11,7 @@ from typing import Dict, Optional, Sequence
 import warnings
 
 from loguru import logger
+from mth5.helpers import validate_name as validate_mth5_name
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -66,6 +67,8 @@ from resistics.templates import (
     install_builtin_parameter_templates,
 )
 from resistics.transfunc import ImpedanceTensor, Tipper
+
+TIME_PLOT_MAX_POINTS = 5_000
 
 
 class TuiHeader(Static):
@@ -1110,11 +1113,18 @@ class ProjectExplorerScreen(Screen[None]):
         except (ValueError, IndexError):
             return None
 
-        if not any(
-            summary.run == run
-            for summary in self.project.list_runs(survey=survey, station=station)
-        ):
+        matches = [
+            summary
+            for summary in self.project.list_runs()
+            if (
+                validate_mth5_name(summary.survey) == survey
+                and validate_mth5_name(summary.station) == station
+                and validate_mth5_name(summary.run) == run
+            )
+        ]
+        if len(matches) != 1:
             return None
+        summary = matches[0]
 
         channel = None
         if item.kind == "dataset":
@@ -1124,7 +1134,7 @@ class ProjectExplorerScreen(Screen[None]):
             if len(channel_parts) != 1:
                 return None
             channel = channel_parts[0]
-        return ("time", (survey, station, run, channel))
+        return ("time", (summary.survey, summary.station, summary.run, channel))
 
     def _data_item_for_node(self, node=None) -> Optional[ProjectDataItem]:
         """Return the browsed data item for a tree node, excluding tree chrome."""
@@ -1225,7 +1235,7 @@ class ProjectExplorerScreen(Screen[None]):
                 run,
                 chans=None if channel is None else [channel],
             )
-            return time_data.plot()
+            return time_data.plot(max_pts=TIME_PLOT_MAX_POINTS)
         if target_type == "spectra":
             return SpectraDataReader().run(payload).plot()
         if target_type == "transfer_function":
