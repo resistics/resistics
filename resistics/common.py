@@ -25,6 +25,20 @@ def json_fallback(value: Any) -> Any:
 
 ELECTRIC_CHANS = ["Ex", "Ey", "E1", "E2", "E3", "E4"]
 MAGNETIC_CHANS = ["Hx", "Hy", "Hz", "Bx", "By", "Bz"]
+def validate_output_label(value: str) -> str:
+    """Validate one output-label path component used for derived artifacts."""
+    value = value.strip()
+    if (
+        not value
+        or value in {".", ".."}
+        or "/" in value
+        or "\\" in value
+        or "\x00" in value
+    ):
+        raise ValueError(
+            "output_label must be a non-empty single path component"
+        )
+    return value
 
 
 def get_version() -> str:

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from shutil import rmtree
 from typing import Any, Dict, Iterable, List, Literal, Optional, Union
 
 import h5py
@@ -22,7 +23,7 @@ from mth5.groups.survey import SurveyGroup
 from mth5.mth5 import MTH5
 from pydantic import Field, JsonValue
 
-from resistics.common import ResisticsModel
+from resistics.common import ResisticsModel, validate_output_label
 from resistics.plot import plot_timeline
 from resistics.sampling import DateTimeLike, HighResDateTime, to_datetime, to_timestamp
 from resistics.templates import install_builtin_processing_templates
@@ -215,7 +216,7 @@ class MetadataDetail(ResisticsModel):
 
 
 DataSource = Literal["project", "mth5"]
-DataType = Literal["time", "spectra", "transfer_function", "other"]
+DataType = Literal["time", "spectra", "mask", "transfer_function", "other"]
 
 
 class ProjectDataItem(ResisticsModel):
@@ -227,6 +228,8 @@ class ProjectDataItem(ResisticsModel):
     name: str
     kind: Literal["directory", "file", "group", "dataset"]
     data_type: DataType
+    is_dataset: bool = False
+    """Whether this item is one logical saved dataset rather than tree chrome."""
 
 
 class ProjectDataMetadata(ResisticsModel):
@@ -237,6 +240,18 @@ class ProjectDataMetadata(ResisticsModel):
     kind: Literal["directory", "file", "group", "dataset"]
     data_type: DataType
     values: Dict[str, JsonValue] = Field(default_factory=dict)
+
+
+class ProjectDataDeletion(ResisticsModel):
+    """Preview or summary of a derived-project-data deletion."""
+
+    output_label: Optional[str] = None
+    paths: List[str] = Field(default_factory=list)
+
+    @property
+    def count(self) -> int:
+        """Return the number of top-level artifact paths affected."""
+        return len(self.paths)
 
 
 def _metadata_value(value: Any) -> JsonValue:
@@ -278,6 +293,8 @@ def _mth5_data_type(path: str) -> DataType:
 def _project_data_type(path: Path) -> DataType:
     """Classify project artifacts using their stable storage conventions."""
     parts = {part.lower() for part in path.parts}
+    if "masks" in parts:
+        return "mask"
     if "evals" in parts:
         return "spectra"
     if path.name == "solution.json" or (
@@ -478,6 +495,7 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
                         name=name.rsplit("/", 1)[-1],
                         kind="group" if isinstance(value, h5py.Group) else "dataset",
                         data_type=_mth5_data_type(path),
+                        is_dataset=isinstance(value, h5py.Dataset),
                     )
                 )
 
@@ -523,6 +541,7 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         data_path = self._data_path
         if not data_path.is_dir():
             return []
+        artifact_roots = self._project_artifact_roots()
         items = []
         for item_path in sorted(data_path.rglob("*")):
             relative = item_path.relative_to(data_path)
@@ -538,9 +557,48 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
                     name=item_path.name,
                     kind="directory" if item_path.is_dir() else "file",
                     data_type=_project_data_type(item_path),
+                    is_dataset=self._is_project_dataset_item(
+                        item_path, artifact_roots
+                    ),
                 )
             )
         return items
+
+    def _project_artifact_roots(self) -> Dict[Path, DataType]:
+        """Return the directories that each represent one saved artifact."""
+        data_path = self._data_path
+        if not data_path.is_dir():
+            return {}
+        roots: Dict[Path, DataType] = {}
+        for item_path in data_path.rglob("*"):
+            if not item_path.is_dir():
+                continue
+            data_type = _project_data_type(item_path)
+            if data_type == "spectra" and item_path.parent.name == "evals":
+                roots[item_path] = data_type
+            elif (
+                data_type == "mask"
+                and (item_path / "metadata.json").is_file()
+                and (item_path / "data.npz").is_file()
+            ):
+                roots[item_path] = data_type
+            elif (
+                data_type == "transfer_function"
+                and (item_path / "solution.json").is_file()
+            ):
+                roots[item_path] = data_type
+        return roots
+
+    @staticmethod
+    def _is_project_dataset_item(
+        item_path: Path, artifact_roots: Dict[Path, DataType]
+    ) -> bool:
+        """Identify artifact roots and standalone unrecognised data files."""
+        if item_path in artifact_roots:
+            return True
+        if not item_path.is_file():
+            return False
+        return not any(root in item_path.parents for root in artifact_roots)
 
     def get_project_data_metadata(self, path: str) -> ProjectDataMetadata:
         """Return generic and recognized metadata for one saved project artifact."""
@@ -557,6 +615,116 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
             data_type=_project_data_type(item_path),
             values=values,
         )
+
+    def get_project_data_json(self, path: str) -> JsonValue:
+        """Read one JSON artifact selected through the project-data browser."""
+        item_path = self._project_data_item_path(path)
+        if not item_path.is_file() or item_path.suffix.lower() != ".json":
+            raise ValueError("Project data item is not a JSON file")
+        try:
+            return _metadata_value(json.loads(item_path.read_text(encoding="utf-8")))
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            raise ValueError(f"Unable to read JSON file {path}: {exc}") from exc
+
+    def list_project_output_labels(self) -> List[str]:
+        """List output labels represented by recognised derived artifacts."""
+        labels = set()
+        for path, data_type in self._project_artifact_roots().items():
+            if data_type == "spectra" and path.parent.name == "evals":
+                labels.add(path.name)
+            elif (
+                data_type == "mask"
+                and path.parent.parent.name == "masks"
+            ):
+                labels.add(path.parent.name)
+            elif (
+                data_type == "transfer_function"
+                and path.parent.parent.name == "results"
+            ):
+                labels.add(path.parent.name)
+        return sorted(labels)
+
+    def preview_project_data_deletion(
+        self, output_label: Optional[str] = None
+    ) -> ProjectDataDeletion:
+        """Return the derived paths that a labelled or complete clear removes."""
+        data_path = self._data_path
+        if output_label is None:
+            paths = [] if not data_path.is_dir() else [
+                path.relative_to(data_path).as_posix() for path in sorted(data_path.iterdir())
+            ]
+            return ProjectDataDeletion(paths=paths)
+
+        output_label = validate_output_label(output_label)
+        targets = set()
+        for path, data_type in self._project_artifact_roots().items():
+            if data_type == "spectra" and path.parent.name == "evals":
+                if path.name == output_label:
+                    targets.add(path)
+            elif data_type == "mask" and path.parent.parent.name == "masks":
+                if path.parent.name == output_label:
+                    targets.add(path.parent)
+            elif data_type == "transfer_function" and path.parent.parent.name == "results":
+                if path.parent.name == output_label:
+                    targets.add(path.parent)
+        return ProjectDataDeletion(
+            output_label=output_label,
+            paths=sorted(path.relative_to(data_path).as_posix() for path in targets),
+        )
+
+    def delete_project_data(
+        self, output_label: Optional[str] = None
+    ) -> ProjectDataDeletion:
+        """Delete one output-label namespace or all derived project data.
+
+        The project's MTH5 file is protected even when it happens to be stored
+        beneath ``project/data``.
+        """
+        deletion = self.preview_project_data_deletion(output_label)
+        data_path = self._data_path
+        if not data_path.is_dir():
+            return deletion
+        if output_label is None:
+            protected = self.mth5_path.resolve()
+            for path in list(data_path.iterdir()):
+                self._delete_data_path(path, protected)
+            return deletion
+
+        for relative in deletion.paths:
+            path = data_path / relative
+            if path.exists():
+                self._remove_data_path(path)
+                self._prune_empty_data_parents(path.parent)
+        return deletion
+
+    @staticmethod
+    def _remove_data_path(path: Path) -> None:
+        """Remove one known derived artifact without following a symlink."""
+        if path.is_symlink() or path.is_file():
+            path.unlink()
+        else:
+            rmtree(path)
+
+    def _delete_data_path(self, path: Path, protected: Path) -> None:
+        """Clear data recursively while retaining an in-tree MTH5 source."""
+        resolved = path.resolve()
+        if resolved == protected:
+            return
+        if path.is_dir() and not path.is_symlink() and resolved in protected.parents:
+            for child in list(path.iterdir()):
+                self._delete_data_path(child, protected)
+            return
+        self._remove_data_path(path)
+
+    def _prune_empty_data_parents(self, path: Path) -> None:
+        """Remove empty structural directories left by a labelled deletion."""
+        data_path = self._data_path
+        while path != data_path and path.is_dir():
+            try:
+                path.rmdir()
+            except OSError:
+                break
+            path = path.parent
 
     def _project_data_item_path(self, path: str) -> Path:
         """Resolve a browser path and keep it within the project data root."""

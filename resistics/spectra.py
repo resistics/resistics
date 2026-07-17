@@ -23,6 +23,7 @@ from resistics.common import (
     History,
 )
 from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
+from resistics.common import validate_output_label
 from resistics.sampling import HighResDateTime
 from resistics.time import ChanMetadata
 from resistics.decimate import DecimationParameters
@@ -882,6 +883,7 @@ class EvaluationFrequencyReader(ResisticsProcess):
         """Read the spectra and persisted decimation parameters."""
         del inputs
         batch = runtime["run_batch"]
+        label = validate_output_label(runtime.get("output_label", self.label))
         path = (
             Path(runtime["project_path"])
             / "data"
@@ -889,7 +891,7 @@ class EvaluationFrequencyReader(ResisticsProcess):
             / batch["station"]
             / batch["run"]
             / "evals"
-            / self.label
+            / label
         )
         return EvaluationFrequencyData(
             spectra_data=SpectraDataReader().run(path),
@@ -919,6 +921,7 @@ class EvaluationFrequencyWriter(ResisticsProcess):
                 "EvaluationFrequencyWriter requires EvaluationFrequencyData"
             )
         batch = runtime["run_batch"]
+        label = validate_output_label(runtime.get("output_label", self.label))
         path = (
             Path(runtime["project_path"])
             / "data"
@@ -926,7 +929,7 @@ class EvaluationFrequencyWriter(ResisticsProcess):
             / batch["station"]
             / batch["run"]
             / "evals"
-            / self.label
+            / label
         )
         SpectraDataWriter().run(path, artifact.spectra_data)
         (path / "decimation_parameters.json").write_text(

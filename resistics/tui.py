@@ -9,6 +9,7 @@ import sys
 from tempfile import NamedTemporaryFile
 from typing import Dict, Optional, Sequence
 import warnings
+from dataclasses import dataclass
 
 from loguru import logger
 from mth5.helpers import validate_name as validate_mth5_name
@@ -44,6 +45,7 @@ from resistics.job import (
     ProjectJobs,
     validate_job_template_name,
 )
+from resistics.common import validate_output_label
 from resistics.flow import (
     FlowDefinition,
     ParameterSet,
@@ -54,6 +56,7 @@ from resistics.gather import GatherCriteria
 from resistics.regression import Solution
 from resistics.project import (
     Project,
+    ProjectDataDeletion,
     ProjectDataItem,
     init as init_project,
     load,
@@ -219,6 +222,8 @@ class CreateJobScreen(ModalScreen[Optional[JobDefinition]]):
             yield Static("[bold]Create job template[/bold]")
             yield Static("Job name")
             yield Input(placeholder="my_job", id="job-name")
+            yield Static("Output label")
+            yield Input(value="default", placeholder="default", id="job-output-label")
             yield Static("Flow")
             yield Select(
                 self.flow_options,
@@ -276,8 +281,14 @@ class CreateJobScreen(ModalScreen[Optional[JobDefinition]]):
     @on(Button.Pressed, "#create-job-template")
     def create(self) -> None:
         name = self.query_one("#job-name", Input).value
+        output_label = self.query_one("#job-output-label", Input).value
         try:
             name = validate_job_template_name(name)
+        except ValueError as exc:
+            self._set_status(str(exc))
+            return
+        try:
+            output_label = validate_output_label(output_label)
         except ValueError as exc:
             self._set_status(str(exc))
             return
@@ -296,6 +307,7 @@ class CreateJobScreen(ModalScreen[Optional[JobDefinition]]):
                 flow=flow,
                 parameters=parameters,
                 criteria=None if criteria == _NO_CRITERIA_VALUE else criteria,
+                output_label=output_label,
             )
         )
 
@@ -462,6 +474,189 @@ class DeleteYamlFileScreen(ModalScreen[bool]):
         actions = [
             self.query_one("#cancel-delete-yaml", Button),
             self.query_one("#confirm-delete-yaml", Button),
+        ]
+        try:
+            index = actions.index(self.focused)
+        except ValueError:
+            index = 0
+        actions[(index + increment) % len(actions)].focus()
+
+
+@dataclass(frozen=True)
+class ProjectDataDeletionRequest:
+    """The user-selected scope for one destructive Data-tab action."""
+
+    output_label: Optional[str] = None
+
+
+class DeleteProjectDataScreen(ModalScreen[Optional[ProjectDataDeletionRequest]]):
+    """Choose a derived-data namespace or all generated project data."""
+
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        Binding("left", "previous_action", "Previous action", priority=True),
+        Binding("right", "next_action", "Next action", priority=True),
+    ]
+
+    CSS = """
+    DeleteProjectDataScreen { align: center middle; background: transparent; }
+    #delete-data-dialog {
+        width: 72;
+        height: auto;
+        padding: 1 2;
+        border: round #ac3600;
+        background: #202020;
+        color: #f7f4f2;
+    }
+    #delete-data-dialog Select { margin-top: 1; }
+    #delete-data-actions { height: auto; align-horizontal: right; margin-top: 1; }
+    #delete-data-actions Button { margin-left: 1; }
+    """
+
+    def __init__(self, labels: Sequence[str]):
+        super().__init__()
+        self.labels = list(labels)
+
+    def compose(self) -> ComposeResult:
+        options = [(label, label) for label in self.labels]
+        value = self.labels[0] if self.labels else Select.NULL
+        with Vertical(id="delete-data-dialog"):
+            yield Static("[bold]Delete derived Project data[/bold]")
+            yield Static("Output label")
+            yield Select(
+                options,
+                prompt="No labelled data available",
+                allow_blank=not self.labels,
+                value=value,
+                id="delete-data-label",
+            )
+            yield Static("The MTH5 file and project setup are never deleted.")
+            with Horizontal(id="delete-data-actions"):
+                yield Button("Cancel", id="cancel-delete-data", classes="dialog-action")
+                yield Button(
+                    "Delete label",
+                    id="delete-data-label-action",
+                    variant="error",
+                    classes="dialog-action",
+                    disabled=not self.labels,
+                )
+                yield Button(
+                    "Delete all Project data",
+                    id="delete-all-data-action",
+                    variant="error",
+                    classes="dialog-action",
+                )
+
+    def on_mount(self) -> None:
+        self.query_one("#cancel-delete-data", Button).focus()
+
+    @on(Button.Pressed, "#cancel-delete-data")
+    def cancel(self) -> None:
+        self.dismiss(None)
+
+    @on(Button.Pressed, "#delete-data-label-action")
+    def delete_label(self) -> None:
+        value = self.query_one("#delete-data-label", Select).value
+        if value is not Select.NULL:
+            self.dismiss(ProjectDataDeletionRequest(output_label=str(value)))
+
+    @on(Button.Pressed, "#delete-all-data-action")
+    def delete_all(self) -> None:
+        self.dismiss(ProjectDataDeletionRequest())
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def action_next_action(self) -> None:
+        self._focus_action(1)
+
+    def action_previous_action(self) -> None:
+        self._focus_action(-1)
+
+    def _focus_action(self, increment: int) -> None:
+        actions = list(self.query(".dialog-action"))
+        enabled = [action for action in actions if not action.disabled]
+        try:
+            index = enabled.index(self.focused)
+        except ValueError:
+            index = 0
+        enabled[(index + increment) % len(enabled)].focus()
+
+
+class ConfirmProjectDataDeletionScreen(ModalScreen[bool]):
+    """Require explicit confirmation before deleting generated project data."""
+
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        Binding("left", "previous_action", "Previous action", priority=True),
+        Binding("right", "next_action", "Next action", priority=True),
+    ]
+
+    CSS = """
+    ConfirmProjectDataDeletionScreen { align: center middle; background: transparent; }
+    #confirm-delete-data-dialog {
+        width: 72;
+        height: auto;
+        padding: 1 2;
+        border: round #ac3600;
+        background: #202020;
+        color: #f7f4f2;
+    }
+    #confirm-delete-data-actions { height: auto; align-horizontal: right; margin-top: 1; }
+    #confirm-delete-data-actions Button { margin-left: 1; }
+    """
+
+    def __init__(self, deletion: ProjectDataDeletion):
+        super().__init__()
+        self.deletion = deletion
+
+    def compose(self) -> ComposeResult:
+        if self.deletion.output_label is None:
+            scope = "all derived Project data"
+        else:
+            scope = f"output label [bold]{self.deletion.output_label}[/bold]"
+        with Vertical(id="confirm-delete-data-dialog"):
+            yield Static(
+                f"Delete {scope}?\n\n"
+                f"{self.deletion.count} top-level path(s) will be removed. "
+                "The MTH5 file and project setup are retained.\n\n"
+                "This cannot be undone."
+            )
+            with Horizontal(id="confirm-delete-data-actions"):
+                yield Button(
+                    "Cancel", id="cancel-confirm-delete-data", classes="dialog-action"
+                )
+                yield Button(
+                    "Delete data",
+                    id="confirm-delete-data",
+                    variant="error",
+                    classes="dialog-action",
+                )
+
+    def on_mount(self) -> None:
+        self.query_one("#cancel-confirm-delete-data", Button).focus()
+
+    @on(Button.Pressed, "#cancel-confirm-delete-data")
+    def cancel(self) -> None:
+        self.dismiss(False)
+
+    @on(Button.Pressed, "#confirm-delete-data")
+    def delete(self) -> None:
+        self.dismiss(True)
+
+    def action_cancel(self) -> None:
+        self.dismiss(False)
+
+    def action_next_action(self) -> None:
+        self._focus_action(1)
+
+    def action_previous_action(self) -> None:
+        self._focus_action(-1)
+
+    def _focus_action(self, increment: int) -> None:
+        actions = [
+            self.query_one("#cancel-confirm-delete-data", Button),
+            self.query_one("#confirm-delete-data", Button),
         ]
         try:
             index = actions.index(self.focused)
@@ -830,7 +1025,7 @@ class ProjectExplorerScreen(Screen[None]):
         ("n", "create_job", "New job"),
         ("e", "edit_yaml", "Edit YAML"),
         ("y", "copy_yaml", "Copy YAML"),
-        ("delete", "delete_yaml", "Delete YAML"),
+        ("delete", "delete_yaml", "Delete"),
         ("ctrl+s", "save_yaml", "Save YAML"),
         Binding("escape", "discard_yaml", "Discard YAML", priority=True),
         ("j", "run_selected_job", "Run job"),
@@ -845,6 +1040,7 @@ class ProjectExplorerScreen(Screen[None]):
     DATA_CATEGORIES = [
         ("Time data", "time"),
         ("Spectra/evaluations", "spectra"),
+        ("Masks", "mask"),
         ("Transfer functions", "transfer_function"),
         ("Other", "other"),
     ]
@@ -1015,7 +1211,8 @@ class ProjectExplorerScreen(Screen[None]):
         for label, data_type in self.DATA_CATEGORIES:
             matching = [item for item in items if item.data_type == data_type]
             category = root.add(
-                f"{label} ({len(matching)})", data=("category", label)
+                f"{label} ({sum(item.is_dataset for item in matching)})",
+                data=("category", label),
             )
             self._add_data_items(category, items, data_type)
 
@@ -1414,7 +1611,7 @@ class ProjectExplorerScreen(Screen[None]):
                 criteria = model_from_yaml_file(GatherCriteria, path)
                 table.add_row(
                     path.stem,
-                    str(len(criteria.remote_references)),
+                    str(criteria.remote_reference_count()),
                     "[green]valid[/green]",
                     key=key,
                 )
@@ -1443,12 +1640,17 @@ class ProjectExplorerScreen(Screen[None]):
                     {"message": f"Expand {path} to inspect its data."}, indent=2
                 )
                 return
-            metadata = (
-                self.project.get_project_data_metadata(path)
-                if source == "project"
-                else self.project.get_mth5_data_metadata(path)
-            )
-            details.text = metadata.model_dump_json(indent=2)
+            if source == "project" and Path(path).suffix.lower() == ".json":
+                details.text = json.dumps(
+                    self.project.get_project_data_json(path), indent=2
+                )
+            else:
+                metadata = (
+                    self.project.get_project_data_metadata(path)
+                    if source == "project"
+                    else self.project.get_mth5_data_metadata(path)
+                )
+                details.text = metadata.model_dump_json(indent=2)
         except Exception as exc:
             details.text = json.dumps({"error": str(exc)}, indent=2)
         finally:
@@ -1475,8 +1677,28 @@ class ProjectExplorerScreen(Screen[None]):
         if validation.ok:
             self.notify("Job YAML is valid")
         else:
-            self.notify("; ".join(validation.errors), severity="warning")
+            logger.debug(
+                f"Invalid job YAML {summary.path}: {'; '.join(validation.errors)}"
+            )
+            self.notify(
+                f"Job YAML is invalid ({len(validation.errors)} error(s)); "
+                "source shown for repair or deletion",
+                severity="warning",
+            )
         self.refresh_bindings()
+
+    @on(DataTable.RowHighlighted)
+    def refresh_yaml_highlight_bindings(
+        self, event: DataTable.RowHighlighted
+    ) -> None:
+        """Refresh YAML actions when a resource-table cursor moves."""
+        if event.data_table.id in {
+            "flow-table",
+            "parameter-table",
+            "criteria-table",
+            "job-table",
+        }:
+            self.refresh_bindings()
 
     @on(DataTable.RowSelected, "#flow-table")
     def show_flow(self, event: DataTable.RowSelected) -> None:
@@ -1491,7 +1713,11 @@ class ProjectExplorerScreen(Screen[None]):
         try:
             model_from_yaml_file(FlowDefinition, path)
         except Exception as exc:
-            self.notify(f"Invalid flow YAML: {exc}", severity="warning")
+            logger.debug(f"Invalid flow YAML {path}: {exc}")
+            self.notify(
+                "Flow YAML is invalid; source shown for repair or deletion",
+                severity="warning",
+            )
         self._show_yaml("#flow-content", path)
         self.refresh_bindings()
 
@@ -1508,7 +1734,11 @@ class ProjectExplorerScreen(Screen[None]):
         try:
             model_from_yaml_file(ParameterSet, path)
         except Exception as exc:
-            self.notify(f"Invalid parameter YAML: {exc}", severity="warning")
+            logger.debug(f"Invalid parameter YAML {path}: {exc}")
+            self.notify(
+                "Parameter YAML is invalid; source shown for repair or deletion",
+                severity="warning",
+            )
         self._show_yaml("#parameter-content", path)
         self.refresh_bindings()
 
@@ -1525,7 +1755,11 @@ class ProjectExplorerScreen(Screen[None]):
         try:
             model_from_yaml_file(GatherCriteria, path)
         except Exception as exc:
-            self.notify(f"Invalid criteria YAML: {exc}", severity="warning")
+            logger.debug(f"Invalid criteria YAML {path}: {exc}")
+            self.notify(
+                "Criteria YAML is invalid; source shown for repair or deletion",
+                severity="warning",
+            )
         self._show_yaml("#criteria-content", path)
         self.refresh_bindings()
 
@@ -1561,6 +1795,45 @@ class ProjectExplorerScreen(Screen[None]):
         path, _, editor_id = target
         return path, editor_id
 
+    def _highlighted_yaml_file(self) -> Optional[tuple[Path, str]]:
+        """Return the row highlighted in the focused active resource table."""
+        active = self.query_one(TabbedContent).active
+        resources = {
+            "flows": ("#flow-table", self.flow_paths, "#flow-content"),
+            "parameters": (
+                "#parameter-table",
+                self.parameter_paths,
+                "#parameter-content",
+            ),
+            "criteria": (
+                "#criteria-table",
+                self.criteria_paths,
+                "#criteria-content",
+            ),
+            "jobs": (
+                "#job-table",
+                {key: summary.path for key, summary in self.job_summaries.items()},
+                "#job-content",
+            ),
+        }
+        resource = resources.get(active)
+        if resource is None:
+            return None
+        table_id, paths, editor_id = resource
+        table = self.query_one(table_id, DataTable)
+        if not table.has_focus or not table.is_valid_row_index(table.cursor_row):
+            return None
+        key = str(table.ordered_rows[table.cursor_row].key.value)
+        path = paths.get(key)
+        return None if path is None else (path, editor_id)
+
+    def _highlighted_job_path(self) -> Optional[Path]:
+        """Return the focused Jobs-table row without requiring it to be opened."""
+        highlighted = self._highlighted_yaml_file()
+        if highlighted is None or highlighted[1] != "#job-content":
+            return None
+        return highlighted[0]
+
     @staticmethod
     def _copy_yaml_file(source: Path, name: str) -> Path:
         """Copy source verbatim to a new, non-overwriting YAML filename."""
@@ -1574,8 +1847,8 @@ class ProjectExplorerScreen(Screen[None]):
         return destination
 
     def action_copy_yaml(self) -> None:
-        """Prompt for a new filename and copy the selected YAML source verbatim."""
-        selected = self._selected_yaml_file()
+        """Copy the focused highlighted or currently opened YAML source."""
+        selected = self._highlighted_yaml_file() or self._selected_yaml_file()
         if selected is None:
             self.notify("Select a YAML file first", severity="warning")
             return
@@ -1600,8 +1873,11 @@ class ProjectExplorerScreen(Screen[None]):
         self.notify(f"Copied {source.name} to {destination.name}")
 
     def action_delete_yaml(self) -> None:
-        """Confirm deletion of the currently selected YAML source."""
-        selected = self._selected_yaml_file()
+        """Delete Data-tab artifacts or the highlighted YAML source."""
+        if self.query_one(TabbedContent).active == "data":
+            self._start_project_data_deletion()
+            return
+        selected = self._highlighted_yaml_file() or self._selected_yaml_file()
         if selected is None:
             self.notify("Select a YAML file first", severity="warning")
             return
@@ -1627,6 +1903,64 @@ class ProjectExplorerScreen(Screen[None]):
         self._refresh_yaml_resource(editor_id)
         self._clear_selected_yaml_file(editor_id)
         self.notify(f"Deleted {source.name}")
+
+    def _start_project_data_deletion(self) -> None:
+        """Choose the namespace of derived project data to remove."""
+        if self.job_state == JobState.running:
+            self.notify("Data deletion is unavailable while a job is running")
+            return
+        try:
+            labels = self.project.list_project_output_labels()
+            preview = self.project.preview_project_data_deletion()
+        except Exception as exc:
+            self.notify(f"Unable to inspect project data: {exc}", severity="error")
+            return
+        if not labels and not preview.paths:
+            self.notify("There is no derived Project data to delete", severity="warning")
+            return
+        self.app.push_screen(
+            DeleteProjectDataScreen(labels), self._project_data_deletion_selected
+        )
+
+    def _project_data_deletion_selected(
+        self, request: Optional[ProjectDataDeletionRequest]
+    ) -> None:
+        if request is None:
+            return
+        try:
+            deletion = self.project.preview_project_data_deletion(request.output_label)
+        except Exception as exc:
+            self.notify(f"Unable to prepare deletion: {exc}", severity="error")
+            return
+        if not deletion.paths:
+            label = request.output_label
+            message = (
+                "There is no derived Project data to delete"
+                if label is None
+                else f"No data exists for output label {label!r}"
+            )
+            self.notify(message, severity="warning")
+            return
+        self.app.push_screen(
+            ConfirmProjectDataDeletionScreen(deletion),
+            lambda confirmed: self._project_data_deletion_confirmed(deletion, confirmed),
+        )
+
+    def _project_data_deletion_confirmed(
+        self, deletion: ProjectDataDeletion, confirmed: bool
+    ) -> None:
+        if not confirmed:
+            return
+        try:
+            deleted = self.project.delete_project_data(deletion.output_label)
+        except Exception as exc:
+            self.notify(f"Unable to delete Project data: {exc}", severity="error")
+            return
+        self._populate_data_tree()
+        self.query_one("#data-metadata", TextArea).text = json.dumps(
+            {"message": "Select Project or MTH5 data"}, indent=2
+        )
+        self.notify(f"Deleted {deleted.count} Project data path(s)")
 
     def _select_yaml_file(self, editor_id: str, path: Path) -> None:
         """Make path the current selection and display its source."""
@@ -1767,8 +2101,14 @@ class ProjectExplorerScreen(Screen[None]):
             self._populate_jobs()
 
     def action_run_selected_job(self) -> None:
-        """Confirm and run the valid job selected in the Jobs tab."""
-        validation = self.selected_validation
+        """Confirm and run the opened or focused highlighted job."""
+        highlighted_path = self._highlighted_job_path()
+        if highlighted_path is not None:
+            validation = self.project_jobs.validate(highlighted_path)
+            self.selected_job_path = highlighted_path
+            self.selected_validation = validation
+        else:
+            validation = self.selected_validation
         if validation is None or not validation.ok:
             self.notify("Select a valid job first", severity="warning")
             return
@@ -1903,11 +2243,19 @@ class ProjectExplorerScreen(Screen[None]):
                 and not self.editing_yaml
                 and self.job_state != JobState.running
             )
+        if action == "delete_yaml" and active == "data":
+            if self.editing_yaml or self.job_state == JobState.running:
+                return False
+            try:
+                return bool(self.project.preview_project_data_deletion().paths)
+            except Exception:
+                return False
         if action in {"copy_yaml", "delete_yaml"}:
+            selected = self._highlighted_yaml_file() or self._selected_yaml_file()
             return (
                 not self.editing_yaml
                 and self.job_state != JobState.running
-                and self._selected_yaml_file() is not None
+                and selected is not None
             )
         if action in {"save_yaml", "discard_yaml"}:
             return self.editing_yaml
@@ -1922,6 +2270,17 @@ class ProjectExplorerScreen(Screen[None]):
         if action == "run_selected_job":
             if active != "jobs":
                 return False
+            highlighted_path = self._highlighted_job_path()
+            if highlighted_path is not None:
+                summary = next(
+                    (
+                        value
+                        for value in self.job_summaries.values()
+                        if value.path == highlighted_path
+                    ),
+                    None,
+                )
+                return True if summary is not None and summary.is_valid else None
             return (
                 True
                 if self.selected_validation is not None and self.selected_validation.ok

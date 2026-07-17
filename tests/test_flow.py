@@ -14,6 +14,10 @@ from resistics.flow import (
     ProcessingJob,
     default_parameter_set,
     evals_to_tf_flow,
+    mask_calculation_example_flow,
+    mask_calculation_example_parameter_set,
+    mask_calculation_flow,
+    mask_calculation_parameter_set,
     model_from_yaml,
     model_to_yaml,
     remote_reference_mt_flow,
@@ -50,6 +54,14 @@ class Double(ResisticsProcess):
         return value * 2
 
 
+class RuntimeOutputLabel(ResisticsProcess):
+    output_type = "label"
+
+    def execute(self, inputs, context):
+        del inputs
+        return context["output_label"]
+
+
 def get_processing_job(flow=None, params=None):
     return ProcessingJob(
         name="test-job",
@@ -75,6 +87,32 @@ def test_default_flows_validate_with_shared_defaults(flow):
     assert result.ok, result.errors
 
 
+def test_executor_makes_the_job_output_label_authoritative():
+    flow = FlowDefinition(
+        id="label",
+        name="label",
+        stages=[
+            FlowStage(
+                stage_id="label",
+                scope="run",
+                nodes=[FlowNode(id="label", process=f"{__name__}.RuntimeOutputLabel")],
+            )
+        ],
+    )
+    job = ProcessingJob(
+        name="label",
+        flow=flow,
+        parameters=ParameterSet(name="label"),
+        output_label="field",
+    )
+
+    result = FlowExecutor().run_stage(
+        job, flow.stages[0], {"output_label": "incorrect"}
+    )
+
+    assert result["label"] == "field"
+
+
 def test_standard_flow_has_durable_run_and_station_rate_stages():
     stages = standard_mt_flow().flow_stages()
 
@@ -84,6 +122,47 @@ def test_standard_flow_has_durable_run_and_station_rate_stages():
     ]
     assert stages[0].nodes[-1].process == "resistics.spectra.EvaluationFrequencyWriter"
     assert stages[1].nodes[0].configuration_source == "criteria"
+    assert [node.process for node in stages[1].nodes[:3]] == [
+        "resistics.gather.GatherCriteria",
+        "resistics.regression.ImpedanceTensorSetup",
+        "resistics.gather.Gather",
+    ]
+
+
+def test_default_mask_flow_is_run_scoped_and_validates_with_its_parameters():
+    flow = mask_calculation_flow()
+    processes = {node.process for node in flow.stages[0].nodes}
+
+    assert flow.stages[0].scope == "run"
+    assert "resistics.mask.TimeMask" in processes
+    assert "resistics.mask.AbsoluteAmplitudeMask" in processes
+    result = FlowValidator(RUNTIME).validate(
+        get_processing_job(
+            flow=flow, params=mask_calculation_parameter_set()
+        )
+    )
+    assert result.ok, result.errors
+
+
+def test_mask_process_name_is_not_user_configurable():
+    flow = mask_calculation_flow()
+    params = mask_calculation_parameter_set()
+    params.processes["resistics.mask.AbsoluteAmplitudeMask"]["name"] = "custom"
+
+    result = FlowValidator(RUNTIME).validate(
+        get_processing_job(flow=flow, params=params)
+    )
+
+    assert not result.ok
+    assert "name" in result.errors[0]
+    assert "Extra inputs are not permitted" in result.errors[0]
+
+
+def test_mask_example_names_remain_compatibility_aliases():
+    assert mask_calculation_example_flow() == mask_calculation_flow()
+    assert (
+        mask_calculation_example_parameter_set() == mask_calculation_parameter_set()
+    )
 
 
 def test_flow_serialization_has_no_ui_or_process_parameters():
@@ -112,6 +191,8 @@ def test_parameter_defaults_are_discovered_not_flow_aligned():
 
     assert "resistics.decimate.DecimationSetup" in params.processes
     assert "resistics.regression.SolverOLS" in params.processes
+    assert "resistics.mask.TimeMask" in params.processes
+    assert "resistics.mask.AbsoluteAmplitudeMask" in params.processes
     assert "resistics.gather.EvaluationFrequencyGather" not in params.processes
     assert params.processes["resistics.window.WindowerTarget"]["target"] == 500
 

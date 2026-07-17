@@ -55,8 +55,8 @@ TEST2_CROSS_DATA = {0: np.array([[5 + 3j, 2 + 0j], [0 - 2j, 1 - 1j]])}
 # expected output
 TEST2_FREQS = np.array([10])
 TEST2_OBS = {
-    "Ex": np.array([12 - 14j, 6 - 2j, -4 + 2j, -1 + 3j]),
-    "Ey": np.array([29 + 3j, 8 + 6j, -2 + 4j, 1 + 3j]),
+    "ex": np.array([12 - 14j, 6 - 2j, -4 + 2j, -1 + 3j]),
+    "ey": np.array([29 + 3j, 8 + 6j, -2 + 4j, 1 + 3j]),
 }
 TEST2_PREDS = {
     0: np.array(
@@ -102,11 +102,11 @@ def test_regression_preparer_1chan():
 
 def test_regression_preparer_2chan():
     """Test regression preparer"""
-    out_metadata = get_combined_metadata("site1", ["meas1"], ["Ex", "Ey"])
+    out_metadata = get_combined_metadata("site1", ["meas1"], ["ex", "ey"])
     out_data = SiteCombinedData(out_metadata, TEST2_OUT_DATA)
-    in_metadata = get_combined_metadata("site2", ["run1"], ["Hx", "Hy"])
+    in_metadata = get_combined_metadata("site2", ["run1"], ["hx", "hy"])
     in_data = SiteCombinedData(in_metadata, TEST2_IN_DATA)
-    cross_metadata = get_combined_metadata("site3", ["data1"], ["Hx", "Hy"])
+    cross_metadata = get_combined_metadata("site3", ["data1"], ["hx", "hy"])
     cross_data = SiteCombinedData(cross_metadata, TEST2_CROSS_DATA)
     # generate the gathered data
     tf = ImpedanceTensor()
@@ -115,9 +115,18 @@ def test_regression_preparer_2chan():
     )
     reg_data = RegressionPreparerGathered().run(tf, gathered_data)
     np.testing.assert_equal([10], reg_data.freqs)
-    np.testing.assert_array_equal(reg_data.obs[0]["Ex"], TEST2_OBS["Ex"])
-    np.testing.assert_array_equal(reg_data.obs[0]["Ey"], TEST2_OBS["Ey"])
+    np.testing.assert_array_equal(reg_data.obs[0]["ex"], TEST2_OBS["ex"])
+    np.testing.assert_array_equal(reg_data.obs[0]["ey"], TEST2_OBS["ey"])
     np.testing.assert_array_equal(reg_data.preds[0], TEST2_PREDS[0])
+
+
+def test_impedance_tensor_uses_mth5_channel_names():
+    """The built-in impedance tensor follows MTH5 lowercase conventions."""
+    tf = ImpedanceTensor()
+
+    assert tf.out_chans == ["ex", "ey"]
+    assert tf.in_chans == ["hx", "hy"]
+    assert tf.cross_chans == ["hx", "hy"]
 
 
 RANDOM_TF1 = transfer_function_random(5, 7)

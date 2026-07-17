@@ -22,7 +22,7 @@ from pydantic import (
     model_validator,
 )
 
-from resistics.common import ResisticsProcess
+from resistics.common import ResisticsProcess, validate_output_label
 
 ProgressCallback = Callable[[Dict[str, Any]], None]
 CancellationCallback = Callable[[], bool]
@@ -102,7 +102,12 @@ class ProcessingJob(BaseModel):
     flow: FlowDefinition
     parameters: ParameterSet
     runtime: Dict[str, Any] = Field(default_factory=dict)
-    output_label: str = "result"
+    output_label: str = "default"
+
+    @field_validator("output_label")
+    @classmethod
+    def validate_output_label_value(cls, value: str) -> str:
+        return validate_output_label(value)
 
 
 class ProcessDescriptor(BaseModel):
@@ -122,6 +127,7 @@ BUILTIN_PROCESS_MODULES = (
     "resistics.decimate",
     "resistics.window",
     "resistics.spectra",
+    "resistics.mask",
     "resistics.gather",
     "resistics.regression",
 )
@@ -242,6 +248,7 @@ class FlowValidator:
                 errors.append(str(exc))
         for stage in selected_stages:
             nodes = stage.node_map()
+            mask_names: Dict[str, str] = {}
             if len(nodes) != len(stage.nodes):
                 errors.append(f"Stage '{stage.stage_id}' contains duplicate node ids")
             for node in stage.nodes:
@@ -275,10 +282,25 @@ class FlowValidator:
                             f"Node '{node.id}' port '{port}' requires '{expected}', got "
                             f"'{upstream_process.output_type}' from '{upstream_id}'"
                         )
+                instance = None
                 try:
-                    process(**processing_job.parameters.for_process(node.process))
+                    instance = process(
+                        **processing_job.parameters.for_process(node.process)
+                    )
                 except ValidationError as exc:
                     errors.append(f"Process '{node.process}': {exc}")
+                if instance is not None:
+                    from resistics.mask import WindowMaskProcess
+
+                    if isinstance(instance, WindowMaskProcess):
+                        previous = mask_names.get(instance.name)
+                        if previous is not None:
+                            errors.append(
+                                f"Mask name {instance.name!r} is produced by both "
+                                f"nodes '{previous}' and '{node.id}'"
+                            )
+                        else:
+                            mask_names[instance.name] = node.id
                 if (
                     node.configuration_source == "criteria"
                     and "criteria" not in self.available_runtime
@@ -299,8 +321,10 @@ class FlowValidator:
                 topological_order(stage)
             except ValueError as exc:
                 errors.append(str(exc))
-        if not processing_job.output_label.strip():
-            errors.append("output_label is required")
+        try:
+            validate_output_label(processing_job.output_label)
+        except ValueError as exc:
+            errors.append(str(exc))
         return FlowValidationResult(ok=not errors, errors=errors)
 
 
@@ -356,6 +380,7 @@ class FlowExecutor:
         """Run every stage once with optional stage-specific runtime context."""
         contexts = contexts or {}
         available = set(processing_job.runtime)
+        available.add("output_label")
         for context in contexts.values():
             available.update(context)
         validation = FlowValidator(available).validate(processing_job)
@@ -377,6 +402,9 @@ class FlowExecutor:
         """Run one stage for one concrete run or station/rate batch."""
         runtime = dict(processing_job.runtime)
         runtime.update(context or {})
+        # A job's output label is its artifact namespace.  Do not allow an
+        # individual stage context to redirect data into another namespace.
+        runtime["output_label"] = processing_job.output_label
         results: Dict[str, Any] = {}
         for node in topological_order(stage):
             if self.cancellation_callback is not None and self.cancellation_callback():
@@ -485,12 +513,13 @@ def _evals_to_tf_nodes() -> List[FlowNode]:
             process="resistics.gather.GatherCriteria",
             configuration_source="criteria",
         ),
+        _node("transfer_function", "resistics.regression.ImpedanceTensorSetup"),
         _node(
             "gather",
-            "resistics.gather.EvaluationFrequencyGather",
+            "resistics.gather.Gather",
             selection="criteria",
+            tf="transfer_function",
         ),
-        _node("transfer_function", "resistics.regression.ImpedanceTensorSetup"),
         _node(
             "regression_preparer",
             "resistics.regression.RegressionPreparerGathered",
@@ -508,6 +537,77 @@ def _evals_to_tf_nodes() -> List[FlowNode]:
             solution="solver",
         ),
     ]
+
+
+def mask_calculation_flow() -> FlowDefinition:
+    """Full per-run pipeline with independent time and amplitude mask branches."""
+    nodes = _time_to_evals_nodes("resistics.window.Windower")
+    writer = nodes.pop()
+    nodes.extend(
+        [
+            _node(
+                "time_mask",
+                "resistics.mask.TimeMask",
+                win_data="windower",
+                dec_params="decimation_setup",
+            ),
+            _node(
+                "amplitude_mask",
+                "resistics.mask.AbsoluteAmplitudeMask",
+                win_data="windower",
+                dec_params="decimation_setup",
+            ),
+            writer,
+        ]
+    )
+    return FlowDefinition(
+        id="mask_calculation",
+        name="Mask Calculation",
+        description=(
+            "Persist evaluation frequencies and named time/amplitude masks for "
+            "each run; gather them in a subsequent evaluations-to-TF job."
+        ),
+        stages=[
+            FlowStage(stage_id="time_to_evals_and_masks", scope="run", nodes=nodes)
+        ],
+    )
+
+
+def mask_calculation_parameter_set() -> ParameterSet:
+    """Editable defaults paired with :func:`mask_calculation_flow`."""
+    from resistics.mask import AbsoluteAmplitudeMask, DailyTimeRange, TimeMask
+
+    time_mask = TimeMask(
+        daily_include=[DailyTimeRange(from_time="20:00", to_time="06:00")],
+    )
+    amplitude_mask = AbsoluteAmplitudeMask(
+        limits={
+            "Ex": {"maximum": 100_000},
+            "Ey": {"maximum": 100_000},
+            "Hx": {"maximum": 100_000},
+            "Hy": {"maximum": 100_000},
+        },
+    )
+    return ParameterSet(
+        name="Mask Calculation",
+        description="Editable UTC night and absolute peak-amplitude masks.",
+        processes={
+            "resistics.mask.TimeMask": time_mask.model_dump(mode="json"),
+            "resistics.mask.AbsoluteAmplitudeMask": amplitude_mask.model_dump(
+                mode="json"
+            ),
+        },
+    )
+
+
+def mask_calculation_example_flow() -> FlowDefinition:
+    """Backward-compatible alias for :func:`mask_calculation_flow`."""
+    return mask_calculation_flow()
+
+
+def mask_calculation_example_parameter_set() -> ParameterSet:
+    """Backward-compatible alias for :func:`mask_calculation_parameter_set`."""
+    return mask_calculation_parameter_set()
 
 
 def single_site_mt_flow() -> FlowDefinition:

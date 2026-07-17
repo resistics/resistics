@@ -28,6 +28,7 @@ from resistics.flow import FlowDefinition, ParameterSet, model_from_yaml_file
 from resistics.templates import (
     DEFAULT_FLOW_FILENAME,
     DEFAULT_PARAMETERS_FILENAME,
+    MASK_CALCULATION_FLOW_FILENAME,
     REMOTE_REFERENCE_CRITERIA_FILENAME,
     REMOTE_REFERENCE_FLOW_FILENAME,
     SINGLE_SITE_CRITERIA_FILENAME,
@@ -132,6 +133,11 @@ def test_project_data_browser_lists_mth5_and_project_artifacts(tmp_path):
     evaluation_path = data_path / "survey" / "station" / "run" / "evals" / "default"
     evaluation_path.mkdir(parents=True)
     (evaluation_path / "metadata.json").write_text('{"name": "evaluation"}')
+    (evaluation_path / "data.npz").write_bytes(b"evaluation data")
+    mask_path = data_path / "survey" / "station" / "run" / "masks" / "night"
+    mask_path.mkdir(parents=True)
+    (mask_path / "metadata.json").write_text('{"name": "night"}')
+    (mask_path / "data.npz").write_bytes(b"mask data")
     solution_path = data_path / "survey" / "station" / "results" / "mt"
     solution_path.mkdir(parents=True)
     (solution_path / "solution.json").write_text('{"name": "solution"}')
@@ -169,13 +175,75 @@ def test_project_data_browser_lists_mth5_and_project_artifacts(tmp_path):
 
     project_items = {item.path: item for item in project.list_project_data_items()}
     assert project_items["survey/station/run/evals/default"].data_type == "spectra"
+    assert project_items["survey/station/run/evals/default"].is_dataset
+    assert project_items["survey/station/run/masks/night"].data_type == "mask"
+    assert project_items["survey/station/run/masks/night"].is_dataset
     assert project_items["survey/station/results/mt"].data_type == "transfer_function"
+    assert project_items["survey/station/results/mt"].is_dataset
     project_metadata = project.get_project_data_metadata(
         "survey/station/run/evals/default"
     )
     assert project_metadata.values["metadata.json"] == {"name": "evaluation"}
+    assert project.get_project_data_json(
+        "survey/station/run/evals/default/metadata.json"
+    ) == {"name": "evaluation"}
+    assert project.get_project_data_json(
+        "survey/station/results/mt/solution.json"
+    ) == {"name": "solution"}
     with pytest.raises(ValueError, match="inside project/data"):
         project.get_project_data_metadata("../outside")
+
+
+def test_project_data_deletion_is_labelled_and_preserves_an_in_tree_mth5(tmp_path):
+    project_path = tmp_path / "project"
+    data_path = project_path / "data"
+    mth5_path = data_path / "source" / "input.h5"
+    mth5_path.parent.mkdir(parents=True)
+    mth5_path.write_bytes(b"mth5")
+
+    def write_artifacts(label: str) -> None:
+        eval_path = data_path / "survey" / "station" / "run" / "evals" / label
+        eval_path.mkdir(parents=True)
+        (eval_path / "metadata.json").write_text("{}")
+        (eval_path / "data.npz").write_bytes(b"eval")
+        mask_path = data_path / "survey" / "station" / "run" / "masks" / label / "night"
+        mask_path.mkdir(parents=True)
+        (mask_path / "metadata.json").write_text("{}")
+        (mask_path / "data.npz").write_bytes(b"mask")
+        result_path = data_path / "survey" / "station" / "results" / label / "128"
+        result_path.mkdir(parents=True)
+        (result_path / "solution.json").write_text("{}")
+
+    write_artifacts("first")
+    write_artifacts("second")
+    project = Project.model_construct(
+        project_path=project_path,
+        mth5_path=mth5_path,
+        ref_time="2020-01-01T00:00:00",
+        mth5_data=FakeMTH5(mth5_path),
+        table=pd.DataFrame(),
+        plugin_paths=[],
+        surveys=[],
+        stations=[],
+        runs=[],
+    )
+
+    assert project.list_project_output_labels() == ["first", "second"]
+    preview = project.preview_project_data_deletion("first")
+    assert preview.output_label == "first"
+    assert len(preview.paths) == 3
+    deleted = project.delete_project_data("first")
+    assert deleted.paths == preview.paths
+    assert not (data_path / "survey/station/run/evals/first").exists()
+    assert not (data_path / "survey/station/run/masks/first").exists()
+    assert not (data_path / "survey/station/results/first").exists()
+    assert (data_path / "survey/station/run/evals/second").is_dir()
+
+    project.delete_project_data()
+    assert mth5_path.is_file()
+    assert not (data_path / "survey").exists()
+    with pytest.raises(ValueError, match="output_label"):
+        project.preview_project_data_deletion("../outside")
 
 
 def test_init_creates_canonical_project_structure(tmp_path):
@@ -204,6 +272,20 @@ def test_init_creates_canonical_project_structure(tmp_path):
         )
         assert installed_flow.flow_stages()
         assert len(installed_flow.flow_stages()) == 2
+    mask_flow = model_from_yaml_file(
+        FlowDefinition,
+        project_path / "processing" / "flows" / MASK_CALCULATION_FLOW_FILENAME,
+    )
+    assert mask_flow.id == "mask_calculation"
+    assert {node.process for node in mask_flow.stages[0].nodes}.issuperset(
+        {"resistics.mask.TimeMask", "resistics.mask.AbsoluteAmplitudeMask"}
+    )
+    assert set(default_parameters.processes).issuperset(
+        {
+            "resistics.mask.TimeMask",
+            "resistics.mask.AbsoluteAmplitudeMask",
+        }
+    )
     assert (
         default_parameters.processes["resistics.window.WindowerTarget"]["target"] == 500
     )
@@ -222,6 +304,7 @@ def test_template_restoration_is_scoped_to_its_resource_type(tmp_path):
         DEFAULT_FLOW_FILENAME,
         SINGLE_SITE_TARGET_FLOW_FILENAME,
         REMOTE_REFERENCE_FLOW_FILENAME,
+        MASK_CALCULATION_FLOW_FILENAME,
     }
     assert not (
         project_path / "processing/parameters" / DEFAULT_PARAMETERS_FILENAME

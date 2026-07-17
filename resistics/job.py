@@ -14,7 +14,8 @@ from typing import Any, Callable, Dict, List, Optional, Union
 import warnings
 
 from loguru import logger
-from pydantic import AliasChoices, BaseModel, Field
+import numpy as np
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from resistics import __version__
 from resistics.flow import (
@@ -29,7 +30,7 @@ from resistics.flow import (
 )
 from resistics.gather import GatherCriteria
 from resistics.project import Project, get_results_path
-from resistics.common import fs_to_string
+from resistics.common import fs_to_string, validate_output_label
 
 
 class JobDefinition(BaseModel):
@@ -40,8 +41,13 @@ class JobDefinition(BaseModel):
     parameters: str
     criteria: Optional[str] = None
     scope: "JobScope" = Field(default_factory=lambda: JobScope())
-    output_label: str = "result"
+    output_label: str = "default"
     overwrite: bool = False
+
+    @field_validator("output_label")
+    @classmethod
+    def validate_output_label_value(cls, value: str) -> str:
+        return validate_output_label(value)
 
 
 class JobScope(BaseModel):
@@ -262,6 +268,7 @@ class ProjectJobs:
                 "station_rate_batch",
                 "staging_output_path",
                 "criteria",
+                "output_label",
             }
         ).validate(processing_job, stages=resolved.stages)
         errors.extend(flow_validation.errors)
@@ -269,6 +276,8 @@ class ProjectJobs:
         batches = self.plan_batches(definition)
         if not batches:
             errors.append("Job scope does not select any project station/rate batches")
+        if criteria is not None:
+            errors.extend(self._criteria_errors(criteria))
         if not definition.overwrite and self._writes_results(resolved.stages):
             for batch in batches:
                 path = self.batch_output_path(batch, definition.output_label)
@@ -281,6 +290,45 @@ class ProjectJobs:
             warnings=warnings,
             resolved_job=resolved,
         )
+
+    def _criteria_errors(self, criteria: GatherCriteria) -> List[str]:
+        """Validate configured station/rate references against project inventory."""
+        table = self.project.table.copy()
+        if "station_path" not in table:
+            table["station_path"] = (
+                table["survey"].astype(str) + "/" + table["station"].astype(str)
+            )
+        errors = []
+        known_stations = set(table["station_path"].unique())
+        for station_path, station_policy in criteria.stations.items():
+            if station_path not in known_stations:
+                errors.append(f"Criteria station not found in project: {station_path}")
+                continue
+            for sample_rate, rate_policy in station_policy.sampling_frequencies.items():
+                station_rates = table[table["station_path"] == station_path][
+                    "sample_rate"
+                ].astype(float)
+                if not np.isclose(station_rates, sample_rate).any():
+                    errors.append(
+                        f"Criteria station {station_path} has no runs at "
+                        f"{sample_rate:g} Hz"
+                    )
+                remotes = rate_policy.remote_references
+                if not isinstance(remotes, list):
+                    continue
+                for remote in remotes:
+                    if remote not in known_stations:
+                        errors.append(f"Criteria remote not found in project: {remote}")
+                        continue
+                    remote_rates = table[table["station_path"] == remote][
+                        "sample_rate"
+                    ].astype(float)
+                    if not np.isclose(remote_rates, sample_rate).any():
+                        errors.append(
+                            f"Criteria remote {remote} has no runs at "
+                            f"{sample_rate:g} Hz"
+                        )
+        return errors
 
     @staticmethod
     def selected_stages(
@@ -477,32 +525,31 @@ class JobRunner:
         """Run durable run stages before their station/rate gather stages."""
         for stage in resolved_job.stages:
             if stage.scope == "run":
-                for batch in batches:
-                    for run_path in batch.run_paths:
-                        survey, station, run = run_path.split("/", 2)
-                        self._emit(
-                            JobState.running,
-                            resolved_job.definition.name,
-                            f"Started: {stage.stage_id}",
-                            started,
-                            survey=survey,
-                            station=station,
-                            run=run,
-                        )
-                        executor.run_stage(
-                            resolved_job.processing_job,
-                            stage,
-                            {
-                                "project": self.project,
-                                "project_path": str(self.project.project_path),
-                                "reference_time": self.project.ref_time,
-                                "run_batch": {
-                                    "survey": survey,
-                                    "station": station,
-                                    "run": run,
-                                },
+                for run_path in self._run_stage_paths(batches, criteria):
+                    survey, station, run = run_path.split("/", 2)
+                    self._emit(
+                        JobState.running,
+                        resolved_job.definition.name,
+                        f"Started: {stage.stage_id}",
+                        started,
+                        survey=survey,
+                        station=station,
+                        run=run,
+                    )
+                    executor.run_stage(
+                        resolved_job.processing_job,
+                        stage,
+                        {
+                            "project": self.project,
+                            "project_path": str(self.project.project_path),
+                            "reference_time": self.project.ref_time,
+                            "run_batch": {
+                                "survey": survey,
+                                "station": station,
+                                "run": run,
                             },
-                        )
+                        },
+                    )
                 continue
             for batch in batches:
                 output_path = ProjectJobs(self.project).batch_output_path(
@@ -540,6 +587,51 @@ class JobRunner:
                 if staging_path.exists():
                     self._archive_job(resolved_job, staging_path, batch)
                     staging_path.replace(output_path)
+
+    def _run_stage_paths(
+        self, batches: List[StationRateBatch], criteria: GatherCriteria
+    ) -> List[str]:
+        """Expand target run work by one hop to required remote runs."""
+        paths = {run_path for batch in batches for run_path in batch.run_paths}
+        table = self.project.table.copy()
+        if "station_path" not in table:
+            table["station_path"] = (
+                table["survey"].astype(str) + "/" + table["station"].astype(str)
+            )
+        for batch in batches:
+            policy = criteria.resolve(batch.station_path, batch.sample_rate)
+            if policy.remote_references is None:
+                continue
+            if policy.remote_references == "auto":
+                if hasattr(self.project, "get_concurrent"):
+                    remote_stations = self.project.get_concurrent(
+                        batch.station_path, batch.sample_rate
+                    )
+                else:
+                    remote_stations = sorted(
+                        table[
+                            (table["station_path"] != batch.station_path)
+                            & np.isclose(
+                                table["sample_rate"].astype(float), batch.sample_rate
+                            )
+                        ]["station_path"]
+                        .unique()
+                        .tolist()
+                    )
+            else:
+                remote_stations = policy.remote_references
+            for station_path in remote_stations:
+                matching = table[
+                    (table["station_path"] == station_path)
+                    & np.isclose(table["sample_rate"].astype(float), batch.sample_rate)
+                ]
+                if matching.empty:
+                    raise ValueError(
+                        f"Remote station {station_path!r} has no runs at "
+                        f"{batch.sample_rate:g} Hz"
+                    )
+                paths.update(matching["run_path"].unique().tolist())
+        return sorted(paths)
 
     def _archive_job(
         self,

@@ -417,13 +417,13 @@ class ImpedanceTensor(TransferFunction):
     >>> from resistics.transfunc import ImpedanceTensor
     >>> tf = ImpedanceTensor()
     >>> print(tf.to_string())
-    | Ex | = | Ex_Hx Ex_Hy | | Hx |
-    | Ey |   | Ey_Hx Ey_Hy | | Hy |
+    | ex | = | ex_hx ex_hy | | hx |
+    | ey |   | ey_hx ey_hy | | hy |
     """
 
     variation: constr(max_length=16) = "default"
-    out_chans: List[str] = ["Ex", "Ey"]
-    in_chans: List[str] = ["Hx", "Hy"]
+    out_chans: List[str] = ["ex", "ey"]
+    in_chans: List[str] = ["hx", "hy"]
 
     @staticmethod
     def get_resistivity(periods: np.ndarray, component: Component) -> np.ndarray:
@@ -452,7 +452,7 @@ class ImpedanceTensor(TransferFunction):
 
         .. note::
 
-            Components ExHx and ExHy are wrapped around in [0,90]
+            Components exhx and exhy are wrapped around in [0,90]
 
         Parameters
         ----------
@@ -469,7 +469,7 @@ class ImpedanceTensor(TransferFunction):
         phase = np.angle(component.to_numpy())
         # unwrap into specific quadrant and convert to degrees
         phase = np.unwrap(phase) * 180 / np.pi
-        if key == "ExHx" or key == "ExHy":
+        if key.lower() in {"exhx", "exhy"}:
             phase = np.mod(phase, 360) - 180
         return phase
 
@@ -576,20 +576,33 @@ class ImpedanceTensor(TransferFunction):
         if fig is None:
             fig = ImpedanceTensor.get_fig(x_lim=x_lim, res_lim=res_lim, phs_lim=phs_lim)
         if to_plot is None:
-            to_plot = ["ExHy", "EyHx", "ExHx", "EyHy"]
+            components_by_casefold = {
+                component.casefold(): component for component in components
+            }
+            to_plot = [
+                components_by_casefold[component]
+                for component in ("exhy", "eyhx", "exhx", "eyhy")
+                if component in components_by_casefold
+            ]
 
         periods = np.reciprocal(freqs)
-        colors = {"ExHx": "orange", "EyHy": "green", "ExHy": "red", "EyHx": "blue"}
+        colors = {
+            "exhx": "orange",
+            "eyhy": "green",
+            "exhy": "red",
+            "eyhx": "blue",
+        }
         for comp in to_plot:
             res = ImpedanceTensor.get_resistivity(periods, components[comp])
             phs = ImpedanceTensor.get_phase(comp, components[comp])
             comp_legend = f"{legend} - {comp}"
+            color = colors[comp.casefold()]
             scatter = go.Scatter(
                 x=periods,
                 y=res,
                 mode="lines+markers",
-                marker=dict(color=colors[comp], symbol=symbol),
-                line=dict(color=colors[comp]),
+                marker=dict(color=color, symbol=symbol),
+                line=dict(color=color),
                 name=comp_legend,
                 legendgroup=comp_legend,
             )
@@ -598,8 +611,8 @@ class ImpedanceTensor(TransferFunction):
                 x=periods,
                 y=phs,
                 mode="lines+markers",
-                marker=dict(color=colors[comp], symbol=symbol),
-                line=dict(color=colors[comp]),
+                marker=dict(color=color, symbol=symbol),
+                line=dict(color=color),
                 name=comp_legend,
                 legendgroup=comp_legend,
                 showlegend=False,

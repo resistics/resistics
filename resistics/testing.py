@@ -1085,13 +1085,13 @@ def components_mt() -> Dict[str, Component]:
     Returns
     -------
     Dict[str, Component]
-        Dictionary of component values (ExHx, ExHy, EyHx, EyHy)
+        Dictionary of component values (exhx, exhy, eyhx, eyhy)
     """
     return {
-        "ExHx": Component(real=[1, 1, 2, 2, 3, 3], imag=[5, 5, 4, 4, 3, 3]),
-        "ExHy": Component(real=[1, 2, 3, 4, 5, 6], imag=[-5, -4, -3, -2, -1, 1]),
-        "EyHx": Component(real=[-1, -2, -3, -4, -5, -6], imag=[5, 4, 3, 2, 1, 2]),
-        "EyHy": Component(real=[-1, -1, -2, -2, -3, -2], imag=[-5, -5, -4, -4, -3, -4]),
+        "exhx": Component(real=[1, 1, 2, 2, 3, 3], imag=[5, 5, 4, 4, 3, 3]),
+        "exhy": Component(real=[1, 2, 3, 4, 5, 6], imag=[-5, -4, -3, -2, -1, 1]),
+        "eyhx": Component(real=[-1, -2, -3, -4, -5, -6], imag=[5, 4, 3, 2, 1, 2]),
+        "eyhy": Component(real=[-1, -1, -2, -2, -3, -2], imag=[-5, -5, -4, -4, -3, -4]),
     }
 
 

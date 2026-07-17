@@ -8,6 +8,7 @@ from resistics.flow import (
     FlowDefinition,
     ParameterSet,
     default_parameter_set,
+    mask_calculation_flow,
     model_from_yaml_file,
     model_to_yaml_file,
     remote_reference_mt_flow,
@@ -18,6 +19,7 @@ from resistics.flow import (
 SINGLE_SITE_FLOW_FILENAME = "single_site_mt_standard.yaml"
 SINGLE_SITE_TARGET_FLOW_FILENAME = "single_site_mt_target.yaml"
 REMOTE_REFERENCE_FLOW_FILENAME = "remote_reference_mt.yaml"
+MASK_CALCULATION_FLOW_FILENAME = "mask_calculation.yaml"
 
 SINGLE_SITE_CRITERIA_FILENAME = "single_site.yaml"
 REMOTE_REFERENCE_CRITERIA_FILENAME = "remote_reference.yaml"
@@ -30,12 +32,17 @@ def builtin_processing_templates(
     project_path: Path | None = None,
 ) -> dict[str, dict[str, FlowDefinition | ParameterSet | "GatherCriteria"]]:
     """Return fresh models for the default flows and parameter sets."""
-    from resistics.gather import GatherCriteria
+    from resistics.gather import (
+        GatherCriteria,
+        RateGatherCriteria,
+        StationGatherCriteria,
+    )
 
     flows: dict[str, FlowDefinition] = {
         SINGLE_SITE_FLOW_FILENAME: single_site_mt_flow(),
         SINGLE_SITE_TARGET_FLOW_FILENAME: single_site_mt_target_flow(),
         REMOTE_REFERENCE_FLOW_FILENAME: remote_reference_mt_flow(),
+        MASK_CALCULATION_FLOW_FILENAME: mask_calculation_flow(),
     }
     parameters: dict[str, ParameterSet] = {
         DEFAULT_PARAMETERS_FILENAME: default_parameter_set(project_path),
@@ -43,7 +50,13 @@ def builtin_processing_templates(
     criteria: dict[str, GatherCriteria] = {
         SINGLE_SITE_CRITERIA_FILENAME: GatherCriteria(),
         REMOTE_REFERENCE_CRITERIA_FILENAME: GatherCriteria(
-            remote_references={"survey/target": "survey/remote"}
+            stations={
+                "survey/target": StationGatherCriteria(
+                    sampling_frequencies={
+                        128.0: RateGatherCriteria(remote_references=["survey/remote"])
+                    }
+                )
+            }
         ),
     }
     return {"flows": flows, "parameters": parameters, "criteria": criteria}
@@ -75,20 +88,23 @@ def install_builtin_parameter_templates(project_path: Path) -> list[Path]:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / DEFAULT_PARAMETERS_FILENAME
     defaults = default_parameter_set(project_path)
+    installed = []
     if not path.exists():
         model_to_yaml_file(defaults, path)
-        return [path]
-    current = model_from_yaml_file(ParameterSet, path)
-    missing = {
-        process: values
-        for process, values in defaults.processes.items()
-        if process not in current.processes
-    }
-    if not missing:
-        return []
-    current.processes.update(missing)
-    model_to_yaml_file(current, path)
-    return [path]
+        installed.append(path)
+    else:
+        current = model_from_yaml_file(ParameterSet, path)
+        missing = {
+            process: values
+            for process, values in defaults.processes.items()
+            if process not in current.processes
+        }
+        if missing:
+            current.processes.update(missing)
+            model_to_yaml_file(current, path)
+            installed.append(path)
+
+    return installed
 
 
 def install_builtin_criteria_templates(project_path: Path) -> list[Path]:

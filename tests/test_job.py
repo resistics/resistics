@@ -1,6 +1,5 @@
 """Tests for scoped, batch-oriented project jobs."""
 
-from datetime import datetime, time, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -15,7 +14,11 @@ from resistics.flow import (
     model_from_yaml,
     model_to_yaml,
 )
-from resistics.gather import DailyTimeRange, GatherCriteria
+from resistics.gather import (
+    GatherCriteria,
+    RateGatherCriteria,
+    StationGatherCriteria,
+)
 from resistics.job import JobDefinition, JobRunner, JobScope, JobState, ProjectJobs
 
 RUN_BATCHES = []
@@ -145,6 +148,7 @@ def test_create_template_writes_a_new_editable_job_without_criteria(tmp_path):
     assert definition.flow == "standard.yaml"
     assert definition.parameters == "defaults.yaml"
     assert definition.scope == JobScope()
+    assert definition.output_label == "default"
 
 
 @pytest.mark.parametrize("name", ["", "with space", "job.yaml", "../job"])
@@ -197,17 +201,88 @@ scope:
 
 def test_job_resolves_static_criteria_from_criteria_directory(tmp_path):
     project = make_project(tmp_path)
+    project.table = pd.concat(
+        [
+            project.table,
+            pd.DataFrame(
+                [
+                    {
+                        "survey": "survey",
+                        "station": "b",
+                        "sample_rate": 128.0,
+                        "run_path": "survey/b/run4",
+                    }
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
     (project.project_path / "processing/criteria/field.yaml").write_text(
-        model_to_yaml(GatherCriteria(remote_references={"survey/a": "survey/b"}))
+        model_to_yaml(
+            GatherCriteria(
+                stations={
+                    "survey/a": StationGatherCriteria(
+                        sampling_frequencies={
+                            128: RateGatherCriteria(remote_references=["survey/b"])
+                        }
+                    )
+                }
+            )
+        )
     )
     path = write_job(project, criteria="field")
 
     validation = ProjectJobs(project).validate(path)
 
     assert validation.ok, validation.errors
-    assert validation.resolved_job.criteria.remote_references == {
-        "survey/a": "survey/b"
-    }
+    assert validation.resolved_job.criteria.resolve(
+        "survey/a", 128
+    ).remote_references == ["survey/b"]
+
+
+def test_run_stage_expands_one_hop_to_explicit_remote_runs(tmp_path):
+    project = make_project(tmp_path)
+    project.table = pd.concat(
+        [
+            project.table,
+            pd.DataFrame(
+                [
+                    {
+                        "survey": "survey",
+                        "station": "b",
+                        "sample_rate": 128.0,
+                        "run_path": "survey/b/remote-run",
+                    }
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+    criteria = GatherCriteria(
+        stations={
+            "survey/a": StationGatherCriteria(
+                sampling_frequencies={
+                    128: RateGatherCriteria(remote_references=["survey/b"])
+                }
+            )
+        }
+    )
+    batches = ProjectJobs(project).plan_batches(
+        JobDefinition(
+            name="example",
+            flow="standard",
+            parameters="default",
+            scope=JobScope(stations=["a"]),
+        )
+    )
+
+    paths = JobRunner(project)._run_stage_paths(batches, criteria)
+
+    assert paths == [
+        "survey/a/run1",
+        "survey/a/run2",
+        "survey/b/remote-run",
+    ]
 
 
 def test_job_rejects_empty_scope_result(tmp_path):
@@ -232,15 +307,6 @@ def test_batch_result_path_is_station_and_rate_specific(tmp_path):
         .as_posix()
         .endswith("data/survey/a/results/mt/128_000000")
     )
-
-
-def test_criteria_evaluates_daily_time_ranges_in_utc():
-    criteria = GatherCriteria(
-        daily_include=[DailyTimeRange(from_time=time(9), to_time=time(17))]
-    )
-
-    assert criteria.includes(datetime(2020, 1, 1, 12, tzinfo=timezone.utc))
-    assert not criteria.includes(datetime(2020, 1, 1, 18, tzinfo=timezone.utc))
 
 
 def test_runner_runs_all_run_batches_before_station_rate_results(tmp_path):
@@ -285,16 +351,12 @@ def test_runner_runs_all_run_batches_before_station_rate_results(tmp_path):
 
     assert RUN_BATCHES == ["run1", "run2", "run3"]
     assert (
-        project.project_path / "data/survey/a/results/result/128_000000/result.txt"
+        project.project_path / "data/survey/a/results/default/128_000000/result.txt"
     ).is_file()
     assert (
-        project.project_path / "data/survey/b/results/result/4_000000/result.txt"
+        project.project_path / "data/survey/b/results/default/4_000000/result.txt"
     ).is_file()
-    run_events = [
-        event
-        for event in progress
-        if event.message == "Started: runs"
-    ]
+    run_events = [event for event in progress if event.message == "Started: runs"]
     assert [
         (event.survey, event.station, event.run, event.sample_rate)
         for event in run_events
@@ -304,9 +366,7 @@ def test_runner_runs_all_run_batches_before_station_rate_results(tmp_path):
         ("survey", "b", "run3", None),
     ]
     station_rate_events = [
-        event
-        for event in progress
-        if event.message == "Started: results"
+        event for event in progress if event.message == "Started: results"
     ]
     assert [
         (event.survey, event.station, event.run, event.sample_rate)

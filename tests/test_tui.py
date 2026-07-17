@@ -1,6 +1,7 @@
 """Smoke tests for the project terminal UI."""
 
 import asyncio
+import json
 from pathlib import Path
 from threading import Thread
 from types import SimpleNamespace
@@ -23,8 +24,8 @@ from textual.widgets import (
 
 from resistics.flow import default_parameter_set, model_to_yaml, standard_mt_flow
 from resistics.gather import GatherCriteria
-from resistics.job import JobProgressEvent, JobState
-from resistics.project import ProjectDataItem
+from resistics.job import JobDefinition, JobProgressEvent, JobScope, JobState
+from resistics.project import ProjectDataDeletion, ProjectDataItem
 from resistics.sampling import to_datetime
 from resistics.testing import solution_mt
 from resistics.tui import (
@@ -35,6 +36,8 @@ from resistics.tui import (
     DeleteYamlFileScreen,
     DirectoryPickerScreen,
     ProjectExplorerScreen,
+    ConfirmProjectDataDeletionScreen,
+    DeleteProjectDataScreen,
     ResisticsTui,
 )
 
@@ -50,6 +53,10 @@ class FakeProject:
         self.closed = False
         self.project_data_items = []
         self.mth5_data_items = []
+        self.output_labels = []
+        self.project_data_paths = []
+        self.deleted_data_scopes = []
+        self.json_data = {}
         if create_jobs:
             (project_path / "processing/jobs").mkdir(parents=True)
 
@@ -80,6 +87,21 @@ class FakeProject:
 
     def list_mth5_data_items(self):
         return self.mth5_data_items
+
+    def get_project_data_json(self, path):
+        return self.json_data[path]
+
+    def list_project_output_labels(self):
+        return self.output_labels
+
+    def preview_project_data_deletion(self, output_label=None):
+        return ProjectDataDeletion(
+            output_label=output_label, paths=list(self.project_data_paths)
+        )
+
+    def delete_project_data(self, output_label=None):
+        self.deleted_data_scopes.append(output_label)
+        return self.preview_project_data_deletion(output_label)
 
     def close_mth5(self):
         self.closed = True
@@ -184,6 +206,7 @@ def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
             name="default",
             kind="directory",
             data_type="spectra",
+            is_dataset=True,
         ),
         ProjectDataItem(
             source="project",
@@ -209,6 +232,7 @@ def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
             name="ex",
             kind="dataset",
             data_type="time",
+            is_dataset=True,
         ),
         ProjectDataItem(
             source="mth5",
@@ -217,6 +241,7 @@ def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
             name="fc_summary",
             kind="dataset",
             data_type="spectra",
+            is_dataset=True,
         ),
         ProjectDataItem(
             source="mth5",
@@ -252,15 +277,17 @@ def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
             assert mth5_node.is_expanded
             assert [str(node.label) for node in project_node.children] == [
                 "Time data (0)",
-                "Spectra/evaluations (2)",
+                "Spectra/evaluations (1)",
+                "Masks (0)",
                 "Transfer functions (0)",
-                "Other (1)",
+                "Other (0)",
             ]
             assert [str(node.label) for node in mth5_node.children] == [
                 "Time data (1)",
                 "Spectra/evaluations (1)",
+                "Masks (0)",
                 "Transfer functions (0)",
-                "Other (2)",
+                "Other (0)",
             ]
             assert set(screen.data_items) == {
                 "project:run",
@@ -284,6 +311,69 @@ def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
             await pilot.press("left_square_bracket")
             assert time_category.is_collapsed
             assert time_category.children[0].is_collapsed
+
+    asyncio.run(run_test())
+
+
+def test_tui_views_project_json_and_confirms_project_data_deletion(
+    monkeypatch, tmp_path
+):
+    project = FakeProject(tmp_path / "project")
+    project.project_data_items = [
+        ProjectDataItem(
+            source="project",
+            path="survey/station/results/default/128/solution.json",
+            parent_path="survey/station/results/default/128",
+            name="solution.json",
+            kind="file",
+            data_type="transfer_function",
+        )
+    ]
+    project.json_data["survey/station/results/default/128/solution.json"] = {
+        "solution": {"component": "Zxy"}
+    }
+    project.output_labels = ["default"]
+    project.project_data_paths = ["survey"]
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    def find_node(node, data):
+        if node.data == data:
+            return node
+        for child in node.children:
+            found = find_node(child, data)
+            if found is not None:
+                return found
+        return None
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            screen = app.screen
+            screen.query_one(TabbedContent).active = "data"
+            await pilot.pause()
+            tree = screen.query_one("#data-tree", Tree)
+            node = find_node(
+                tree.root,
+                ("project", "survey/station/results/default/128/solution.json"),
+            )
+            assert node is not None
+            screen.show_data_metadata(SimpleNamespace(node=node))
+            assert screen.query_one("#data-metadata", TextArea).text == json.dumps(
+                project.json_data[node.data[1]], indent=2
+            )
+            assert screen.check_action("delete_yaml", ())
+            await pilot.press("delete")
+            await pilot.pause()
+            picker = app.screen
+            assert isinstance(picker, DeleteProjectDataScreen)
+            picker.delete_label()
+            await pilot.pause()
+            confirm = app.screen
+            assert isinstance(confirm, ConfirmProjectDataDeletionScreen)
+            confirm.delete()
+            await pilot.pause()
+            assert project.deleted_data_scopes == ["default"]
 
     asyncio.run(run_test())
 
@@ -487,12 +577,14 @@ def test_tui_creates_a_job_template_from_dropdowns(monkeypatch, tmp_path):
             assert isinstance(form, CreateJobScreen)
             assert form.query_one("#job-flow", Select).value == "standard.yaml"
             assert form.query_one("#job-parameters", Select).value == "default.yaml"
+            assert form.query_one("#job-output-label", Input).value == "default"
             form.query_one("#cancel-job-template", Button).focus()
             await pilot.press("right")
             assert form.focused is form.query_one("#create-job-template", Button)
             await pilot.press("left")
             assert form.focused is form.query_one("#cancel-job-template", Button)
             form.query_one("#job-name", Input).value = "field_job"
+            form.query_one("#job-output-label", Input).value = "field_output"
             form.query_one("#job-criteria", Select).value = "field.yaml"
             form.create()
             await pilot.pause()
@@ -503,6 +595,7 @@ def test_tui_creates_a_job_template_from_dropdowns(monkeypatch, tmp_path):
             assert "flow: standard.yaml" in yaml_text
             assert "parameters: default.yaml" in yaml_text
             assert "criteria: field.yaml" in yaml_text
+            assert "output_label: field_output" in yaml_text
             assert "scope:" in yaml_text
 
     asyncio.run(run_test())
@@ -558,6 +651,239 @@ def test_tui_copies_and_deletes_selected_yaml_files(monkeypatch, tmp_path):
             assert app.screen.query_one("#flow-content", TextArea).text == "Select a flow"
             assert not app.screen.check_action("copy_yaml", ())
             assert not app.screen.check_action("delete_yaml", ())
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
+def test_tui_deletes_invalid_yaml_from_highlight_without_opening_it(
+    monkeypatch, tmp_path
+):
+    project = FakeProject(tmp_path / "project")
+    resources = [
+        (
+            "flows",
+            "#flow-table",
+            "#flow-content",
+            project.project_path / "processing/flows/invalid.yaml",
+            "bad: [",
+            "Select a flow",
+        ),
+        (
+            "parameters",
+            "#parameter-table",
+            "#parameter-content",
+            project.project_path / "processing/parameters/invalid.yaml",
+            "bad: [",
+            "Select a parameter set",
+        ),
+        (
+            "criteria",
+            "#criteria-table",
+            "#criteria-content",
+            project.project_path / "processing/criteria/legacy.yaml",
+            "remote_references:\n  survey/a: survey/b\n",
+            "Select a criteria file",
+        ),
+        (
+            "jobs",
+            "#job-table",
+            "#job-content",
+            project.project_path / "processing/jobs/invalid.yaml",
+            "bad: [",
+            "Select a job",
+        ),
+    ]
+    for _, _, _, path, content, _ in resources:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            for tab, table_id, editor_id, path, _, placeholder in resources:
+                app.screen.query_one(TabbedContent).active = tab
+                table = app.screen.query_one(table_id, DataTable)
+                table.focus()
+                table.move_cursor(row=0)
+                await pilot.pause()
+                assert app.screen.query_one(editor_id, TextArea).text == placeholder
+                assert app.screen.check_action("delete_yaml", ())
+                await pilot.press("delete")
+                await pilot.pause()
+                delete_form = app.screen
+                assert isinstance(delete_form, DeleteYamlFileScreen)
+                assert delete_form.source == path
+                delete_form.delete()
+                await pilot.pause()
+                assert not path.exists()
+                assert app.screen.query_one(editor_id, TextArea).text == placeholder
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
+def test_tui_copies_and_runs_highlighted_job_without_opening_it(
+    monkeypatch, tmp_path
+):
+    project = FakeProject(tmp_path / "project")
+    project.table = pd.DataFrame(
+        [
+            {
+                "survey": "survey",
+                "station": "target",
+                "sample_rate": 128.0,
+                "run_path": "survey/target/run",
+            }
+        ]
+    )
+    flow_path = project.project_path / "processing/flows/standard.yaml"
+    flow_path.parent.mkdir(parents=True)
+    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    parameters_path = project.project_path / "processing/parameters/default.yaml"
+    parameters_path.parent.mkdir(parents=True)
+    parameters_path.write_text(model_to_yaml(default_parameter_set()))
+    job_path = project.project_path / "processing/jobs/field.yaml"
+    job_path.write_text(
+        model_to_yaml(
+            JobDefinition(
+                name="field",
+                flow="standard.yaml",
+                parameters="default.yaml",
+                scope=JobScope(stations=["target"]),
+            )
+        )
+    )
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            app.screen.query_one(TabbedContent).active = "jobs"
+            table = app.screen.query_one("#job-table", DataTable)
+            table.focus()
+            table.move_cursor(row=0)
+            await pilot.pause()
+            assert app.screen.selected_job_path is None
+            assert app.screen.query_one("#job-content", TextArea).text == "Select a job"
+            assert app.screen.check_action("run_selected_job", ())
+            assert app.screen.check_action("copy_yaml", ())
+
+            await pilot.press("j")
+            await pilot.pause()
+            confirmation = app.screen
+            assert isinstance(confirmation, ConfirmJobScreen)
+            assert confirmation.validation.resolved_job.path == job_path
+            confirmation.action_cancel()
+            await pilot.pause()
+            assert app.screen.query_one("#job-content", TextArea).text == "Select a job"
+
+            table = app.screen.query_one("#job-table", DataTable)
+            table.focus()
+            await pilot.press("y")
+            await pilot.pause()
+            copy_form = app.screen
+            assert isinstance(copy_form, CopyYamlFileScreen)
+            copy_form.query_one("#copy-yaml-name", Input).value = "field_copy"
+            copy_form.copy()
+            await pilot.pause()
+            copied_path = job_path.with_name("field_copy.yaml")
+            assert copied_path.read_bytes() == job_path.read_bytes()
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
+def test_tui_copies_highlighted_flow_parameters_and_criteria_without_opening(
+    monkeypatch, tmp_path
+):
+    project = FakeProject(tmp_path / "project")
+    resources = [
+        (
+            "flows",
+            "#flow-table",
+            "#flow-content",
+            project.project_path / "processing/flows/standard.yaml",
+            model_to_yaml(standard_mt_flow()),
+            "Select a flow",
+        ),
+        (
+            "parameters",
+            "#parameter-table",
+            "#parameter-content",
+            project.project_path / "processing/parameters/default.yaml",
+            model_to_yaml(default_parameter_set()),
+            "Select a parameter set",
+        ),
+        (
+            "criteria",
+            "#criteria-table",
+            "#criteria-content",
+            project.project_path / "processing/criteria/single_site.yaml",
+            model_to_yaml(GatherCriteria()),
+            "Select a criteria file",
+        ),
+    ]
+    for _, _, _, path, content, _ in resources:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            for tab, table_id, editor_id, source, _, placeholder in resources:
+                app.screen.query_one(TabbedContent).active = tab
+                table = app.screen.query_one(table_id, DataTable)
+                table.focus()
+                table.move_cursor(row=0)
+                await pilot.pause()
+                assert app.screen.query_one(editor_id, TextArea).text == placeholder
+                assert app.screen.check_action("copy_yaml", ())
+
+                await pilot.press("y")
+                await pilot.pause()
+                copy_form = app.screen
+                assert isinstance(copy_form, CopyYamlFileScreen)
+                assert copy_form.source == source
+                copy_form.query_one("#copy-yaml-name", Input).value = (
+                    f"{source.stem}_copy"
+                )
+                copy_form.copy()
+                await pilot.pause()
+                copied = source.with_name(f"{source.stem}_copy.yaml")
+                assert copied.read_bytes() == source.read_bytes()
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
+def test_tui_opens_invalid_criteria_source_without_crashing(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    criteria_path = project.project_path / "processing/criteria/legacy.yaml"
+    criteria_path.parent.mkdir(parents=True)
+    criteria_source = "remote_references:\n  survey/a: survey/b\n"
+    criteria_path.write_text(criteria_source)
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            app.screen.query_one(TabbedContent).active = "criteria"
+            table = app.screen.query_one("#criteria-table", DataTable)
+            table.focus()
+            await pilot.press("enter")
+            await pilot.pause()
+            assert app.screen.selected_criteria_path == criteria_path
+            assert (
+                app.screen.query_one("#criteria-content", TextArea).text
+                == criteria_source
+            )
 
     asyncio.run(run_test())
     assert project.closed

@@ -451,28 +451,28 @@ class Solution(WriteableMetadata):
     >>> from resistics.testing import solution_mt
     >>> solution = solution_mt()
     >>> print(solution.tf.to_string())
-    | Ex | = | Ex_Hx Ex_Hy | | Hx |
-    | Ey |   | Ey_Hx Ey_Hy | | Hy |
+    | ex | = | ex_hx ex_hy | | hx |
+    | ey |   | ey_hx ey_hy | | hy |
     >>> solution.n_freqs
     6
     >>> solution.freqs
     [100.0, 80.0, 60.0, 40.0, 20.0, 10.0]
     >>> solution.periods.tolist()
     [0.01, 0.0125, 0.016666666666666666, 0.025, 0.05, 0.1]
-    >>> solution.components["ExHx"]
+    >>> solution.components["exhx"]
     Component(real=[1.0, 1.0, 2.0, 2.0, 3.0, 3.0], imag=[5.0, 5.0, 4.0, 4.0, 3.0, 3.0])
-    >>> solution.components["ExHy"]
+    >>> solution.components["exhy"]
     Component(real=[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], imag=[-5.0, -4.0, -3.0, -2.0, -1.0, 1.0])
 
     To get the components as an array, either get_component or subscripting
     be used
 
-    >>> solution["ExHy"]
+    >>> solution["exhy"]
     array([1.-5.j, 2.-4.j, 3.-3.j, 4.-2.j, 5.-1.j, 6.+1.j])
     >>> solution["ab"]
     Traceback (most recent call last):
     ...
-    ValueError: Component ab not found in ['ExHx', 'ExHy', 'EyHx', 'EyHy']
+    ValueError: Component ab not found in ['exhx', 'exhy', 'eyhx', 'eyhy']
 
     It is also possible to get the tensor values at a particular evaluation
     frequency
