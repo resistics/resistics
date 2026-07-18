@@ -1211,10 +1211,44 @@ class ProjectExplorerScreen(Screen[None]):
         for label, data_type in self.DATA_CATEGORIES:
             matching = [item for item in items if item.data_type == data_type]
             category = root.add(
-                f"{label} ({sum(item.is_dataset for item in matching)})",
+                f"{label} ({self._data_category_count(root.data, matching, data_type)})",
                 data=("category", label),
             )
             self._add_data_items(category, items, data_type)
+
+    @staticmethod
+    def _data_category_count(
+        source_data: object, items: list[ProjectDataItem], data_type: str
+    ) -> int:
+        """Count displayed data, treating MTH5 time channels as one run."""
+        if source_data != ("mth5", "/") or data_type != "time":
+            return sum(item.is_dataset for item in items)
+
+        run_paths = {
+            run_path
+            for item in items
+            if (run_path := ProjectExplorerScreen._mth5_time_run_path(item))
+            is not None
+        }
+        # Retain a useful count for non-standard MTH5 layouts that do not
+        # encode the survey/station/run hierarchy in their item paths.
+        return len(run_paths) if run_paths else sum(item.is_dataset for item in items)
+
+    @staticmethod
+    def _mth5_time_run_path(item: ProjectDataItem) -> Optional[str]:
+        """Return an MTH5 item's canonical run path, when represented."""
+        parts = [part for part in item.path.split("/") if part]
+        lower_parts = [part.lower() for part in parts]
+        try:
+            station_index = lower_parts.index("stations")
+            run_index = station_index + 2
+            if lower_parts[run_index] == "runs":
+                run_index += 1
+            if run_index >= len(parts):
+                return None
+            return "/" + "/".join(parts[: run_index + 1])
+        except (ValueError, IndexError):
+            return None
 
     def _add_data_items(
         self, root, items: list[ProjectDataItem], data_type: str

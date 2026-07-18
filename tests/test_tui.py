@@ -315,6 +315,46 @@ def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
     asyncio.run(run_test())
 
 
+def test_tui_counts_mth5_time_data_by_run():
+    items = [
+        ProjectDataItem(
+            source="mth5",
+            path="/Experiment/Surveys/survey/Stations/station/Runs",
+            name="Runs",
+            kind="group",
+            data_type="time",
+        ),
+        ProjectDataItem(
+            source="mth5",
+            path="/Experiment/Surveys/survey/Stations/station/Runs/first/Channels/ex",
+            name="ex",
+            kind="dataset",
+            data_type="time",
+            is_dataset=True,
+        ),
+        ProjectDataItem(
+            source="mth5",
+            path="/Experiment/Surveys/survey/Stations/station/Runs/first/Channels/hx",
+            name="hx",
+            kind="dataset",
+            data_type="time",
+            is_dataset=True,
+        ),
+        ProjectDataItem(
+            source="mth5",
+            path="/Experiment/Surveys/survey/Stations/station/Runs/second/Channels/ex",
+            name="ex",
+            kind="dataset",
+            data_type="time",
+            is_dataset=True,
+        ),
+    ]
+
+    assert ProjectExplorerScreen._data_category_count(
+        ("mth5", "/"), items, "time"
+    ) == 2
+
+
 def test_tui_views_project_json_and_confirms_project_data_deletion(
     monkeypatch, tmp_path
 ):
