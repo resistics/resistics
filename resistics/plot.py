@@ -317,6 +317,50 @@ def _flow_arrow_trace(
     )
 
 
+def _flow_edge_label_position(path) -> tuple[float, float]:
+    """Return the distance-weighted midpoint of a routed edge path."""
+    segments = [
+        ((end_x - start_x) ** 2 + (end_y - start_y) ** 2) ** 0.5
+        for (start_x, start_y), (end_x, end_y) in zip(path, path[1:])
+    ]
+    total_length = sum(segments)
+    if total_length == 0:
+        return path[0]
+    midpoint = total_length / 2
+    traversed = 0.0
+    for (start_x, start_y), (end_x, end_y), length in zip(path, path[1:], segments):
+        if traversed + length >= midpoint:
+            fraction = (midpoint - traversed) / length
+            return (
+                start_x + fraction * (end_x - start_x),
+                start_y + fraction * (end_y - start_y),
+            )
+        traversed += length
+    return path[-1]
+
+
+def _flow_edge_label_trace(
+    path,
+    value_type: str,
+    legendgroup: Optional[str] = None,
+    meta: Optional[dict] = None,
+) -> go.Scatter:
+    """Return a visible data-type label positioned on a routed edge."""
+    x, y = _flow_edge_label_position(path)
+    return go.Scatter(
+        x=[x],
+        y=[y],
+        mode="text",
+        text=[escape(value_type)],
+        textposition="middle center",
+        textfont=dict(color=FLOW_CARD_BORDER_COLOUR, size=13),
+        hoverinfo="skip",
+        showlegend=False,
+        legendgroup=legendgroup,
+        meta=meta,
+    )
+
+
 def _flow_card_polygon(
     x: float,
     y: float,
@@ -391,6 +435,20 @@ def plot_flow(flow, project_path: Optional[Path] = None) -> go.Figure:
                 legendgroup=f"stage-{stage_index}",
                 meta={
                     "kind": "arrow",
+                    "stage": stage_index,
+                    "source": source,
+                    "target": target,
+                    "port": port,
+                },
+            )
+        )
+        figure.add_trace(
+            _flow_edge_label_trace(
+                path,
+                value_type,
+                legendgroup=f"stage-{stage_index}",
+                meta={
+                    "kind": "edge_label",
                     "stage": stage_index,
                     "source": source,
                     "target": target,
@@ -596,9 +654,9 @@ def _job_card_label(node, descriptor, configuration_lines: list[str]) -> tuple[s
 
 
 def _job_preformatted(value: Any) -> str:
-    """Escape structured configuration for an indented Plotly hover section."""
+    """Format structured configuration for an indented Plotly hover section."""
     rendered = json.dumps(value, indent=2, sort_keys=True, default=str)
-    return escape(rendered).replace(" ", "&nbsp;").replace("\n", "<br>")
+    return rendered.replace(" ", "&nbsp;").replace("\n", "<br>")
 
 
 def _job_node_hover(stage, node, descriptor, resolved_job) -> str:
@@ -720,6 +778,21 @@ def plot_job(resolved_job, project_path: Optional[Path] = None) -> go.Figure:
                     "job": True,
                 },
                 legendgroup=f"stage-{stage_index}",
+            )
+        )
+        figure.add_trace(
+            _flow_edge_label_trace(
+                path,
+                value_type,
+                legendgroup=f"stage-{stage_index}",
+                meta={
+                    "kind": "edge_label",
+                    "stage": stage_index,
+                    "source": source,
+                    "target": target,
+                    "port": port,
+                    "job": True,
+                },
             )
         )
 

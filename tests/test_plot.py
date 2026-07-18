@@ -160,6 +160,7 @@ def test_plot_flow_builds_an_interactive_ranked_figure():
             "arrow",
             "cards",
             "edge",
+            "edge_label",
             "labels",
             "legend",
             "nodes",
@@ -173,6 +174,15 @@ def test_plot_flow_builds_an_interactive_ranked_figure():
     ]
     assert len(arrows) == len(edges)
     assert all(trace.marker.symbol == "arrow" for trace in arrows)
+    edge_labels = [
+        trace
+        for trace in figure.data
+        if trace.meta and trace.meta["kind"] == "edge_label"
+    ]
+    assert len(edge_labels) == len(edges)
+    assert {trace.text[0] for trace in edge_labels} == {"number"}
+    assert all(trace.mode == "text" for trace in edge_labels)
+    assert all(trace.textfont.size == 13 for trace in edge_labels)
     assert all(
         figure.data.index(trace)
         < min(
@@ -181,6 +191,15 @@ def test_plot_flow_builds_an_interactive_ranked_figure():
             if label.meta and label.meta["kind"] == "labels"
         )
         for trace in arrows
+    )
+    assert all(
+        figure.data.index(trace)
+        < min(
+            figure.data.index(card)
+            for card in figure.data
+            if card.meta and card.meta["kind"] == "cards"
+        )
+        for trace in edge_labels
     )
     assert not figure.layout.annotations
 
@@ -253,6 +272,16 @@ def test_flow_arrowheads_stop_outside_card_boundaries():
     assert vertical == (0.0, FLOW_CARD_HEIGHT / 2 + FLOW_ARROW_CLEARANCE)
     assert diagonal[1] > FLOW_CARD_HEIGHT / 2
     assert abs(diagonal[0]) < FLOW_CARD_WIDTH / 2
+
+
+def test_flow_edge_labels_use_the_midpoint_of_routed_connectors():
+    """Type labels stay centered even when a connector has a bend."""
+    from resistics.plot import _flow_edge_label_position
+
+    assert _flow_edge_label_position([(0.0, 0.0), (0.0, 3.0), (4.0, 3.0)]) == (
+        0.5,
+        3.0,
+    )
 
 
 def test_plot_flow_wraps_long_card_labels_without_losing_process_details():
@@ -411,7 +440,7 @@ def test_plot_job_shows_selected_stages_and_parameter_file_values(tmp_path):
     assert "Criteria: criteria.yaml" in labels
     configured_hover = node_trace.customdata[list(node_trace.ids).index("prepare:configured")]
     criteria_hover = node_trace.customdata[list(node_trace.ids).index("prepare:criteria_step")]
-    assert "&quot;factor&quot;:&nbsp;2.5" in configured_hover
+    assert '"factor":&nbsp;2.5' in configured_hover
     assert "Criteria configuration (criteria.yaml)" in criteria_hover
     assert figure.layout.legend.groupclick == "togglegroup"
     arrow_traces = [
@@ -420,6 +449,14 @@ def test_plot_job_shows_selected_stages_and_parameter_file_values(tmp_path):
     assert len(arrow_traces) == 2
     assert all(trace.marker.symbol == "arrow" for trace in arrow_traces)
     assert {trace.legendgroup for trace in arrow_traces} == {"stage-0"}
+    edge_labels = [
+        trace
+        for trace in figure.data
+        if trace.meta and trace.meta["kind"] == "edge_label"
+    ]
+    assert len(edge_labels) == 2
+    assert {trace.text[0] for trace in edge_labels} == {"number"}
+    assert {trace.legendgroup for trace in edge_labels} == {"stage-0"}
     assert all(
         figure.data.index(trace) < figure.data.index(label_trace) for trace in arrow_traces
     )
