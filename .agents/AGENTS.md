@@ -29,6 +29,8 @@ rules, coding standards, naming, and active migration plans.
   guidance for the terminal UI.
 - `plans/modernization.md`: current modernization plan for Pydantic v2,
   MTH5-only input, flows/parameters/jobs, and regression boundaries.
+- `plans/codebase-hardening.md`: phased codebase cleanup, tooling,
+  performance, CI, publishing, dependency, and type-checking plan.
 - `plans/project-structure-and-flows.md`: design notes for project structure,
   processing flows, parameters, jobs, batching, and execution.
 
