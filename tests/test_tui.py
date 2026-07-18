@@ -350,9 +350,7 @@ def test_tui_counts_mth5_time_data_by_run():
         ),
     ]
 
-    assert ProjectExplorerScreen._data_category_count(
-        ("mth5", "/"), items, "time"
-    ) == 2
+    assert ProjectExplorerScreen._data_category_count(("mth5", "/"), items, "time") == 2
 
 
 def test_tui_views_project_json_and_confirms_project_data_deletion(
@@ -434,9 +432,7 @@ def test_tui_plot_controls_follow_supported_data_selection(monkeypatch, tmp_path
         ),
         ProjectDataItem(
             source="mth5",
-            path=(
-                "/Experiment/Surveys/CONUS_South/Stations/CAS04/a/ex"
-            ),
+            path=("/Experiment/Surveys/CONUS_South/Stations/CAS04/a/ex"),
             name="ex",
             kind="dataset",
             data_type="time",
@@ -531,9 +527,12 @@ def test_tui_builds_figures_with_existing_plotters(monkeypatch, tmp_path):
     assert ProjectExplorerScreen._build_plot_figure(project, ("project", None)) == (
         "timeline figure"
     )
-    assert ProjectExplorerScreen._build_plot_figure(
-        project, ("time", ("survey", "station", "run", "ex"))
-    ) == "time figure"
+    assert (
+        ProjectExplorerScreen._build_plot_figure(
+            project, ("time", ("survey", "station", "run", "ex"))
+        )
+        == "time figure"
+    )
     assert project.read_calls == [("survey", "station", "run", ["ex"])]
     assert time_plot_calls == [5_000]
 
@@ -567,6 +566,129 @@ def test_tui_builds_figures_with_existing_plotters(monkeypatch, tmp_path):
         project, ("transfer_function", solution_path)
     )
     assert isinstance(figure, go.Figure)
+
+
+def test_tui_plots_a_valid_selected_flow(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    flow_path = project.project_path / "processing/flows/standard.yaml"
+    flow_path.parent.mkdir(parents=True)
+    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    invalid_path = project.project_path / "processing/flows/invalid.yaml"
+    invalid_path.write_text("not: [valid")
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            screen = app.screen
+            screen.query_one(TabbedContent).active = "flows"
+            flow_table = screen.query_one("#flow-table", DataTable)
+            flow_table.focus()
+            valid_row = next(
+                index
+                for index, row in enumerate(flow_table.ordered_rows)
+                if row.key.value == str(flow_path)
+            )
+            invalid_row = next(
+                index
+                for index, row in enumerate(flow_table.ordered_rows)
+                if row.key.value == str(invalid_path)
+            )
+            flow_table.move_cursor(row=valid_row)
+            await pilot.pause()
+            assert screen.check_action("plot", ())
+
+            flow_table.move_cursor(row=invalid_row)
+            await pilot.pause()
+            assert not screen.check_action("plot", ())
+            flow_table.move_cursor(row=valid_row)
+            await pilot.pause()
+            screen.editing_yaml = True
+            assert not screen.check_action("plot", ())
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
+def test_tui_builds_flow_figures_without_preview_files(tmp_path):
+    """Flow plotting uses the regular Plotly path without a managed preview."""
+    project = FakeProject(tmp_path / "project")
+    flow_path = project.project_path / "processing/flows/standard.yaml"
+    flow_path.parent.mkdir(parents=True)
+    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+
+    figure = ProjectExplorerScreen._build_plot_figure(project, ("flow", flow_path))
+
+    assert isinstance(figure, go.Figure)
+    assert figure.layout.title.text == "Flow: Single-Site MT (Standard Windowing)"
+    assert not hasattr(tui_module, "_flow_preview_url")
+
+
+def test_tui_builds_and_enables_valid_job_plots(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    project.table = pd.DataFrame(
+        [
+            {
+                "survey": "survey",
+                "station": "field",
+                "sample_rate": 128.0,
+                "run_path": "survey/field/run1",
+            }
+        ]
+    )
+    flow_path = project.project_path / "processing/flows/standard.yaml"
+    flow_path.parent.mkdir(parents=True)
+    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    parameters_path = project.project_path / "processing/parameters/default.yaml"
+    parameters_path.parent.mkdir(parents=True)
+    parameters_path.write_text(model_to_yaml(default_parameter_set()))
+    job_path = project.project_path / "processing/jobs/field.yaml"
+    job_path.write_text(
+        model_to_yaml(
+            JobDefinition(
+                name="field",
+                flow="standard.yaml",
+                parameters="default.yaml",
+                scope=JobScope(stations=["field"]),
+            )
+        )
+    )
+    invalid_path = project.project_path / "processing/jobs/invalid.yaml"
+    invalid_path.write_text("not: [valid")
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            screen = app.screen
+            screen.query_one(TabbedContent).active = "jobs"
+            table = screen.query_one("#job-table", DataTable)
+            table.focus()
+            valid_row = next(
+                index
+                for index, row in enumerate(table.ordered_rows)
+                if row.key.value == str(job_path)
+            )
+            invalid_row = next(
+                index
+                for index, row in enumerate(table.ordered_rows)
+                if row.key.value == str(invalid_path)
+            )
+            table.move_cursor(row=valid_row)
+            await pilot.pause()
+            assert screen.check_action("plot", ())
+            figure = screen._build_plot_figure(project, ("job", job_path))
+            assert isinstance(figure, go.Figure)
+            assert "Job: field" in figure.layout.title.text
+
+            table.move_cursor(row=invalid_row)
+            await pilot.pause()
+            assert not screen.check_action("plot", ())
+
+    asyncio.run(run_test())
+    assert project.closed
 
 
 def test_close_project_returns_to_home(monkeypatch, tmp_path):
@@ -646,7 +768,9 @@ def test_tui_copies_and_deletes_selected_yaml_files(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text("# Retain this comment when copied\n" + model_to_yaml(standard_mt_flow()))
+    flow_path.write_text(
+        "# Retain this comment when copied\n" + model_to_yaml(standard_mt_flow())
+    )
     monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
@@ -662,7 +786,9 @@ def test_tui_copies_and_deletes_selected_yaml_files(monkeypatch, tmp_path):
             assert isinstance(copy_form, CopyYamlFileScreen)
             copy_form.query_one("#copy-yaml-name", Input).value = "standard_copy"
             await pilot.press("right")
-            assert copy_form.focused is copy_form.query_one("#confirm-copy-yaml", Button)
+            assert copy_form.focused is copy_form.query_one(
+                "#confirm-copy-yaml", Button
+            )
             await pilot.press("left")
             assert copy_form.focused is copy_form.query_one("#cancel-copy-yaml", Button)
             copy_form.copy()
@@ -688,7 +814,9 @@ def test_tui_copies_and_deletes_selected_yaml_files(monkeypatch, tmp_path):
             assert not copied_path.exists()
             assert flow_path.exists()
             assert app.screen.selected_flow_path is None
-            assert app.screen.query_one("#flow-content", TextArea).text == "Select a flow"
+            assert (
+                app.screen.query_one("#flow-content", TextArea).text == "Select a flow"
+            )
             assert not app.screen.check_action("copy_yaml", ())
             assert not app.screen.check_action("delete_yaml", ())
 
@@ -765,9 +893,7 @@ def test_tui_deletes_invalid_yaml_from_highlight_without_opening_it(
     assert project.closed
 
 
-def test_tui_copies_and_runs_highlighted_job_without_opening_it(
-    monkeypatch, tmp_path
-):
+def test_tui_copies_and_runs_highlighted_job_without_opening_it(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
     project.table = pd.DataFrame(
         [
@@ -1184,9 +1310,8 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
     assert ".launcher-layout { height: 1fr; align-horizontal: center; }" in (
         ResisticsTui.CSS
     )
-    assert (
-        "#data-metadata, #flow-content, #parameter-content, #criteria-content,"
-        in (ResisticsTui.CSS)
+    assert "#data-metadata, #flow-content, #parameter-content, #criteria-content," in (
+        ResisticsTui.CSS
     )
     assert "Input:focus { background: #202020; border: tall #0a009f; }" in (
         ResisticsTui.CSS

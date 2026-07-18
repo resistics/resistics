@@ -138,8 +138,14 @@ def process_path(process_class: type[ResisticsProcess]) -> str:
     return f"{process_class.__module__}.{process_class.__name__}"
 
 
-def resolve_process_class(path: str) -> type[ResisticsProcess]:
+def resolve_process_class(
+    path: str, project_path: Optional[Path] = None
+) -> type[ResisticsProcess]:
     """Resolve and validate a process class named directly by a flow node."""
+    if project_path is not None:
+        project_import_path = str(Path(project_path))
+        if project_import_path not in sys.path:
+            sys.path.insert(0, project_import_path)
     module_name, separator, class_name = path.rpartition(".")
     if not separator:
         raise ValueError(f"Process must be a qualified class path: {path!r}")
@@ -156,9 +162,11 @@ def resolve_process_class(path: str) -> type[ResisticsProcess]:
     return process_class
 
 
-def process_descriptor(path: str) -> ProcessDescriptor:
+def process_descriptor(
+    path: str, project_path: Optional[Path] = None
+) -> ProcessDescriptor:
     """Build a UI-safe descriptor from a directly resolved process path."""
-    process_class = resolve_process_class(path)
+    process_class = resolve_process_class(path, project_path)
     try:
         parameter_schema = process_class.model_json_schema()
     except Exception:

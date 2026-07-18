@@ -131,6 +131,7 @@ class ResolvedJob(BaseModel):
     criteria_path: Optional[Path] = None
     criteria: Optional[GatherCriteria] = None
     stages: List[FlowStage]
+    batches: List[StationRateBatch]
     output_path: Path
 
 
@@ -245,6 +246,7 @@ class ProjectJobs:
                 output_label=definition.output_label,
             )
             stages = self.selected_stages(definition, flow)
+            batches = self.plan_batches(definition)
             output_path = self._output_path(processing_job)
             resolved = ResolvedJob(
                 path=job_path,
@@ -255,6 +257,7 @@ class ProjectJobs:
                 criteria_path=criteria_path,
                 criteria=criteria,
                 stages=stages,
+                batches=batches,
                 output_path=output_path,
             )
         except Exception as exc:
@@ -273,16 +276,10 @@ class ProjectJobs:
         ).validate(processing_job, stages=resolved.stages)
         errors.extend(flow_validation.errors)
         warnings.extend(flow_validation.warnings)
-        batches = self.plan_batches(definition)
         if not batches:
             errors.append("Job scope does not select any project station/rate batches")
         if criteria is not None:
             errors.extend(self._criteria_errors(criteria))
-        if not definition.overwrite and self._writes_results(resolved.stages):
-            for batch in batches:
-                path = self.batch_output_path(batch, definition.output_label)
-                if path.exists():
-                    errors.append(f"Output already exists: {path}")
 
         return JobValidation(
             ok=not errors,
@@ -429,17 +426,6 @@ class ProjectJobs:
         return get_results_path(
             self.project.project_path, batch.survey, batch.station, output_label
         ) / fs_to_string(batch.sample_rate)
-
-    @staticmethod
-    def _writes_results(stages: List[FlowStage]) -> bool:
-        """Whether a flow has a process that creates a staged final result."""
-        return any(
-            "staging_output_path"
-            in FlowValidator._process(node.process).runtime_requirements
-            for stage in stages
-            for node in stage.nodes
-        )
-
 
 class JobRunner:
     """Execute one validated project job and emit structured progress."""

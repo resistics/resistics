@@ -125,7 +125,8 @@ def test_empty_scope_batches_every_station_rate(tmp_path):
     validation = ProjectJobs(project).validate(path)
 
     assert validation.ok, validation.errors
-    batches = ProjectJobs(project).plan_batches(validation.resolved_job.definition)
+    assert validation.resolved_job is not None
+    batches = validation.resolved_job.batches
     assert [(item.station, item.sample_rate, item.run_paths) for item in batches] == [
         ("a", 128.0, ["survey/a/run1", "survey/a/run2"]),
         ("b", 4.0, ["survey/b/run3"]),
@@ -356,6 +357,8 @@ def test_runner_runs_all_run_batches_before_station_rate_results(tmp_path):
     assert (
         project.project_path / "data/survey/b/results/default/4_000000/result.txt"
     ).is_file()
+    revalidation = ProjectJobs(project).validate(path)
+    assert revalidation.ok, revalidation.errors
     run_events = [event for event in progress if event.message == "Started: runs"]
     assert [
         (event.survey, event.station, event.run, event.sample_rate)

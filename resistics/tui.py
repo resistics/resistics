@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import sys
 from tempfile import NamedTemporaryFile
+from time import monotonic
 from typing import Dict, Optional, Sequence
 import warnings
 from dataclasses import dataclass
@@ -62,6 +63,7 @@ from resistics.project import (
     load,
     open_mth5,
 )
+from resistics.plot import plot_flow, plot_job
 from resistics.sampling import to_datetime
 from resistics.spectra import SpectraDataReader
 from resistics.templates import (
@@ -249,7 +251,9 @@ class CreateJobScreen(ModalScreen[Optional[JobDefinition]]):
             )
             yield Static("", id="create-job-status")
             with Horizontal(id="create-job-actions"):
-                yield Button("Cancel", id="cancel-job-template", classes="dialog-action")
+                yield Button(
+                    "Cancel", id="cancel-job-template", classes="dialog-action"
+                )
                 yield Button(
                     "Create job",
                     id="create-job-template",
@@ -391,7 +395,9 @@ class CopyYamlFileScreen(ModalScreen[Optional[str]]):
     @on(Button.Pressed, "#confirm-copy-yaml")
     def copy(self) -> None:
         try:
-            self.dismiss(_validate_yaml_file_stem(self.query_one("#copy-yaml-name", Input).value))
+            self.dismiss(
+                _validate_yaml_file_stem(self.query_one("#copy-yaml-name", Input).value)
+            )
         except ValueError as exc:
             self.query_one("#copy-yaml-status", Static).update(str(exc))
 
@@ -440,9 +446,7 @@ class DeleteYamlFileScreen(ModalScreen[bool]):
                 f"Delete [bold]{self.source.name}[/bold]?\n\nThis cannot be undone."
             )
             with Horizontal(id="delete-yaml-actions"):
-                yield Button(
-                    "Cancel", id="cancel-delete-yaml", classes="dialog-action"
-                )
+                yield Button("Cancel", id="cancel-delete-yaml", classes="dialog-action")
                 yield Button(
                     "Delete file",
                     id="confirm-delete-yaml",
@@ -1227,8 +1231,7 @@ class ProjectExplorerScreen(Screen[None]):
         run_paths = {
             run_path
             for item in items
-            if (run_path := ProjectExplorerScreen._mth5_time_run_path(item))
-            is not None
+            if (run_path := ProjectExplorerScreen._mth5_time_run_path(item)) is not None
         }
         # Retain a useful count for non-standard MTH5 layouts that do not
         # encode the survey/station/run hierarchy in their item paths.
@@ -1290,7 +1293,9 @@ class ProjectExplorerScreen(Screen[None]):
         while current is not None:
             visible.add(current.path)
             current = (
-                None if current.parent_path is None else by_path.get(current.parent_path)
+                None
+                if current.parent_path is None
+                else by_path.get(current.parent_path)
             )
 
     def _project_data_path(self, path: str) -> Optional[Path]:
@@ -1398,9 +1403,7 @@ class ProjectExplorerScreen(Screen[None]):
         if item.source != "project":
             return None
         if item.data_type == "spectra":
-            artifact = self._find_project_artifact(
-                item, ("metadata.json", "data.npz")
-            )
+            artifact = self._find_project_artifact(item, ("metadata.json", "data.npz"))
             return None if artifact is None else ("spectra", artifact)
         if item.data_type == "transfer_function":
             artifact = self._find_project_artifact(item, ("solution.json",))
@@ -1414,6 +1417,32 @@ class ProjectExplorerScreen(Screen[None]):
                 return None
             return ("transfer_function", solution_path)
         return None
+
+    def _flow_plot_target(self) -> Optional[tuple[str, object]]:
+        """Return the focused or opened valid flow YAML as a plot target."""
+        highlighted = self._highlighted_yaml_file()
+        path: Optional[Path]
+        if highlighted is not None and highlighted[1] == "#flow-content":
+            path = highlighted[0]
+        else:
+            path = self.selected_flow_path
+        if path is None:
+            return None
+        try:
+            model_from_yaml_file(FlowDefinition, path)
+        except Exception:
+            return None
+        return ("flow", path)
+
+    def _job_plot_target(self) -> Optional[tuple[str, object]]:
+        """Return the focused or opened valid job YAML as a plot target."""
+        path = self._highlighted_job_path() or self.selected_job_path
+        if path is None:
+            return None
+        validation = self.project_jobs.validate(path)
+        if not validation.ok or validation.resolved_job is None:
+            return None
+        return ("job", path)
 
     def _has_project_timeline(self) -> bool:
         """Return whether there are any project runs to display."""
@@ -1436,17 +1465,46 @@ class ProjectExplorerScreen(Screen[None]):
         self.notify("Opening plot")
         self._open_plot(target)
 
+    def _start_selected_flow_plot(self) -> None:
+        target = self._flow_plot_target()
+        if target is None:
+            return
+        self.notify("Opening flow plot")
+        self._open_plot(target)
+
+    def _start_selected_job_plot(self) -> None:
+        target = self._job_plot_target()
+        if target is None:
+            return
+        self.notify("Opening job plot")
+        self._open_plot(target)
+
     @work(thread=True, exclusive=True, group="plotting")
     def _open_plot(self, target: tuple[str, object]) -> None:
-        """Load the selected data and hand its existing Plotly figure to Plotly."""
+        """Open a selected Plotly figure in the browser."""
         plot_project = None
+        target_type = target[0]
+        plot_name = {
+            "flow": "flow plot",
+            "job": "job plot",
+            "project": "project timeline",
+        }.get(target_type, "plot")
+        started = monotonic()
         try:
+            self.app.call_from_thread(self.notify, f"Building {plot_name}")
             plot_project = load(self.project.project_path)
             figure = self._build_plot_figure(plot_project, target)
+            build_seconds = monotonic() - started
+            self.app.call_from_thread(
+                self.notify,
+                f"{plot_name.capitalize()} built in {build_seconds:.1f}s; "
+                "opening browser",
+            )
             pio.show(figure)
+            self.app.call_from_thread(self.notify, f"{plot_name.capitalize()} opened")
         except Exception as exc:
             self.app.call_from_thread(
-                self.notify, f"Unable to plot data: {exc}", severity="error"
+                self.notify, f"Unable to open {plot_name}: {exc}", severity="error"
             )
         finally:
             if plot_project is not None and plot_project is not self.project:
@@ -1454,8 +1512,20 @@ class ProjectExplorerScreen(Screen[None]):
 
     @staticmethod
     def _build_plot_figure(project: Project, target: tuple[str, object]):
-        """Build a Plotly figure through the data type's existing plot API."""
+        """Build a selected Plotly figure through its existing plot API."""
         target_type, payload = target
+        if target_type == "flow":
+            if not isinstance(payload, Path):
+                raise ValueError("A flow plot requires a YAML path")
+            flow = model_from_yaml_file(FlowDefinition, payload)
+            return plot_flow(flow, project.project_path)
+        if target_type == "job":
+            if not isinstance(payload, Path):
+                raise ValueError("A job plot requires a YAML path")
+            validation = ProjectJobs(project).validate(payload)
+            if not validation.ok or validation.resolved_job is None:
+                raise ValueError("; ".join(validation.errors) or "Job is invalid")
+            return plot_job(validation.resolved_job, project.project_path)
         if target_type == "project":
             return project.plot()
         if target_type == "time":
@@ -1722,9 +1792,7 @@ class ProjectExplorerScreen(Screen[None]):
         self.refresh_bindings()
 
     @on(DataTable.RowHighlighted)
-    def refresh_yaml_highlight_bindings(
-        self, event: DataTable.RowHighlighted
-    ) -> None:
+    def refresh_yaml_highlight_bindings(self, event: DataTable.RowHighlighted) -> None:
         """Refresh YAML actions when a resource-table cursor moves."""
         if event.data_table.id in {
             "flow-table",
@@ -1921,9 +1989,7 @@ class ProjectExplorerScreen(Screen[None]):
             lambda confirmed: self._yaml_file_deleted(source, editor_id, confirmed),
         )
 
-    def _yaml_file_deleted(
-        self, source: Path, editor_id: str, confirmed: bool
-    ) -> None:
+    def _yaml_file_deleted(self, source: Path, editor_id: str, confirmed: bool) -> None:
         if not confirmed:
             return
         try:
@@ -1950,7 +2016,9 @@ class ProjectExplorerScreen(Screen[None]):
             self.notify(f"Unable to inspect project data: {exc}", severity="error")
             return
         if not labels and not preview.paths:
-            self.notify("There is no derived Project data to delete", severity="warning")
+            self.notify(
+                "There is no derived Project data to delete", severity="warning"
+            )
             return
         self.app.push_screen(
             DeleteProjectDataScreen(labels), self._project_data_deletion_selected
@@ -1977,7 +2045,9 @@ class ProjectExplorerScreen(Screen[None]):
             return
         self.app.push_screen(
             ConfirmProjectDataDeletionScreen(deletion),
-            lambda confirmed: self._project_data_deletion_confirmed(deletion, confirmed),
+            lambda confirmed: self._project_data_deletion_confirmed(
+                deletion, confirmed
+            ),
         )
 
     def _project_data_deletion_confirmed(
@@ -2336,16 +2406,24 @@ class ProjectExplorerScreen(Screen[None]):
                 return self._has_project_timeline()
             if active == "data":
                 return self._data_plot_target() is not None
+            if active == "flows":
+                return not self.editing_yaml and self._flow_plot_target() is not None
+            if active == "jobs":
+                return not self.editing_yaml and self._job_plot_target() is not None
             return False
         return super().check_action(action, parameters)
 
     def action_plot(self) -> None:
-        """Plot the project timeline or the highlighted supported data item."""
+        """Plot the project, highlighted data, selected flow, or selected job."""
         active = self.query_one(TabbedContent).active
         if active == "project":
             self._start_project_plot()
         elif active == "data":
             self._start_selected_data_plot()
+        elif active == "flows":
+            self._start_selected_flow_plot()
+        elif active == "jobs":
+            self._start_selected_job_plot()
 
     def action_expand_data_node(self) -> None:
         """Expand the highlighted Data-tree branch and all of its descendants."""

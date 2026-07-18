@@ -3,7 +3,7 @@ name = "resistics"
 version = "1.0.0-alpha.3"
 description = "Python package for processing magnetotelluric data"
 authors = [{ name = "Neeraj Shah", email = "resistics@outlook.com" }]
-requires-python = ">=3.9,<=3.14"
+requires-python = ">=3.11,<=3.14"
 readme = "README.md"
 license = "MIT"
 maintainers = [{ name = "Neeraj Shah", email = "resistics@outlook.com" }]
@@ -27,7 +27,8 @@ dependencies = [
     "pandas>=1.2.3",
     "lttbc>=0.2.1",
     "attotime==0.2.3",
-    "plotly>=5.9.0",
+    "plotly>=5.11.0",
+    "fast-sugiyama==0.5.3",
     "loguru>=0.5.3",
     "scikit-learn>=1.1.1",
     "pydantic>=2.0",
