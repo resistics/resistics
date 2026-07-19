@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: initialized; implementation not started
+Status: in progress; Phase 0 verified and awaiting a durable commit
 Created: 2026-07-19
 Last updated: 2026-07-19
 Working branch: `mth5`
@@ -26,25 +26,28 @@ the two documents do not drift independently.
 ## Current State
 
 - Programme state: `in_progress`
-- Active phase: Phase 0 - Restore and Measure the Baseline
-- Active checkpoint: `0.2` - Add durable quality and performance measurements
-- Checkpoint state: `not_started`
-- Last completed checkpoint: none
-- Last verified checkpoint: `0.1` in `S001`; changes are uncommitted
-- Last session: `S001`
-- Last verified commit: none; `c345ae6` is only the starting repository HEAD
-- Current blocker: none
-- Next exact action: begin Checkpoint 0.2 by defining repeatable commands for
-  coverage, source/test size, public docstrings, examples/plots, cold TUI import,
-  and representative TUI action-state I/O before adding regression gates.
+- Active phase: Phase 1 - Remove Poetry and Modernise Packaging
+- Active checkpoint: `1.1` (`regressioninc`) - Convert package metadata
+- Checkpoint state: `in_progress`
+- Last completed checkpoint: `0.1` at `ebede10`
+- Last verified checkpoint: `0.2` in `S002`
+- Last session: `S002`
+- Last verified commit: `ebede10`
+- Current blocker: sibling-repository writes require workspace approval.
+- Next exact action: convert `../regressioninc/pyproject.toml` to PEP 621 and
+  Hatchling while preserving the user's dirty `regressioninc/base.py`, then
+  generate and verify `../regressioninc/uv.lock`.
 
 Current worktree caveat:
 
-- `.agents/plans/codebase-hardening.md` contains intentional planning edits.
+- `.agents/plans/code-hardening-implementation.md`,
+  `.agents/plans/codebase-hardening.md`, `pyproject.toml`, `tests/test_tui.py`,
+  and `scripts/hardening_report.py` contain intentional Checkpoint 0.2 changes.
 - `.github/workflows/commit_flow.yml` and
   `.github/workflows/publish_flow.yml` contain pre-existing user changes.
-- `resistics/templates.py` and `resistics/transfunc.py` contain the verified
-  Checkpoint 0.1 fixes from S001.
+- `../regressioninc/regressioninc/base.py` contains a pre-existing user change
+  for Pydantic 2 and must not be reverted or absorbed silently into packaging
+  work.
 - These files must not be reverted or overwritten while establishing the
   baseline.
 
@@ -178,10 +181,10 @@ or short command/result reference. Detailed output belongs in the session log or
 
 | ID | Repository | State | Completion evidence or unblock condition |
 | --- | --- | --- | --- |
-| 0.1 | resistics | `verified` | S001: 372 tests pass; F821 removed |
-| 0.2 | resistics | `not_started` | Depends on 0.1 |
-| Gate 0 | resistics | `not_started` | Depends on 0.1-0.2 |
-| 1.1 | regressioninc | `not_started` | Separate repository/worktree |
+| 0.1 | resistics | `complete` | `ebede10`; S001 verification |
+| 0.2 | resistics | `verified` | S002; `.artifacts/hardening/` evidence |
+| Gate 0 | resistics | `verified` | S002; 373 tests pass; repeatable report |
+| 1.1 | regressioninc | `in_progress` | S003; packaging files only |
 | 1.2 | regressioninc | `not_started` | Depends on 1.1 |
 | 1.3 | regressioninc | `not_started` | Depends on 1.2; release is manual |
 | 1.4 | resistics | `not_started` | Needs installable regressioninc |
@@ -352,20 +355,22 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 372 passed | 372 passed | S001 |
-| Branch coverage | approximately 76% | pending | pending | Phase 0 |
-| Production Python | approximately 21,011 lines | pending | pending | Phase 0 |
-| Tests | approximately 5,941 lines | pending | pending | Phase 0 |
-| `resistics/tui.py` | 2,673 lines | pending | pending | Phase 0 |
-| `resistics/plot.py` | 1,200 lines | pending | pending | Phase 0 |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 373 passed | S002 |
+| Branch coverage | approximately 76% | 75.96% | 75.96% | S002; coverage XML |
+| Production Python | approximately 21,011 lines | 21,015 | 21,015 | S002 report |
+| Tests | approximately 5,941 lines | 6,051 | 6,051 | S002 report |
+| `resistics/tui.py` | 2,673 lines | 2,673 | 2,673 | S002 report |
+| `resistics/plot.py` | 1,200 lines | 1,200 | 1,200 | S002 report |
 | Flake8 | approximately 40 findings | 43 findings | 43 findings | S001 |
+| Legacy complexity | not recorded | 17 CCR001; 5 C901; 4 ECE001 | same | S002 |
 | Black format | not recorded | 26 files differ | 26 files differ | S001 |
-| mypy | 210 errors across 17 files | pending | pending | Phase 0 |
-| TUI cold import | approximately 2.18 seconds | pending | pending | Phase 0 |
-| Public docstring coverage | not measured | pending | pending | Phase 0 |
-| Executable docstring examples | not measured | pending | pending | Phase 0 |
-| Executable docstring plots | not measured | pending | pending | Phase 0 |
-| Local `.venv` size | approximately 897 MB | pending | pending | Phase 0 |
+| mypy | 210 errors across 17 files | 209 across 17 files | same | S002 |
+| TUI cold import | approximately 2.18 seconds | 2.2659 s median | same | S002 report |
+| Cached TUI action checks | not measured | 1,200 in 0.002322 s; zero instrumented I/O | same | S002 XML |
+| Public docstring coverage | not measured | 80.2%; 566/706 | same | S002 report |
+| Executable docstring examples | not measured | 778 prompts | same | S002 report |
+| Executable docstring plots | not measured | 16 directives | same | S002 report |
+| Local `.venv` size | approximately 897 MB | 910 MB | 910 MB | S002 |
 
 For timing measurements, record the machine/runtime context and multiple runs.
 Do not compare one cold run with one warm run or turn machine-specific timings
@@ -393,6 +398,13 @@ old id when evidence changes the direction.
   not production documentation.
 - `D009` (2026-07-19): Add `py.typed` only after public annotations are
   supportable; do not advertise PEP 561 support prematurely.
+- `D010` (2026-07-19): Phase 0 protects the TUI action predicates already
+  backed by in-memory state and records the existing plot/deletion I/O paths as
+  explicit debt. Phase 4.1 will refactor those paths and make zero I/O a strict
+  gate; Phase 0 must not claim a property the current production code lacks.
+- `D011` (2026-07-19): Set the initial coverage gate to 75.95% with two-decimal
+  reporting. The measured 75.96% appears as 76% at whole-number precision, but
+  a literal 76% threshold rejects the confirmed green baseline.
 
 ## Blocker Log
 
@@ -511,3 +523,66 @@ correct a factual error; note the correction explicitly.
 - Exact next action: start S002 by measuring Checkpoint 0.2 coverage, code size,
   public docstrings, executable examples/plots, TUI import time, and action-state
   I/O behaviour before adding durable gates.
+
+### S002 - 2026-07-19 - Establish durable quality and performance baselines
+
+- Checkpoint state at start: `0.2` was `in_progress`; the user had recorded
+  Checkpoint 0.1 at `ebede10` after S001.
+- Starting HEAD and worktree: `ebede10` on `mth5`; this implementation record
+  and the two GitHub workflow files were dirty. The workflow changes remain
+  user-owned and untouched.
+- Session objective: measure the complete Phase 0 baseline, add repeatable
+  reports and coverage enforcement, and protect frequently evaluated cached
+  TUI action predicates without mixing in a production refactor.
+- Work completed: added a 75.95% branch-coverage floor with two-decimal
+  reporting; moved generated coverage output below `.artifacts/hardening/`;
+  added a standard-library baseline reporter for code size, public/private
+  docstring inventory, embedded examples/plots, environment context, and
+  fresh-process TUI imports; and added an instrumented benchmark covering 1,200
+  cached Footer/action checks.
+- Files changed: `.agents/plans/codebase-hardening.md`,
+  `.agents/plans/code-hardening-implementation.md`, `pyproject.toml`,
+  `scripts/hardening_report.py`, and `tests/test_tui.py`.
+- Decisions added or superseded: D010 records the phased TUI no-I/O gate and
+  D011 records the exact coverage threshold. The governing Checkpoint 0.2 text
+  was reconciled with the measured code instead of claiming all existing
+  action predicates were already I/O-free.
+- Verification commands and results:
+  - `.venv/bin/pytest -q tests/test_tui.py -k cached_action_checks`: one passed;
+    1,200 checks completed in 0.002322 seconds with zero calls through the
+    instrumented filesystem, project, YAML, JSON, MTH5-listing, or
+    job-validation seams.
+  - `.venv/bin/pytest -q --cov=resistics --cov-branch --cov-report=term
+    --cov-report=html --cov-report=xml`: 373 passed in 34.31 seconds; measured
+    branch coverage 75.96% and the 75.95% floor passed.
+  - Final `.venv/bin/pytest -q`: 373 passed in 20.73 seconds after the
+    filesystem instrumentation was added to the focused TUI benchmark.
+  - `.venv/bin/black --check scripts/hardening_report.py` and
+    `.venv/bin/flake8 scripts/hardening_report.py --statistics`: passed with no
+    findings.
+  - `.venv/bin/flake8 resistics tests --statistics`: reproduced 43 legacy
+    findings, including 17 CCR001, 5 C901, and 4 ECE001 complexity findings.
+  - `.venv/bin/mypy resistics`: reproduced 209 errors across 17 of 21 source
+    files with mypy 2.1.0.
+  - `git diff --check`: passed at the final handoff.
+- Measurements/artifacts: `.artifacts/hardening/baseline/codebase.json` records
+  21,015 production lines, 6,051 test lines, 80.2% documented public objects
+  (566/706), 140 missing public docstrings, 19 substantial undocumented private
+  operations, 778 doctest prompts, 16 plot directives, and five TUI import
+  samples on CPython 3.13.5/WSL2. The final cold-import range was
+  2.2158-2.3125 seconds with a 2.2659-second median. Coverage HTML/XML and the
+  TUI timing property are stored under `.artifacts/hardening/coverage/` and
+  `.artifacts/hardening/performance/`. The local `.venv` is 910 MB.
+- Known failures or incomplete work: plot action predicates still call project
+  summary/data lookup, MTH5 run listing, flow YAML loading, and job validation;
+  the data-deletion predicate requests a filesystem-backed deletion preview.
+  D010 assigns these production changes to Phase 4.1, where the existing
+  benchmark becomes a strict all-action zero-I/O gate. Legacy lint and typing
+  debt remains assigned to Phases 2 and 3.
+- Checkpoint state at end: `0.2` and Gate 0 are `verified`; no production code
+  was changed.
+- Commit readiness or commit id: the scoped Checkpoint 0.2 changes are ready
+  for a user-approved commit; no commit was requested or created.
+- Exact next action: run `git status --short`, review the five scoped files
+  (including the new reporter), and record Checkpoint 0.2 durably before
+  locating the sibling `regressioninc` repository for Checkpoint 1.1.

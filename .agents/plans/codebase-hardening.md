@@ -256,10 +256,13 @@ Suggested commit: `fix: restore green test and lint baseline`
 
 ### Checkpoint 0.2: Add durable quality and performance measurements
 
-- Set coverage failure at the confirmed baseline, initially 76%, so coverage
-  cannot silently regress.
-- Add focused tests proving frequently called TUI action-state checks do not
-  perform project, filesystem, MTH5, YAML, or JSON I/O.
+- Set coverage failure at the confirmed baseline, initially 75.95% (76% when
+  rounded to a whole percentage), so coverage cannot silently regress.
+- Add focused instrumentation and tests identifying which frequently called
+  TUI action-state checks perform project, filesystem, MTH5, YAML, or JSON I/O.
+  Protect action paths already backed by in-memory state at this checkpoint,
+  record the remaining I/O branches as Phase 4.1 debt, and convert the
+  inventory into a strict zero-I/O regression gate during that refactor.
 - Add a repeatable cold-import timing command and representative TUI response
   benchmark or profiling fixture. Keep timing assertions tolerant enough for CI
   variance; use them primarily for before/after evidence.
