@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Phase 0 verified and awaiting a durable commit
+Status: in progress; Checkpoint 1.1 verified and awaiting a durable commit
 Created: 2026-07-19
 Last updated: 2026-07-19
 Working branch: `mth5`
@@ -28,28 +28,33 @@ the two documents do not drift independently.
 - Programme state: `in_progress`
 - Active phase: Phase 1 - Remove Poetry and Modernise Packaging
 - Active checkpoint: `1.1` (`regressioninc`) - Convert package metadata
-- Checkpoint state: `in_progress`
-- Last completed checkpoint: `0.1` at `ebede10`
-- Last verified checkpoint: `0.2` in `S002`
-- Last session: `S002`
-- Last verified commit: `ebede10`
-- Current blocker: sibling-repository writes require workspace approval.
-- Next exact action: convert `../regressioninc/pyproject.toml` to PEP 621 and
-  Hatchling while preserving the user's dirty `regressioninc/base.py`, then
-  generate and verify `../regressioninc/uv.lock`.
+- Checkpoint state: `verified`
+- Last completed checkpoint: `0.2` at `d9911e3`
+- Last verified checkpoint: `1.1` in `S003`
+- Last session: `S003`
+- Last verified commit: resistics `d9911e3`; regressioninc `9eb11a4` is the
+  base of uncommitted Checkpoint 1.1 work
+- Current blocker: none
+- Next exact action: review and durably record the three scoped regressioninc
+  packaging changes, then begin Checkpoint 1.2 by replacing Poetry automation
+  and repository references without including the user's dirty `base.py`.
 
 Current worktree caveat:
 
-- `.agents/plans/code-hardening-implementation.md`,
-  `.agents/plans/codebase-hardening.md`, `pyproject.toml`, `tests/test_tui.py`,
-  and `scripts/hardening_report.py` contain intentional Checkpoint 0.2 changes.
+- `.agents/plans/code-hardening-implementation.md` contains the current S003
+  tracking changes. Checkpoint 0.2 is recorded through resistics `d9911e3`.
 - `.github/workflows/commit_flow.yml` and
   `.github/workflows/publish_flow.yml` contain pre-existing user changes.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
   for Pydantic 2 and must not be reverted or absorbed silently into packaging
   work.
-- These files must not be reverted or overwritten while establishing the
-  baseline.
+- `../regressioninc/pyproject.toml`, deletion of
+  `../regressioninc/poetry.lock`, and `../regressioninc/uv.lock` are the scoped
+  Checkpoint 1.1 changes.
+- Resistics `uv lock --check` is expected to report stale while its lock still
+  embeds metadata from the edited local regressioninc source. Do not rewrite
+  that lock piecemeal; Checkpoint 1.4 owns removal of the local-source boundary.
+- These files must not be reverted or overwritten during hardening work.
 
 ## Authority and Boundaries
 
@@ -182,9 +187,9 @@ or short command/result reference. Detailed output belongs in the session log or
 | ID | Repository | State | Completion evidence or unblock condition |
 | --- | --- | --- | --- |
 | 0.1 | resistics | `complete` | `ebede10`; S001 verification |
-| 0.2 | resistics | `verified` | S002; `.artifacts/hardening/` evidence |
-| Gate 0 | resistics | `verified` | S002; 373 tests pass; repeatable report |
-| 1.1 | regressioninc | `in_progress` | S003; packaging files only |
+| 0.2 | resistics | `complete` | `b350893`-`d9911e3`; S002 evidence |
+| Gate 0 | resistics | `complete` | `d9911e3`; 373 tests; repeatable report |
+| 1.1 | regressioninc | `verified` | S003; clean sync/build/wheel tests |
 | 1.2 | regressioninc | `not_started` | Depends on 1.1 |
 | 1.3 | regressioninc | `not_started` | Depends on 1.2; release is manual |
 | 1.4 | resistics | `not_started` | Needs installable regressioninc |
@@ -405,6 +410,13 @@ old id when evidence changes the direction.
 - `D011` (2026-07-19): Set the initial coverage gate to 75.95% with two-decimal
   reporting. The measured 75.96% appears as 76% at whole-number precision, but
   a literal 76% threshold rejects the confirmed green baseline.
+- `D012` (2026-07-19): Set regressioninc's package contract to Python
+  `>=3.11,<3.15` and Pydantic `>=2.0`, matching resistics' intended Python
+  matrix and the existing Pydantic 2 migration. Cross-platform matrix evidence
+  remains part of Checkpoint 1.6 and Phase 6.
+- `D013` (2026-07-19): Preserve regressioninc's declared runtime dependency set
+  during the build-backend migration. Direct-dependency rationalisation and
+  credible lower bounds belong to Phase 6, not the Poetry-removal checkpoint.
 
 ## Blocker Log
 
@@ -586,3 +598,64 @@ correct a factual error; note the correction explicitly.
 - Exact next action: run `git status --short`, review the five scoped files
   (including the new reporter), and record Checkpoint 0.2 durably before
   locating the sibling `regressioninc` repository for Checkpoint 1.1.
+
+### S003 - 2026-07-19 - Convert regressioninc metadata to PEP 621 and uv
+
+- Checkpoint state at start: `1.1` was `not_started`; Phase 0 and Checkpoint
+  0.2 were verified but remained uncommitted in resistics.
+- Starting HEAD and worktree: regressioninc `9eb11a4` on `main` with a
+  pre-existing user change in `regressioninc/base.py`; resistics remained at
+  `ebede10` on `mth5` with the documented Checkpoint 0.2 and workflow changes.
+- Session objective: replace regressioninc's Poetry package metadata and build
+  backend, establish a uv lock, and prove clean source and wheel workflows
+  without modifying or absorbing the user's source change.
+- Work completed: converted `[tool.poetry]` metadata to PEP 621 `[project]`;
+  moved development, documentation, and test requirements into uv dependency
+  groups; selected Hatchling; aligned the package with Python `>=3.11,<3.15`
+  and Pydantic 2; generated `uv.lock`; and removed the obsolete `poetry.lock`.
+- Files changed by this checkpoint: `../regressioninc/pyproject.toml`,
+  `../regressioninc/uv.lock`, and deletion of `../regressioninc/poetry.lock`.
+  The dirty `../regressioninc/regressioninc/base.py` was inspected but not
+  edited.
+- Decisions added or superseded: D012 records the Python/Pydantic contract;
+  D013 defers dependency rationalisation to its evidence-based phase.
+- Verification commands and results:
+  - Baseline `../resistics/.venv/bin/pytest -q -p no:cacheprovider`: 28 passed
+    in 2.20 seconds before packaging changes.
+  - `uv lock` and final `uv lock --check`: resolved 105 packages for the full
+    Python 3.11-3.14 contract; no Poetry package or backend occurs in the lock.
+  - Clean `UV_PROJECT_ENVIRONMENT=<temporary> uv sync --frozen`: installed 98
+    default-group packages and built the editable project successfully.
+  - Pytest from the clean uv environment: 28 passed in 3.17 seconds.
+  - `uv build --no-sources`: built
+    `regressioninc-0.1.0a0.tar.gz` and
+    `regressioninc-0.1.0a0-py3-none-any.whl`; Hatchling built the wheel from the
+    source distribution.
+  - The rebuilt wheel was installed into a second temporary environment. Its
+    import resolved from `site-packages`, reported version `0.1.0a0`, and its
+    unit tests plus installed-package doctests passed: 28 in 3.31 seconds.
+  - Final `git diff --check`: passed in regressioninc.
+- Measurements/artifacts: `uv.lock` contains 2,356 lines. The wheel is 10,715
+  bytes and contains only the package, dist-info metadata, and MIT license. The
+  150,616-byte sdist contains `uv.lock` and no `poetry.lock`. Core metadata is
+  version 2.4 with the expected Python range, MIT license expression, and seven
+  preserved runtime requirements.
+- Known failures or incomplete work: Poetry commands remain in regressioninc's
+  GitHub workflow and Read the Docs configuration, while legacy Poetry-era
+  tools remain in pre-commit and dependency groups. These are deliberately
+  assigned to Checkpoints 1.2 and 2. The built worktree also contains the
+  pre-existing uncommitted Pydantic source change; it must be reviewed and
+  committed independently from the three packaging changes. Resistics' own
+  `uv lock --check` now reports stale because its editable sibling source has
+  new metadata; Checkpoint 1.4 owns that expected intermediate coupling, and
+  no resistics lock update was made in S003.
+- Checkpoint state at end: `1.1` is `verified`; Gate 1 remains open.
+- During-session repository update: the owner durably recorded resistics
+  Checkpoint 0.2 in four commits, `b350893`, `19fdba2`, `5f55c6b`, and
+  `d9911e3`. Current State and the tracker now mark Checkpoint 0.2 and Gate 0
+  complete at `d9911e3`; this does not alter the historical S003 starting HEAD.
+- Commit readiness or commit id: the three scoped packaging changes are ready
+  for a regressioninc commit; no commit was requested or created.
+- Exact next action: run `git -C ../regressioninc status --short`, review only
+  `pyproject.toml`, `uv.lock`, and the `poetry.lock` deletion, then durably
+  record Checkpoint 1.1 before starting Checkpoint 1.2 automation cleanup.
