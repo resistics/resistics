@@ -105,13 +105,15 @@ branch = true
 source = ["resistics"]
 
 [tool.coverage.report]
+fail_under = 75.95
+precision = 2
 show_missing = false
 
 [tool.coverage.html]
-directory = "artifacts/coverage_html"
+directory = ".artifacts/hardening/coverage/html"
 
 [tool.coverage.xml]
-output = "coverage.xml"
+output = ".artifacts/hardening/coverage/coverage.xml"
 
 [tool.black]
 line-length = 88
