@@ -58,11 +58,23 @@ class FlowStage(BaseModel):
         return value
 
     def node_map(self) -> dict[str, FlowNode]:
+        """Return this stage's nodes keyed by their unique identifiers."""
         return {node.id: node for node in self.nodes}
 
 
 class FlowDefinition(BaseModel):
-    """Serializable staged processing definition."""
+    """Serializable staged processing definition.
+
+    Examples
+    --------
+    Build a one-stage flow from a concrete process node.
+
+    >>> node = FlowNode(id="remove_mean", process="resistics.time.RemoveMean")
+    >>> stage = FlowStage(stage_id="runs", scope="run", nodes=[node])
+    >>> flow = FlowDefinition(id="example", name="Example", stages=[stage])
+    >>> flow.flow_stages()[0].nodes[0].id
+    'remove_mean'
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -84,7 +96,17 @@ class FlowDefinition(BaseModel):
 
 
 class ParameterSet(BaseModel):
-    """Process-class configuration shared by one or more flows."""
+    """Process-class configuration shared by one or more flows.
+
+    Examples
+    --------
+    Parameters are keyed by the same qualified class paths used by flow nodes.
+
+    >>> path = "resistics.time.RemoveMean"
+    >>> parameters = ParameterSet(name="example", processes={path: {}})
+    >>> parameters.for_process(path)
+    {}
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -93,6 +115,7 @@ class ParameterSet(BaseModel):
     processes: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     def for_process(self, process: str) -> dict[str, Any]:
+        """Return an independent parameter mapping for one process path."""
         return dict(self.processes.get(process, {}))
 
 
@@ -227,6 +250,8 @@ class ProcessCatalog:
 
 
 class FlowValidationResult(BaseModel):
+    """Validation outcome containing all discovered errors and warnings."""
+
     ok: bool
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
@@ -247,6 +272,20 @@ class FlowValidator:
         processing_job: ProcessingJob,
         stages: Iterable[FlowStage] | None = None,
     ) -> FlowValidationResult:
+        """Validate a job's selected stages without executing any process.
+
+        Parameters
+        ----------
+        processing_job : ProcessingJob
+            The fully bound flow and parameter set to validate.
+        stages : Iterable[FlowStage] | None, optional
+            A stage subset, or all flow stages when omitted.
+
+        Returns
+        -------
+        FlowValidationResult
+            All validation errors and warnings found in a single pass.
+        """
         errors: list[str] = []
         flow = processing_job.flow
         selected_stages = list(stages) if stages is not None else flow.flow_stages()
@@ -810,16 +849,19 @@ def remote_reference_mt_parameter_set(
 
 
 def model_to_dict(model: BaseModel) -> dict[str, Any]:
+    """Convert a Pydantic flow model to plain Python values."""
     return model.model_dump()
 
 
 def model_to_yaml(model: BaseModel) -> str:
+    """Serialize a Pydantic flow model as readable YAML."""
     import yaml
 
     return yaml.safe_dump(model_to_dict(model), sort_keys=False)
 
 
 def model_from_yaml(model_type: type[ModelT], yaml_text: str) -> ModelT:
+    """Validate YAML text as the requested Pydantic flow model."""
     import yaml
 
     data = yaml.safe_load(yaml_text) or {}
@@ -832,8 +874,10 @@ def model_from_yaml(model_type: type[ModelT], yaml_text: str) -> ModelT:
 
 
 def model_to_yaml_file(model: BaseModel, path: Path) -> None:
+    """Serialize a Pydantic flow model to a YAML file."""
     path.write_text(model_to_yaml(model))
 
 
 def model_from_yaml_file(model_type: type[ModelT], path: Path) -> ModelT:
+    """Read and validate a Pydantic flow model from a YAML file."""
     return model_from_yaml(model_type, path.read_text())

@@ -36,7 +36,18 @@ from resistics.project import Project, get_results_path
 
 
 class JobDefinition(BaseModel):
-    """Human-authored job referencing project flow and parameter files."""
+    """Human-authored job referencing project flow and parameter files.
+
+    Examples
+    --------
+    A minimal job uses the complete project scope and the default output label.
+
+    >>> job = JobDefinition(
+    ...     name="example", flow="default-flow", parameters="default-parameters"
+    ... )
+    >>> job.output_label
+    'default'
+    """
 
     name: str
     flow: str
@@ -79,6 +90,7 @@ class StationRateBatch(BaseModel):
 
     @property
     def station_path(self) -> str:
+        """Return the canonical ``survey/station`` identifier."""
         return f"{self.survey}/{self.station}"
 
 

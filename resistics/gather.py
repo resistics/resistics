@@ -896,6 +896,7 @@ class Gather(ResisticsProcess):
     runtime_requirements: ClassVar[list[str]] = ["project", "project_path"]
 
     def execute(self, inputs: dict[str, Any], context: Any) -> GatheredData:
+        """Gather the flow inputs using the project supplied at runtime."""
         selection = inputs["selection"]
         if not isinstance(selection, GatherSelection):
             raise ValueError("Gather requires GatherSelection")
@@ -915,6 +916,26 @@ class Gather(ResisticsProcess):
         tf: TransferFunction,
         output_label: str = "default",
     ) -> GatheredData:
+        """Gather aligned evaluation data for one target station and rate.
+
+        Parameters
+        ----------
+        project : Project
+            The open project containing target and remote station data.
+        project_path : Path
+            Project root containing persisted evaluation artifacts.
+        selection : GatherSelection
+            Resolved target, rate, masks, and remote-reference policy.
+        tf : TransferFunction
+            Transfer function defining output, input, and cross channels.
+        output_label : str, optional
+            Namespace containing the persisted inputs.
+
+        Returns
+        -------
+        GatheredData
+            Window-aligned arrays ready for regression.
+        """
         from resistics.spectra import EvaluationFrequencyReader
 
         batch = selection.station_rate_batch

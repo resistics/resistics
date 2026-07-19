@@ -165,12 +165,16 @@ class MTH5FileSummary(ResisticsModel):
 
 
 class SurveySummary(ResisticsModel):
+    """Counts describing one survey in an MTH5 file."""
+
     survey: str
     n_stations: int
     n_runs: int
 
 
 class StationSummary(ResisticsModel):
+    """Metadata-only summary of one station and its available data."""
+
     survey: str
     station: str
     station_path: str
@@ -184,6 +188,8 @@ class StationSummary(ResisticsModel):
 
 
 class RunSummary(ResisticsModel):
+    """Metadata-only summary of one recording run."""
+
     survey: str
     station: str
     run: str
@@ -197,6 +203,8 @@ class RunSummary(ResisticsModel):
 
 
 class ChannelSummary(ResisticsModel):
+    """Metadata-only summary of one recorded channel."""
+
     survey: str
     station: str
     run: str
@@ -211,6 +219,8 @@ class ChannelSummary(ResisticsModel):
 
 
 class MetadataDetail(ResisticsModel):
+    """Serialized metadata for one selected MTH5 object."""
+
     object_type: Literal["survey", "station", "run", "channel"]
     object_path: str
     values: dict[str, JsonValue] = Field(default_factory=dict)
@@ -433,21 +443,27 @@ class MTH5File(_MTH5InspectionMixin, ResisticsModel):
     table: pd.DataFrame = Field(repr=False, exclude=True)
 
     def fs(self) -> list[float]:
+        """Return the distinct sampling frequencies present in the file."""
         return sorted(float(x) for x in self.table["sample_rate"].dropna().unique())
 
     def get_survey(self, survey: str) -> SurveyGroup:
+        """Return a survey group by identifier."""
         return self.mth5_data.get_survey(survey)
 
     def get_station(self, survey: str, station: str) -> StationGroup:
+        """Return a station group within a survey."""
         return self.mth5_data.get_station(station, survey=survey)
 
     def get_run(self, survey: str, station: str, run: str) -> RunGroup:
+        """Return a run group within a survey and station."""
         return self.mth5_data.get_run(station, run, survey=survey)
 
     def read_run(self, survey: str, station: str, run: str, **kwargs: Any) -> TimeData:
+        """Read one run as resistics time data."""
         return _read_run(self, survey, station, run, **kwargs)
 
     def close_mth5(self) -> None:
+        """Close the underlying MTH5 file handle."""
         self.mth5_data.close_mth5()
 
     def _filter_table(self, survey=None, station=None, fs=None) -> pd.DataFrame:
@@ -920,7 +936,37 @@ def init(
     force: bool | None = None,
     plugin_paths: list[Path | str] | None = None,
 ) -> bool:
-    """Initialise an MTH5-backed resistics project."""
+    """Initialise an MTH5-backed resistics project.
+
+    Parameters
+    ----------
+    project_path : Path | str
+        Directory in which to create the project structure.
+    mth5_path : Path | str
+        Existing MTH5 file used as the project's read-only source data.
+    ref_time : DateTimeLike
+        Reference time used for sample and window calculations.
+    overwrite : bool, optional
+        Replace existing project metadata when ``True``.
+    force : bool | None, optional
+        Deprecated alias for ``overwrite``.
+    plugin_paths : list[Path | str] | None, optional
+        Trusted directories containing project process plugins.
+
+    Returns
+    -------
+    bool
+        ``True`` after the project structure and metadata are created.
+
+    Examples
+    --------
+    Initialise a project from an existing MTH5 file, then load it for use.
+
+    >>> from resistics.project import init, load
+    >>> init("example-project", "recordings.mth5", "2020-01-01")  # doctest: +SKIP
+    True
+    >>> project = load("example-project")  # doctest: +SKIP
+    """
     if force is not None:
         overwrite = force
     project_path = _as_path(project_path)

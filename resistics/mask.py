@@ -167,6 +167,7 @@ class WindowMaskWriter(ResisticsWriter):
     """Write mask metadata and compressed boolean level arrays."""
 
     def run(self, dir_path: Path, mask: WindowMask) -> None:
+        """Write mask metadata and boolean tables beneath ``dir_path``."""
         from resistics.errors import WriteError
 
         if not self._check_dir(dir_path):
@@ -185,6 +186,7 @@ class WindowMaskReader(ResisticsProcess):
     """Read a persisted per-run mask."""
 
     def run(self, dir_path: Path) -> WindowMask:
+        """Read mask metadata and boolean tables from ``dir_path``."""
         from resistics.errors import ReadError
 
         if not dir_path.is_dir():
@@ -223,6 +225,7 @@ class WindowMaskProcess(ResisticsProcess):
     model_config = ConfigDict(extra="forbid")
 
     def execute(self, inputs: dict[str, Any], context: Any) -> dict[str, str]:
+        """Calculate, persist, and return the path of a named mask."""
         mask = self.run(inputs["win_data"], inputs["dec_params"], context["run_batch"])
         path = get_run_mask_path(
             Path(context["project_path"]),
@@ -321,6 +324,7 @@ class TimeMask(WindowMaskProcess):
         dec_params: DecimationParameters,
         run_batch: dict[str, Any] | None = None,
     ) -> WindowMask:
+        """Build a mask from absolute and recurring UTC time constraints."""
         metadata = self._metadata(win_data, dec_params, run_batch)
         decisions = {}
         absolute_include = [
@@ -421,6 +425,7 @@ class AbsoluteAmplitudeMask(WindowMaskProcess):
         dec_params: DecimationParameters,
         run_batch: dict[str, Any] | None = None,
     ) -> WindowMask:
+        """Build a mask by applying each channel's amplitude limits."""
         missing = sorted(set(self.limits) - set(win_data.metadata.chans))
         if missing:
             raise ValueError(f"Amplitude mask channels not found: {missing}")

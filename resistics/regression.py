@@ -702,6 +702,8 @@ class SolverLinear(Solver):
 
 
 class SolverOLS(SolverLinear):
+    """Solve each evaluation frequency with ordinary least squares."""
+
     include_in_default_parameters: ClassVar[bool] = True
     n_jobs: int = -2
     """Number of jobs to run"""

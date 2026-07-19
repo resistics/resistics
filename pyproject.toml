@@ -61,7 +61,7 @@ shared = ["matplotlib"]
 dev = [
     "pre-commit",
     "ruff>=0.15.22,<0.16",
-    "darglint",
+    "pydoclint>=0.9.1,<0.10",
 ]
 docs = [
     "Sphinx",
@@ -142,6 +142,11 @@ select = [
     "B",
     "C4",
     "C90",
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
     "E",
     "F",
     "I",
@@ -163,6 +168,9 @@ max-complexity = 10
 [tool.ruff.lint.flake8-pytest-style]
 parametrize-names-type = "csv"
 
+[tool.ruff.lint.pydocstyle]
+ignore-decorators = ["pydantic.field_validator", "pydantic.model_validator"]
+
 [tool.ruff.lint.per-file-ignores]
 "resistics/transfunc.py" = [
     "RUF012", # Pydantic copies and validates these model-field list defaults.
@@ -172,15 +180,44 @@ parametrize-names-type = "csv"
     "S311", # Non-cryptographic randomness generates synthetic test data.
 ]
 "resistics/tui.py" = [
+    "D102", # Textual callbacks and actions are framework entry points, not public APIs.
     "RUF012", # Textual requires mutable BINDINGS and related class attributes.
     "SIM117", # Nested Textual context managers mirror the composed widget tree.
 ]
 "scripts/*.py" = [
+    "D100", # Maintenance scripts are documented by their CLI help and hardening plan.
+    "D101",
+    "D102",
+    "D103",
+    "D104",
     "S607", # Repository scripts invoke the cross-platform git executable.
 ]
 "tests/**/*.py" = [
+    "D100", # Tests describe behaviour through names, fixtures, and assertions.
+    "D101",
+    "D102",
+    "D103",
+    "D104",
     "PT014", # Parameter objects may compare equally while exercising distinct modes.
     "RUF012", # Test process doubles intentionally declare mutable class metadata.
     "S101", # Pytest uses plain assertions.
     "S108", # Test fixtures deliberately exercise temporary-looking paths.
 ]
+
+[tool.pydoclint]
+style = "numpy"
+baseline = "pydoclint-baseline.txt"
+arg-type-hints-in-docstring = true
+arg-type-hints-in-signature = true
+check-arg-order = true
+skip-checking-short-docstrings = false
+skip-checking-raises = false
+skip-checking-private-functions = false
+check-return-types = true
+check-yield-types = true
+check-class-attributes = true
+check-style-mismatch = false
+check-arg-defaults = false
+auto-regenerate-baseline = false
+show-filenames-in-every-violation-message = true
+native-mode-noqa-location = "definition"

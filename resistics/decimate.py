@@ -523,6 +523,7 @@ class DecimatedLevelMetadata(Metadata):
 
     @property
     def dt(self):
+        """Return the sample interval in seconds."""
         return 1 / self.fs
 
 

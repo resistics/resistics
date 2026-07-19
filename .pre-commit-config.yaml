@@ -21,10 +21,11 @@ repos:
         name: ruff format
         description: Python formatting
         types_or: [python, pyi]
-  - repo: https://github.com/terrencepreilly/darglint
-    rev: "v1.8.1"
+  - repo: https://github.com/jsh9/pydoclint
+    rev: "0.9.1"
     hooks:
-      - id: darglint
-        name: darglint
+      - id: pydoclint
+        name: pydoclint
         description: Docstring linting
-        exclude: ^(tests/|noxfile.py)
+        args: [--config=pyproject.toml]
+        files: ^resistics/.*\.py$

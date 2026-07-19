@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 1.5 verified with tsdownsample
+Status: in progress; Checkpoint 2.4 verified with public docstring enforcement
 Created: 2026-07-19
 Last updated: 2026-07-19
 Working branch: `mth5`
@@ -27,23 +27,23 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 2 - Ruff, pydoclint, docstrings, and pre-commit
-- Active checkpoint: `2.3` (`resistics`) - Replace darglint with pydoclint
+- Active checkpoint: `2.5` (`resistics`) - Simplify pre-commit and local quality commands
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `2.1` at `f2d7c0d`
-- Last verified checkpoint: `2.2` in `S011`
-- Last session: `S011`
-- Last verified commit: resistics `f2d7c0d`; regressioninc `9eb11a4` is the
+- Last completed checkpoint: `2.2` at `070c414`
+- Last verified checkpoint: `2.4` in `S013`
+- Last session: `S013`
+- Last verified commit: resistics `070c414`; regressioninc `9eb11a4` is the
   base of uncommitted Checkpoints 1.1 and 1.2 work
 - Current blocker: none
-- Next exact action: begin Checkpoint 2.3 by measuring darglint's current
-  findings and runtime, installing pydoclint in NumPy mode, and establishing a
-  reviewed baseline without weakening checks for new or touched public APIs.
+- Next exact action: begin Checkpoint 2.5 by inventorying the remaining hygiene
+  and Prettier hooks, then replace the isolated environments with locked,
+  uv-backed local quality commands.
 
 Current worktree caveat:
 
-- Resistics `f2d7c0d` records the accumulated work through Checkpoint 2.1. The
-  current dirty Resistics files are the scoped Checkpoint 2.2 formatting
-  migration and this S011 verification record.
+- Resistics `070c414` records the accumulated work through Checkpoint 2.2. The
+  current dirty Resistics files contain the scoped, verified Checkpoints 2.3
+  and 2.4 migrations plus their S012-S013 verification records.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -55,10 +55,10 @@ Current worktree caveat:
 - Regressioninc's CI and publishing workflows, Read the Docs configuration,
   README, `.gitignore`, documentation configuration, legacy-reference checker,
   and Matplotlib compatibility edits are the scoped Checkpoint 1.2 changes.
-- Ruff format is now the sole Resistics Python formatter. The six mechanically
-  formatted Python files plus `pyproject.toml`, `.pre-commit-config.yaml`,
-  `README.md`, and `uv.lock` contain the scoped S011 migration. Darglint remains
-  active until Checkpoint 2.3.
+- Ruff format is the sole Resistics Python formatter. Pydoclint 0.9.1 now owns
+  NumPy-style docstring contract checks through an explicit committed baseline;
+  short docstrings are checked. Ruff enforces public production docstring
+  presence, with narrow Pydantic-validator and Textual-callback exceptions.
 - These files must not be reverted or overwritten during hardening work.
 
 ## Authority and Boundaries
@@ -214,8 +214,8 @@ or short command/result reference. Detailed output belongs in the session log or
 | Gate 1 | both | `verified` | S003-S009; local uv sync/test/build/docs gate |
 | 2.1 | resistics | `verified` | S010; Ruff 0.15.22 clean; 376 tests |
 | 2.2 | resistics | `verified` | S011; Ruff format clean; 376 tests |
-| 2.3 | resistics | `not_started` | pydoclint in NumPy mode initially |
-| 2.4 | resistics | `not_started` | Public docstring contract |
+| 2.3 | resistics | `verified` | S012; pydoclint 0.9.1 baseline; 376 tests |
+| 2.4 | resistics | `verified` | S013; public docs clean; 384 tests |
 | 2.5 | resistics | `not_started` | Depends on 2.1-2.4 |
 | Gate 2 | resistics | `not_started` | Depends on 2.1-2.5 |
 | 3.1 | resistics | `not_started` | Evidence-based checker evaluation |
@@ -491,6 +491,23 @@ old id when evidence changes the direction.
   Remove Black from Resistics, while treating the remaining Black name in
   `uv.lock` as sibling regressioninc development metadata rather than a
   resolved Resistics tool.
+- `D026` (2026-07-19): Replace darglint with pydoclint 0.9.1's native CLI in
+  NumPy mode. Keep argument, return, yield, exception, annotation, and class
+  attribute consistency checks enabled, and commit the measured 233-finding
+  compatibility baseline instead of disabling those checks. Baseline
+  regeneration is manual so hooks cannot silently accept new debt; definition
+  lines are the canonical location for native `noqa` exceptions. Retain
+  `skip-checking-short-docstrings = true` only through Checkpoint 2.3 because
+  Checkpoint 2.4 explicitly measures and enables the stricter setting.
+- `D027` (2026-07-19): Enforce Ruff D100-D104 throughout production source and
+  require NumPy-style contracts even for short docstrings. Exclude Pydantic
+  field/model validators by their fully qualified decorators and exclude only
+  D102 for `resistics/tui.py`, whose public-looking methods are Textual
+  callbacks and actions rather than supported library APIs. Do not enable
+  D105-D107: constructors belong to their class contract, and conventional
+  dunders/framework entry points should not acquire duplicate prose. Preserve
+  API-local examples, plots, and Sphinx directives in place; protect their
+  current inventory with AST-based tests and normal doctest collection.
 
 ## Blocker Log
 
@@ -1189,3 +1206,122 @@ correct a factual error; note the correction explicitly.
 - Exact next action: measure darglint's findings and runtime, install pydoclint
   in NumPy mode, and establish the reviewed Checkpoint 2.3 baseline without
   weakening new or touched public API checks.
+
+### S012 - 2026-07-19 - Replace darglint with pydoclint
+
+- Checkpoint state at start: `2.3` was `not_started`; Checkpoint 2.2 had been
+  committed at Resistics `070c414` on `mth5`, and the worktree was clean.
+- Starting HEAD and worktree: Resistics was clean at `070c414`; regressioninc
+  remained at `9eb11a4` with its separately documented uncommitted hardening
+  changes.
+- Session objective: replace unmaintained darglint with a fast, maintained
+  native docstring contract checker while preserving NumPy docstrings and
+  preventing inherited documentation debt from weakening checks on new work.
+- Baseline inventory: darglint 1.8.1 reported 19 findings in 15.264 seconds.
+  Pydoclint 0.9.1 reported 233 findings in 0.411 seconds: 79 DOC105, 4 DOC107,
+  3 DOC201, 44 DOC203, 7 DOC301, 1 DOC501, 3 DOC502, 8 DOC503, 32 DOC601,
+  32 DOC603, and 20 DOC606 findings. Most newly visible debt is legacy type
+  spelling/annotation drift and incomplete class-attribute documentation.
+- Work completed: replaced the development dependency and pinned pre-commit
+  hook; removed `.darglint`; added the explicit D026 NumPy/type-consistency
+  policy to `pyproject.toml`; and generated the committed
+  `pydoclint-baseline.txt`. Automatic baseline regeneration is disabled.
+- Baseline validation: the package and a single baselined file both passed. A
+  temporary unbaselined public API with mismatched arguments and no return
+  contract failed with DOC103, DOC201, and DOC203, proving that new findings
+  remain blocking. The temporary file was deleted after the check.
+- Files changed by this checkpoint: `.darglint` deletion,
+  `.pre-commit-config.yaml`, `pyproject.toml`, `uv.lock`,
+  `pydoclint-baseline.txt`, and this implementation record.
+- Decisions added or superseded: D026 records the native baseline policy,
+  manual debt acceptance, type-consistency coverage, and the intentionally
+  temporary short-docstring setting owned by Checkpoint 2.4.
+- Verification commands and results:
+  - `pydoclint resistics`: no unbaselined violations; runtime remains about
+    0.4 seconds, roughly 37 times faster than the darglint baseline.
+  - The pinned `pre-commit run pydoclint --all-files` hook passed.
+  - `ruff format --check resistics tests scripts`: all 39 files formatted;
+    `ruff check resistics tests scripts`: all checks passed.
+  - The full suite passed: 376 tests in 22.53 seconds.
+  - `uv lock --check` resolved 178 packages and passed. Darglint was removed;
+    pydoclint 0.9.1 and its Click/docstring-parser-fork dependencies were added.
+  - The legacy-packaging guard and final `git diff --check` passed.
+- Known failures or incomplete work: the baseline intentionally records 233
+  existing findings for later documentation work. Short docstrings are still
+  exempt until Checkpoint 2.4. `uv.lock` may retain the darglint name only in
+  sibling regressioninc's development metadata; it is not a resolved
+  Resistics package. The old hygiene and Prettier hooks remain Checkpoint 2.5
+  work.
+- Checkpoint state at end: `2.3` is `verified`; Checkpoint 2.4 is next.
+- Commit readiness or commit id: the pydoclint dependency, configuration,
+  committed baseline, hook replacement, darglint removal, and verification
+  record are ready; no commit was requested or created.
+- Exact next action: inventory Ruff `D100`-`D107` findings and rerun pydoclint
+  with `skip-checking-short-docstrings = false`, then define the measured public
+  docstring presence and contract baseline for Checkpoint 2.4.
+
+### S013 - 2026-07-19 - Enforce the production docstring contract
+
+- Checkpoint state at start: `2.4` was `not_started`; Checkpoint 2.3 was
+  verified but uncommitted on top of Resistics `070c414` on `mth5`.
+- Starting HEAD and worktree: Resistics remained at `070c414` with only the
+  scoped Checkpoint 2.3 migration dirty; regressioninc remained at `9eb11a4`
+  with its separately documented uncommitted hardening changes.
+- Session objective: make public production docstrings mandatory, prevent short
+  placeholders from evading contract checks, preserve API-local documentation
+  assets, and give contributors an explicit authoring policy.
+- Baseline inventory: Ruff reported 190 D100-D107 findings: 1 D100, 15 D101,
+  119 D102, 5 D103, 19 D105, and 31 D107. The required D100-D104 subset was
+  140 findings. Decorator-specific Pydantic exclusions and the TUI D102
+  framework boundary reduced this to 42 supported-API findings, all fixed.
+  Enabling short-docstring checks exposed 1,472 findings beyond the earlier
+  233-finding baseline. The final strict baseline contains 1,823 inherited
+  findings after the high-value documentation improvements.
+- Work completed: enabled Ruff D100-D104 for production code; documented every
+  actionable public module, class, function, and method; corrected three class
+  docstring placements; enabled strict pydoclint short-docstring checks; and
+  regenerated the manual baseline. D105-D107 remain deliberately outside the
+  contract under D027.
+- Authoring and asset work: added the Sphinx docstring authoring page covering
+  public/private requirements, NumPy sections, annotations, examples,
+  constructors, directives, suppressions, and baseline policy. Added or
+  improved examples for project, flow, parameter, and job construction. The
+  production inventory now has at least 86 example-bearing docstrings and 14
+  API-local plot directives. Two AST-based tests protect those assets, while
+  normal doctest collection executes examples.
+- Enforcement validation: a temporary undocumented public API failed Ruff with
+  D100/D103. A temporary one-line documented callable failed pydoclint with
+  DOC101, DOC103, DOC201, and DOC203. Both temporary files were removed.
+- Files changed by this checkpoint: `pyproject.toml`, documentation additions
+  and index, focused docstring additions across twelve production modules,
+  `pydoclint-baseline.txt`, `tests/test_docstring_contract.py`, and this
+  implementation record.
+- Decisions added or superseded: D027 defines the enforced presence boundary,
+  the narrow framework exceptions, constructor/dunder policy, and protection
+  for examples, plots, and embedded directives.
+- Verification commands and results:
+  - `ruff format --check resistics tests scripts`: all 40 files formatted;
+    `ruff check resistics tests scripts`: all checks passed, including public
+    production docstring presence.
+  - `pydoclint resistics` and the pinned pydoclint pre-commit hook passed with
+    short-docstring checking enabled and automatic baseline updates disabled.
+  - The final full suite passed: 384 tests in 20.82 seconds. This includes the
+    two asset tests, four new construction-example doctests, and two existing
+    examples recovered by correcting their class-docstring placement.
+  - The gallery-disabled Sphinx HTML build succeeded at
+    `.artifacts/hardening/documentation/checkpoint-2.4-html`. Its 99 warnings
+    are the deferred legacy gallery, external inventory, missing legacy module,
+    and dependency/API-import debt already owned by Phase 7.
+  - `uv lock --check` resolved 178 packages and passed. The
+    legacy-packaging guard and final `git diff --check` passed.
+- Known failures or incomplete work: the 1,823 pydoclint findings are explicit
+  inherited debt, not a greenfield standard. D105-D107 are intentionally not
+  enabled. Textual callback documentation remains governed by framework need
+  rather than public-library presence. The Sphinx warning backlog remains
+  Phase 7 work.
+- Checkpoint state at end: `2.4` is `verified`; Checkpoint 2.5 is next.
+- Commit readiness or commit id: Checkpoints 2.3 and 2.4 are both verified and
+  ready together; no commit was requested or created.
+- Exact next action: inventory the remaining pre-commit hygiene and Prettier
+  hooks, then replace isolated hook environments with locked uv-backed local
+  commands for Checkpoint 2.5.

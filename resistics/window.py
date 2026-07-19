@@ -1056,6 +1056,7 @@ class WindowedLevelMetadata(Metadata):
 
     @property
     def dt(self):
+        """Return the sample interval in seconds."""
         return 1 / self.fs
 
 
@@ -1512,6 +1513,7 @@ class WindowerTarget(Windower):
         win_params: WindowParameters,
         dec_data: DecimatedData,
     ) -> WindowedData:
+        """Window every decimation level toward the configured target count."""
         metadata_dict = dec_data.metadata.dict()
         data = {}
         win_levels_metadata = []

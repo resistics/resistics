@@ -740,6 +740,8 @@ class TimeData(ResisticsData):
 
 
 class TimeReader(ResisticsProcess):
+    """Base reader for time-series metadata and samples."""
+
     apply_scalings: bool = True
     extension: str | None = None
 
@@ -1368,10 +1370,11 @@ def new_time_data(
 
 
 class TimeProcess(ResisticsProcess):
+    """Base class for processes that transform time data."""
+
     input_types: ClassVar[dict[str, str]] = {"time_data": "time_data"}
     output_type: ClassVar[str] = "time_data"
     include_in_default_parameters: ClassVar[bool] = False
-    """Parent class for processing time data"""
 
     def run(self, time_data: TimeData) -> TimeData:
         """Run the time processor"""
@@ -1622,7 +1625,6 @@ class Subsamples(TimeProcess):
 
 
 class InterpolateNans(TimeProcess):
-    include_in_default_parameters: ClassVar[bool] = True
     """
     Interpolate nan values in the data
 
@@ -1642,6 +1644,8 @@ class InterpolateNans(TimeProcess):
     array([2., 2., 3., 5., 1., 2., 3., 4., 2., 6., 7., 6., 5., 4., 3., 2.],
           dtype=float32)
     """
+
+    include_in_default_parameters: ClassVar[bool] = True
 
     def run(self, time_data: TimeData) -> TimeData:
         """
@@ -1692,7 +1696,6 @@ class InterpolateNans(TimeProcess):
 
 
 class RemoveMean(TimeProcess):
-    include_in_default_parameters: ClassVar[bool] = True
     """
     Remove channel mean value from each channel
 
@@ -1716,6 +1719,8 @@ class RemoveMean(TimeProcess):
     >>> bool(np.all(hx_test == time_data_new["Hx"]))
     True
     """
+
+    include_in_default_parameters: ClassVar[bool] = True
 
     def run(self, time_data: TimeData) -> TimeData:
         """

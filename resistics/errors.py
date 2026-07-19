@@ -62,6 +62,8 @@ class NotDirectoryError(PathError):
 
 
 class WriteError(Exception):
+    """Report a failure to write data at a filesystem path."""
+
     def __init__(self, path: Path, message: str = ""):
         self.path = path
         self.message = message
@@ -72,6 +74,8 @@ class WriteError(Exception):
 
 
 class ReadError(Exception):
+    """Report a failure to read data from a filesystem path."""
+
     def __init__(self, path: Path, message: str = ""):
         self.path = path
         self.message = message

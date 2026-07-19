@@ -151,6 +151,7 @@ class InstrumentCalibrationReader(CalibrationReader):
     """Parent class for reading instrument calibration files"""
 
     def run(self, metadata: SpectraMetadata) -> CalibrationData:
+        """Read instrument calibration data described by spectra metadata."""
         raise NotImplementedError("To be implemented in child classes")
 
 
@@ -504,11 +505,15 @@ class Calibrator(ResisticsProcess):
 
 
 class InstrumentCalibrator(Calibrator):
+    """Calibrate spectra with one of the configured instrument readers."""
+
     readers: list[InstrumentCalibrationReader]
     """List of readers for reading in instrument calibration files"""
 
 
 class SensorCalibrator(Calibrator):
+    """Calibrate spectra channels with matching sensor calibration files."""
+
     readers: list[SensorCalibrationReader]
     """List of readers for reading in sensor calibration files"""
 
