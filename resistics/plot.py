@@ -2,21 +2,23 @@
 Module to help plotting various data
 """
 
-from html import escape
 import json
-from pathlib import Path
 import re
-from typing import Any, List, Dict, Tuple, Optional, Union
-from fast_sugiyama import from_edges
+from html import escape
+from itertools import pairwise
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from fast_sugiyama import from_edges
 from plotly.subplots import make_subplots
 from tsdownsample import LTTBDownsampler, NaNMinMaxLTTBDownsampler
 
 PLOTLY_TEMPLATE = "seaborn"
-PLOTLY_MARGIN = dict(l=0, r=0, b=0, t=50)
+PLOTLY_MARGIN = {"l": 0, "r": 0, "b": 0, "t": 50}
 FLOW_STAGE_COLOURS = ("#1D4ED8", "#047857", "#6D28D9", "#9A3412")
 FLOW_CARD_BORDER_COLOUR = "#172033"
 FLOW_CARD_TEXT_COLOUR = "#FFFFFF"
@@ -39,7 +41,7 @@ _LTTB_DOWNSAMPLER = LTTBDownsampler()
 _NAN_LTTB_DOWNSAMPLER = NaNMinMaxLTTBDownsampler()
 
 
-def _flow_descriptors(flow, project_path: Optional[Path]):
+def _flow_descriptors(flow, project_path: Path | None):
     """Resolve the process contracts used by a flow."""
     from resistics.flow import process_descriptor
 
@@ -150,8 +152,10 @@ def _flow_graph(flow, descriptors):
     for stage_index, stage in enumerate(flow.flow_stages()):
         _validate_flow_stage(stage, descriptors)
         node_map = stage.node_map()
-        for node in stage.nodes:
-            nodes.append((stage_index, stage, node, descriptors[node.process]))
+        nodes.extend(
+            (stage_index, stage, node, descriptors[node.process])
+            for node in stage.nodes
+        )
         for node in stage.nodes:
             descriptor = descriptors[node.process]
             for port, upstream_id in node.inputs.items():
@@ -272,21 +276,21 @@ def _flow_arrow_annotation(
     """Return a native Plotly arrowhead aligned to the final routed segment."""
     start_x, start_y = path[-2]
     end_x, end_y = _flow_arrow_position(path, card_width, card_height)
-    return dict(
-        x=end_x,
-        y=end_y,
-        ax=start_x,
-        ay=start_y,
-        xref="x",
-        yref="y",
-        axref="x",
-        ayref="y",
-        showarrow=True,
-        arrowhead=3,
-        arrowsize=1.35,
-        arrowwidth=2.25,
-        arrowcolor=colour,
-    )
+    return {
+        "x": end_x,
+        "y": end_y,
+        "ax": start_x,
+        "ay": start_y,
+        "xref": "x",
+        "yref": "y",
+        "axref": "x",
+        "ayref": "y",
+        "showarrow": True,
+        "arrowhead": 3,
+        "arrowsize": 1.35,
+        "arrowwidth": 2.25,
+        "arrowcolor": colour,
+    }
 
 
 def _flow_arrow_trace(
@@ -294,8 +298,8 @@ def _flow_arrow_trace(
     colour: str,
     card_width: float = FLOW_CARD_WIDTH,
     card_height: float = FLOW_CARD_HEIGHT,
-    meta: Optional[dict] = None,
-    legendgroup: Optional[str] = None,
+    meta: dict | None = None,
+    legendgroup: str | None = None,
 ) -> go.Scatter:
     """Return a trace-based arrowhead that can remain below card labels."""
     start_x, start_y = path[-2]
@@ -305,13 +309,13 @@ def _flow_arrow_trace(
         x=[end_x],
         y=[end_y],
         mode="markers",
-        marker=dict(
-            color=colour,
-            size=15,
-            symbol="arrow",
-            angle=angle,
-            angleref="up",
-        ),
+        marker={
+            "color": colour,
+            "size": 15,
+            "symbol": "arrow",
+            "angle": angle,
+            "angleref": "up",
+        },
         hoverinfo="skip",
         showlegend=False,
         legendgroup=legendgroup,
@@ -323,14 +327,16 @@ def _flow_edge_label_position(path) -> tuple[float, float]:
     """Return the distance-weighted midpoint of a routed edge path."""
     segments = [
         ((end_x - start_x) ** 2 + (end_y - start_y) ** 2) ** 0.5
-        for (start_x, start_y), (end_x, end_y) in zip(path, path[1:])
+        for (start_x, start_y), (end_x, end_y) in pairwise(path)
     ]
     total_length = sum(segments)
     if total_length == 0:
         return path[0]
     midpoint = total_length / 2
     traversed = 0.0
-    for (start_x, start_y), (end_x, end_y), length in zip(path, path[1:], segments):
+    for (start_x, start_y), (end_x, end_y), length in zip(
+        path, path[1:], segments, strict=False
+    ):
         if traversed + length >= midpoint:
             fraction = (midpoint - traversed) / length
             return (
@@ -344,8 +350,8 @@ def _flow_edge_label_position(path) -> tuple[float, float]:
 def _flow_edge_label_trace(
     path,
     value_type: str,
-    legendgroup: Optional[str] = None,
-    meta: Optional[dict] = None,
+    legendgroup: str | None = None,
+    meta: dict | None = None,
 ) -> go.Scatter:
     """Return a visible data-type label positioned on a routed edge."""
     x, y = _flow_edge_label_position(path)
@@ -355,7 +361,7 @@ def _flow_edge_label_trace(
         mode="text",
         text=[escape(value_type)],
         textposition="middle center",
-        textfont=dict(color=FLOW_CARD_BORDER_COLOUR, size=13),
+        textfont={"color": FLOW_CARD_BORDER_COLOUR, "size": 13},
         hoverinfo="skip",
         showlegend=False,
         legendgroup=legendgroup,
@@ -392,7 +398,7 @@ def _flow_card_polygon(
     )
 
 
-def plot_flow(flow, project_path: Optional[Path] = None) -> go.Figure:
+def plot_flow(flow, project_path: Path | None = None) -> go.Figure:
     """Build a ranked, interactive Plotly figure for a staged processing flow."""
     descriptors = _flow_descriptors(flow, project_path)
     nodes, edges, node_numbers, positions, routed_edges = _flow_layout(
@@ -409,13 +415,13 @@ def plot_flow(flow, project_path: Optional[Path] = None) -> go.Figure:
             original_numbers,
             positions,
         )
-        x, y = zip(*path)
+        x, y = zip(*path, strict=False)
         figure.add_trace(
             go.Scatter(
                 x=x,
                 y=y,
                 mode="lines",
-                line=dict(color=colour, width=2),
+                line={"color": colour, "width": 2},
                 text=[_flow_edge_hover(port, value_type)] * len(path),
                 hovertemplate="%{text}<extra></extra>",
                 name="Flow input",
@@ -489,7 +495,7 @@ def plot_flow(flow, project_path: Optional[Path] = None) -> go.Figure:
                 mode="lines",
                 fill="toself",
                 fillcolor=colour,
-                line=dict(color=FLOW_CARD_BORDER_COLOUR, width=1.5),
+                line={"color": FLOW_CARD_BORDER_COLOUR, "width": 1.5},
                 hoverinfo="skip",
                 showlegend=False,
                 legendgroup=f"stage-{stage_index}",
@@ -506,7 +512,7 @@ def plot_flow(flow, project_path: Optional[Path] = None) -> go.Figure:
                     for node, descriptor in stage_nodes
                 ],
                 textposition="middle center",
-                textfont=dict(color=FLOW_CARD_TEXT_COLOUR, size=FLOW_CARD_TEXT_SIZE),
+                textfont={"color": FLOW_CARD_TEXT_COLOUR, "size": FLOW_CARD_TEXT_SIZE},
                 hoverinfo="skip",
                 showlegend=False,
                 legendgroup=f"stage-{stage_index}",
@@ -517,11 +523,11 @@ def plot_flow(flow, project_path: Optional[Path] = None) -> go.Figure:
             go.Scatter(
                 x=x,
                 y=y,
-                marker=dict(
-                    color="rgba(0, 0, 0, 0.01)",
-                    size=FLOW_CARD_HEIGHT,
-                    symbol="square",
-                ),
+                marker={
+                    "color": "rgba(0, 0, 0, 0.01)",
+                    "size": FLOW_CARD_HEIGHT,
+                    "symbol": "square",
+                },
                 mode="markers",
                 ids=[_flow_node_key(stage, node) for node, _ in stage_nodes],
                 customdata=[
@@ -540,13 +546,13 @@ def plot_flow(flow, project_path: Optional[Path] = None) -> go.Figure:
                 x=[None],
                 y=[None],
                 mode="lines+markers",
-                line=dict(color=colour, width=2),
-                marker=dict(
-                    color=colour,
-                    line=dict(color=FLOW_CARD_BORDER_COLOUR, width=1.5),
-                    size=13,
-                    symbol="square",
-                ),
+                line={"color": colour, "width": 2},
+                marker={
+                    "color": colour,
+                    "line": {"color": FLOW_CARD_BORDER_COLOUR, "width": 1.5},
+                    "size": 13,
+                    "symbol": "square",
+                },
                 name=f"{stage.stage_id} · {stage.scope}",
                 legendgroup=f"stage-{stage_index}",
                 hoverinfo="skip",
@@ -559,32 +565,32 @@ def plot_flow(flow, project_path: Optional[Path] = None) -> go.Figure:
     x_min, x_max = min(x_values, default=0.0), max(x_values, default=0.0)
     y_min, y_max = min(y_values, default=0.0), max(y_values, default=0.0)
     figure.update_layout(
-        title=dict(
-            text=f"Flow: {escape(flow.name)}",
-            x=0.5,
-            xanchor="center",
-            y=0.99,
-            yanchor="top",
-            font=dict(size=20),
-        ),
+        title={
+            "text": f"Flow: {escape(flow.name)}",
+            "x": 0.5,
+            "xanchor": "center",
+            "y": 0.99,
+            "yanchor": "top",
+            "font": {"size": 20},
+        },
         paper_bgcolor=FLOW_PAPER_COLOUR,
         plot_bgcolor=FLOW_PLOT_COLOUR,
-        font=dict(color=FLOW_CARD_BORDER_COLOUR),
-        margin=dict(l=0, r=0, b=0, t=80),
+        font={"color": FLOW_CARD_BORDER_COLOUR},
+        margin={"l": 0, "r": 0, "b": 0, "t": 80},
         height=max(500, 420 + int((y_max - y_min) * 1.25)),
         hovermode="closest",
-        legend=dict(
-            title="Stages",
-            orientation="v",
-            x=0.01,
-            xanchor="left",
-            y=0.96,
-            yanchor="top",
-            bgcolor="rgba(255, 255, 255, 0.92)",
-            bordercolor="#CBD5E1",
-            borderwidth=1,
-            groupclick="togglegroup",
-        ),
+        legend={
+            "title": "Stages",
+            "orientation": "v",
+            "x": 0.01,
+            "xanchor": "left",
+            "y": 0.96,
+            "yanchor": "top",
+            "bgcolor": "rgba(255, 255, 255, 0.92)",
+            "bordercolor": "#CBD5E1",
+            "borderwidth": 1,
+            "groupclick": "togglegroup",
+        },
     )
     figure.update_xaxes(
         visible=False,
@@ -625,8 +631,8 @@ def _job_configuration_lines(node, resolved_job) -> list[str]:
             if resolved_job.criteria_path is not None
             else "default criteria"
         )
-        policy_count = 0 if resolved_job.criteria is None else len(
-            resolved_job.criteria.stations
+        policy_count = (
+            0 if resolved_job.criteria is None else len(resolved_job.criteria.stations)
         )
         return [
             f"Criteria: {escape(criteria_name)}",
@@ -642,7 +648,9 @@ def _job_configuration_lines(node, resolved_job) -> list[str]:
     ]
 
 
-def _job_card_label(node, descriptor, configuration_lines: list[str]) -> tuple[str, int]:
+def _job_card_label(
+    node, descriptor, configuration_lines: list[str]
+) -> tuple[str, int]:
     """Return an expanded card label and its rendered line count."""
     node_lines = _flow_label_lines(node.id)
     process_lines = _flow_label_lines(descriptor.display_name)
@@ -671,7 +679,9 @@ def _job_node_hover(stage, node, descriptor, resolved_job) -> str:
             else "default empty criteria"
         )
         criteria = (
-            {} if resolved_job.criteria is None else resolved_job.criteria.model_dump(mode="json")
+            {}
+            if resolved_job.criteria is None
+            else resolved_job.criteria.model_dump(mode="json")
         )
         return (
             f"{base}<br><br><b>Criteria configuration ({escape(criteria_name)})</b>"
@@ -699,7 +709,7 @@ def _job_scope_summary(scope) -> str:
     return "; ".join(parts) if parts else "all surveys, stations, and rates"
 
 
-def plot_job(resolved_job, project_path: Optional[Path] = None) -> go.Figure:
+def plot_job(resolved_job, project_path: Path | None = None) -> go.Figure:
     """Build an execution-plan plot from one fully resolved processing job."""
     if project_path is None:
         runtime_path = resolved_job.processing_job.runtime.get("project_path")
@@ -743,13 +753,13 @@ def plot_job(resolved_job, project_path: Optional[Path] = None) -> go.Figure:
             original_numbers,
             positions,
         )
-        x, y = zip(*path)
+        x, y = zip(*path, strict=False)
         figure.add_trace(
             go.Scatter(
                 x=x,
                 y=y,
                 mode="lines",
-                line=dict(color=colour, width=2),
+                line={"color": colour, "width": 2},
                 text=[_flow_edge_hover(port, value_type)] * len(path),
                 hovertemplate="%{text}<extra></extra>",
                 name="Flow input",
@@ -830,7 +840,7 @@ def plot_job(resolved_job, project_path: Optional[Path] = None) -> go.Figure:
                 mode="lines",
                 fill="toself",
                 fillcolor=colour,
-                line=dict(color=FLOW_CARD_BORDER_COLOUR, width=1.5),
+                line={"color": FLOW_CARD_BORDER_COLOUR, "width": 1.5},
                 hoverinfo="skip",
                 showlegend=False,
                 legendgroup=f"stage-{stage_index}",
@@ -844,7 +854,7 @@ def plot_job(resolved_job, project_path: Optional[Path] = None) -> go.Figure:
                 mode="text",
                 text=[labels[_flow_node_key(stage, node)] for node, _ in stage_nodes],
                 textposition="middle center",
-                textfont=dict(color=FLOW_CARD_TEXT_COLOUR, size=JOB_CARD_TEXT_SIZE),
+                textfont={"color": FLOW_CARD_TEXT_COLOUR, "size": JOB_CARD_TEXT_SIZE},
                 hoverinfo="skip",
                 showlegend=False,
                 legendgroup=f"stage-{stage_index}",
@@ -855,11 +865,11 @@ def plot_job(resolved_job, project_path: Optional[Path] = None) -> go.Figure:
             go.Scatter(
                 x=x,
                 y=y,
-                marker=dict(
-                    color="rgba(0, 0, 0, 0.01)",
-                    size=max(card_height, JOB_CARD_WIDTH),
-                    symbol="square",
-                ),
+                marker={
+                    "color": "rgba(0, 0, 0, 0.01)",
+                    "size": max(card_height, JOB_CARD_WIDTH),
+                    "symbol": "square",
+                },
                 mode="markers",
                 ids=[_flow_node_key(stage, node) for node, _ in stage_nodes],
                 customdata=[
@@ -878,13 +888,13 @@ def plot_job(resolved_job, project_path: Optional[Path] = None) -> go.Figure:
                 x=[None],
                 y=[None],
                 mode="lines+markers",
-                line=dict(color=colour, width=2),
-                marker=dict(
-                    color=colour,
-                    line=dict(color=FLOW_CARD_BORDER_COLOUR, width=1.5),
-                    size=13,
-                    symbol="square",
-                ),
+                line={"color": colour, "width": 2},
+                marker={
+                    "color": colour,
+                    "line": {"color": FLOW_CARD_BORDER_COLOUR, "width": 1.5},
+                    "size": 13,
+                    "symbol": "square",
+                },
                 name=f"{stage.stage_id} · {stage.scope}",
                 legendgroup=f"stage-{stage_index}",
                 hoverinfo="skip",
@@ -918,35 +928,35 @@ def plot_job(resolved_job, project_path: Optional[Path] = None) -> go.Figure:
     x_min, x_max = min(x_values, default=0.0), max(x_values, default=0.0)
     y_min, y_max = min(y_values, default=0.0), max(y_values, default=0.0)
     figure.update_layout(
-        title=dict(
-            text=(
+        title={
+            "text": (
                 f"Job: {escape(definition.name)}<br><br><sup>{header}</sup>"
                 f"<br><sup>{work_plan}</sup>"
             ),
-            x=0.5,
-            xanchor="center",
-            y=0.99,
-            yanchor="top",
-            font=dict(size=20),
-        ),
+            "x": 0.5,
+            "xanchor": "center",
+            "y": 0.99,
+            "yanchor": "top",
+            "font": {"size": 20},
+        },
         paper_bgcolor=FLOW_PAPER_COLOUR,
         plot_bgcolor=FLOW_PLOT_COLOUR,
-        font=dict(color=FLOW_CARD_BORDER_COLOUR),
-        margin=dict(l=0, r=0, b=0, t=160),
+        font={"color": FLOW_CARD_BORDER_COLOUR},
+        margin={"l": 0, "r": 0, "b": 0, "t": 160},
         height=max(620, 460 + int((y_max - y_min) * 1.25)),
         hovermode="closest",
-        legend=dict(
-            title="Stages",
-            orientation="v",
-            x=0.01,
-            xanchor="left",
-            y=0.88,
-            yanchor="top",
-            bgcolor="rgba(255, 255, 255, 0.92)",
-            bordercolor="#CBD5E1",
-            borderwidth=1,
-            groupclick="togglegroup",
-        ),
+        legend={
+            "title": "Stages",
+            "orientation": "v",
+            "x": 0.01,
+            "xanchor": "left",
+            "y": 0.88,
+            "yanchor": "top",
+            "bgcolor": "rgba(255, 255, 255, 0.92)",
+            "bordercolor": "#CBD5E1",
+            "borderwidth": 1,
+            "groupclick": "togglegroup",
+        },
     )
     figure.update_xaxes(
         visible=False,
@@ -961,7 +971,7 @@ def plot_job(resolved_job, project_path: Optional[Path] = None) -> go.Figure:
 
 def lttb_downsample(
     x: np.ndarray, y: np.ndarray, max_pts: int = 5_000
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Downsample x, y for visualisation
 
@@ -1006,9 +1016,7 @@ def lttb_downsample(
     return x[indices], y[indices]
 
 
-def apply_lttb(
-    data: np.ndarray, max_pts: Union[int, None]
-) -> Tuple[np.ndarray, np.ndarray]:
+def apply_lttb(data: np.ndarray, max_pts: int | None) -> tuple[np.ndarray, np.ndarray]:
     """
     A helper function for applying lttb downsampling if max_pts is not None
 
@@ -1037,7 +1045,7 @@ def plot_timeline(
     df: pd.DataFrame,
     y_col: str,
     title: str = "Timeline",
-    ref_time: Optional[pd.Timestamp] = None,
+    ref_time: pd.Timestamp | None = None,
 ) -> go.Figure:
     """
     Plot a timeline
@@ -1095,7 +1103,7 @@ def plot_timeline(
     fig.update_layout(template=PLOTLY_TEMPLATE, margin=dict(PLOTLY_MARGIN))
     fig.update_xaxes(range=[min_time, max_time])
     fig.update_yaxes(title=None, autorange="reversed")
-    fig.update_layout(legend=dict(itemclick=False, itemdoubleclick=False))
+    fig.update_layout(legend={"itemclick": False, "itemdoubleclick": False})
     return fig
 
 
@@ -1123,7 +1131,7 @@ def get_calibration_fig() -> go.Figure:
     return fig
 
 
-def get_time_fig(chans: List[str], y_axis_label: Dict[str, str]) -> go.Figure:
+def get_time_fig(chans: list[str], y_axis_label: dict[str, str]) -> go.Figure:
     """
     Get a figure for plotting time data
 
@@ -1152,7 +1160,7 @@ def get_time_fig(chans: List[str], y_axis_label: Dict[str, str]) -> go.Figure:
     return fig
 
 
-def get_spectra_stack_fig(chans: List[str], y_axis_label: Dict[str, str]) -> go.Figure:
+def get_spectra_stack_fig(chans: list[str], y_axis_label: dict[str, str]) -> go.Figure:
     """
     Get a figure for plotting spectra stack data
 
@@ -1183,7 +1191,7 @@ def get_spectra_stack_fig(chans: List[str], y_axis_label: Dict[str, str]) -> go.
     return fig
 
 
-def get_spectra_section_fig(chans: List[str]) -> go.Figure:
+def get_spectra_section_fig(chans: list[str]) -> go.Figure:
     """
     Get figure for plotting spectra sections
 

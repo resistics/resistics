@@ -1,8 +1,9 @@
 """Testing of sampling code"""
-import pytest
-from typing import Tuple, Union
+
 from datetime import datetime, timedelta
+
 import pandas as pd
+import pytest
 
 from resistics.sampling import RSDateTime, RSTimeDelta, to_datetime, to_timedelta
 
@@ -15,7 +16,7 @@ from resistics.sampling import RSDateTime, RSTimeDelta, to_datetime, to_timedelt
         (datetime(2021, 1, 2), RSDateTime(2021, 1, 2)),
     ],
 )
-def test_to_datetime(time: Union[str, pd.Timestamp, datetime], expected):
+def test_to_datetime(time: str | pd.Timestamp | datetime, expected):
     """Test converting to datetime"""
     assert to_datetime(time) == expected
 
@@ -28,9 +29,7 @@ def test_to_datetime(time: Union[str, pd.Timestamp, datetime], expected):
         (timedelta(milliseconds=100), RSTimeDelta(microseconds=100_000)),
     ],
 )
-def test_to_timedelta(
-    delta: Union[float, timedelta, pd.Timedelta], expected: RSTimeDelta
-):
+def test_to_timedelta(delta: float | timedelta | pd.Timedelta, expected: RSTimeDelta):
     """Test converting to timedelta"""
     assert to_timedelta(delta) == expected
 
@@ -151,7 +150,7 @@ def test_check_from_time(
     from resistics.sampling import check_from_time
 
     if raises:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="greater than time of last sample"):
             check_from_time(first_time, last_time, from_time)
     else:
         from_time = check_from_time(first_time, last_time, from_time)
@@ -195,7 +194,7 @@ def test_check_to_time(
     from resistics.sampling import check_to_time
 
     if raises:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="less than time of first sample"):
             check_to_time(first_time, last_time, to_time)
     else:
         to_time = check_to_time(first_time, last_time, to_time)
@@ -351,7 +350,7 @@ def test_datetimes_to_samples(
     last_time: RSDateTime,
     from_time: RSDateTime,
     to_time: RSDateTime,
-    expected: Tuple[int, int],
+    expected: tuple[int, int],
 ) -> None:
     """Test converting datetimes to samples"""
     from resistics.sampling import datetimes_to_samples

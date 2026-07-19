@@ -9,9 +9,10 @@ surveys, stations, and runs from an MTH5 file.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
 from shutil import rmtree
-from typing import Any, Dict, Iterable, List, Literal, Optional, Union
+from typing import Any, Literal
 
 import h5py
 import pandas as pd
@@ -42,7 +43,7 @@ CANONICAL_PROJ_DIRS = (
 )
 
 
-def _as_path(value: Union[Path, str]) -> Path:
+def _as_path(value: Path | str) -> Path:
     """Return a path from a string or path-like value."""
     return value if isinstance(value, Path) else Path(value)
 
@@ -71,7 +72,7 @@ def get_results_path(
     project_path: Path,
     survey: str,
     station: str,
-    output_label: Optional[str] = None,
+    output_label: str | None = None,
 ) -> Path:
     """Get path to final outputs for a processing job."""
     if output_label is None:
@@ -128,7 +129,7 @@ def get_log_path(project_path: Path, job_name: str) -> Path:
 
 
 def get_solution_name(
-    fs: float, tf_name: str, tf_var: str, postfix: Optional[str] = None
+    fs: float, tf_name: str, tf_var: str, postfix: str | None = None
 ) -> str:
     """Get the name of a solution file."""
     from resistics.common import fs_to_string
@@ -146,7 +147,7 @@ class ProjectMetadata(ResisticsModel):
 
     mth5_path: Path
     ref_time: HighResDateTime
-    plugin_paths: List[Path] = Field(default_factory=list)
+    plugin_paths: list[Path] = Field(default_factory=list)
 
 
 class MTH5FileSummary(ResisticsModel):
@@ -158,9 +159,9 @@ class MTH5FileSummary(ResisticsModel):
     n_stations: int
     n_runs: int
     n_channels: int
-    sample_rates: List[float] = Field(default_factory=list)
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
+    sample_rates: list[float] = Field(default_factory=list)
+    start_time: str | None = None
+    end_time: str | None = None
 
 
 class SurveySummary(ResisticsModel):
@@ -174,12 +175,12 @@ class StationSummary(ResisticsModel):
     station: str
     station_path: str
     n_runs: int
-    sample_rates: List[float] = Field(default_factory=list)
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    elevation: Optional[float] = None
+    sample_rates: list[float] = Field(default_factory=list)
+    start_time: str | None = None
+    end_time: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    elevation: float | None = None
 
 
 class RunSummary(ResisticsModel):
@@ -189,7 +190,7 @@ class RunSummary(ResisticsModel):
     run_path: str
     sample_rate: float
     n_samples: int
-    channels: List[str] = Field(default_factory=list)
+    channels: list[str] = Field(default_factory=list)
     start_time: str
     end_time: str
     has_data: bool = True
@@ -212,7 +213,7 @@ class ChannelSummary(ResisticsModel):
 class MetadataDetail(ResisticsModel):
     object_type: Literal["survey", "station", "run", "channel"]
     object_path: str
-    values: Dict[str, JsonValue] = Field(default_factory=dict)
+    values: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 DataSource = Literal["project", "mth5"]
@@ -224,7 +225,7 @@ class ProjectDataItem(ResisticsModel):
 
     source: DataSource
     path: str
-    parent_path: Optional[str] = None
+    parent_path: str | None = None
     name: str
     kind: Literal["directory", "file", "group", "dataset"]
     data_type: DataType
@@ -239,14 +240,14 @@ class ProjectDataMetadata(ResisticsModel):
     path: str
     kind: Literal["directory", "file", "group", "dataset"]
     data_type: DataType
-    values: Dict[str, JsonValue] = Field(default_factory=dict)
+    values: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class ProjectDataDeletion(ResisticsModel):
     """Preview or summary of a derived-project-data deletion."""
 
-    output_label: Optional[str] = None
-    paths: List[str] = Field(default_factory=list)
+    output_label: str | None = None
+    paths: list[str] = Field(default_factory=list)
 
     @property
     def count(self) -> int:
@@ -325,7 +326,7 @@ class _MTH5InspectionMixin:
             end_time=_iso_max(table, "end"),
         )
 
-    def list_surveys(self) -> List[SurveySummary]:
+    def list_surveys(self) -> list[SurveySummary]:
         ans = []
         for survey, table in self.table.groupby("survey"):
             ans.append(
@@ -337,7 +338,7 @@ class _MTH5InspectionMixin:
             )
         return ans
 
-    def list_stations(self, survey: Optional[str] = None) -> List[StationSummary]:
+    def list_stations(self, survey: str | None = None) -> list[StationSummary]:
         table = self._filter_table(survey=survey)
         ans = []
         for (survey_name, station), rows in table.groupby(["survey", "station"]):
@@ -358,8 +359,8 @@ class _MTH5InspectionMixin:
         return ans
 
     def list_runs(
-        self, survey: Optional[str] = None, station: Optional[str] = None
-    ) -> List[RunSummary]:
+        self, survey: str | None = None, station: str | None = None
+    ) -> list[RunSummary]:
         table = self._filter_table(survey=survey, station=station)
         ans = []
         for (survey_name, station_name, run), rows in table.groupby(
@@ -385,7 +386,7 @@ class _MTH5InspectionMixin:
 
     def list_channels(
         self, survey: str, station: str, run: str
-    ) -> List[ChannelSummary]:
+    ) -> list[ChannelSummary]:
         rows = self._filter_table(survey=survey, station=station)
         rows = rows[rows["run"] == run]
         return [
@@ -431,7 +432,7 @@ class MTH5File(_MTH5InspectionMixin, ResisticsModel):
     mth5_data: MTH5 = Field(repr=False, exclude=True)
     table: pd.DataFrame = Field(repr=False, exclude=True)
 
-    def fs(self) -> List[float]:
+    def fs(self) -> list[float]:
         return sorted(float(x) for x in self.table["sample_rate"].dropna().unique())
 
     def get_survey(self, survey: str) -> SurveyGroup:
@@ -459,12 +460,12 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
     project_path: Path
     mth5_path: Path
     ref_time: HighResDateTime
-    plugin_paths: List[Path] = Field(default_factory=list)
+    plugin_paths: list[Path] = Field(default_factory=list)
     mth5_data: MTH5 = Field(repr=False, exclude=True)
     table: pd.DataFrame = Field(repr=False, exclude=True)
-    surveys: List[str] = Field(default_factory=list)
-    stations: List[str] = Field(default_factory=list)
-    runs: List[str] = Field(default_factory=list)
+    surveys: list[str] = Field(default_factory=list)
+    stations: list[str] = Field(default_factory=list)
+    runs: list[str] = Field(default_factory=list)
 
     @property
     def dir_path(self) -> Path:
@@ -480,10 +481,11 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
             plugin_paths=self.plugin_paths,
         )
 
-    def list_mth5_data_items(self) -> List[ProjectDataItem]:
+    def list_mth5_data_items(self) -> list[ProjectDataItem]:
         """List the MTH5 group and dataset hierarchy without reading data values."""
         items = []
         with h5py.File(self.mth5_path, "r") as mth5_file:
+
             def add_item(name: str, value: h5py.Group | h5py.Dataset) -> None:
                 path = f"/{name}"
                 parent = "/" if "/" not in name else f"/{name.rsplit('/', 1)[0]}"
@@ -507,10 +509,9 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         with h5py.File(self.mth5_path, "r") as mth5_file:
             value = mth5_file[path]
             kind = "group" if isinstance(value, h5py.Group) else "dataset"
-            values: Dict[str, JsonValue] = {
+            values: dict[str, JsonValue] = {
                 "attributes": {
-                    str(key): _metadata_value(item)
-                    for key, item in value.attrs.items()
+                    str(key): _metadata_value(item) for key, item in value.attrs.items()
                 }
             }
             if isinstance(value, h5py.Dataset):
@@ -536,7 +537,7 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         """Return the project data root used by generated artifacts."""
         return self.project_path / "data"
 
-    def list_project_data_items(self) -> List[ProjectDataItem]:
+    def list_project_data_items(self) -> list[ProjectDataItem]:
         """List saved project artifacts without opening their data payloads."""
         data_path = self._data_path
         if not data_path.is_dir():
@@ -557,41 +558,39 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
                     name=item_path.name,
                     kind="directory" if item_path.is_dir() else "file",
                     data_type=_project_data_type(item_path),
-                    is_dataset=self._is_project_dataset_item(
-                        item_path, artifact_roots
-                    ),
+                    is_dataset=self._is_project_dataset_item(item_path, artifact_roots),
                 )
             )
         return items
 
-    def _project_artifact_roots(self) -> Dict[Path, DataType]:
+    def _project_artifact_roots(self) -> dict[Path, DataType]:
         """Return the directories that each represent one saved artifact."""
         data_path = self._data_path
         if not data_path.is_dir():
             return {}
-        roots: Dict[Path, DataType] = {}
+        roots: dict[Path, DataType] = {}
         for item_path in data_path.rglob("*"):
             if not item_path.is_dir():
                 continue
             data_type = _project_data_type(item_path)
-            if data_type == "spectra" and item_path.parent.name == "evals":
-                roots[item_path] = data_type
-            elif (
-                data_type == "mask"
-                and (item_path / "metadata.json").is_file()
-                and (item_path / "data.npz").is_file()
-            ):
-                roots[item_path] = data_type
-            elif (
-                data_type == "transfer_function"
-                and (item_path / "solution.json").is_file()
+            if (
+                (data_type == "spectra" and item_path.parent.name == "evals")
+                or (
+                    data_type == "mask"
+                    and (item_path / "metadata.json").is_file()
+                    and (item_path / "data.npz").is_file()
+                )
+                or (
+                    data_type == "transfer_function"
+                    and (item_path / "solution.json").is_file()
+                )
             ):
                 roots[item_path] = data_type
         return roots
 
     @staticmethod
     def _is_project_dataset_item(
-        item_path: Path, artifact_roots: Dict[Path, DataType]
+        item_path: Path, artifact_roots: dict[Path, DataType]
     ) -> bool:
         """Identify artifact roots and standalone unrecognised data files."""
         if item_path in artifact_roots:
@@ -604,7 +603,7 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         """Return generic and recognized metadata for one saved project artifact."""
         item_path = self._project_data_item_path(path)
         kind = "directory" if item_path.is_dir() else "file"
-        values: Dict[str, JsonValue] = {
+        values: dict[str, JsonValue] = {
             "size_bytes": None if item_path.is_dir() else item_path.stat().st_size,
         }
         values.update(self._project_data_descriptors(item_path))
@@ -626,18 +625,13 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             raise ValueError(f"Unable to read JSON file {path}: {exc}") from exc
 
-    def list_project_output_labels(self) -> List[str]:
+    def list_project_output_labels(self) -> list[str]:
         """List output labels represented by recognised derived artifacts."""
         labels = set()
         for path, data_type in self._project_artifact_roots().items():
             if data_type == "spectra" and path.parent.name == "evals":
                 labels.add(path.name)
-            elif (
-                data_type == "mask"
-                and path.parent.parent.name == "masks"
-            ):
-                labels.add(path.parent.name)
-            elif (
+            elif (data_type == "mask" and path.parent.parent.name == "masks") or (
                 data_type == "transfer_function"
                 and path.parent.parent.name == "results"
             ):
@@ -645,14 +639,19 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         return sorted(labels)
 
     def preview_project_data_deletion(
-        self, output_label: Optional[str] = None
+        self, output_label: str | None = None
     ) -> ProjectDataDeletion:
         """Return the derived paths that a labelled or complete clear removes."""
         data_path = self._data_path
         if output_label is None:
-            paths = [] if not data_path.is_dir() else [
-                path.relative_to(data_path).as_posix() for path in sorted(data_path.iterdir())
-            ]
+            paths = (
+                []
+                if not data_path.is_dir()
+                else [
+                    path.relative_to(data_path).as_posix()
+                    for path in sorted(data_path.iterdir())
+                ]
+            )
             return ProjectDataDeletion(paths=paths)
 
         output_label = validate_output_label(output_label)
@@ -661,19 +660,21 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
             if data_type == "spectra" and path.parent.name == "evals":
                 if path.name == output_label:
                     targets.add(path)
-            elif data_type == "mask" and path.parent.parent.name == "masks":
-                if path.parent.name == output_label:
-                    targets.add(path.parent)
-            elif data_type == "transfer_function" and path.parent.parent.name == "results":
-                if path.parent.name == output_label:
-                    targets.add(path.parent)
+            elif (
+                (data_type == "mask" and path.parent.parent.name == "masks")
+                or (
+                    data_type == "transfer_function"
+                    and path.parent.parent.name == "results"
+                )
+            ) and path.parent.name == output_label:
+                targets.add(path.parent)
         return ProjectDataDeletion(
             output_label=output_label,
             paths=sorted(path.relative_to(data_path).as_posix() for path in targets),
         )
 
     def delete_project_data(
-        self, output_label: Optional[str] = None
+        self, output_label: str | None = None
     ) -> ProjectDataDeletion:
         """Delete one output-label namespace or all derived project data.
 
@@ -737,14 +738,16 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         return item_path
 
     @staticmethod
-    def _project_data_descriptors(item_path: Path) -> Dict[str, JsonValue]:
+    def _project_data_descriptors(item_path: Path) -> dict[str, JsonValue]:
         """Read recognized, small JSON descriptors associated with an artifact."""
         descriptors = (
             [item_path / "metadata.json", item_path / "job_info.json"]
             if item_path.is_dir()
-            else [item_path]
-            if item_path.name in {"metadata.json", "job_info.json"}
-            else []
+            else (
+                [item_path]
+                if item_path.name in {"metadata.json", "job_info.json"}
+                else []
+            )
         )
         values = {}
         for descriptor in (path for path in descriptors if path.is_file()):
@@ -771,13 +774,13 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         """Get the number of surveys."""
         return len(self.surveys)
 
-    def n_stations(self, survey: Optional[str] = None) -> int:
+    def n_stations(self, survey: str | None = None) -> int:
         """Get the number of stations, optionally filtered by survey."""
         if survey is None:
             return len(self.stations)
         return len(self.get_stations(survey=survey))
 
-    def fs(self) -> List[float]:
+    def fs(self) -> list[float]:
         """Get project sample rates."""
         if self.table.empty:
             return []
@@ -805,8 +808,8 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         return self.mth5_data.get_station(station, survey=survey)
 
     def get_stations(
-        self, survey: Optional[str] = None, fs: Optional[float] = None
-    ) -> Dict[str, StationGroup]:
+        self, survey: str | None = None, fs: float | None = None
+    ) -> dict[str, StationGroup]:
         """Get station groups keyed by ``survey/station``."""
         table = self._filter_table(survey=survey, fs=fs)
         table = table.drop_duplicates(subset=["station_path"], keep="first")
@@ -824,10 +827,10 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
 
     def get_runs(
         self,
-        survey: Optional[str] = None,
-        station: Optional[str] = None,
-        fs: Optional[float] = None,
-    ) -> Dict[str, RunGroup]:
+        survey: str | None = None,
+        station: str | None = None,
+        fs: float | None = None,
+    ) -> dict[str, RunGroup]:
         """Get run groups keyed by ``survey/station/run``."""
         table = self._filter_table(survey=survey, station=station, fs=fs)
         table = table.drop_duplicates(subset=["run_path"], keep="first")
@@ -836,9 +839,7 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
             for _, row in table.iterrows()
         }
 
-    def get_concurrent(
-        self, station_path: str, fs: Optional[float] = None
-    ) -> List[str]:
+    def get_concurrent(self, station_path: str, fs: float | None = None) -> list[str]:
         """Find station paths that overlap in time with ``station_path``."""
         station_table = self.table[self.table["station_path"] == station_path]
         if station_table.empty:
@@ -858,11 +859,11 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         survey: str,
         station: str,
         run: str,
-        chans: Optional[Iterable[str]] = None,
-        from_time: Optional[DateTimeLike] = None,
-        to_time: Optional[DateTimeLike] = None,
-        from_sample: Optional[int] = None,
-        to_sample: Optional[int] = None,
+        chans: Iterable[str] | None = None,
+        from_time: DateTimeLike | None = None,
+        to_time: DateTimeLike | None = None,
+        from_sample: int | None = None,
+        to_sample: int | None = None,
     ) -> TimeData:
         """Read an MTH5 run into existing resistics ``TimeData`` containers."""
         return _read_run(
@@ -896,9 +897,9 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
 
     def _filter_table(
         self,
-        survey: Optional[str] = None,
-        station: Optional[str] = None,
-        fs: Optional[float] = None,
+        survey: str | None = None,
+        station: str | None = None,
+        fs: float | None = None,
     ) -> pd.DataFrame:
         """Filter the cached MTH5 summary table."""
         table = self.table.copy()
@@ -912,12 +913,12 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
 
 
 def init(
-    project_path: Union[Path, str],
-    mth5_path: Union[Path, str],
+    project_path: Path | str,
+    mth5_path: Path | str,
     ref_time: DateTimeLike,
     overwrite: bool = False,
-    force: Optional[bool] = None,
-    plugin_paths: Optional[List[Union[Path, str]]] = None,
+    force: bool | None = None,
+    plugin_paths: list[Path | str] | None = None,
 ) -> bool:
     """Initialise an MTH5-backed resistics project."""
     if force is not None:
@@ -945,7 +946,7 @@ def init(
     return True
 
 
-def load(project_path: Union[Path, str]) -> Project:
+def load(project_path: Path | str) -> Project:
     """Load an MTH5-backed resistics project."""
     project_path = _as_path(project_path)
     metadata_path = project_path / PROJ_FILE
@@ -970,7 +971,7 @@ def load(project_path: Union[Path, str]) -> Project:
     )
 
 
-def open_mth5(mth5_path: Union[Path, str]) -> MTH5File:
+def open_mth5(mth5_path: Path | str) -> MTH5File:
     """Open an existing MTH5 file as a read-only inspection source."""
     mth5_path = _as_path(mth5_path)
     if not mth5_path.exists():
@@ -985,7 +986,7 @@ def open_mth5(mth5_path: Union[Path, str]) -> MTH5File:
         raise
 
 
-def check_project(project_path: Union[Path, str], mth5_path: Union[Path, str]) -> bool:
+def check_project(project_path: Path | str, mth5_path: Path | str) -> bool:
     """Validate an MTH5-backed resistics project directory."""
     project_path = _as_path(project_path)
     mth5_path = _as_path(mth5_path)
@@ -1023,9 +1024,9 @@ def _prepare_channel_summary(table: pd.DataFrame) -> pd.DataFrame:
 
 def _filter_table(
     table: pd.DataFrame,
-    survey: Optional[str] = None,
-    station: Optional[str] = None,
-    fs: Optional[float] = None,
+    survey: str | None = None,
+    station: str | None = None,
+    fs: float | None = None,
 ) -> pd.DataFrame:
     table = table.copy()
     if survey is not None:
@@ -1037,20 +1038,20 @@ def _filter_table(
     return table
 
 
-def _optional_float(table: pd.DataFrame, column: str) -> Optional[float]:
+def _optional_float(table: pd.DataFrame, column: str) -> float | None:
     if column not in table or table[column].dropna().empty:
         return None
     return float(table[column].dropna().iloc[0])
 
 
-def _iso_min(table: pd.DataFrame, column: str) -> Optional[str]:
+def _iso_min(table: pd.DataFrame, column: str) -> str | None:
     if table.empty or column not in table:
         return None
     value = table[column].min()
     return None if pd.isna(value) else str(value.isoformat())
 
 
-def _iso_max(table: pd.DataFrame, column: str) -> Optional[str]:
+def _iso_max(table: pd.DataFrame, column: str) -> str | None:
     if table.empty or column not in table:
         return None
     value = table[column].max()
@@ -1062,11 +1063,11 @@ def _read_run(
     survey: str,
     station: str,
     run: str,
-    chans: Optional[Iterable[str]] = None,
-    from_time: Optional[DateTimeLike] = None,
-    to_time: Optional[DateTimeLike] = None,
-    from_sample: Optional[int] = None,
-    to_sample: Optional[int] = None,
+    chans: Iterable[str] | None = None,
+    from_time: DateTimeLike | None = None,
+    to_time: DateTimeLike | None = None,
+    from_sample: int | None = None,
+    to_sample: int | None = None,
 ) -> TimeData:
     """Resolve an MTH5 run and delegate its reading to ``MTH5TimeReader``."""
     run_group = source.get_run(survey, station, run)

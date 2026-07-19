@@ -157,7 +157,7 @@ def test_create_template_rejects_unsafe_job_names(tmp_path, name):
     project = make_project(tmp_path)
     definition = JobDefinition(name=name, flow="standard", parameters="defaults")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Job name must"):
         ProjectJobs(project).create_template(definition)
 
 

@@ -61,13 +61,7 @@ shared = ["matplotlib"]
 dev = [
     "black",
     "pre-commit",
-    "flake8",
-    "flake8-builtins",
-    "flake8-docstrings",
-    "flake8-bandit",
-    "flake8-pytest-style",
-    "flake8-cognitive-complexity",
-    "flake8-expression-complexity",
+    "ruff>=0.15.22,<0.16",
     "darglint",
 ]
 docs = [
@@ -133,3 +127,58 @@ output = ".artifacts/hardening/coverage/coverage.xml"
 [tool.black]
 line-length = 88
 target-version = ["py38"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+extend-exclude = ["docs", "examples"]
+force-exclude = true
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "B",
+    "C4",
+    "C90",
+    "E",
+    "F",
+    "I",
+    "PERF",
+    "PT",
+    "RUF",
+    "S",
+    "SIM",
+    "UP",
+    "W",
+]
+ignore = [
+    "E501", # Black remains the line-length authority until Checkpoint 2.2.
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.flake8-pytest-style]
+parametrize-names-type = "csv"
+
+[tool.ruff.lint.per-file-ignores]
+"resistics/transfunc.py" = [
+    "RUF012", # Pydantic copies and validates these model-field list defaults.
+]
+"resistics/testing.py" = [
+    "S101", # Assertions validate internal synthetic-data invariants.
+    "S311", # Non-cryptographic randomness generates synthetic test data.
+]
+"resistics/tui.py" = [
+    "RUF012", # Textual requires mutable BINDINGS and related class attributes.
+    "SIM117", # Nested Textual context managers mirror the composed widget tree.
+]
+"scripts/*.py" = [
+    "S607", # Repository scripts invoke the cross-platform git executable.
+]
+"tests/**/*.py" = [
+    "PT014", # Parameter objects may compare equally while exercising distinct modes.
+    "RUF012", # Test process doubles intentionally declare mutable class metadata.
+    "S101", # Pytest uses plain assertions.
+    "S108", # Test fixtures deliberately exercise temporary-looking paths.
+]

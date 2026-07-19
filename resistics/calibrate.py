@@ -12,18 +12,21 @@ Calibration data for induction coils is given in mV/nT. Because this is
 deconvolved from magnetic time data, which is in mV, the resultant magnetic
 time data is in nT.
 """
-from loguru import logger
-from typing import Optional, Any, List, Tuple, Union, Dict
+
+import contextlib
 from pathlib import Path
-from pydantic import model_validator
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from loguru import logger
+from pydantic import model_validator
 
-from resistics.errors import CalibrationFileNotFound
 from resistics.common import ResisticsProcess, WriteableMetadata
+from resistics.errors import CalibrationFileNotFound
+from resistics.spectra import SpectraData, SpectraMetadata
 from resistics.time import ChanMetadata
-from resistics.spectra import SpectraMetadata, SpectraData
 
 
 class CalibrationData(WriteableMetadata):
@@ -39,23 +42,23 @@ class CalibrationData(WriteableMetadata):
     - Phase is in radians
     """
 
-    file_path: Optional[Path] = None
+    file_path: Path | None = None
     """Path to the calibration file"""
     sensor: str = ""
     """Sensor type"""
-    serial: Union[int, str]
+    serial: int | str
     """Serial number of the sensor"""
     static_gain: float = 1
     """Static gain to apply"""
     magnitude_unit: str = "mV/nT"
     """Units of the magnitude"""
-    frequency: List[float]
+    frequency: list[float]
     """Frequencies in Hz"""
-    magnitude: List[float]
+    magnitude: list[float]
     """Magnitude"""
-    phase: List[float]
+    phase: list[float]
     """Phase"""
-    n_samples: Optional[int] = None
+    n_samples: int | None = None
     """Number of data samples"""
 
     @model_validator(mode="after")
@@ -79,7 +82,7 @@ class CalibrationData(WriteableMetadata):
 
     def plot(
         self,
-        fig: Optional[go.Figure] = None,
+        fig: go.Figure | None = None,
         color: str = "blue",
         legend: str = "CalibrationData",
     ) -> go.Figure:
@@ -109,7 +112,7 @@ class CalibrationData(WriteableMetadata):
             x=self.frequency,
             y=self.magnitude,
             mode="lines+markers",
-            line=dict(color=color),
+            line={"color": color},
             name=legend,
             legendgroup=legend,
         )
@@ -119,7 +122,7 @@ class CalibrationData(WriteableMetadata):
             x=self.frequency,
             y=self.phase,
             mode="lines+markers",
-            line=dict(color=color),
+            line={"color": color},
             name=legend,
             legendgroup=legend,
             showlegend=False,
@@ -141,7 +144,7 @@ class CalibrationData(WriteableMetadata):
 class CalibrationReader(ResisticsProcess):
     """Parent class for reading calibration data"""
 
-    extension: Optional[str] = None
+    extension: str | None = None
 
 
 class InstrumentCalibrationReader(CalibrationReader):
@@ -342,7 +345,7 @@ class SensorCalibrationTXT(SensorCalibrationReader):
         data_dict["file_path"] = file_path
         return CalibrationData(**data_dict)
 
-    def _read_metadata(self, lines: List[str]) -> Dict[str, Any]:
+    def _read_metadata(self, lines: list[str]) -> dict[str, Any]:
         """Read data from the calibration file"""
         serial, sensor = self._get_sensor_details(lines)
         static_gain = self._get_static_gain(lines)
@@ -357,23 +360,21 @@ class SensorCalibrationTXT(SensorCalibrationReader):
             "phase_unit": phase_unit,
         }
 
-    def _get_sensor_details(self, lines: List[str]) -> Tuple[Union[int, str], str]:
+    def _get_sensor_details(self, lines: list[str]) -> tuple[int | str, str]:
         """Get sensor details"""
-        serial: Union[int, str] = 1
+        serial: int | str = 1
         sensor: str = ""
         for line in lines:
             line = line.lower()
             if "serial" in line:
                 serial = line.split("=")[1].strip()
-                try:
+                with contextlib.suppress(ValueError):
                     serial = int(serial)
-                except ValueError:
-                    pass
             if "sensor" in line:
                 sensor = line.split("=")[1].strip()
         return serial, sensor
 
-    def _get_static_gain(self, lines: List[str]) -> float:
+    def _get_static_gain(self, lines: list[str]) -> float:
         """Get static gain"""
         static_gain = 1.0
         for line in lines:
@@ -382,7 +383,7 @@ class SensorCalibrationTXT(SensorCalibrationReader):
                 return static_gain
         return static_gain
 
-    def _get_chopper(self, lines: List[str]) -> bool:
+    def _get_chopper(self, lines: list[str]) -> bool:
         """Get chopper"""
         for line in lines:
             if "chopper" in line.lower():
@@ -390,7 +391,7 @@ class SensorCalibrationTXT(SensorCalibrationReader):
                 return chopper_str == "True"
         return False
 
-    def _get_units(self, lines: List[str]) -> Tuple[str, str]:
+    def _get_units(self, lines: list[str]) -> tuple[str, str]:
         """Get units for the magnitude and phase"""
         magnitude_unit: str = "mV/nT"
         phase_unit: str = "radians"
@@ -401,7 +402,7 @@ class SensorCalibrationTXT(SensorCalibrationReader):
                 phase_unit = line.split("=")[1].strip()
         return magnitude_unit, phase_unit
 
-    def _read_data(self, lines: List[str], data_dict: Dict[str, Any]) -> pd.DataFrame:
+    def _read_data(self, lines: list[str], data_dict: dict[str, Any]) -> pd.DataFrame:
         """Read the calibration data lines"""
         read_from = self._get_read_from(lines)
         data_lines = self._get_data_lines(lines, read_from)
@@ -414,16 +415,16 @@ class SensorCalibrationTXT(SensorCalibrationReader):
         df = df.set_index("frequency").sort_index()
         return df
 
-    def _get_read_from(self, lines: List[str]) -> int:
+    def _get_read_from(self, lines: list[str]) -> int:
         """Get the line number to read from"""
         for idx, line in enumerate(lines):
             if "CALIBRATION DATA" in line:
                 return idx + 1
         raise ValueError("Unable to determine location of data in file")
 
-    def _get_data_lines(self, lines: List[str], idx: int) -> List[str]:
+    def _get_data_lines(self, lines: list[str], idx: int) -> list[str]:
         """Get the data lines out of the file"""
-        data_lines: List[str] = []
+        data_lines: list[str] = []
         while idx < len(lines) and lines[idx] != "":
             data_lines.append(lines[idx])
             idx += 1
@@ -433,21 +434,21 @@ class SensorCalibrationTXT(SensorCalibrationReader):
 class Calibrator(ResisticsProcess):
     """Parent class for a calibrator"""
 
-    chans: Optional[List[str]] = None
+    chans: list[str] | None = None
     """List of channels to calibrate"""
 
     def run(self, dir_path: Path, spec_data: SpectraData) -> SpectraData:
         """Run the instrument calibration"""
         raise NotImplementedError("To be implemented")
 
-    def _get_chans(self, chans: List[str]) -> List[str]:
+    def _get_chans(self, chans: list[str]) -> list[str]:
         """Get the channels to calibrate"""
         if self.chans is None:
             return chans
         return [x for x in self.chans if x in chans]
 
     def _calibrate(
-        self, freqs: List[float], chan_data: np.ndarray, cal_data: CalibrationData
+        self, freqs: list[float], chan_data: np.ndarray, cal_data: CalibrationData
     ) -> np.ndarray:
         """
         Calibrate a channel
@@ -504,13 +505,13 @@ class Calibrator(ResisticsProcess):
 
 class InstrumentCalibrator(Calibrator):
 
-    readers: List[InstrumentCalibrationReader]
+    readers: list[InstrumentCalibrationReader]
     """List of readers for reading in instrument calibration files"""
 
 
 class SensorCalibrator(Calibrator):
 
-    readers: List[SensorCalibrationReader]
+    readers: list[SensorCalibrationReader]
     """List of readers for reading in sensor calibration files"""
 
     def run(self, dir_path: Path, spec_data: SpectraData) -> SpectraData:
@@ -540,7 +541,7 @@ class SensorCalibrator(Calibrator):
 
     def _get_cal_data(
         self, dir_path: Path, metadata: SpectraMetadata, chan: str
-    ) -> Union[CalibrationData, None]:
+    ) -> CalibrationData | None:
         """Get the calibration data"""
         cal_data = None
         for reader in self.readers:

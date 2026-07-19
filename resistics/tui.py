@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import re
 import sys
+import warnings
+from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from time import monotonic
-from typing import Dict, Optional, Sequence
-import warnings
-from dataclasses import dataclass
 
+import plotly.io as pio
 from loguru import logger
 from mth5.helpers import validate_name as validate_mth5_name
 from textual import on, work
@@ -34,8 +35,14 @@ from textual.widgets import (
     Tree,
 )
 
-import plotly.io as pio
-
+from resistics.common import validate_output_label
+from resistics.flow import (
+    FlowDefinition,
+    ParameterSet,
+    model_from_yaml,
+    model_from_yaml_file,
+)
+from resistics.gather import GatherCriteria
 from resistics.job import (
     JobDefinition,
     JobProgressEvent,
@@ -46,24 +53,18 @@ from resistics.job import (
     ProjectJobs,
     validate_job_template_name,
 )
-from resistics.common import validate_output_label
-from resistics.flow import (
-    FlowDefinition,
-    ParameterSet,
-    model_from_yaml,
-    model_from_yaml_file,
-)
-from resistics.gather import GatherCriteria
-from resistics.regression import Solution
+from resistics.plot import plot_flow, plot_job
 from resistics.project import (
     Project,
     ProjectDataDeletion,
     ProjectDataItem,
-    init as init_project,
     load,
     open_mth5,
 )
-from resistics.plot import plot_flow, plot_job
+from resistics.project import (
+    init as init_project,
+)
+from resistics.regression import Solution
 from resistics.sampling import to_datetime
 from resistics.spectra import SpectraDataReader
 from resistics.templates import (
@@ -174,7 +175,7 @@ _NO_CRITERIA_VALUE = "__no_criteria__"
 _YAML_FILE_STEM = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
-class CreateJobScreen(ModalScreen[Optional[JobDefinition]]):
+class CreateJobScreen(ModalScreen[JobDefinition | None]):
     """Create a minimal job template from project YAML resources."""
 
     BINDINGS = [
@@ -209,9 +210,10 @@ class CreateJobScreen(ModalScreen[Optional[JobDefinition]]):
         super().__init__()
         self.flow_options = list(flow_options)
         self.parameter_options = list(parameter_options)
-        self.criteria_options = [("No criteria", _NO_CRITERIA_VALUE)] + list(
-            criteria_options
-        )
+        self.criteria_options = [
+            ("No criteria", _NO_CRITERIA_VALUE),
+            *list(criteria_options),
+        ]
         self.existing_names = existing_names
 
     def compose(self) -> ComposeResult:
@@ -315,7 +317,7 @@ class CreateJobScreen(ModalScreen[Optional[JobDefinition]]):
             )
         )
 
-    def _select_value(self, selector: str) -> Optional[str]:
+    def _select_value(self, selector: str) -> str | None:
         value = self.query_one(selector, Select).value
         return None if value is Select.NULL else str(value)
 
@@ -332,7 +334,7 @@ class CreateJobScreen(ModalScreen[Optional[JobDefinition]]):
         actions[(actions.index(self.focused) + increment) % len(actions)].focus()
 
 
-class CopyYamlFileScreen(ModalScreen[Optional[str]]):
+class CopyYamlFileScreen(ModalScreen[str | None]):
     """Ask for the filename stem of a YAML copy."""
 
     BINDINGS = [
@@ -490,10 +492,10 @@ class DeleteYamlFileScreen(ModalScreen[bool]):
 class ProjectDataDeletionRequest:
     """The user-selected scope for one destructive Data-tab action."""
 
-    output_label: Optional[str] = None
+    output_label: str | None = None
 
 
-class DeleteProjectDataScreen(ModalScreen[Optional[ProjectDataDeletionRequest]]):
+class DeleteProjectDataScreen(ModalScreen[ProjectDataDeletionRequest | None]):
     """Choose a derived-data namespace or all generated project data."""
 
     BINDINGS = [
@@ -681,7 +683,7 @@ def _validate_yaml_file_stem(value: str) -> str:
     return value
 
 
-class DirectoryPickerScreen(ModalScreen[Optional[Path]]):
+class DirectoryPickerScreen(ModalScreen[Path | None]):
     """Select either a directory or file with the terminal file browser."""
 
     BINDINGS = [("u", "parent_directory", "Up"), ("escape", "cancel", "Cancel")]
@@ -706,9 +708,7 @@ class DirectoryPickerScreen(ModalScreen[Optional[Path]]):
     #path-picker-actions Button { margin-left: 1; }
     """
 
-    def __init__(
-        self, title: str, select_files: bool, start_path: Optional[Path] = None
-    ):
+    def __init__(self, title: str, select_files: bool, start_path: Path | None = None):
         super().__init__()
         self.title = title
         self.select_files = select_files
@@ -783,22 +783,19 @@ class HomeScreen(Screen[None]):
         ("q", "quit", "Quit"),
     ]
 
-    def __init__(self, message: Optional[str] = None):
+    def __init__(self, message: str | None = None):
         super().__init__()
         self.message = message
 
     def compose(self) -> ComposeResult:
         yield TuiHeader(id="app-header")
-        with Horizontal(classes="launcher-layout"):
-            with Vertical(id="home"):
-                yield Static(
-                    "[bold]Welcome to resistics[/bold]\nOpen or create a project."
-                )
-                if self.message:
-                    yield Static(self.message, id="home-message")
-                yield Button("Open project", id="open-project", variant="success")
-                yield Button("Create project", id="create-project")
-                yield Button("Quit", id="quit")
+        with Horizontal(classes="launcher-layout"), Vertical(id="home"):
+            yield Static("[bold]Welcome to resistics[/bold]\nOpen or create a project.")
+            if self.message:
+                yield Static(self.message, id="home-message")
+            yield Button("Open project", id="open-project", variant="success")
+            yield Button("Create project", id="create-project")
+            yield Button("Quit", id="quit")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -811,7 +808,7 @@ class HomeScreen(Screen[None]):
             self._open_project,
         )
 
-    def _open_project(self, project_path: Optional[Path]) -> None:
+    def _open_project(self, project_path: Path | None) -> None:
         if project_path is not None:
             self.app.open_project_path(project_path)
 
@@ -854,8 +851,8 @@ class CreateProjectScreen(Screen[None]):
 
     def __init__(self):
         super().__init__()
-        self.parent_path: Optional[Path] = None
-        self.mth5_path: Optional[Path] = None
+        self.parent_path: Path | None = None
+        self.mth5_path: Path | None = None
 
     def compose(self) -> ComposeResult:
         yield TuiHeader(id="app-header")
@@ -888,7 +885,7 @@ class CreateProjectScreen(Screen[None]):
             self._parent_selected,
         )
 
-    def _parent_selected(self, parent_path: Optional[Path]) -> None:
+    def _parent_selected(self, parent_path: Path | None) -> None:
         if parent_path is None:
             return
         self.parent_path = parent_path
@@ -901,7 +898,7 @@ class CreateProjectScreen(Screen[None]):
             DirectoryPickerScreen("Select an MTH5 file", True), self._mth5_selected
         )
 
-    def _mth5_selected(self, mth5_path: Optional[Path]) -> None:
+    def _mth5_selected(self, mth5_path: Path | None) -> None:
         if mth5_path is None:
             return
         try:
@@ -1049,26 +1046,26 @@ class ProjectExplorerScreen(Screen[None]):
         ("Other", "other"),
     ]
 
-    def __init__(self, project: Project, startup_warnings: Optional[list[str]] = None):
+    def __init__(self, project: Project, startup_warnings: list[str] | None = None):
         super().__init__()
         self.project = project
         self.project_jobs = ProjectJobs(project)
-        self.flow_paths: Dict[str, Path] = {}
-        self.parameter_paths: Dict[str, Path] = {}
-        self.criteria_paths: Dict[str, Path] = {}
-        self.selected_flow_path: Optional[Path] = None
-        self.selected_parameter_path: Optional[Path] = None
-        self.selected_criteria_path: Optional[Path] = None
-        self.job_summaries: Dict[str, JobSummary] = {}
-        self.selected_job_path: Optional[Path] = None
-        self.selected_validation: Optional[JobValidation] = None
-        self.job_runner: Optional[JobRunner] = None
-        self.job_state: Optional[JobState] = None
-        self.data_items: Dict[str, ProjectDataItem] = {}
+        self.flow_paths: dict[str, Path] = {}
+        self.parameter_paths: dict[str, Path] = {}
+        self.criteria_paths: dict[str, Path] = {}
+        self.selected_flow_path: Path | None = None
+        self.selected_parameter_path: Path | None = None
+        self.selected_criteria_path: Path | None = None
+        self.job_summaries: dict[str, JobSummary] = {}
+        self.selected_job_path: Path | None = None
+        self.selected_validation: JobValidation | None = None
+        self.job_runner: JobRunner | None = None
+        self.job_state: JobState | None = None
+        self.data_items: dict[str, ProjectDataItem] = {}
         self.editing_yaml = False
-        self.editing_path: Optional[Path] = None
+        self.editing_path: Path | None = None
         self.editing_model = None
-        self.editing_editor_id: Optional[str] = None
+        self.editing_editor_id: str | None = None
         self.startup_warnings = startup_warnings or []
 
     def compose(self) -> ComposeResult:
@@ -1091,19 +1088,18 @@ class ProjectExplorerScreen(Screen[None]):
                             read_only=True,
                             id="data-metadata",
                         )
-            with TabPane("Flows", id="flows"):
-                with Vertical(classes="pane"):
-                    with Horizontal(classes="split"):
-                        with Vertical(classes="left"):
-                            yield DataTable(id="flow-table", cursor_type="row")
-                        with Vertical(classes="right"):
-                            yield TextArea.code_editor(
-                                "Select a flow",
-                                language="yaml",
-                                theme="vscode_dark",
-                                read_only=True,
-                                id="flow-content",
-                            )
+            with TabPane("Flows", id="flows"), Vertical(classes="pane"):
+                with Horizontal(classes="split"):
+                    with Vertical(classes="left"):
+                        yield DataTable(id="flow-table", cursor_type="row")
+                    with Vertical(classes="right"):
+                        yield TextArea.code_editor(
+                            "Select a flow",
+                            language="yaml",
+                            theme="vscode_dark",
+                            read_only=True,
+                            id="flow-content",
+                        )
             with TabPane("Parameters", id="parameters"):
                 with Vertical(classes="pane"):
                     with Horizontal(classes="split"):
@@ -1130,19 +1126,18 @@ class ProjectExplorerScreen(Screen[None]):
                                 read_only=True,
                                 id="criteria-content",
                             )
-            with TabPane("Jobs", id="jobs"):
-                with Vertical(classes="pane"):
-                    with Horizontal(classes="split"):
-                        with Vertical(classes="left"):
-                            yield DataTable(id="job-table", cursor_type="row")
-                        with Vertical(classes="right"):
-                            yield TextArea.code_editor(
-                                "Select a job",
-                                language="yaml",
-                                theme="vscode_dark",
-                                read_only=True,
-                                id="job-content",
-                            )
+            with TabPane("Jobs", id="jobs"), Vertical(classes="pane"):
+                with Horizontal(classes="split"):
+                    with Vertical(classes="left"):
+                        yield DataTable(id="job-table", cursor_type="row")
+                    with Vertical(classes="right"):
+                        yield TextArea.code_editor(
+                            "Select a job",
+                            language="yaml",
+                            theme="vscode_dark",
+                            read_only=True,
+                            id="job-content",
+                        )
             with TabPane("Activity", id="activity"):
                 with Vertical(classes="pane"):
                     yield Static("No active job", id="activity-status")
@@ -1173,7 +1168,7 @@ class ProjectExplorerScreen(Screen[None]):
             f"Project: {self.project.project_path}\n"
             f"MTH5: {summary.mth5_path}\n"
             f"MTH5 version: {summary.file_version}\n"
-            f"Reference time: {str(self.project.ref_time)}\n"
+            f"Reference time: {self.project.ref_time!s}\n"
             f"Time span: {summary.start_time or '-'} → {summary.end_time or '-'}\n"
             "Sample rates: "
             f"{', '.join(str(value) for value in summary.sample_rates) or '-'}\n\n"
@@ -1238,7 +1233,7 @@ class ProjectExplorerScreen(Screen[None]):
         return len(run_paths) if run_paths else sum(item.is_dataset for item in items)
 
     @staticmethod
-    def _mth5_time_run_path(item: ProjectDataItem) -> Optional[str]:
+    def _mth5_time_run_path(item: ProjectDataItem) -> str | None:
         """Return an MTH5 item's canonical run path, when represented."""
         parts = [part for part in item.path.split("/") if part]
         lower_parts = [part.lower() for part in parts]
@@ -1285,11 +1280,11 @@ class ProjectExplorerScreen(Screen[None]):
     @staticmethod
     def _add_data_ancestors(
         item: ProjectDataItem,
-        by_path: Dict[str, ProjectDataItem],
+        by_path: dict[str, ProjectDataItem],
         visible: set[str],
     ) -> None:
         """Include one item and each represented parent in the filtered tree."""
-        current: Optional[ProjectDataItem] = item
+        current: ProjectDataItem | None = item
         while current is not None:
             visible.add(current.path)
             current = (
@@ -1298,7 +1293,7 @@ class ProjectExplorerScreen(Screen[None]):
                 else by_path.get(current.parent_path)
             )
 
-    def _project_data_path(self, path: str) -> Optional[Path]:
+    def _project_data_path(self, path: str) -> Path | None:
         """Resolve an internal data-browser path without leaving project/data."""
         data_root = (self.project.project_path / "data").resolve()
         item_path = (data_root / path).resolve()
@@ -1308,7 +1303,7 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _find_project_artifact(
         self, item: ProjectDataItem, required_files: tuple[str, ...]
-    ) -> Optional[Path]:
+    ) -> Path | None:
         """Find the containing saved artifact for a selected project item."""
         item_path = self._project_data_path(item.path)
         if item_path is None:
@@ -1324,7 +1319,7 @@ class ProjectExplorerScreen(Screen[None]):
         return None
 
     @staticmethod
-    def _load_solution(solution_path: Path) -> Optional[Solution]:
+    def _load_solution(solution_path: Path) -> Solution | None:
         """Read a saved solution for a lightweight plot eligibility check."""
         try:
             return Solution.model_validate_json(solution_path.read_bytes())
@@ -1333,7 +1328,7 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _mth5_time_plot_target(
         self, item: ProjectDataItem
-    ) -> Optional[tuple[str, object]]:
+    ) -> tuple[str, object] | None:
         """Turn a canonical MTH5 time path into a resistics run selection."""
         parts = [part for part in item.path.split("/") if part]
         lower_parts = [part.lower() for part in parts]
@@ -1372,7 +1367,7 @@ class ProjectExplorerScreen(Screen[None]):
             channel = channel_parts[0]
         return ("time", (summary.survey, summary.station, summary.run, channel))
 
-    def _data_item_for_node(self, node=None) -> Optional[ProjectDataItem]:
+    def _data_item_for_node(self, node=None) -> ProjectDataItem | None:
         """Return the browsed data item for a tree node, excluding tree chrome."""
         if node is None:
             node = self.query_one("#data-tree", Tree).cursor_node
@@ -1393,7 +1388,7 @@ class ProjectExplorerScreen(Screen[None]):
             return None
         return tree.cursor_node
 
-    def _data_plot_target(self, node=None) -> Optional[tuple[str, object]]:
+    def _data_plot_target(self, node=None) -> tuple[str, object] | None:
         """Return a plot target for the highlighted item, if it is supported."""
         item = self._data_item_for_node(node)
         if item is None:
@@ -1418,10 +1413,10 @@ class ProjectExplorerScreen(Screen[None]):
             return ("transfer_function", solution_path)
         return None
 
-    def _flow_plot_target(self) -> Optional[tuple[str, object]]:
+    def _flow_plot_target(self) -> tuple[str, object] | None:
         """Return the focused or opened valid flow YAML as a plot target."""
         highlighted = self._highlighted_yaml_file()
-        path: Optional[Path]
+        path: Path | None
         if highlighted is not None and highlighted[1] == "#flow-content":
             path = highlighted[0]
         else:
@@ -1434,7 +1429,7 @@ class ProjectExplorerScreen(Screen[None]):
             return None
         return ("flow", path)
 
-    def _job_plot_target(self) -> Optional[tuple[str, object]]:
+    def _job_plot_target(self) -> tuple[str, object] | None:
         """Return the focused or opened valid job YAML as a plot target."""
         path = self._highlighted_job_path() or self.selected_job_path
         if path is None:
@@ -1511,7 +1506,9 @@ class ProjectExplorerScreen(Screen[None]):
                 plot_project.close_mth5()
 
     @staticmethod
-    def _build_plot_figure(project: Project, target: tuple[str, object]):
+    def _build_plot_figure(  # noqa: C901 - plotting branches move in Phase 5.4
+        project: Project, target: tuple[str, object]
+    ):
         """Build a selected Plotly figure through its existing plot API."""
         target_type, payload = target
         if target_type == "flow":
@@ -1618,7 +1615,7 @@ class ProjectExplorerScreen(Screen[None]):
             self._job_template_created,
         )
 
-    def _job_template_created(self, definition: Optional[JobDefinition]) -> None:
+    def _job_template_created(self, definition: JobDefinition | None) -> None:
         """Persist a completed creation form and present the generated YAML."""
         if definition is None:
             return
@@ -1889,7 +1886,7 @@ class ProjectExplorerScreen(Screen[None]):
             return self.selected_job_path, JobDefinition, "#job-content"
         return None
 
-    def _selected_yaml_file(self) -> Optional[tuple[Path, str]]:
+    def _selected_yaml_file(self) -> tuple[Path, str] | None:
         """Return the selected YAML source and its editor selector."""
         target = self._yaml_edit_target()
         if target is None:
@@ -1897,7 +1894,7 @@ class ProjectExplorerScreen(Screen[None]):
         path, _, editor_id = target
         return path, editor_id
 
-    def _highlighted_yaml_file(self) -> Optional[tuple[Path, str]]:
+    def _highlighted_yaml_file(self) -> tuple[Path, str] | None:
         """Return the row highlighted in the focused active resource table."""
         active = self.query_one(TabbedContent).active
         resources = {
@@ -1929,7 +1926,7 @@ class ProjectExplorerScreen(Screen[None]):
         path = paths.get(key)
         return None if path is None else (path, editor_id)
 
-    def _highlighted_job_path(self) -> Optional[Path]:
+    def _highlighted_job_path(self) -> Path | None:
         """Return the focused Jobs-table row without requiring it to be opened."""
         highlighted = self._highlighted_yaml_file()
         if highlighted is None or highlighted[1] != "#job-content":
@@ -1960,9 +1957,7 @@ class ProjectExplorerScreen(Screen[None]):
             lambda name: self._yaml_file_copied(source, editor_id, name),
         )
 
-    def _yaml_file_copied(
-        self, source: Path, editor_id: str, name: Optional[str]
-    ) -> None:
+    def _yaml_file_copied(self, source: Path, editor_id: str, name: str | None) -> None:
         if name is None:
             return
         try:
@@ -2025,7 +2020,7 @@ class ProjectExplorerScreen(Screen[None]):
         )
 
     def _project_data_deletion_selected(
-        self, request: Optional[ProjectDataDeletionRequest]
+        self, request: ProjectDataDeletionRequest | None
     ) -> None:
         if request is None:
             return
@@ -2255,7 +2250,7 @@ class ProjectExplorerScreen(Screen[None]):
         elif active == "criteria":
             self._restore_criteria()
 
-    def _submission_confirmed(self, confirmed: Optional[bool]) -> None:
+    def _submission_confirmed(self, confirmed: bool | None) -> None:
         if confirmed:
             self._execute_selected_job()
 
@@ -2332,7 +2327,9 @@ class ProjectExplorerScreen(Screen[None]):
         self._update_plot_controls()
         self.refresh_bindings()
 
-    def check_action(self, action: str, parameters: tuple[object, ...]):
+    def check_action(  # noqa: C901 - action-state split is owned by Phase 4.1
+        self, action: str, parameters: tuple[object, ...]
+    ):
         """Expose only Footer actions relevant to the active tab and job state."""
         active = self.query_one(TabbedContent).active
         if action == "edit_yaml":
@@ -2603,7 +2600,7 @@ class ResisticsTui(App[None]):
     #activity-status { height: auto; margin-bottom: 1; color: #faa881; }
     """
 
-    def __init__(self, project_path: Optional[Path] = None):
+    def __init__(self, project_path: Path | None = None):
         super().__init__()
         self.initial_project_path = project_path
         self._has_started_screen = False
@@ -2614,7 +2611,7 @@ class ResisticsTui(App[None]):
         else:
             self.open_project_path(self.initial_project_path)
 
-    def show_home(self, message: Optional[str] = None) -> None:
+    def show_home(self, message: str | None = None) -> None:
         self.title = "resistics"
         self.sub_title = "project launcher"
         self._show_screen(HomeScreen(message))
@@ -2637,7 +2634,7 @@ class ResisticsTui(App[None]):
         )
 
     def open_project(
-        self, project: Project, startup_warnings: Optional[list[str]] = None
+        self, project: Project, startup_warnings: list[str] | None = None
     ) -> None:
         self.title = "resistics"
         self.sub_title = str(project.project_path)
@@ -2652,7 +2649,7 @@ class ResisticsTui(App[None]):
             self._has_started_screen = True
 
 
-def run_tui(project_path: Optional[Path] = None) -> None:
+def run_tui(project_path: Path | None = None) -> None:
     """Run the resistics terminal application."""
     logger.remove()
     try:
@@ -2662,7 +2659,7 @@ def run_tui(project_path: Optional[Path] = None) -> None:
         logger.add(sys.stderr, level="INFO")
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """Launch the TUI, optionally opening one project path immediately."""
     arguments = list(sys.argv[1:] if argv is None else argv)
     if len(arguments) > 1:

@@ -24,12 +24,13 @@ import json
 import platform
 import re
 import statistics
-import subprocess  # noqa: S404 - the command is fixed and contains no user input
+import subprocess
 import sys
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 DEFAULT_OUTPUT = Path(".artifacts/hardening/baseline/codebase.json")
 PRIVATE_OPERATION_MIN_LINES = 20

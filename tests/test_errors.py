@@ -1,26 +1,29 @@
 """
 Test that errors output the expected response
 """
+
 from pathlib import Path
+
 import pytest
+
 from resistics.errors import (
-    PathError,
-    PathNotFoundError,
-    NotFileError,
-    NotDirectoryError,
-    WriteError,
-    ReadError,
-    MetadataReadError,
-    ProjectPathError,
-    ProjectCreateError,
-    ProjectLoadError,
-    MeasurementNotFoundError,
-    SiteNotFoundError,
-    TimeDataReadError,
-    ChannelNotFoundError,
     CalibrationFileNotFound,
     CalibrationFileReadError,
+    ChannelNotFoundError,
+    MeasurementNotFoundError,
+    MetadataReadError,
+    NotDirectoryError,
+    NotFileError,
+    PathError,
+    PathNotFoundError,
     ProcessRunError,
+    ProjectCreateError,
+    ProjectLoadError,
+    ProjectPathError,
+    ReadError,
+    SiteNotFoundError,
+    TimeDataReadError,
+    WriteError,
 )
 
 

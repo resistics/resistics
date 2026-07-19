@@ -1,11 +1,16 @@
-import pytest
-from typing import List
 import numpy as np
 import plotly.graph_objects as go
+import pytest
 from pydantic import Field
 
 from resistics.common import ResisticsProcess
-from resistics.flow import FlowDefinition, FlowNode, FlowStage, ParameterSet, ProcessingJob
+from resistics.flow import (
+    FlowDefinition,
+    FlowNode,
+    FlowStage,
+    ParameterSet,
+    ProcessingJob,
+)
 from resistics.gather import GatherCriteria
 from resistics.job import JobDefinition, ResolvedJob, StationRateBatch
 
@@ -33,7 +38,7 @@ class FlowPlotMerge(ResisticsProcess):
     ],
 )
 def test_lttb_downsample(
-    y: List, max_pts: int, x_expected: List, y_expected: List
+    y: list, max_pts: int, x_expected: list, y_expected: list
 ) -> None:
     """Test lttb downsampling"""
     from resistics.plot import lttb_downsample
@@ -109,7 +114,7 @@ def test_lttb_downsample_preserves_nan_gaps() -> None:
         ),
     ],
 )
-def test_apply_lttb(y: List, max_pts: int, x_expected: List, y_expected: List) -> None:
+def test_apply_lttb(y: list, max_pts: int, x_expected: list, y_expected: list) -> None:
     """Testing the helper function"""
     from resistics.plot import apply_lttb
 
@@ -485,8 +490,12 @@ def test_plot_job_shows_selected_stages_and_parameter_file_values(tmp_path):
     assert "factor = 2.5" in labels
     assert "options = {2 keys}" in labels
     assert "Criteria: criteria.yaml" in labels
-    configured_hover = node_trace.customdata[list(node_trace.ids).index("prepare:configured")]
-    criteria_hover = node_trace.customdata[list(node_trace.ids).index("prepare:criteria_step")]
+    configured_hover = node_trace.customdata[
+        list(node_trace.ids).index("prepare:configured")
+    ]
+    criteria_hover = node_trace.customdata[
+        list(node_trace.ids).index("prepare:criteria_step")
+    ]
     assert '"factor":&nbsp;2.5' in configured_hover
     assert "Criteria configuration (criteria.yaml)" in criteria_hover
     assert figure.layout.legend.groupclick == "togglegroup"
@@ -505,7 +514,8 @@ def test_plot_job_shows_selected_stages_and_parameter_file_values(tmp_path):
     assert {trace.text[0] for trace in edge_labels} == {"number"}
     assert {trace.legendgroup for trace in edge_labels} == {"stage-0"}
     assert all(
-        figure.data.index(trace) < figure.data.index(label_trace) for trace in arrow_traces
+        figure.data.index(trace) < figure.data.index(label_trace)
+        for trace in arrow_traces
     )
     assert not figure.layout.annotations
     assert figure.layout.margin.t == 160

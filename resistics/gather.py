@@ -31,35 +31,39 @@ multi site processing, the workflow follows:
     reasons.
 """
 
-from loguru import logger
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, ClassVar, List, Dict, Literal, Optional, Tuple, Union
 from pathlib import Path
+from typing import Any, ClassVar, Literal
+
 import numpy as np
 import pandas as pd
+from loguru import logger
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from resistics.common import (
+    History,
+    ResisticsData,
     ResisticsModel,
     ResisticsProcess,
-    ResisticsData,
+    WriteableMetadata,
     validate_output_label,
 )
-from resistics.common import WriteableMetadata, History
-from resistics.project import Project, Site
 from resistics.decimate import DecimationParameters
-from resistics.spectra import SpectraLevelMetadata, SpectraMetadata, SpectraData
-from resistics.spectra import SpectraDataReader
-from resistics.transfunc import TransferFunction
 from resistics.mask import (
-    AbsoluteTimeRange,
-    DailyTimeRange,
     WindowMask,
     WindowMaskReader,
     get_run_mask_path,
     validate_mask_name,
 )
+from resistics.project import Project, Site
+from resistics.spectra import (
+    SpectraData,
+    SpectraDataReader,
+    SpectraLevelMetadata,
+    SpectraMetadata,
+)
+from resistics.transfunc import TransferFunction
 
 
 def _validate_station_path(value: str) -> str:
@@ -74,11 +78,11 @@ class MaskCriteria(ResisticsModel):
 
     model_config = ConfigDict(extra="forbid")
     combine: Literal["and", "or"] = "and"
-    names: List[str]
+    names: list[str]
 
     @field_validator("names")
     @classmethod
-    def validate_names(cls, values: List[str]) -> List[str]:
+    def validate_names(cls, values: list[str]) -> list[str]:
         if not values:
             raise ValueError("Mask criteria must name at least one mask")
         for value in values:
@@ -92,14 +96,14 @@ class RateGatherCriteria(ResisticsModel):
     """Gather policy for one station and original sampling frequency."""
 
     model_config = ConfigDict(extra="forbid")
-    remote_references: Optional[Union[Literal["auto"], List[str]]] = None
-    masks: Optional[MaskCriteria] = None
+    remote_references: Literal["auto"] | list[str] | None = None
+    masks: MaskCriteria | None = None
 
     @field_validator("remote_references")
     @classmethod
     def validate_remotes(
-        cls, value: Optional[Union[Literal["auto"], List[str]]]
-    ) -> Optional[Union[Literal["auto"], List[str]]]:
+        cls, value: Literal["auto"] | list[str] | None
+    ) -> Literal["auto"] | list[str] | None:
         if value is None or value == "auto":
             return value
         if not value:
@@ -115,13 +119,13 @@ class StationGatherCriteria(ResisticsModel):
     """Sampling-frequency keyed gather policies for one station."""
 
     model_config = ConfigDict(extra="forbid")
-    sampling_frequencies: Dict[float, RateGatherCriteria] = Field(default_factory=dict)
+    sampling_frequencies: dict[float, RateGatherCriteria] = Field(default_factory=dict)
 
     @field_validator("sampling_frequencies")
     @classmethod
     def validate_sample_rates(
-        cls, value: Dict[float, RateGatherCriteria]
-    ) -> Dict[float, RateGatherCriteria]:
+        cls, value: dict[float, RateGatherCriteria]
+    ) -> dict[float, RateGatherCriteria]:
         if any(sample_rate <= 0 for sample_rate in value):
             raise ValueError("Sampling frequencies must be positive")
         sample_rates = list(value)
@@ -137,8 +141,8 @@ class StationGatherCriteria(ResisticsModel):
 class ResolvedGatherCriteria(ResisticsModel):
     """Resolved rate policy returned uniformly for every level/eval index."""
 
-    remote_references: Optional[Union[Literal["auto"], List[str]]] = None
-    masks: Optional[MaskCriteria] = None
+    remote_references: Literal["auto"] | list[str] | None = None
+    masks: MaskCriteria | None = None
 
 
 class GatherSelection(ResisticsData):
@@ -146,8 +150,8 @@ class GatherSelection(ResisticsData):
 
     def __init__(
         self,
-        station_rate_batch: Dict[str, Any],
-        remote_station: Optional[str],
+        station_rate_batch: dict[str, Any],
+        remote_station: str | None,
         criteria: "GatherCriteria",
         automatic_remote: bool = False,
     ) -> None:
@@ -169,10 +173,10 @@ class GatherCriteria(ResisticsProcess):
     model_config = ConfigDict(extra="forbid")
 
     output_type: ClassVar[str] = "gather_selection"
-    runtime_requirements: ClassVar[List[str]] = ["station_rate_batch"]
+    runtime_requirements: ClassVar[list[str]] = ["station_rate_batch"]
 
-    name: Optional[str] = Field(default=None, exclude=True)
-    stations: Dict[str, StationGatherCriteria] = Field(default_factory=dict)
+    name: str | None = Field(default=None, exclude=True)
+    stations: dict[str, StationGatherCriteria] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod
@@ -196,8 +200,8 @@ class GatherCriteria(ResisticsProcess):
     @field_validator("stations")
     @classmethod
     def validate_stations(
-        cls, value: Dict[str, StationGatherCriteria]
-    ) -> Dict[str, StationGatherCriteria]:
+        cls, value: dict[str, StationGatherCriteria]
+    ) -> dict[str, StationGatherCriteria]:
         for station_path, station_criteria in value.items():
             _validate_station_path(station_path)
             for rate_criteria in station_criteria.sampling_frequencies.values():
@@ -228,7 +232,7 @@ class GatherCriteria(ResisticsProcess):
                 return ResolvedGatherCriteria(**policy.model_dump())
         return ResolvedGatherCriteria()
 
-    def remote_station_paths(self, station_path: str, sample_rate: float) -> List[str]:
+    def remote_station_paths(self, station_path: str, sample_rate: float) -> list[str]:
         """Return explicitly configured remotes (``auto`` resolves at runtime)."""
         remotes = self.resolve(station_path, sample_rate).remote_references
         return [] if remotes is None or remotes == "auto" else list(remotes)
@@ -244,7 +248,7 @@ class GatherCriteria(ResisticsProcess):
                     total += len(policy.remote_references)
         return total
 
-    def run(self, station_rate_batch: Dict[str, Any]) -> GatherSelection:
+    def run(self, station_rate_batch: dict[str, Any]) -> GatherSelection:
         """Resolve the remote assignment for one target station/rate batch."""
         station_rate_batch = dict(station_rate_batch)
         target = station_rate_batch.get("station_path")
@@ -261,7 +265,7 @@ class GatherCriteria(ResisticsProcess):
             automatic_remote=remotes == "auto",
         )
 
-    def execute(self, inputs: Dict[str, Any], context: Any) -> GatherSelection:
+    def execute(self, inputs: dict[str, Any], context: Any) -> GatherSelection:
         """Resolve criteria from the station-rate batch supplied by the executor."""
         del inputs
         return self.run(context["station_rate_batch"])
@@ -282,11 +286,11 @@ class EvaluationFrequencyGather(ResisticsProcess):
     rejected until the cross-station aligner is implemented.
     """
 
-    input_types: ClassVar[Dict[str, str]] = {"selection": "gather_selection"}
+    input_types: ClassVar[dict[str, str]] = {"selection": "gather_selection"}
     output_type: ClassVar[str] = "gathered_data"
-    runtime_requirements: ClassVar[List[str]] = ["project_path"]
+    runtime_requirements: ClassVar[list[str]] = ["project_path"]
 
-    def execute(self, inputs: Dict[str, Any], context: Any) -> "GatheredData":
+    def execute(self, inputs: dict[str, Any], context: Any) -> "GatheredData":
         """Load and concatenate all selected local-run evaluation artifacts."""
         from resistics.spectra import EvaluationFrequencyReader
         from resistics.transfunc import ImpedanceTensor
@@ -351,7 +355,7 @@ class EvaluationFrequencyGather(ResisticsProcess):
         return artifact
 
     @staticmethod
-    def _combine(values: List["GatheredData"]) -> "GatheredData":
+    def _combine(values: list["GatheredData"]) -> "GatheredData":
         def combine(kind: str) -> SiteCombinedData:
             first = getattr(values[0], kind)
             metadata = first.metadata.model_copy(
@@ -390,7 +394,7 @@ class EvaluationFrequencyGather(ResisticsProcess):
 
 def get_site_evals_metadata(
     config_name: str, proj: Project, site_name: str, fs: float
-) -> Dict[str, SpectraMetadata]:
+) -> dict[str, SpectraMetadata]:
     """
     Get spectra metadata for a given site and sampling frequency
 
@@ -431,7 +435,7 @@ def get_site_evals_metadata(
 
 
 def get_site_level_wins(
-    meas_metadata: Dict[str, SpectraMetadata], level: int
+    meas_metadata: dict[str, SpectraMetadata], level: int
 ) -> pd.Series:
     """
     Get site windows for a decimation level given a sampling frequency
@@ -510,7 +514,7 @@ def get_site_level_wins(
 
 def get_site_wins(
     config_name: str, proj: Project, site_name: str, fs: float
-) -> Dict[int, pd.Series]:
+) -> dict[int, pd.Series]:
     """
     Get site windows for all levels given a sampling frequency
 
@@ -556,9 +560,9 @@ class Selection(ResisticsData):
 
     def __init__(
         self,
-        sites: List[Site],
+        sites: list[Site],
         dec_params: DecimationParameters,
-        tables: Dict[int, pd.DataFrame],
+        tables: dict[int, pd.DataFrame],
     ):
         """
         Initialise the selection
@@ -615,7 +619,7 @@ class Selection(ResisticsData):
         eval_series = level_table[eval_idx]
         return eval_series[eval_series].count()
 
-    def get_measurements(self, site: Site) -> List[str]:
+    def get_measurements(self, site: Site) -> list[str]:
         """
         Get the measurement names to read from a Site
 
@@ -633,9 +637,9 @@ class Selection(ResisticsData):
         for level_table in self.tables.values():
             level_set = set(level_table[site.name].unique())
             measurements = measurements.union(level_set)
-        return sorted(list(measurements))
+        return sorted(measurements)
 
-    def get_eval_freqs(self) -> List[float]:
+    def get_eval_freqs(self) -> list[float]:
         """
         Get the evaluation frequencies
 
@@ -686,9 +690,9 @@ class Selector(ResisticsProcess):
         self,
         config_name: str,
         proj: Project,
-        site_names: List[str],
+        site_names: list[str],
         dec_params: DecimationParameters,
-        masks: Optional[Dict[str, str]] = None,
+        masks: dict[str, str] | None = None,
     ) -> Selection:
         """
         Run the selector
@@ -716,7 +720,7 @@ class Selector(ResisticsProcess):
             read for each site
         """
         # get unique sites
-        site_names = sorted(list(set(site_names)))
+        site_names = sorted(set(site_names))
         fs = dec_params.fs
         sites_wins = {
             site_name: get_site_wins(config_name, proj, site_name, fs)
@@ -726,7 +730,7 @@ class Selector(ResisticsProcess):
         n_levels = min([len(x) for x in sites_wins.values()])
         logger.info(f"Finding shared windows across {', '.join(sites_wins.keys())}")
         logger.info(f"Max. level across sites = {n_levels - 1}, num. levels {n_levels}")
-        tables: Dict[int, pd.DataFrame] = {}
+        tables: dict[int, pd.DataFrame] = {}
         for ilevel in range(n_levels):
             logger.info(f"Finding shared windows for decimation level {ilevel}")
             data = {x: y[ilevel] for x, y in sites_wins.items()}
@@ -762,7 +766,7 @@ class Selector(ResisticsProcess):
             table[ifreq] = True
         return table
 
-    def _apply_masks(self, table: pd.DataFrame, masks: Dict[str, str]) -> pd.DataFrame:
+    def _apply_masks(self, table: pd.DataFrame, masks: dict[str, str]) -> pd.DataFrame:
         """Set some windows False based on masks"""
         return table
 
@@ -777,7 +781,7 @@ class SiteCombinedMetadata(WriteableMetadata):
 
     site_name: str
     """The name of the site"""
-    site_names: List[str] = Field(default_factory=list)
+    site_names: list[str] = Field(default_factory=list)
     """Authoritative station paths, including every pooled remote station"""
     fs: float
     """Recording sampling frequency"""
@@ -795,15 +799,15 @@ class SiteCombinedMetadata(WriteableMetadata):
     """The northing of the site in local cartersian coordinates"""
     elevation: float = -999.0
     """The elevation of the site"""
-    measurements: Optional[List[str]] = None
+    measurements: list[str] | None = None
     """List of measurement names that were included in the combined data"""
-    chans: List[str]
+    chans: list[str]
     """List of channels, these are common amongst all the measurements"""
     n_evals: int
     """The number of evaluation frequencies"""
-    eval_freqs: List[float]
+    eval_freqs: list[float]
     """The evaluation frequencies"""
-    histories: Dict[str, History]
+    histories: dict[str, History]
     """Dictionary mapping measurement name to measurement processing history"""
 
     @model_validator(mode="after")
@@ -831,7 +835,7 @@ class SiteCombinedData(ResisticsData):
     The data is complex valued.
     """
 
-    def __init__(self, metadata: SiteCombinedMetadata, data: Dict[int, np.ndarray]):
+    def __init__(self, metadata: SiteCombinedMetadata, data: dict[int, np.ndarray]):
         """
         Initialise the CombinedData
 
@@ -884,14 +888,14 @@ class Gather(ResisticsProcess):
     than one configured remote.
     """
 
-    input_types: ClassVar[Dict[str, str]] = {
+    input_types: ClassVar[dict[str, str]] = {
         "selection": "gather_selection",
         "tf": "transfer_function",
     }
     output_type: ClassVar[str] = "gathered_data"
-    runtime_requirements: ClassVar[List[str]] = ["project", "project_path"]
+    runtime_requirements: ClassVar[list[str]] = ["project", "project_path"]
 
-    def execute(self, inputs: Dict[str, Any], context: Any) -> GatheredData:
+    def execute(self, inputs: dict[str, Any], context: Any) -> GatheredData:
         selection = inputs["selection"]
         if not isinstance(selection, GatherSelection):
             raise ValueError("Gather requires GatherSelection")
@@ -903,7 +907,7 @@ class Gather(ResisticsProcess):
             context["output_label"],
         )
 
-    def run(
+    def run(  # noqa: C901 - gather decomposition is owned by Phase 5.5
         self,
         project: Project,
         project_path: Path,
@@ -924,8 +928,8 @@ class Gather(ResisticsProcess):
         self._reader = EvaluationFrequencyReader(label=self._output_label)
         self._project_path = project_path
         self._criteria = selection.criteria
-        self._artifact_cache: Dict[str, Any] = {}
-        self._mask_cache: Dict[Tuple[str, str], WindowMask] = {}
+        self._artifact_cache: dict[str, Any] = {}
+        self._mask_cache: dict[tuple[str, str], WindowMask] = {}
 
         target_artifacts = self._load_runs(target_runs, required=True, role="target")
         baseline = next(iter(target_artifacts.values()))
@@ -936,7 +940,7 @@ class Gather(ResisticsProcess):
         resolved = self._criteria.resolve(target, sample_rate)
         remote_setting = resolved.remote_references
         if remote_setting is None:
-            candidate_paths: List[str] = []
+            candidate_paths: list[str] = []
             automatic = False
         elif remote_setting == "auto":
             candidate_paths = project.get_concurrent(target, sample_rate)
@@ -945,8 +949,8 @@ class Gather(ResisticsProcess):
             candidate_paths = sorted(remote_setting)
             automatic = False
 
-        remote_artifacts: Dict[str, Dict[str, Any]] = {}
-        candidate_reasons: Dict[str, str] = {}
+        remote_artifacts: dict[str, dict[str, Any]] = {}
+        candidate_reasons: dict[str, str] = {}
         for station_path in sorted(candidate_paths):
             try:
                 run_paths = self._station_runs(project, station_path, sample_rate)
@@ -995,13 +999,13 @@ class Gather(ResisticsProcess):
                     f"Skipping automatic remote {station_path} for {target}: {exc}"
                 )
 
-        out_values: Dict[int, np.ndarray] = {}
-        in_values: Dict[int, np.ndarray] = {}
-        cross_values: Dict[int, np.ndarray] = {}
+        out_values: dict[int, np.ndarray] = {}
+        in_values: dict[int, np.ndarray] = {}
+        cross_values: dict[int, np.ndarray] = {}
         target_used: set[str] = set()
         remote_used: set[str] = set()
         usable_remotes: set[str] = set()
-        eval_freqs: List[float] = []
+        eval_freqs: list[float] = []
 
         key = 0
         for level, level_reference in level_references.items():
@@ -1020,7 +1024,7 @@ class Gather(ResisticsProcess):
                     evaluation_index,
                     target_catalog,
                 )
-                pairs: List[Tuple[_EvaluationLocator, _EvaluationLocator]] = []
+                pairs: list[tuple[_EvaluationLocator, _EvaluationLocator]] = []
                 if remote_setting is None:
                     pairs = [
                         (target_valid[global_index], target_valid[global_index])
@@ -1132,7 +1136,7 @@ class Gather(ResisticsProcess):
 
     def _station_runs(
         self, project: Project, station_path: str, sample_rate: float
-    ) -> List[str]:
+    ) -> list[str]:
         _validate_station_path(station_path)
         rows = project.table[
             (project.table["station_path"] == station_path)
@@ -1146,8 +1150,8 @@ class Gather(ResisticsProcess):
         return run_paths
 
     def _load_runs(
-        self, run_paths: List[str], required: bool, role: str
-    ) -> Dict[str, Any]:
+        self, run_paths: list[str], required: bool, role: str
+    ) -> dict[str, Any]:
         values = {}
         failures = []
         for run_path in sorted(run_paths):
@@ -1192,9 +1196,7 @@ class Gather(ResisticsProcess):
         got_data = candidate.spectra_data
         if str(ref_data.metadata.ref_time) != str(got_data.metadata.ref_time):
             failures.append("reference time")
-        for level in range(
-            min(ref_data.metadata.n_levels, got_data.metadata.n_levels)
-        ):
+        for level in range(min(ref_data.metadata.n_levels, got_data.metadata.n_levels)):
             failures.extend(
                 Gather._level_compatibility_failures(reference, candidate, level)
             )
@@ -1206,7 +1208,7 @@ class Gather(ResisticsProcess):
     @staticmethod
     def _level_compatibility_failures(
         reference: Any, candidate: Any, level: int
-    ) -> List[str]:
+    ) -> list[str]:
         """Compare one realised evaluation level using spectra metadata only."""
         left = reference.spectra_data.metadata.levels_metadata[level]
         right = candidate.spectra_data.metadata.levels_metadata[level]
@@ -1227,22 +1229,17 @@ class Gather(ResisticsProcess):
     def _validate_level_compatible(
         reference: Any, candidate: Any, level: int, description: str
     ) -> None:
-        failures = Gather._level_compatibility_failures(
-            reference, candidate, level
-        )
+        failures = Gather._level_compatibility_failures(reference, candidate, level)
         if failures:
-            raise ValueError(
-                f"Incompatible {description}: {', '.join(failures)}"
-            )
+            raise ValueError(f"Incompatible {description}: {', '.join(failures)}")
 
     @staticmethod
     def _level_references(
-        artifacts: Dict[str, Any], station_path: str
-    ) -> Dict[int, Any]:
+        artifacts: dict[str, Any], station_path: str
+    ) -> dict[int, Any]:
         """Choose and validate an authoritative target artifact for each level."""
         n_levels = max(
-            artifact.spectra_data.metadata.n_levels
-            for artifact in artifacts.values()
+            artifact.spectra_data.metadata.n_levels for artifact in artifacts.values()
         )
         if n_levels == 0:
             raise ValueError(
@@ -1269,8 +1266,8 @@ class Gather(ResisticsProcess):
 
     @staticmethod
     def _catalog(
-        artifacts: Dict[str, Any], level: int, station_path: str
-    ) -> Dict[int, _EvaluationLocator]:
+        artifacts: dict[str, Any], level: int, station_path: str
+    ) -> dict[int, _EvaluationLocator]:
         catalog = {}
         for run_path in sorted(artifacts):
             artifact = artifacts[run_path]
@@ -1297,8 +1294,8 @@ class Gather(ResisticsProcess):
         sample_rate: float,
         level: int,
         evaluation_index: int,
-        catalog: Dict[int, _EvaluationLocator],
-    ) -> Dict[int, _EvaluationLocator]:
+        catalog: dict[int, _EvaluationLocator],
+    ) -> dict[int, _EvaluationLocator]:
         policy = self._criteria.resolve(
             station_path, sample_rate, level, evaluation_index
         )
@@ -1370,7 +1367,7 @@ class Gather(ResisticsProcess):
             failures.append("number of levels")
         else:
             for item, source in zip(
-                mask.metadata.levels, data.metadata.levels_metadata
+                mask.metadata.levels, data.metadata.levels_metadata, strict=False
             ):
                 if item.n_evaluation_frequencies != source.n_freqs:
                     failures.append(f"level {item.level} evaluation count")
@@ -1395,10 +1392,10 @@ class Gather(ResisticsProcess):
 
     @staticmethod
     def _extract(
-        locators: List[_EvaluationLocator],
+        locators: list[_EvaluationLocator],
         level: int,
         evaluation_index: int,
-        channels: List[str],
+        channels: list[str],
     ) -> np.ndarray:
         """Extract selected windows in batches for each source artifact.
 
@@ -1411,7 +1408,7 @@ class Gather(ResisticsProcess):
         from resistics.errors import ChannelNotFoundError
 
         values = np.empty((len(locators), len(channels)), dtype=np.complex128)
-        grouped: Dict[str, Tuple[Any, List[int], List[int]]] = {}
+        grouped: dict[str, tuple[Any, list[int], list[int]]] = {}
         for output_index, locator in enumerate(locators):
             if locator.run_path not in grouped:
                 grouped[locator.run_path] = (locator.artifact, [], [])
@@ -1435,11 +1432,11 @@ class Gather(ResisticsProcess):
     def _combined_metadata(
         self,
         site_name: str,
-        site_names: List[str],
+        site_names: list[str],
         used_runs: set[str],
-        channels: List[str],
-        eval_freqs: List[float],
-        artifacts: Dict[str, Any],
+        channels: list[str],
+        eval_freqs: list[float],
+        artifacts: dict[str, Any],
     ) -> SiteCombinedMetadata:
         first_run = sorted(used_runs)[0]
         first_artifact = artifacts[first_run]
@@ -1491,8 +1488,8 @@ class ProjectGather(ResisticsProcess):
         selection: Selection,
         tf: TransferFunction,
         out_name: str,
-        in_name: Optional[str] = None,
-        cross_name: Optional[str] = None,
+        in_name: str | None = None,
+        cross_name: str | None = None,
     ) -> GatheredData:
         """
         Gather data for input into the regression preparer
@@ -1544,7 +1541,7 @@ class ProjectGather(ResisticsProcess):
         proj: Project,
         selection: Selection,
         site_name: str,
-        chans: List[str],
+        chans: list[str],
     ) -> SiteCombinedData:
         """
         Collect the evals data for the site. This is only for the shared
@@ -1604,8 +1601,8 @@ class ProjectGather(ResisticsProcess):
         return SiteCombinedData(combined_metadata, data)
 
     def _get_empty_data(
-        self, selection: Selection, chans: List[str]
-    ) -> Dict[int, np.ndarray]:
+        self, selection: Selection, chans: list[str]
+    ) -> dict[int, np.ndarray]:
         """
         Get dictionary of empty arrays to put the data in
 
@@ -1644,9 +1641,9 @@ class ProjectGather(ResisticsProcess):
         site: Site,
         meas: str,
         eval_data: SpectraData,
-        chans: List[str],
-        data: Dict[int, np.ndarray],
-    ) -> Dict[int, np.ndarray]:
+        chans: list[str],
+        data: dict[int, np.ndarray],
+    ) -> dict[int, np.ndarray]:
         """
         Populate a measurement's evaluation frequency data into combined data
 
@@ -1694,7 +1691,7 @@ class ProjectGather(ResisticsProcess):
         site: Site,
         meas_name: str,
         level_metadata: SpectraLevelMetadata,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Get two arrays to help align windows
 
@@ -1834,10 +1831,10 @@ class QuickGather(ResisticsProcess):
         self,
         meas: str,
         fs: float,
-        chans: List[str],
-        eval_freqs: List[float],
+        chans: list[str],
+        eval_freqs: list[float],
         metadata: SpectraMetadata,
-        data: Dict[int, np.ndarray],
+        data: dict[int, np.ndarray],
     ) -> SiteCombinedData:
         """Get the combined metadata"""
         combined_metadata = SiteCombinedMetadata(

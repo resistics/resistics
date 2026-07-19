@@ -94,19 +94,28 @@ using a window size of 8 samples per window and a 2 sample overlap.
     >>> plt.tight_layout() # doctest: +SKIP
     >>> plt.show() # doctest: +SKIP
 """
-from loguru import logger
+
 from pathlib import Path
-from typing import Any, ClassVar, Optional, List, Tuple, Dict, Union
-from pydantic import ConfigDict, PositiveInt
+from typing import Any, ClassVar
+
 import numpy as np
 import pandas as pd
+from loguru import logger
+from pydantic import ConfigDict, PositiveInt
 
+from resistics.common import (
+    History,
+    Metadata,
+    ResisticsData,
+    ResisticsModel,
+    ResisticsProcess,
+    ResisticsWriter,
+    WriteableMetadata,
+)
+from resistics.decimate import DecimatedData, DecimatedLevelMetadata
 from resistics.errors import ProcessRunError
-from resistics.common import History, ResisticsModel, ResisticsData, ResisticsProcess
-from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
-from resistics.sampling import RSDateTime, RSTimeDelta, HighResDateTime
+from resistics.sampling import HighResDateTime, RSDateTime, RSTimeDelta
 from resistics.time import ChanMetadata
-from resistics.decimate import DecimatedLevelMetadata, DecimatedData
 
 
 def win_duration(win_size: int, fs: float) -> RSTimeDelta:
@@ -343,11 +352,12 @@ def datetime_to_win(
     1985-09-12 22:20:20
 
     """
-    from math import floor, ceil
+    from math import ceil, floor
+
     from resistics.sampling import to_seconds
 
     if time < ref_time:
-        raise ValueError(f"Time {str(time)} < reference time {str(ref_time)}")
+        raise ValueError(f"Time {time!s} < reference time {ref_time!s}")
 
     increment_days_in_seconds, increment_remaining_in_seconds = to_seconds(increment)
     increment_seconds = increment_days_in_seconds + increment_remaining_in_seconds
@@ -359,11 +369,11 @@ def datetime_to_win(
     if n_increments.is_integer():
         n_increments = int(n_increments)
     elif method == "floor":
-        n_increments = int(floor(n_increments))
+        n_increments = floor(n_increments)
     elif method == "ceil":
-        n_increments = int(ceil(n_increments))
+        n_increments = ceil(n_increments)
     else:
-        n_increments = int(round(n_increments))
+        n_increments = round(n_increments)
     return n_increments
 
 
@@ -372,7 +382,7 @@ def get_first_and_last_win(
     metadata: DecimatedLevelMetadata,
     win_size: int,
     olap_size: int,
-) -> Tuple[int, int]:
+) -> tuple[int, int]:
     """
     Get first and last window for a decimated data level
 
@@ -670,7 +680,7 @@ def get_win_table(
         >>> plt.tight_layout() # doctest: +SKIP
         >>> plt.show() # doctest: +SKIP
     """
-    from resistics.sampling import to_n_samples, datetime_array_estimate
+    from resistics.sampling import datetime_array_estimate, to_n_samples
 
     increment_size = win_size - olap_size
     increment = inc_duration(win_size, olap_size, metadata.fs)
@@ -768,8 +778,8 @@ class WindowParameters(ResisticsModel):
 
     n_levels: int
     min_n_wins: int
-    win_sizes: List[int]
-    olap_sizes: List[int]
+    win_sizes: list[int]
+    olap_sizes: list[int]
 
     def check_level(self, level: int):
         """Check the decimation level is within range"""
@@ -890,7 +900,7 @@ class WindowSetup(ResisticsProcess):
     ValueError: Invalid overlaps found [ True  True False]
     """
 
-    input_types: ClassVar[Dict[str, str]] = {"dec_data": "decimated_data"}
+    input_types: ClassVar[dict[str, str]] = {"dec_data": "decimated_data"}
     output_type: ClassVar[str] = "window_parameters"
     include_in_default_parameters: ClassVar[bool] = True
 
@@ -899,16 +909,16 @@ class WindowSetup(ResisticsProcess):
     win_factor: int = 4
     olap_proportion: float = 0.25
     min_n_wins: int = 5
-    win_sizes: Optional[List[int]] = None
-    olap_sizes: Optional[List[int]] = None
+    win_sizes: list[int] | None = None
+    olap_sizes: list[int] | None = None
 
-    def execute(self, inputs: Dict[str, Any], context: Any) -> WindowParameters:
+    def execute(self, inputs: dict[str, Any], context: Any) -> WindowParameters:
         """Build window parameters from flow decimated data."""
         del context
         dec_data = inputs["dec_data"]
         return self.run(dec_data.metadata.n_levels, dec_data.metadata.fs)
 
-    def run(self, n_levels: int, dec_fs: List[float]) -> WindowParameters:
+    def run(self, n_levels: int, dec_fs: list[float]) -> WindowParameters:
         """
         Calculate window and overlap sizes for each decimation level based on
         decimation level sampling frequency and minimum allowable parameters
@@ -983,7 +993,7 @@ class WindowSetup(ResisticsProcess):
             olap_sizes=olap_sizes,
         )
 
-    def _get_win_sizes(self, n_levels: int, dec_fs: List[float]) -> List[int]:
+    def _get_win_sizes(self, n_levels: int, dec_fs: list[float]) -> list[int]:
         """
         Get the window sizes
 
@@ -1007,7 +1017,7 @@ class WindowSetup(ResisticsProcess):
             win_sizes.append(int(win_size))
         return win_sizes
 
-    def _get_olap_sizes(self, win_sizes: List[int]) -> List[int]:
+    def _get_olap_sizes(self, win_sizes: list[int]) -> list[int]:
         """
         Get overlap sizes
 
@@ -1054,9 +1064,9 @@ class WindowedMetadata(WriteableMetadata):
 
     model_config = ConfigDict(extra="ignore")
 
-    fs: List[float]
-    chans: List[str]
-    n_chans: Optional[int] = None
+    fs: list[float]
+    chans: list[str]
+    n_chans: int | None = None
     n_levels: int
     first_time: HighResDateTime
     last_time: HighResDateTime
@@ -1067,10 +1077,11 @@ class WindowedMetadata(WriteableMetadata):
     easting: float = -999.0
     northing: float = -999.0
     elevation: float = -999.0
-    chans_metadata: Dict[str, ChanMetadata]
-    levels_metadata: List[WindowedLevelMetadata]
+    chans_metadata: dict[str, ChanMetadata]
+    levels_metadata: list[WindowedLevelMetadata]
     ref_time: HighResDateTime
     history: History = History()
+
 
 class WindowedData(ResisticsData):
     """
@@ -1086,7 +1097,7 @@ class WindowedData(ResisticsData):
     def __init__(
         self,
         metadata: WindowedMetadata,
-        data: Dict[int, np.ndarray],
+        data: dict[int, np.ndarray],
     ):
         """
         Initialise the WindowedData
@@ -1305,15 +1316,15 @@ class Windower(ResisticsProcess):
     array([24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39])
     """
 
-    input_types: ClassVar[Dict[str, str]] = {
+    input_types: ClassVar[dict[str, str]] = {
         "win_params": "window_parameters",
         "dec_data": "decimated_data",
     }
     output_type: ClassVar[str] = "windowed_data"
-    runtime_requirements: ClassVar[List[str]] = ["reference_time"]
+    runtime_requirements: ClassVar[list[str]] = ["reference_time"]
     include_in_default_parameters: ClassVar[bool] = True
 
-    def execute(self, inputs: Dict[str, Any], context: Any) -> WindowedData:
+    def execute(self, inputs: dict[str, Any], context: Any) -> WindowedData:
         """Window flow data using the project reference time from context."""
         return self.run(
             context["reference_time"], inputs["win_params"], inputs["dec_data"]
@@ -1455,8 +1466,8 @@ class Windower(ResisticsProcess):
 
     def _get_metadata(
         self,
-        metadata_dict: Dict[str, Any],
-        levels_metadata: List[WindowedLevelMetadata],
+        metadata_dict: dict[str, Any],
+        levels_metadata: list[WindowedLevelMetadata],
     ) -> WindowedMetadata:
         """Get the metadata for the windowed data"""
         metadata_dict.pop("file_info")
@@ -1614,7 +1625,7 @@ class WindowedDataReader(ResisticsProcess):
 
     def run(
         self, dir_path: Path, metadata_only: bool = False
-    ) -> Union[WindowedMetadata, WindowedData]:
+    ) -> WindowedMetadata | WindowedData:
         """
         Read WindowedData
 

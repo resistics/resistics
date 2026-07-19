@@ -1,7 +1,10 @@
 from pathlib import Path
 
-from resistics.calibrate import CalibrationData
-from resistics.calibrate import SensorCalibrationJSON, SensorCalibrationTXT
+from resistics.calibrate import (
+    CalibrationData,
+    SensorCalibrationJSON,
+    SensorCalibrationTXT,
+)
 from resistics.time import ChanMetadata
 
 
@@ -55,7 +58,9 @@ class MockFileObject:
         lines.append("Chopper = False")
         lines.append("")
         lines.append("CALIBRATION DATA")
-        for f, m, p in zip(cal_data.frequency, cal_data.magnitude, cal_data.phase):
+        for f, m, p in zip(
+            cal_data.frequency, cal_data.magnitude, cal_data.phase, strict=False
+        ):
             lines.append(f"{f} {m} {p}")
         return lines
 

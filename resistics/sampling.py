@@ -7,18 +7,19 @@
 - Currently, resistics uses attodatetime and attotimedelta from attotime
 - attotime is a high precision datetime library
 """
-from loguru import logger
-from typing import Union, Tuple, Optional
+
 from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
 from attotime import attodatetime, attotimedelta
+from loguru import logger
 from pydantic_core import core_schema
 
-DateTimeLike = Union[str, pd.Timestamp, datetime]
-TimeDeltaLike = Union[float, timedelta, pd.Timedelta]
-RSDateTime = Union[attodatetime]
-RSTimeDelta = Union[attotimedelta]
+DateTimeLike = str | pd.Timestamp | datetime
+TimeDeltaLike = float | timedelta | pd.Timedelta
+RSDateTime = attodatetime
+RSTimeDelta = attotimedelta
 
 
 class HighResDateTime(RSDateTime):
@@ -50,7 +51,7 @@ class HighResDateTime(RSDateTime):
         yield cls.validate
 
     @classmethod
-    def validate(cls, val: Union[RSDateTime, DateTimeLike]):
+    def validate(cls, val: RSDateTime | DateTimeLike):
         """Validator to be used by pydantic"""
         if isinstance(val, RSDateTime):
             return val
@@ -260,9 +261,9 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
 
     eps = 0.0001
     if isinstance(delta, (int, float)):
-        seconds = int(floor(delta))
+        seconds = floor(delta)
         delta = (delta - seconds) * 1_000_000
-        microseconds = int(floor(delta))
+        microseconds = floor(delta)
         delta = delta - microseconds
         nanoseconds = delta * 1_000
         if nanoseconds != 0 and nanoseconds < eps:
@@ -281,7 +282,7 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
     )
 
 
-def to_seconds(delta: RSTimeDelta) -> Tuple[float, float]:
+def to_seconds(delta: RSTimeDelta) -> tuple[float, float]:
     """Convert a timedelta to seconds as a float.
 
     Returns a Tuple, the first value being the days in the delta converted to
@@ -386,7 +387,7 @@ def to_n_samples(delta: RSTimeDelta, fs: float, method: str = "round") -> int:
     >>> check_inclusive
     471900155
     """
-    from math import floor, ceil
+    from math import ceil, floor
 
     days_in_seconds, remaining_in_seconds = to_seconds(delta)
     n_samples = (days_in_seconds + remaining_in_seconds) * fs
@@ -396,10 +397,10 @@ def to_n_samples(delta: RSTimeDelta, fs: float, method: str = "round") -> int:
         return int(n_samples)
 
     if method == "floor":
-        return int(floor(n_samples))
+        return floor(n_samples)
     elif method == "ceil":
-        return int(ceil(n_samples))
-    return int(round(n_samples))
+        return ceil(n_samples)
+    return round(n_samples)
 
 
 def check_sample(n_samples: int, sample: int) -> bool:
@@ -447,7 +448,7 @@ def check_sample(n_samples: int, sample: int) -> bool:
 
 
 def sample_to_datetime(
-    fs: float, first_time: RSDateTime, sample: int, n_samples: Optional[int] = None
+    fs: float, first_time: RSDateTime, sample: int, n_samples: int | None = None
 ) -> RSDateTime:
     """Convert a sample to a pandas Timestamp.
 
@@ -496,7 +497,7 @@ def samples_to_datetimes(
     first_time: RSDateTime,
     from_sample: int,
     to_sample: int,
-) -> Tuple[RSDateTime, RSDateTime]:
+) -> tuple[RSDateTime, RSDateTime]:
     """Convert from and to samples to datetimes.
 
     The first sample is assumed to be 0.
@@ -607,7 +608,7 @@ def check_from_time(
     """
     if from_time > last_time:
         raise ValueError(
-            f"From time {str(from_time)} greater than time of last sample {str(last_time)}"
+            f"From time {from_time!s} greater than time of last sample {last_time!s}"
         )
 
     delta_first = from_time - first_time
@@ -674,7 +675,7 @@ def check_to_time(
     """
     if to_time < first_time:
         raise ValueError(
-            f"To time {str(to_time)} less than time of first sample {str(first_time)}"
+            f"To time {to_time!s} less than time of first sample {first_time!s}"
         )
 
     delta_last = last_time - to_time
@@ -786,7 +787,7 @@ def datetimes_to_samples(
     last_time: RSDateTime,
     from_time: RSDateTime,
     to_time: RSDateTime,
-) -> Tuple[int, int]:
+) -> tuple[int, int]:
     """Convert from and to time to samples.
 
     .. warning::
@@ -845,8 +846,8 @@ def datetimes_to_samples(
 def datetime_array(
     first_time: RSDateTime,
     fs: float,
-    n_samples: Optional[int] = None,
-    samples: Optional[np.ndarray] = None,
+    n_samples: int | None = None,
+    samples: np.ndarray | None = None,
 ) -> np.ndarray:
     """Get a datetime array in high resolution.
 
@@ -901,10 +902,10 @@ def datetime_array(
 
 
 def datetime_array_estimate(
-    first_time: Union[RSDateTime, DateTimeLike],
+    first_time: RSDateTime | DateTimeLike,
     fs: float,
-    n_samples: Optional[int] = None,
-    samples: Optional[np.ndarray] = None,
+    n_samples: int | None = None,
+    samples: np.ndarray | None = None,
 ) -> pd.DatetimeIndex:
     """Estimate datetime array with lower precision but much faster
     performance.

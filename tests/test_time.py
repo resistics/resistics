@@ -1,18 +1,30 @@
 """
 Test time data and processors
 """
-from typing import Union, Dict, Any, List
+
 from pathlib import Path
-import pytest
+from typing import Any
+
 import numpy as np
 import pandas as pd
+import pytest
 
 from resistics.errors import ChannelNotFoundError, ProcessRunError
-from resistics.sampling import to_datetime, DateTimeLike
-from resistics.time import ChanMetadata, TimeMetadata, TimeData
-from resistics.time import TimeReader, TimeReaderNumpy, TimeReaderAscii
-from resistics.testing import time_metadata_1chan, time_metadata_mt
-from resistics.testing import time_data_simple, time_data_random
+from resistics.sampling import DateTimeLike, to_datetime
+from resistics.testing import (
+    time_data_random,
+    time_data_simple,
+    time_metadata_1chan,
+    time_metadata_mt,
+)
+from resistics.time import (
+    ChanMetadata,
+    TimeData,
+    TimeMetadata,
+    TimeReader,
+    TimeReaderAscii,
+    TimeReaderNumpy,
+)
 
 
 def test_chan_metadata():
@@ -24,7 +36,7 @@ def test_chan_metadata():
         "chopper": True,
         "dipole_dist": 80,
     }
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Failed setting type"):
         ChanMetadata(**chan_dict)
     chan_dict["chan_type"] = "electric"
     chan_metadata = ChanMetadata(**chan_dict)
@@ -80,10 +92,10 @@ def test_chan_metadata():
     ],
 )
 def test_time_metadata(
-    time_metadata: Dict[str, Any],
-    chans_metadata: Dict[str, Dict[str, Any]],
-    electric_chans: List[str],
-    magnetic_chans: List[str],
+    time_metadata: dict[str, Any],
+    chans_metadata: dict[str, dict[str, Any]],
+    electric_chans: list[str],
+    magnetic_chans: list[str],
 ):
     """Test initialising time metadata"""
     time_metadata["chans"] = list(chans_metadata.keys())
@@ -235,7 +247,7 @@ def test_time_data_get_read_samples_from_date_range(
     metadata: TimeMetadata,
     from_time: DateTimeLike,
     to_time: DateTimeLike,
-    exception: Union[None, Exception],
+    exception: None | Exception,
     expected_from: int,
     expected_to: int,
 ):
@@ -268,7 +280,7 @@ def test_time_data_get_read_samples_from_sample_range(
     metadata: TimeMetadata,
     from_sample: int,
     to_sample: int,
-    exception: Union[None, Exception],
+    exception: None | Exception,
     expected_from: int,
     expected_to: int,
 ):
@@ -363,7 +375,7 @@ def test_remove_mean(time_data: TimeData):
         (time_data_random(n_samples=12000, dtype=np.float64), {"Ex": -3, "Hy": 15}),
     ],
 )
-def test_add(time_data: TimeData, add_arg: Union[float, Dict[str, float]]):
+def test_add(time_data: TimeData, add_arg: float | dict[str, float]):
     """Test adding"""
     from resistics.time import Add
 
@@ -372,9 +384,9 @@ def test_add(time_data: TimeData, add_arg: Union[float, Dict[str, float]]):
     assert time_data_new.data.dtype == time_data.data.dtype
     to_add = add_arg
     if isinstance(to_add, (float, int)):
-        to_add = {x: to_add for x in time_data.metadata.chans}
+        to_add = dict.fromkeys(time_data.metadata.chans, to_add)
     for chan in time_data.metadata.chans:
-        add_val = to_add[chan] if chan in to_add else 0
+        add_val = to_add.get(chan, 0)
         np.testing.assert_array_equal(time_data_new[chan], time_data[chan] + add_val)
 
 
@@ -389,7 +401,7 @@ def test_add(time_data: TimeData, add_arg: Union[float, Dict[str, float]]):
         (time_data_random(n_samples=12000, dtype=np.float64), {"Ex": -3, "Hy": 15}),
     ],
 )
-def test_multiply(time_data: TimeData, mult_arg: Union[float, Dict[str, float]]):
+def test_multiply(time_data: TimeData, mult_arg: float | dict[str, float]):
     """Test multiply"""
     from resistics.time import Multiply
 
@@ -398,9 +410,9 @@ def test_multiply(time_data: TimeData, mult_arg: Union[float, Dict[str, float]])
     assert time_data_new.data.dtype == time_data.data.dtype
     to_mult = mult_arg
     if isinstance(to_mult, (float, int)):
-        to_mult = {x: to_mult for x in time_data.metadata.chans}
+        to_mult = dict.fromkeys(time_data.metadata.chans, to_mult)
     for chan in time_data.metadata.chans:
-        mult_val = to_mult[chan] if chan in to_mult else 1
+        mult_val = to_mult.get(chan, 1)
         np.testing.assert_array_equal(time_data_new[chan], time_data[chan] * mult_val)
 
 
@@ -484,7 +496,7 @@ def test_bandpass_filter(time_data: TimeData, low: float, high: float):
         (time_data_random(fs=128, n_samples=12000, dtype=np.float64), 80, 5),
     ],
 )
-def test_notch_filter(time_data: TimeData, notch: float, band: Union[float, None]):
+def test_notch_filter(time_data: TimeData, notch: float, band: float | None):
     """Test notch"""
     from resistics.time import Notch
 
@@ -546,8 +558,8 @@ def test_decimate(time_data: TimeData, factor: int):
 )
 def test_shift(time_data: TimeData, shift: float):
     """Test shifting of timestamps"""
-    from resistics.time import ShiftTimestamps
     from resistics.sampling import to_timedelta
+    from resistics.time import ShiftTimestamps
 
     shifter = ShiftTimestamps(shift=shift)
     if shift > time_data.metadata.dt:

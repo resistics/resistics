@@ -8,10 +8,10 @@ window is admissible.
 
 from __future__ import annotations
 
+import re
 from datetime import time
 from pathlib import Path
-import re
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -51,7 +51,7 @@ class AbsoluteTimeRange(ResisticsModel):
     to_time: str
 
     @model_validator(mode="after")
-    def validate_order(self) -> "AbsoluteTimeRange":
+    def validate_order(self) -> AbsoluteTimeRange:
         if _utc_timestamp(self.from_time) > _utc_timestamp(self.to_time):
             raise ValueError("Absolute time range from_time must be <= to_time")
         return self
@@ -75,7 +75,7 @@ class WindowMaskLevelMetadata(ResisticsModel):
     olap_size: int
     index_offset: int
     n_evaluation_frequencies: int
-    evaluation_frequencies: List[float]
+    evaluation_frequencies: list[float]
 
 
 class WindowMaskMetadata(WriteableMetadata):
@@ -86,7 +86,7 @@ class WindowMaskMetadata(WriteableMetadata):
     run: str
     sample_rate: float
     ref_time: HighResDateTime
-    levels: List[WindowMaskLevelMetadata]
+    levels: list[WindowMaskLevelMetadata]
     history: History = Field(default_factory=History)
 
 
@@ -94,7 +94,7 @@ class WindowMask(ResisticsData):
     """Boolean mask tables, keyed by decimation level."""
 
     def __init__(
-        self, metadata: WindowMaskMetadata, tables: Dict[int, pd.DataFrame]
+        self, metadata: WindowMaskMetadata, tables: dict[int, pd.DataFrame]
     ) -> None:
         self.metadata = metadata
         self.tables = tables
@@ -123,7 +123,7 @@ class WindowMask(ResisticsData):
                     f"Mask level {level_meta.level} columns must be "
                     f"{expected_columns}"
                 )
-            if any(dtype != bool for dtype in table.dtypes):
+            if any(not pd.api.types.is_bool_dtype(dtype) for dtype in table.dtypes):
                 raise ValueError(
                     f"Mask level {level_meta.level} values must be boolean"
                 )
@@ -141,9 +141,9 @@ class WindowMask(ResisticsData):
 
 def get_run_mask_path(
     project_path: Path,
-    run_batch: Dict[str, Any],
+    run_batch: dict[str, Any],
     name: str,
-    output_label: Optional[str] = None,
+    output_label: str | None = None,
 ) -> Path:
     """Return the canonical path for a named run mask.
 
@@ -215,15 +215,15 @@ class WindowMaskReader(ResisticsProcess):
 class WindowMaskProcess(ResisticsProcess):
     """Base for pure window-mask calculations with a self-writing executor."""
 
-    input_types: ClassVar[Dict[str, str]] = {
+    input_types: ClassVar[dict[str, str]] = {
         "win_data": "windowed_data",
         "dec_params": "decimation_parameters",
     }
     output_type: ClassVar[str] = "mask_result"
-    runtime_requirements: ClassVar[List[str]] = ["project_path", "run_batch"]
+    runtime_requirements: ClassVar[list[str]] = ["project_path", "run_batch"]
     model_config = ConfigDict(extra="forbid")
 
-    def execute(self, inputs: Dict[str, Any], context: Any) -> Dict[str, str]:
+    def execute(self, inputs: dict[str, Any], context: Any) -> dict[str, str]:
         mask = self.run(inputs["win_data"], inputs["dec_params"], context["run_batch"])
         path = get_run_mask_path(
             Path(context["project_path"]),
@@ -238,7 +238,7 @@ class WindowMaskProcess(ResisticsProcess):
         self,
         win_data: WindowedData,
         dec_params: DecimationParameters,
-        run_batch: Optional[Dict[str, Any]],
+        run_batch: dict[str, Any] | None,
     ) -> WindowMaskMetadata:
         run_batch = run_batch or {"survey": "", "station": "", "run": ""}
         levels = []
@@ -272,7 +272,7 @@ class WindowMaskProcess(ResisticsProcess):
         )
 
     def _repeat_decision(
-        self, metadata: WindowMaskMetadata, decisions: Dict[int, np.ndarray]
+        self, metadata: WindowMaskMetadata, decisions: dict[int, np.ndarray]
     ) -> WindowMask:
         tables = {}
         for item in metadata.levels:
@@ -296,17 +296,15 @@ class TimeMask(WindowMaskProcess):
     name: ClassVar[str] = "TimeMask"
     include_in_default_parameters: ClassVar[bool] = True
 
-    absolute_include: List[AbsoluteTimeRange] = Field(default_factory=list)
-    absolute_exclude: List[AbsoluteTimeRange] = Field(default_factory=list)
-    daily_include: List[DailyTimeRange] = Field(
-        default_factory=lambda: [
-            DailyTimeRange(from_time=time(20), to_time=time(6))
-        ]
+    absolute_include: list[AbsoluteTimeRange] = Field(default_factory=list)
+    absolute_exclude: list[AbsoluteTimeRange] = Field(default_factory=list)
+    daily_include: list[DailyTimeRange] = Field(
+        default_factory=lambda: [DailyTimeRange(from_time=time(20), to_time=time(6))]
     )
-    daily_exclude: List[DailyTimeRange] = Field(default_factory=list)
+    daily_exclude: list[DailyTimeRange] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def require_criterion(self) -> "TimeMask":
+    def require_criterion(self) -> TimeMask:
         if not any(
             (
                 self.absolute_include,
@@ -322,7 +320,7 @@ class TimeMask(WindowMaskProcess):
         self,
         win_data: WindowedData,
         dec_params: DecimationParameters,
-        run_batch: Optional[Dict[str, Any]] = None,
+        run_batch: dict[str, Any] | None = None,
     ) -> WindowMask:
         metadata = self._metadata(win_data, dec_params, run_batch)
         decisions = {}
@@ -357,8 +355,8 @@ class TimeMask(WindowMaskProcess):
     def _includes(
         self,
         value: pd.Timestamp,
-        absolute_include: List[tuple[pd.Timestamp, pd.Timestamp]],
-        absolute_exclude: List[tuple[pd.Timestamp, pd.Timestamp]],
+        absolute_include: list[tuple[pd.Timestamp, pd.Timestamp]],
+        absolute_exclude: list[tuple[pd.Timestamp, pd.Timestamp]],
     ) -> bool:
         if absolute_include and not any(a <= value <= b for a, b in absolute_include):
             return False
@@ -380,11 +378,11 @@ class ChannelAmplitudeLimits(ResisticsModel):
     """Inclusive peak absolute-amplitude limits for one channel."""
 
     model_config = ConfigDict(extra="forbid")
-    minimum: Optional[float] = None
-    maximum: Optional[float] = None
+    minimum: float | None = None
+    maximum: float | None = None
 
     @model_validator(mode="after")
-    def validate_limits(self) -> "ChannelAmplitudeLimits":
+    def validate_limits(self) -> ChannelAmplitudeLimits:
         if self.minimum is None and self.maximum is None:
             raise ValueError("At least one of minimum or maximum is required")
         if (
@@ -402,7 +400,7 @@ class AbsoluteAmplitudeMask(WindowMaskProcess):
     name: ClassVar[str] = "AbsoluteAmplitudeMask"
     include_in_default_parameters: ClassVar[bool] = True
 
-    limits: Dict[str, ChannelAmplitudeLimits] = Field(
+    limits: dict[str, ChannelAmplitudeLimits] = Field(
         default_factory=lambda: {
             channel: ChannelAmplitudeLimits(maximum=100_000)
             for channel in ("Ex", "Ey", "Hx", "Hy")
@@ -412,8 +410,8 @@ class AbsoluteAmplitudeMask(WindowMaskProcess):
     @field_validator("limits")
     @classmethod
     def require_limits(
-        cls, value: Dict[str, ChannelAmplitudeLimits]
-    ) -> Dict[str, ChannelAmplitudeLimits]:
+        cls, value: dict[str, ChannelAmplitudeLimits]
+    ) -> dict[str, ChannelAmplitudeLimits]:
         if not value:
             raise ValueError("AbsoluteAmplitudeMask requires at least one channel")
         return value
@@ -422,7 +420,7 @@ class AbsoluteAmplitudeMask(WindowMaskProcess):
         self,
         win_data: WindowedData,
         dec_params: DecimationParameters,
-        run_batch: Optional[Dict[str, Any]] = None,
+        run_batch: dict[str, Any] | None = None,
     ) -> WindowMask:
         missing = sorted(set(self.limits) - set(win_data.metadata.chans))
         if missing:

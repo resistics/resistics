@@ -1,12 +1,14 @@
 """
 Module defining transfer functions
 """
-from typing import ClassVar, List, Optional, Dict, Any, Union
-from pydantic import field_validator, model_validator, constr
-from pydantic_core import core_schema
+
+from typing import Any, ClassVar, Union
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from pydantic import constr, field_validator, model_validator
+from pydantic_core import core_schema
 
 from resistics.common import Metadata
 
@@ -25,9 +27,9 @@ class Component(Metadata):
     array([1.-5.j, 2.-4.j, 3.-3.j, 4.-2.j, 5.-1.j])
     """
 
-    real: List[float]
+    real: list[float]
     """The real part of the component"""
-    imag: List[float]
+    imag: list[float]
     """The complex part of the component"""
 
     def get_value(self, eval_idx: int) -> complex:
@@ -111,23 +113,23 @@ class TransferFunction(Metadata):
                                    | Hz |
     """
 
-    _types: ClassVar[Dict[str, type["TransferFunction"]]] = {}
+    _types: ClassVar[dict[str, type["TransferFunction"]]] = {}
     """Store types which will help automatic instantiation"""
-    name: Optional[str] = None
+    name: str | None = None
     """The name of the transfer function, this will be set automatically"""
     variation: constr(max_length=16) = "generic"
     """A short additional bit of information about this variation"""
-    out_chans: List[str]
+    out_chans: list[str]
     """The output channels"""
-    in_chans: List[str]
+    in_chans: list[str]
     """The input channels"""
-    cross_chans: Optional[List[str]] = None
+    cross_chans: list[str] | None = None
     """The channels to use for calculating the cross spectra"""
-    n_out: Optional[int] = None
+    n_out: int | None = None
     """The number of output channels"""
-    n_in: Optional[int] = None
+    n_in: int | None = None
     """The number of input channels"""
-    n_cross: Optional[int] = None
+    n_cross: int | None = None
     """The number of cross power channels"""
 
     def __init_subclass__(cls) -> None:
@@ -170,7 +172,7 @@ class TransferFunction(Metadata):
 
     @classmethod
     def validate(
-        cls, value: Union["TransferFunction", Dict[str, Any]]
+        cls, value: Union["TransferFunction", dict[str, Any]]
     ) -> "TransferFunction":
         """
         Validate a TransferFunction
@@ -281,7 +283,7 @@ class TransferFunction(Metadata):
             data.pop("name")
             return cls._types[name](**data)
         except Exception:
-            raise ValueError(f"Unable to initialise {name} from dictionary")
+            raise ValueError(f"Unable to initialise {name} from dictionary") from None
 
     @model_validator(mode="after")
     def validate_name(self) -> "TransferFunction":
@@ -291,30 +293,28 @@ class TransferFunction(Metadata):
         return self
 
     @field_validator("cross_chans", mode="before")
-    def validate_cross_chans(
-        cls, value: Union[None, List[str]], info
-    ) -> List[str]:
+    def validate_cross_chans(cls, value: None | list[str], info) -> list[str]:
         """Validate cross spectra channels"""
         if value is None:
             return info.data["in_chans"]
         return value
 
     @field_validator("n_out", mode="before")
-    def validate_n_out(cls, value: Union[None, int], info) -> int:
+    def validate_n_out(cls, value: None | int, info) -> int:
         """Validate number of output channels"""
         if value is None:
             return len(info.data["out_chans"])
         return value
 
     @field_validator("n_in", mode="before")
-    def validate_n_in(cls, value: Union[None, int], info) -> int:
+    def validate_n_in(cls, value: None | int, info) -> int:
         """Validate number of input channels"""
         if value is None:
             return len(info.data["in_chans"])
         return value
 
     @field_validator("n_cross", mode="before")
-    def validate_n_cross(cls, value: Union[None, int], info) -> int:
+    def validate_n_cross(cls, value: None | int, info) -> int:
         """Validate number of cross channels"""
         if value is None:
             return len(info.data["cross_chans"])
@@ -328,7 +328,7 @@ class TransferFunction(Metadata):
         """Get the number of regressors"""
         return self.n_in
 
-    def solution_components(self) -> List[str]:
+    def solution_components(self) -> list[str]:
         """
         Get the components of the solution based on the input and output
         channels
@@ -422,8 +422,8 @@ class ImpedanceTensor(TransferFunction):
     """
 
     variation: constr(max_length=16) = "default"
-    out_chans: List[str] = ["ex", "ey"]
-    in_chans: List[str] = ["hx", "hy"]
+    out_chans: list[str] = ["ex", "ey"]
+    in_chans: list[str] = ["hx", "hy"]
 
     @staticmethod
     def get_resistivity(periods: np.ndarray, component: Component) -> np.ndarray:
@@ -475,9 +475,9 @@ class ImpedanceTensor(TransferFunction):
 
     @staticmethod
     def get_fig(
-        x_lim: Optional[List[float]] = None,
-        res_lim: Optional[List[float]] = None,
-        phs_lim: Optional[List[float]] = None,
+        x_lim: list[float] | None = None,
+        res_lim: list[float] | None = None,
+        phs_lim: list[float] | None = None,
     ) -> go.Figure:
         """
         Get a figure for plotting the ImpedanceTensor
@@ -528,15 +528,15 @@ class ImpedanceTensor(TransferFunction):
 
     @staticmethod
     def plot(
-        freqs: List[float],
-        components: Dict[str, Component],
-        fig: Optional[go.Figure] = None,
-        to_plot: Optional[List[str]] = None,
+        freqs: list[float],
+        components: dict[str, Component],
+        fig: go.Figure | None = None,
+        to_plot: list[str] | None = None,
         legend: str = "Impedance tensor",
-        x_lim: Optional[List[float]] = None,
-        res_lim: Optional[List[float]] = None,
-        phs_lim: Optional[List[float]] = None,
-        symbol: Optional[str] = "circle",
+        x_lim: list[float] | None = None,
+        res_lim: list[float] | None = None,
+        phs_lim: list[float] | None = None,
+        symbol: str | None = "circle",
     ) -> go.Figure:
         """
         Plot the Impedance tensor
@@ -601,8 +601,8 @@ class ImpedanceTensor(TransferFunction):
                 x=periods,
                 y=res,
                 mode="lines+markers",
-                marker=dict(color=color, symbol=symbol),
-                line=dict(color=color),
+                marker={"color": color, "symbol": symbol},
+                line={"color": color},
                 name=comp_legend,
                 legendgroup=comp_legend,
             )
@@ -611,8 +611,8 @@ class ImpedanceTensor(TransferFunction):
                 x=periods,
                 y=phs,
                 mode="lines+markers",
-                marker=dict(color=color, symbol=symbol),
-                line=dict(color=color),
+                marker={"color": color, "symbol": symbol},
+                line={"color": color},
                 name=comp_legend,
                 legendgroup=comp_legend,
                 showlegend=False,
@@ -647,22 +647,22 @@ class Tipper(TransferFunction):
     """
 
     variation: constr(max_length=16) = "default"
-    out_chans: List[str] = ["Hz"]
-    in_chans: List[str] = ["Hx", "Hy"]
+    out_chans: list[str] = ["Hz"]
+    in_chans: list[str] = ["Hx", "Hy"]
 
-    def get_length(self, components: Dict[str, Component]) -> np.ndarray:
+    def get_length(self, components: dict[str, Component]) -> np.ndarray:
         """Get the tipper length"""
         txRe = components["HzHx"].real
         tyRe = components["HzHy"].real
         return np.sqrt(np.power(txRe, 2) + np.power(tyRe, 2))
 
-    def get_real_angle(self, components: Dict[str, Component]) -> np.ndarray:
+    def get_real_angle(self, components: dict[str, Component]) -> np.ndarray:
         """Get the real angle"""
         txRe = np.array(components["HzHx"].real)
         tyRe = np.array(components["HzHy"].real)
         return np.arctan(tyRe / txRe) * 180 / np.pi
 
-    def get_imag_angle(self, components: Dict[str, Component]) -> np.ndarray:
+    def get_imag_angle(self, components: dict[str, Component]) -> np.ndarray:
         """Get the imaginary angle"""
         txIm = np.array(components["HzHx"].imag)
         tyIm = np.array(components["HzHy"].imag)
@@ -670,11 +670,11 @@ class Tipper(TransferFunction):
 
     def plot(
         self,
-        freqs: List[float],
-        components: Dict[str, Component],
-        x_lim: Optional[List[float]] = None,
-        len_lim: Optional[List[float]] = None,
-        ang_lim: Optional[List[float]] = None,
+        freqs: list[float],
+        components: dict[str, Component],
+        x_lim: list[float] | None = None,
+        len_lim: list[float] | None = None,
+        ang_lim: list[float] | None = None,
     ) -> go.Figure:
         """
         Plot the impedance tensor
@@ -704,9 +704,10 @@ class Tipper(TransferFunction):
             Plotly figure
         """
         import warnings
+
         from plotly.subplots import make_subplots
 
-        warnings.warn("Plotting of tippers needs further verification")
+        warnings.warn("Plotting of tippers needs further verification", stacklevel=2)
 
         periods = np.reciprocal(freqs)
         if x_lim is None:
@@ -739,8 +740,8 @@ class Tipper(TransferFunction):
             x=periods,
             y=self.get_length(components),
             mode="lines+markers",
-            marker=dict(color="red"),
-            line=dict(color="red"),
+            marker={"color": "red"},
+            line={"color": "red"},
             name="Tipper length",
         )
         fig.add_trace(scatter, row=1, col=1)
@@ -749,8 +750,8 @@ class Tipper(TransferFunction):
             x=periods,
             y=self.get_real_angle(components),
             mode="lines+markers",
-            marker=dict(color="green"),
-            line=dict(color="green"),
+            marker={"color": "green"},
+            line={"color": "green"},
             name="Real angle",
         )
         fig.add_trace(scatter, row=2, col=1)
@@ -759,8 +760,8 @@ class Tipper(TransferFunction):
             x=periods,
             y=self.get_imag_angle(components),
             mode="lines+markers",
-            marker=dict(color="blue"),
-            line=dict(color="blue"),
+            marker={"color": "blue"},
+            line={"color": "blue"},
             name="Imag angle",
         )
         fig.add_trace(scatter, row=2, col=1)

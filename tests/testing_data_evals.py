@@ -4,10 +4,11 @@ These are spectra data dictionaries and metadata for testing of combining data
 Whilst the data is generally called eval(uation frequency) data, it is in
 reality the same as spectra data.
 """
+
 import numpy as np
 
+from resistics.spectra import SpectraData, SpectraMetadata
 from resistics.testing import spectra_metadata_multilevel
-from resistics.spectra import SpectraMetadata, SpectraData
 
 # eval data dictionarys
 # each level should be an array with shape n_wins * n_chans (2) * n_freqs (2)

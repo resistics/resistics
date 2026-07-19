@@ -22,19 +22,21 @@ And the corresponding predictor array has shape
 
 (n_wins x n_cross_chans x 2) x (n_in_chans x 2)
 """
-from typing import List
+
 import numpy as np
 import pytest
 
 from resistics.common import History
-from resistics.gather import SiteCombinedData, SiteCombinedMetadata, GatheredData
 from resistics.decimate import DecimationSetup
-from resistics.transfunc import TransferFunction, ImpedanceTensor
-from resistics.regression import RegressionPreparerGathered, Solution
-from resistics.regression import Solver, SolverOLS
-from resistics.testing import solution_mt, solution_random_float, solution_random_int
-from resistics.testing import transfer_function_random
-
+from resistics.gather import GatheredData, SiteCombinedData, SiteCombinedMetadata
+from resistics.regression import RegressionPreparerGathered, Solution, Solver, SolverOLS
+from resistics.testing import (
+    solution_mt,
+    solution_random_float,
+    solution_random_int,
+    transfer_function_random,
+)
+from resistics.transfunc import ImpedanceTensor, TransferFunction
 
 # this first example has 2 windows, 1chan
 # recall that the cross data will be conjugated, 5+3j will become 5-3j
@@ -66,7 +68,7 @@ TEST2_PREDS = {
 
 
 def get_combined_metadata(
-    site_name: str, measurements: List[str], chans: List[str]
+    site_name: str, measurements: list[str], chans: list[str]
 ) -> SiteCombinedMetadata:
     """Get metadata for SiteCombinedData"""
     histories = {x: History() for x in measurements}
@@ -224,9 +226,10 @@ def test_regression_solution_single_site(
 ):
     """Test regression using synthetic evaluation frequency data"""
     from pathlib import Path
+
     from resistics.gather import QuickGather
     from resistics.regression import RegressionPreparerGathered
-    from resistics.testing import evaluation_data, assert_soln_equal
+    from resistics.testing import assert_soln_equal, evaluation_data
 
     n_evals = len(expected_soln.freqs)
     if n_evals % n_levels != 0:
@@ -334,7 +337,7 @@ def test_regression_solution_spectra_input(
 ):
     """Test regression using synthetic evaluation frequency data"""
     from resistics.regression import RegressionPreparerSpectra
-    from resistics.testing import evaluation_data, assert_soln_equal
+    from resistics.testing import assert_soln_equal, evaluation_data
 
     n_evals = len(expected_soln.freqs)
     if n_evals % n_levels != 0:

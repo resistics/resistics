@@ -137,9 +137,7 @@ def test_default_mask_flow_is_run_scoped_and_validates_with_its_parameters():
     assert "resistics.mask.TimeMask" in processes
     assert "resistics.mask.AbsoluteAmplitudeMask" in processes
     result = FlowValidator(RUNTIME).validate(
-        get_processing_job(
-            flow=flow, params=mask_calculation_parameter_set()
-        )
+        get_processing_job(flow=flow, params=mask_calculation_parameter_set())
     )
     assert result.ok, result.errors
 
@@ -160,9 +158,7 @@ def test_mask_process_name_is_not_user_configurable():
 
 def test_mask_example_names_remain_compatibility_aliases():
     assert mask_calculation_example_flow() == mask_calculation_flow()
-    assert (
-        mask_calculation_example_parameter_set() == mask_calculation_parameter_set()
-    )
+    assert mask_calculation_example_parameter_set() == mask_calculation_parameter_set()
 
 
 def test_flow_serialization_has_no_ui_or_process_parameters():
@@ -175,7 +171,7 @@ def test_flow_serialization_has_no_ui_or_process_parameters():
 
 
 def test_flow_requires_explicit_stages():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Field required"):
         model_from_yaml(
             FlowDefinition,
             """

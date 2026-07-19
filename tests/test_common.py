@@ -1,11 +1,13 @@
 """Tests for resistics.common"""
-from typing import List, Callable, Union
-from pathlib import Path
-import pytest
-import pandas as pd
 
-from resistics.errors import NotFileError, NotDirectoryError
-from resistics.sampling import datetime_to_string, datetime_from_string
+from collections.abc import Callable
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+from resistics.errors import NotDirectoryError, NotFileError
+from resistics.sampling import datetime_from_string, datetime_to_string
 
 Timestamp = pd.Timestamp
 Timedelta = pd.Timedelta
@@ -163,12 +165,12 @@ def test_is_magnetic(chan: str, expected: bool) -> None:
         ("Cx", None),
     ],
 )
-def test_get_chan_type(chan: str, expected: Union[str, None]) -> None:
+def test_get_chan_type(chan: str, expected: str | None) -> None:
     """Test to_resistics_chan"""
     from resistics.common import get_chan_type
 
     if expected is None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="not recognised"):
             get_chan_type(chan)
         return
     assert get_chan_type(chan) == expected
@@ -178,10 +180,10 @@ def test_get_chan_type(chan: str, expected: Union[str, None]) -> None:
     "chan, chan_list, expect_raise",
     [("Ex", ["Ex", "Hy"], False), ("Ex", ["Hy", "Hy"], True)],
 )
-def test_check_chan(chan: str, chan_list: List[str], expect_raise: bool) -> None:
+def test_check_chan(chan: str, chan_list: list[str], expect_raise: bool) -> None:
     """Test check_chan"""
-    from resistics.errors import ChannelNotFoundError
     from resistics.common import check_chan
+    from resistics.errors import ChannelNotFoundError
 
     if expect_raise:
         with pytest.raises(ChannelNotFoundError):
@@ -208,11 +210,12 @@ def test_strformat_fs(fs: float, expected: str) -> None:
     ],
 )
 def test_array_to_string(
-    data: List[float], sep: str, precision: int, scientific: bool, expected: str
+    data: list[float], sep: str, precision: int, scientific: bool, expected: str
 ) -> None:
     """Test array to string formatting"""
-    from resistics.common import array_to_string
     import numpy as np
+
+    from resistics.common import array_to_string
 
     data = np.array(data)
     assert array_to_string(data, sep, precision, scientific) == expected

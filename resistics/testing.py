@@ -14,18 +14,22 @@ This includes testing data for:
 - RegressionInputMetadata
 - Solution
 """
-from typing import List, Dict, Optional, Type, Union
+
 import numpy as np
 import pandas as pd
 
-from resistics.common import Record, History, get_record, known_chan
-from resistics.time import get_time_metadata, TimeMetadata, TimeData
-from resistics.decimate import get_eval_freqs_size, DecimationParameters
-from resistics.decimate import DecimatedMetadata, DecimatedData
-from resistics.spectra import SpectraLevelMetadata, SpectraMetadata, SpectraData
+from resistics.common import History, Record, get_record, known_chan
+from resistics.decimate import (
+    DecimatedData,
+    DecimatedMetadata,
+    DecimationParameters,
+    get_eval_freqs_size,
+)
 from resistics.gather import SiteCombinedMetadata
-from resistics.transfunc import Component, TransferFunction, ImpedanceTensor
 from resistics.regression import RegressionInputMetadata, Solution
+from resistics.spectra import SpectraData, SpectraLevelMetadata, SpectraMetadata
+from resistics.time import TimeData, TimeMetadata, get_time_metadata
+from resistics.transfunc import Component, ImpedanceTensor, TransferFunction
 
 DEFAULT_TIME_DATA_DTYPE = np.float32
 
@@ -142,7 +146,7 @@ def time_metadata_2chan(
 
 
 def time_metadata_general(
-    chans: List[str],
+    chans: list[str],
     fs: float = 10,
     first_time: str = "2020-01-01 00:00:00",
     n_samples: int = 11,
@@ -213,7 +217,7 @@ def time_data_ones(
     fs: float = 10,
     first_time: str = "2020-01-01 00:00:00",
     n_samples: int = 10,
-    dtype: Optional[Type] = None,
+    dtype: type | None = None,
 ) -> TimeData:
     """
     TimeData with all ones
@@ -253,7 +257,7 @@ def time_data_ones(
 def time_data_simple(
     fs: float = 10,
     first_time: str = "2020-01-01 00:00:00",
-    dtype: Optional[Type] = None,
+    dtype: type | None = None,
 ) -> TimeData:
     """
     Time data with 16 samples
@@ -295,7 +299,7 @@ def time_data_simple(
 def time_data_with_nans(
     fs: float = 10,
     first_time: str = "2020-01-01 00:00:00",
-    dtype: Optional[Type] = None,
+    dtype: type | None = None,
 ) -> TimeData:
     """
     TimeData with 16 samples and some nan values
@@ -338,7 +342,7 @@ def time_data_linear(
     fs: float = 10,
     first_time: str = "2020-01-01 00:00:00",
     n_samples: int = 10,
-    dtype: Optional[Type] = None,
+    dtype: type | None = None,
 ) -> TimeData:
     """
     Get TimeData with linear data
@@ -381,7 +385,7 @@ def time_data_random(
     fs: float = 10,
     first_time: str = "2020-01-01 00:00:00",
     n_samples: int = 10,
-    dtype: Optional[Type] = None,
+    dtype: type | None = None,
 ) -> TimeData:
     """
     TimeData with random values and specifiable number of samples
@@ -419,11 +423,11 @@ def time_data_random(
 
 
 def time_data_periodic(
-    frequencies: List[float],
+    frequencies: list[float],
     fs: float = 50,
     first_time: str = "2020-01-01 00:00:00",
     n_samples: int = 100,
-    dtype: Optional[Type] = None,
+    dtype: type | None = None,
 ) -> TimeData:
     """
     Get period TimeData
@@ -471,7 +475,7 @@ def time_data_with_offset(
     fs: float = 10,
     first_time: str = "2020-01-01 00:00:00",
     n_samples: int = 11,
-    dtype: Optional[Type] = None,
+    dtype: type | None = None,
 ) -> TimeData:
     """
     Get TimeData with an offset on the sampling
@@ -671,7 +675,7 @@ def decimated_data_linear(
 
 
 def decimated_data_periodic(
-    frequencies: Dict[str, List[float]],
+    frequencies: dict[str, list[float]],
     fs: float = 0.25,
     first_time: str = "2021-01-01 00:00:00",
     n_samples: int = 1024,
@@ -732,9 +736,9 @@ def decimated_data_periodic(
 def spectra_metadata_multilevel(
     fs: float = 128,
     n_levels: int = 3,
-    n_wins: Union[List[int], int] = 2,
-    index_offset: Union[List[int], int] = 0,
-    chans: Optional[List[str]] = None,
+    n_wins: list[int] | int = 2,
+    index_offset: list[int] | int = 0,
+    chans: list[str] | None = None,
 ) -> SpectraMetadata:
     """
     Get spectra metadata with multiple levels and two channels
@@ -770,7 +774,7 @@ def spectra_metadata_multilevel(
 
     levels_metadata = []
     levels_fs = []
-    for ilevel, offset in zip(range(n_levels), index_offset):
+    for ilevel, offset in zip(range(n_levels), index_offset, strict=False):
         factor = np.power(2, ilevel)
         fs = fs / factor
         levels_metadata.append(
@@ -841,7 +845,7 @@ def spectra_data_basic() -> SpectraData:
 
 
 def generate_evaluation_data(
-    chans: List[str], soln: Solution, n_wins: int
+    chans: list[str], soln: Solution, n_wins: int
 ) -> np.ndarray:
     """
     Generate evaluation frequency data that satisfies a provided solution
@@ -1024,7 +1028,7 @@ def transfer_function_random(
 
 
 def regression_input_metadata_single_site(
-    fs: float, freqs: List[float], tf: TransferFunction
+    fs: float, freqs: list[float], tf: TransferFunction
 ) -> RegressionInputMetadata:
     """
     Given a transfer function, get example regression input metadata assuming a
@@ -1078,7 +1082,7 @@ def regression_input_metadata_single_site(
     )
 
 
-def components_mt() -> Dict[str, Component]:
+def components_mt() -> dict[str, Component]:
     """
     Get example components for the Impedance Tensor
 
@@ -1119,7 +1123,7 @@ def solution_mt() -> Solution:
 
 
 def solution_general(
-    fs: float, tf: TransferFunction, n_evals: int, components: Dict[str, Component]
+    fs: float, tf: TransferFunction, n_evals: int, components: dict[str, Component]
 ) -> Solution:
     """
     Create a Solution instance from the specified components
@@ -1221,7 +1225,7 @@ def solution_random_float(fs: float, tf: TransferFunction, n_evals=10) -> Soluti
     return solution_general(fs, tf, n_evals, components)
 
 
-def remove_record_times(records: Dict) -> Dict:
+def remove_record_times(records: dict) -> dict:
     """
     Remove timestamps from records
 

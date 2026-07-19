@@ -9,7 +9,6 @@ from types import SimpleNamespace
 
 import pandas as pd
 import plotly.graph_objects as go
-import resistics.tui as tui_module
 from textual.widgets import (
     Button,
     DataTable,
@@ -23,6 +22,7 @@ from textual.widgets import (
     Tree,
 )
 
+import resistics.tui as tui_module
 from resistics.flow import default_parameter_set, model_to_yaml, standard_mt_flow
 from resistics.gather import GatherCriteria
 from resistics.job import JobDefinition, JobProgressEvent, JobScope, JobState
@@ -30,15 +30,15 @@ from resistics.project import ProjectDataDeletion, ProjectDataItem
 from resistics.sampling import to_datetime
 from resistics.testing import solution_mt
 from resistics.tui import (
-    CopyYamlFileScreen,
     ConfirmJobScreen,
+    ConfirmProjectDataDeletionScreen,
+    CopyYamlFileScreen,
     CreateJobScreen,
     CreateProjectScreen,
+    DeleteProjectDataScreen,
     DeleteYamlFileScreen,
     DirectoryPickerScreen,
     ProjectExplorerScreen,
-    ConfirmProjectDataDeletionScreen,
-    DeleteProjectDataScreen,
     ResisticsTui,
 )
 
@@ -269,9 +269,7 @@ def test_cached_action_checks_are_fast_and_do_not_repeat_io(
             monkeypatch.setattr(
                 tui_module,
                 "model_from_yaml_file",
-                record_call(
-                    "model_from_yaml_file", tui_module.model_from_yaml_file
-                ),
+                record_call("model_from_yaml_file", tui_module.model_from_yaml_file),
             )
             monkeypatch.setattr(
                 screen.project_jobs,

@@ -4,14 +4,15 @@ Tests for the MTH5-backed project API.
 
 from pathlib import Path
 
+import h5py
 import pandas as pd
 import pytest
-import h5py
 from mth5.mth5 import MTH5
 
+from resistics.flow import FlowDefinition, ParameterSet, model_from_yaml_file
 from resistics.project import (
-    PROJ_FILE,
     CANONICAL_PROJ_DIRS,
+    PROJ_FILE,
     Project,
     check_project,
     get_flow_path,
@@ -24,7 +25,6 @@ from resistics.project import (
     load,
     open_mth5,
 )
-from resistics.flow import FlowDefinition, ParameterSet, model_from_yaml_file
 from resistics.templates import (
     DEFAULT_FLOW_FILENAME,
     DEFAULT_PARAMETERS_FILENAME,
@@ -155,8 +155,9 @@ def test_project_data_browser_lists_mth5_and_project_artifacts(tmp_path):
 
     mth5_items = {item.path: item for item in project.list_mth5_data_items()}
     assert (
-        mth5_items["/Experiment/Surveys/survey/Stations/station/Runs/run/Channels/ex"]
-        .data_type
+        mth5_items[
+            "/Experiment/Surveys/survey/Stations/station/Runs/run/Channels/ex"
+        ].data_type
         == "time"
     )
     assert mth5_items["/Experiment/fc_summary"].data_type == "spectra"
@@ -187,9 +188,9 @@ def test_project_data_browser_lists_mth5_and_project_artifacts(tmp_path):
     assert project.get_project_data_json(
         "survey/station/run/evals/default/metadata.json"
     ) == {"name": "evaluation"}
-    assert project.get_project_data_json(
-        "survey/station/results/mt/solution.json"
-    ) == {"name": "solution"}
+    assert project.get_project_data_json("survey/station/results/mt/solution.json") == {
+        "name": "solution"
+    }
     with pytest.raises(ValueError, match="inside project/data"):
         project.get_project_data_metadata("../outside")
 
@@ -260,7 +261,7 @@ def test_init_creates_canonical_project_structure(tmp_path):
     default_parameters_path = (
         project_path / "processing" / "parameters" / DEFAULT_PARAMETERS_FILENAME
     )
-    flow = model_from_yaml_file(FlowDefinition, flow_path)
+    model_from_yaml_file(FlowDefinition, flow_path)
     default_parameters = model_from_yaml_file(ParameterSet, default_parameters_path)
     assert "resistics.decimate.DecimationSetup" in default_parameters.processes
     for flow_filename in (

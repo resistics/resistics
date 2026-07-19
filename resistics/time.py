@@ -7,24 +7,33 @@ Classes and methods for storing and manipulating time data, including:
 - TimeData processors
 """
 
-from loguru import logger
-from typing import ClassVar, List, Dict, Literal, Union, Any, Tuple, Optional, Callable
 import types
+from collections.abc import Callable
 from pathlib import Path
-from pydantic import ConfigDict, ValidationInfo, conint, field_validator, PositiveFloat
+from typing import Any, ClassVar, Literal
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from loguru import logger
+from pydantic import ConfigDict, PositiveFloat, ValidationInfo, conint, field_validator
 
+from resistics.common import (
+    History,
+    Metadata,
+    Record,
+    ResisticsData,
+    ResisticsProcess,
+    ResisticsWriter,
+    WriteableMetadata,
+    get_chan_type,
+)
 from resistics.errors import ProcessRunError
-from resistics.common import ResisticsData, ResisticsProcess
-from resistics.common import Metadata, WriteableMetadata
-from resistics.common import History, Record, ResisticsWriter
-from resistics.common import get_chan_type
-from resistics.sampling import RSDateTime, RSTimeDelta, DateTimeLike
 from resistics.sampling import (
+    DateTimeLike,
     HighResDateTime,
-    datetime_to_string,
+    RSDateTime,
+    RSTimeDelta,
     to_datetime,
     to_timestamp,
 )
@@ -37,11 +46,11 @@ class ChanMetadata(Metadata):
 
     name: str
     """The name of the channel"""
-    data_files: Optional[List[str]] = None
+    data_files: list[str] | None = None
     """The data files"""
-    chan_type: Optional[str] = None
+    chan_type: str | None = None
     """The channel type, electric, magnetic or unknown"""
-    chan_source: Optional[str] = None
+    chan_source: str | None = None
     """The name of channel in the data source, can be ignored if not required"""
     sensor: str = ""
     """The name of the sensor"""
@@ -64,7 +73,7 @@ class ChanMetadata(Metadata):
 
     @field_validator("data_files", mode="before")
     @classmethod
-    def validate_data_files(cls, value: Any) -> List[str]:
+    def validate_data_files(cls, value: Any) -> list[str]:
         """Validate data files and convert to list if required"""
         if isinstance(value, str):
             return [value]
@@ -79,7 +88,9 @@ class ChanMetadata(Metadata):
         try:
             return get_chan_type(info.data["name"])
         except ValueError:
-            raise ValueError(f"Failed setting type for chan {info.data['name']}")
+            raise ValueError(
+                f"Failed setting type for chan {info.data['name']}"
+            ) from None
 
     def electric(self) -> bool:
         """True if the channel is an electric channel"""
@@ -97,9 +108,9 @@ class TimeMetadata(WriteableMetadata):
 
     fs: float
     """The sampling frequency"""
-    chans: List[str]
+    chans: list[str]
     """List of channels"""
-    n_chans: Optional[int] = None
+    n_chans: int | None = None
     """The number of channels"""
     n_samples: int
     """The number of samples"""
@@ -121,7 +132,7 @@ class TimeMetadata(WriteableMetadata):
     """The northing of the site in local cartersian coordinates"""
     elevation: float = -999.0
     """The elevation of the site"""
-    chans_metadata: Dict[str, ChanMetadata]
+    chans_metadata: dict[str, ChanMetadata]
     """List of channel metadata"""
     history: History = History()
     """Processing history"""
@@ -182,7 +193,7 @@ class TimeMetadata(WriteableMetadata):
         """Get the nyquist frequency"""
         return self.fs / 2
 
-    def get_chan_types(self) -> List[str]:
+    def get_chan_types(self) -> list[str]:
         """
         Get all the different channel types
 
@@ -199,9 +210,9 @@ class TimeMetadata(WriteableMetadata):
         ['electric', 'magnetic']
         """
         chan_types = {x.chan_type for x in self.chans_metadata.values()}
-        return sorted(list(chan_types))
+        return sorted(chan_types)
 
-    def get_chans_with_type(self, chan_type: str) -> List[str]:
+    def get_chans_with_type(self, chan_type: str) -> list[str]:
         """
         Get channels with the given type
 
@@ -224,7 +235,7 @@ class TimeMetadata(WriteableMetadata):
         """
         return [x for x in self.chans if self.chans_metadata[x].chan_type == chan_type]
 
-    def get_electric_chans(self) -> List[str]:
+    def get_electric_chans(self) -> list[str]:
         """
         Get list of electric channels
 
@@ -242,7 +253,7 @@ class TimeMetadata(WriteableMetadata):
         """
         return [x for x in self.chans if self.chans_metadata[x].electric()]
 
-    def get_magnetic_chans(self) -> List[str]:
+    def get_magnetic_chans(self) -> list[str]:
         """
         Get list of magnetic channels
 
@@ -262,19 +273,15 @@ class TimeMetadata(WriteableMetadata):
 
     def any_electric(self) -> bool:
         """True if any channels are electric"""
-        if len(self.get_electric_chans()) == 0:
-            return False
-        return True
+        return len(self.get_electric_chans()) != 0
 
     def any_magnetic(self) -> bool:
         """True if any channels are magnetic"""
-        if len(self.get_magnetic_chans()) == 0:
-            return False
-        return True
+        return len(self.get_magnetic_chans()) != 0
 
 
 def get_time_metadata(
-    time_dict: Dict[str, Any], chans_dict: Dict[str, Dict[str, Any]]
+    time_dict: dict[str, Any], chans_dict: dict[str, dict[str, Any]]
 ) -> TimeMetadata:
     """
     Get metadata for TimeData
@@ -480,7 +487,7 @@ class TimeData(ResisticsData):
         logger.debug(f"Creating TimeData with data type {data.dtype}")
         self.metadata = metadata
         self.data = data
-        self._chan_to_idx: Dict[str, int] = {}
+        self._chan_to_idx: dict[str, int] = {}
         for idx, chan in enumerate(self.metadata.chans):
             self._chan_to_idx[chan] = idx
 
@@ -578,8 +585,8 @@ class TimeData(ResisticsData):
         self.data[self._chan_to_idx[chan]] = chan_data
 
     def get_timestamps(
-        self, samples: Optional[np.ndarray] = None, estimate: bool = True
-    ) -> Union[np.ndarray, pd.DatetimeIndex]:
+        self, samples: np.ndarray | None = None, estimate: bool = True
+    ) -> np.ndarray | pd.DatetimeIndex:
         """
         Get an array of timestamps
 
@@ -631,7 +638,7 @@ class TimeData(ResisticsData):
         return sub.run(self)
 
     def subsamples(
-        self, from_sample: Optional[int] = None, to_sample: Optional[int] = None
+        self, from_sample: int | None = None, to_sample: int | None = None
     ) -> "TimeData":
         """Get a subsample range of the TimeData
 
@@ -660,11 +667,11 @@ class TimeData(ResisticsData):
 
     def plot(
         self,
-        fig: Optional[go.Figure] = None,
-        chans: Optional[List[str]] = None,
+        fig: go.Figure | None = None,
+        chans: list[str] | None = None,
         color: str = "blue",
         legend: str = "TimeData",
-        max_pts: Optional[int] = 10_000,
+        max_pts: int | None = 10_000,
     ) -> go.Figure:
         """
         Plot time series data
@@ -696,7 +703,7 @@ class TimeData(ResisticsData):
             If a figure is provided and channels have not been explicitly
             defined
         """
-        from resistics.plot import get_time_fig, apply_lttb
+        from resistics.plot import apply_lttb, get_time_fig
 
         if fig is not None and chans is None:
             raise ValueError("If a figure is provided, then chans must be specified")
@@ -716,7 +723,7 @@ class TimeData(ResisticsData):
             scatter = go.Scattergl(
                 x=timestamps,
                 y=data,
-                line=dict(color=color),
+                line={"color": color},
                 name=legend,
                 legendgroup=legend,
                 showlegend=(idx == 0),
@@ -735,18 +742,18 @@ class TimeData(ResisticsData):
 class TimeReader(ResisticsProcess):
 
     apply_scalings: bool = True
-    extension: Union[str, None] = None
+    extension: str | None = None
 
     def run(
         self,
         dir_path: Path,
-        metadata_only: Optional[bool] = False,
-        metadata: Optional[TimeMetadata] = None,
-        from_time: Optional[DateTimeLike] = None,
-        to_time: Optional[DateTimeLike] = None,
-        from_sample: Optional[int] = None,
-        to_sample: Optional[int] = None,
-    ) -> Union[TimeMetadata, TimeData]:
+        metadata_only: bool | None = False,
+        metadata: TimeMetadata | None = None,
+        from_time: DateTimeLike | None = None,
+        to_time: DateTimeLike | None = None,
+        from_sample: int | None = None,
+        to_sample: int | None = None,
+    ) -> TimeMetadata | TimeData:
         """
         Read time series data
 
@@ -882,11 +889,11 @@ class TimeReader(ResisticsProcess):
     def _get_read_samples(
         self,
         metadata: TimeMetadata,
-        from_time: Optional[DateTimeLike] = None,
-        to_time: Optional[DateTimeLike] = None,
-        from_sample: Optional[int] = None,
-        to_sample: Optional[int] = None,
-    ) -> Tuple[int, int]:
+        from_time: DateTimeLike | None = None,
+        to_time: DateTimeLike | None = None,
+        from_sample: int | None = None,
+        to_sample: int | None = None,
+    ) -> tuple[int, int]:
         """
         Get samples to read from a mixture of from and to times or from and to samples.
 
@@ -912,8 +919,12 @@ class TimeReader(ResisticsProcess):
         read_to : int
             Sample to read to
         """
-        from resistics.sampling import check_sample, to_datetime
-        from resistics.sampling import from_time_to_sample, to_time_to_sample
+        from resistics.sampling import (
+            check_sample,
+            from_time_to_sample,
+            to_datetime,
+            to_time_to_sample,
+        )
 
         n_samples = metadata.n_samples
 
@@ -987,9 +998,9 @@ class MTH5TimeReader(TimeReader):
     """
 
     output_type: ClassVar[str] = "time_data"
-    runtime_requirements: ClassVar[List[str]] = ["project", "run_batch"]
+    runtime_requirements: ClassVar[list[str]] = ["project", "run_batch"]
 
-    def execute(self, inputs: Dict[str, Any], context: Any) -> TimeData:
+    def execute(self, inputs: dict[str, Any], context: Any) -> TimeData:
         """Read the concrete run selected by the current flow batch."""
         del inputs
         batch = context["run_batch"]
@@ -1005,12 +1016,12 @@ class MTH5TimeReader(TimeReader):
     def run(
         self,
         run_group: Any,
-        chans: Optional[List[str]] = None,
-        from_time: Optional[DateTimeLike] = None,
-        to_time: Optional[DateTimeLike] = None,
-        from_sample: Optional[int] = None,
-        to_sample: Optional[int] = None,
-        sample_rate: Optional[float] = None,
+        chans: list[str] | None = None,
+        from_time: DateTimeLike | None = None,
+        to_time: DateTimeLike | None = None,
+        from_sample: int | None = None,
+        to_sample: int | None = None,
+        sample_rate: float | None = None,
     ) -> TimeData:
         """Read one bounded MTH5 run."""
         start = None if from_time is None else str(to_timestamp(from_time).isoformat())
@@ -1032,9 +1043,7 @@ class MTH5TimeReader(TimeReader):
         return _mth5_run_ts_to_time_data(run_ts, chans=chans)
 
 
-def _mth5_run_ts_to_time_data(
-    run_ts: Any, chans: Optional[List[str]] = None
-) -> TimeData:
+def _mth5_run_ts_to_time_data(run_ts: Any, chans: list[str] | None = None) -> TimeData:
     """Convert an MTH5 RunTS-like object to resistics time data."""
     if hasattr(run_ts, "dataset"):
         dataset = run_ts.dataset
@@ -1122,7 +1131,9 @@ class TimeReaderJSON(TimeReader):
         try:
             metadata = TimeMetadata.model_validate_json(metadata_path.read_bytes())
         except KeyError:
-            raise MetadataReadError(metadata_path, "No metadata found in metadata file")
+            raise MetadataReadError(
+                metadata_path, "No metadata found in metadata file"
+            ) from None
 
         if not self._check_data_files(dir_path, metadata):
             raise TimeDataReadError(dir_path, "All data files do not exist")
@@ -1141,7 +1152,7 @@ class TimeReaderAscii(TimeReaderJSON):
     """
 
     extension: str = ".txt"
-    delimiter: Optional[str] = None
+    delimiter: str | None = None
     n_header: int = 0
 
     def read_data(
@@ -1189,8 +1200,8 @@ class TimeReaderAscii(TimeReaderJSON):
         )
         data = data.transpose()
         metadata = self._get_return_metadata(metadata, read_from, read_to)
-        messages.append(f"From sample, time: {read_from}, {str(metadata.first_time)}")
-        messages.append(f"To sample, time: {read_to}, {str(metadata.last_time)}")
+        messages.append(f"From sample, time: {read_from}, {metadata.first_time!s}")
+        messages.append(f"To sample, time: {read_to}, {metadata.last_time!s}")
         metadata.history.add_record(self._get_record(messages))
         logger.info(f"Data successfully read from {dir_path}")
         return TimeData(metadata, data)
@@ -1238,8 +1249,8 @@ class TimeReaderNumpy(TimeReaderJSON):
         data_path = dir_path / metadata.chans_metadata[metadata.chans[0]].data_files[0]
         data = np.load(data_path, mmap_mode="r")[:, read_from : read_to + 1]
         metadata = self._get_return_metadata(metadata, read_from, read_to)
-        messages.append(f"From sample, time: {read_from}, {str(metadata.first_time)}")
-        messages.append(f"To sample, time: {read_to}, {str(metadata.last_time)}")
+        messages.append(f"From sample, time: {read_from}, {metadata.first_time!s}")
+        messages.append(f"To sample, time: {read_to}, {metadata.last_time!s}")
         metadata.history.add_record(self._get_record(messages))
         logger.info(f"Data successfully read from {dir_path}")
         return TimeData(metadata, data)
@@ -1321,9 +1332,9 @@ class TimeWriterAscii(ResisticsWriter):
 
 def new_time_data(
     time_data: TimeData,
-    metadata: Optional[TimeMetadata] = None,
-    data: Optional[np.ndarray] = None,
-    record: Optional[Record] = None,
+    metadata: TimeMetadata | None = None,
+    data: np.ndarray | None = None,
+    record: Record | None = None,
 ) -> TimeData:
     """
     Get a new TimeData
@@ -1359,7 +1370,7 @@ def new_time_data(
 
 class TimeProcess(ResisticsProcess):
 
-    input_types: ClassVar[Dict[str, str]] = {"time_data": "time_data"}
+    input_types: ClassVar[dict[str, str]] = {"time_data": "time_data"}
     output_type: ClassVar[str] = "time_data"
     include_in_default_parameters: ClassVar[bool] = False
     """Parent class for processing time data"""
@@ -1425,15 +1436,18 @@ class Subsection(TimeProcess):
         TimeData
             Subsection TimeData
         """
-        from resistics.sampling import datetimes_to_samples, samples_to_datetimes
-        from resistics.sampling import to_datetime
+        from resistics.sampling import (
+            datetimes_to_samples,
+            samples_to_datetimes,
+            to_datetime,
+        )
 
         from_time = to_datetime(self.from_time)
         to_time = to_datetime(self.to_time)
         fs = time_data.metadata.fs
         first_time = time_data.metadata.first_time
         last_time = time_data.metadata.last_time
-        logger.info(f"Data times {str(first_time)} to {str(last_time)}")
+        logger.info(f"Data times {first_time!s} to {last_time!s}")
         logger.info(f"Taking subsection between {self.from_time} and {self.to_time}")
         # convert to samples
         from_sample, to_sample = datetimes_to_samples(
@@ -1445,8 +1459,8 @@ class Subsection(TimeProcess):
             fs, first_time, from_sample, to_sample
         )
         messages = [f"Subsection from sample {from_sample} to {to_sample}"]
-        messages.append(f"First time: {str(first_time)} -> {str(from_time)}")
-        messages.append(f"Last time: {str(last_time)} -> {str(to_time)}")
+        messages.append(f"First time: {first_time!s} -> {from_time!s}")
+        messages.append(f"Last time: {last_time!s} -> {to_time!s}")
         metadata = time_data.metadata.model_copy(deep=True)
         metadata = adjust_time_metadata(metadata, fs, from_time, n_samples=n_samples)
         data = np.array(time_data.data[:, from_sample : to_sample + 1])
@@ -1545,8 +1559,8 @@ class Subsamples(TimeProcess):
     Subsection : For taking a subsection using dates
     """
 
-    from_sample: Optional[int] = None
-    to_sample: Optional[int] = None
+    from_sample: int | None = None
+    to_sample: int | None = None
 
     def run(self, time_data: TimeData) -> TimeData:
         """
@@ -1571,7 +1585,7 @@ class Subsamples(TimeProcess):
         ProcessRunError
             If to_sample is out of range
         """
-        from resistics.sampling import samples_to_datetimes, check_sample
+        from resistics.sampling import check_sample, samples_to_datetimes
 
         # put in default values if either is None
         n_samples = time_data.metadata.n_samples
@@ -1600,8 +1614,8 @@ class Subsamples(TimeProcess):
             time_data.metadata.fs, first_time, from_sample, to_sample
         )
         messages = [f"Taking subsample from {from_sample} to {to_sample}"]
-        messages.append(f"First time: {str(first_time)} -> {str(from_time)}")
-        messages.append(f"Last time: {str(last_time)} -> {str(to_time)}")
+        messages.append(f"First time: {first_time!s} -> {from_time!s}")
+        messages.append(f"Last time: {last_time!s} -> {to_time!s}")
         metadata = time_data.metadata.model_copy(deep=True)
         metadata = adjust_time_metadata(metadata, fs, from_time, n_samples=n_subsamples)
         data = np.array(time_data.data[:, from_sample : to_sample + 1])
@@ -1774,7 +1788,7 @@ class Add(TimeProcess):
     array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], dtype=float32)
     """
 
-    add: Union[float, Dict[str, float]]
+    add: float | dict[str, float]
 
     def run(self, time_data: TimeData) -> TimeData:
         """
@@ -1800,7 +1814,7 @@ class Add(TimeProcess):
     def _get_add(self, time_data: TimeData) -> np.ndarray:
         """Make an array to add to the data"""
         add = np.zeros(shape=(time_data.metadata.n_chans), dtype=time_data.data.dtype)
-        if isinstance(self.add, float) or isinstance(self.add, int):
+        if isinstance(self.add, (float, int)):
             return add + self.add
         for chan in time_data.metadata.chans:
             if chan in self.add:
@@ -1851,7 +1865,7 @@ class Multiply(TimeProcess):
     array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.], dtype=float32)
     """
 
-    multiplier: Union[float, Dict[str, float]]
+    multiplier: float | dict[str, float]
 
     def run(self, time_data: TimeData) -> TimeData:
         """
@@ -1877,7 +1891,7 @@ class Multiply(TimeProcess):
     def _get_mult(self, time_data: TimeData) -> np.ndarray:
         """Make an array to multiply the data with"""
         mult = np.ones(shape=(time_data.metadata.n_chans), dtype=time_data.data.dtype)
-        if isinstance(self.multiplier, float) or isinstance(self.multiplier, int):
+        if isinstance(self.multiplier, (float, int)):
             return mult * self.multiplier
         for chan in time_data.metadata.chans:
             if chan in self.multiplier:
@@ -2142,7 +2156,7 @@ class Notch(TimeProcess):
     """
 
     notch: float
-    band: Optional[float] = None
+    band: float | None = None
     order: int = 10
 
     def run(self, time_data: TimeData) -> TimeData:
@@ -2258,8 +2272,9 @@ class Resample(TimeProcess):
         TimeData
             Resampled TimeData
         """
-        from scipy.signal import resample_poly
         from fractions import Fraction
+
+        from scipy.signal import resample_poly
 
         fs = time_data.metadata.fs
         logger.info(f"Resampling data from {fs} Hz to {self.new_fs} Hz")
@@ -2280,8 +2295,8 @@ class Resample(TimeProcess):
             metadata, self.new_fs, time_data.metadata.first_time, n_samples=n_samples
         )
         messages = [f"Resampled data from {fs} Hz to {self.new_fs} Hz"]
-        messages.append(f"Resampled first time {str(metadata.first_time)}")
-        messages.append(f"Resampled last time {str(metadata.last_time)}")
+        messages.append(f"Resampled first time {metadata.first_time!s}")
+        messages.append(f"Resampled last time {metadata.last_time!s}")
         record = self._get_record(messages)
         return new_time_data(time_data, metadata=metadata, data=data, record=record)
 
@@ -2380,7 +2395,7 @@ class Decimate(TimeProcess):
         record = self._get_record(messages)
         return new_time_data(time_data, metadata=metadata, data=data, record=record)
 
-    def _get_downsample_factors(self, downsample_factor: int) -> List[int]:
+    def _get_downsample_factors(self, downsample_factor: int) -> list[int]:
         """Factorise a number to avoid too large a downsample factor
 
         Logic:
@@ -2439,7 +2454,7 @@ class Decimate(TimeProcess):
         downsamples.append(val)
         return downsamples
 
-    def _prime_factorisation(self, n: int) -> List[int]:
+    def _prime_factorisation(self, n: int) -> list[int]:
         """
         Factorise an integer into primes
 
@@ -2554,12 +2569,10 @@ class ShiftTimestamps(TimeProcess):
         first_time = metadata.first_time + delta
         last_time = metadata.last_time - to_timedelta(1 / metadata.fs) + delta
 
-        logger.info(
-            f"Data covers {str(metadata.first_time)} to {str(metadata.last_time)}"
-        )
-        logger.info(f"New data covers {str(first_time)} to {str(last_time)}")
-        messages = [f"First time: {str(metadata.first_time)} -> {str(first_time)}"]
-        messages.append(f"Last time: {str(metadata.last_time)} -> {str(last_time)}")
+        logger.info(f"Data covers {metadata.first_time!s} to {metadata.last_time!s}")
+        logger.info(f"New data covers {first_time!s} to {last_time!s}")
+        messages = [f"First time: {metadata.first_time!s} -> {first_time!s}"]
+        messages.append(f"Last time: {metadata.last_time!s} -> {last_time!s}")
         # shift data
         x = np.arange(0, metadata.n_samples, dtype=np.float64)
         x_shift = np.arange(0, n_samples, dtype=np.float64) + norm_shift
@@ -2700,8 +2713,11 @@ class CropTimestamps(TimeProcess):
         TimeData
             The cropped TimeData
         """
-        from resistics.sampling import to_datetime
-        from resistics.sampling import datetimes_to_samples, samples_to_datetimes
+        from resistics.sampling import (
+            datetimes_to_samples,
+            samples_to_datetimes,
+            to_datetime,
+        )
 
         # get the from and to time based on the time unit
         fs = time_data.metadata.fs
@@ -2723,11 +2739,11 @@ class CropTimestamps(TimeProcess):
         )
         # output
         logger.info(f"Cropping timestamps to the '{self.time_unit}'")
-        logger.debug(f"First timestamp {str(first_time)} -> {str(from_time)}")
-        logger.debug(f"Last timestamp {str(last_time)} -> {str(to_time)}")
+        logger.debug(f"First timestamp {first_time!s} -> {from_time!s}")
+        logger.debug(f"Last timestamp {last_time!s} -> {to_time!s}")
         messages = [f"Cropping timestamps to the {self.time_unit}"]
-        messages.append(f"First time: {str(first_time)} -> {str(from_time)}")
-        messages.append(f"Last time: {str(last_time)} -> {str(to_time)}")
+        messages.append(f"First time: {first_time!s} -> {from_time!s}")
+        messages.append(f"Last time: {last_time!s} -> {to_time!s}")
         metadata = time_data.metadata.model_copy(deep=True)
         metadata = adjust_time_metadata(metadata, fs, from_time, n_samples=n_samples)
         data = np.array(time_data.data[:, from_sample : to_sample + 1])
@@ -2798,7 +2814,7 @@ class ApplyFunction(TimeProcess):
         },
     )
 
-    fncs: Dict[str, Callable]
+    fncs: dict[str, Callable]
 
     def run(self, time_data: TimeData) -> TimeData:
         """

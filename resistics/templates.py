@@ -34,7 +34,7 @@ DEFAULT_PARAMETERS_FILENAME = "default.yaml"
 
 def builtin_processing_templates(
     project_path: Path | None = None,
-) -> dict[str, dict[str, FlowDefinition | ParameterSet | "GatherCriteria"]]:
+) -> dict[str, dict[str, FlowDefinition | ParameterSet | GatherCriteria]]:
     """Return fresh models for the default flows and parameter sets."""
     from resistics.gather import (
         GatherCriteria,

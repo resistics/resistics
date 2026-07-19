@@ -172,9 +172,7 @@ def write_evaluation(
     spectra = SpectraData(
         SpectraMetadata(**base),
         {
-            level: np.full(
-                (n_wins, 4, 2), value + level, dtype=np.complex128
-            )
+            level: np.full((n_wins, 4, 2), value + level, dtype=np.complex128)
             for level in range(actual_levels)
         },
     )
@@ -212,9 +210,7 @@ def test_evaluation_artifacts_use_the_runtime_output_label(tmp_path):
         },
     )
 
-    assert (
-        tmp_path / "data/survey/station/run/evals/field/metadata.json"
-    ).is_file()
+    assert (tmp_path / "data/survey/station/run/evals/field/metadata.json").is_file()
     assert artifact.spectra_data.metadata.chans == spectra.metadata.chans
     assert artifact.spectra_data.metadata.ref_time == spectra.metadata.ref_time
     assert artifact.decimation_parameters == decimation
@@ -431,12 +427,12 @@ def test_gather_applies_frequency_dependent_persisted_mask(tmp_path):
         {0: pd.DataFrame([[True, False]], index=pd.RangeIndex(5, 6), columns=[0, 1])},
     )
     WindowMaskWriter().run(
-            get_run_mask_path(
-                tmp_path,
-                {"survey": "survey", "station": "target", "run": "run"},
-                "TimeMask",
-                "default",
-            ),
+        get_run_mask_path(
+            tmp_path,
+            {"survey": "survey", "station": "target", "run": "run"},
+            "TimeMask",
+            "default",
+        ),
         mask,
     )
     criteria = GatherCriteria(

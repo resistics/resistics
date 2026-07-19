@@ -4,18 +4,27 @@ Module for time data decimation including classes and for the following
 - Definition of DecimationParameters
 - Performing decimation on time data
 """
-from loguru import logger
-from typing import Any, ClassVar, Optional, Tuple, Union, Dict, List
+
 from pathlib import Path
-from pydantic import ConfigDict, PositiveInt, conint, model_validator
+from typing import Any, ClassVar
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from loguru import logger
+from pydantic import ConfigDict, PositiveInt, conint, model_validator
 
-from resistics.common import ResisticsProcess, ResisticsModel, ResisticsData
-from resistics.common import ResisticsWriter, History, Metadata, WriteableMetadata
+from resistics.common import (
+    History,
+    Metadata,
+    ResisticsData,
+    ResisticsModel,
+    ResisticsProcess,
+    ResisticsWriter,
+    WriteableMetadata,
+)
 from resistics.sampling import HighResDateTime
-from resistics.time import ChanMetadata, TimeMetadata, TimeData
+from resistics.time import ChanMetadata, TimeData, TimeMetadata
 
 
 def get_eval_freqs_min(fs: float, f_min: float) -> np.ndarray:
@@ -102,7 +111,7 @@ def get_eval_freqs_size(fs: float, n_freqs: int) -> np.ndarray:
 
 
 def get_eval_freqs(
-    fs: float, f_min: Optional[float] = None, n_freqs: Optional[int] = None
+    fs: float, f_min: float | None = None, n_freqs: int | None = None
 ) -> np.ndarray:
     """
     Get evaluation frequencies either based on size or a minimum frequency
@@ -186,10 +195,10 @@ class DecimationParameters(ResisticsModel):
     n_levels: int
     per_level: int
     min_samples: PositiveInt
-    eval_freqs: List[float]
-    dec_factors: List[int]
-    dec_increments: Optional[List[int]] = None
-    dec_fs: Optional[List[float]] = None
+    eval_freqs: list[float]
+    dec_factors: list[int]
+    dec_increments: list[int] | None = None
+    dec_fs: list[float] | None = None
 
     @model_validator(mode="after")
     def set_derived_decimation_fields(self) -> "DecimationParameters":
@@ -205,7 +214,7 @@ class DecimationParameters(ResisticsModel):
             self.dec_fs = (self.fs * np.reciprocal(factors)).tolist()
         return self
 
-    def __getitem__(self, args: Union[int, Tuple[int, int]]):
+    def __getitem__(self, args: int | tuple[int, int]):
         """Get the evaluation frequency for level and evaluation frequency index"""
         if isinstance(args, int):
             return self.get_eval_freqs(args)
@@ -222,7 +231,7 @@ class DecimationParameters(ResisticsModel):
         if idx < 0 or idx >= self.per_level:
             raise ValueError(f"Index {idx} not 0 <= index < {self.per_level}")
 
-    def get_eval_freqs(self, level: int) -> List[float]:
+    def get_eval_freqs(self, level: int) -> list[float]:
         """
         Get the evaluation frequencies for a level
 
@@ -357,7 +366,7 @@ class DecimationSetup(ResisticsProcess):
     2                  8.0   5.656854   32.0        4           2
     """
 
-    input_types: ClassVar[Dict[str, str]] = {"time_data": "time_data"}
+    input_types: ClassVar[dict[str, str]] = {"time_data": "time_data"}
     output_type: ClassVar[str] = "decimation_parameters"
     include_in_default_parameters: ClassVar[bool] = True
 
@@ -365,9 +374,9 @@ class DecimationSetup(ResisticsProcess):
     per_level: int = 5
     min_samples: int = 256
     div_factor: int = 2
-    eval_freqs: Optional[List[float]] = None
+    eval_freqs: list[float] | None = None
 
-    def execute(self, inputs: Dict[str, Any], context: Any) -> DecimationParameters:
+    def execute(self, inputs: dict[str, Any], context: Any) -> DecimationParameters:
         """Build parameters from the sampling frequency of flow time data."""
         del context
         return self.run(inputs["time_data"].metadata.fs)
@@ -429,7 +438,7 @@ class DecimationSetup(ResisticsProcess):
             raise ValueError(f"Found frequencies {eval_freqs} > nyquist {nyquist}")
         return eval_freqs
 
-    def _get_factors(self, fs: float, eval_freqs: np.ndarray) -> List[int]:
+    def _get_factors(self, fs: float, eval_freqs: np.ndarray) -> list[int]:
         """
         Calculate decimation factors
 
@@ -522,9 +531,9 @@ class DecimatedMetadata(WriteableMetadata):
 
     model_config = ConfigDict(extra="ignore")
 
-    fs: List[float]
-    chans: List[str]
-    n_chans: Optional[int] = None
+    fs: list[float]
+    chans: list[str]
+    n_chans: int | None = None
     n_levels: int
     first_time: HighResDateTime
     last_time: HighResDateTime
@@ -535,9 +544,10 @@ class DecimatedMetadata(WriteableMetadata):
     easting: float = -999.0
     northing: float = -999.0
     elevation: float = -999.0
-    chans_metadata: Dict[str, ChanMetadata]
-    levels_metadata: List[DecimatedLevelMetadata]
+    chans_metadata: dict[str, ChanMetadata]
+    levels_metadata: list[DecimatedLevelMetadata]
     history: History = History()
+
 
 class DecimatedData(ResisticsData):
     """
@@ -595,7 +605,7 @@ class DecimatedData(ResisticsData):
         >>> plt.show() # doctest: +SKIP
     """
 
-    def __init__(self, metadata: DecimatedMetadata, data: Dict[int, np.ndarray]):
+    def __init__(self, metadata: DecimatedMetadata, data: dict[int, np.ndarray]):
         """Initialise decimated data"""
         logger.debug(f"Creating DecimatedData with data type {data[0].dtype}")
         self.metadata = metadata
@@ -625,8 +635,8 @@ class DecimatedData(ResisticsData):
         return self.data[level]
 
     def get_timestamps(
-        self, level: int, samples: Optional[np.ndarray] = None, estimate: bool = True
-    ) -> Union[np.ndarray, pd.DatetimeIndex]:
+        self, level: int, samples: np.ndarray | None = None, estimate: bool = True
+    ) -> np.ndarray | pd.DatetimeIndex:
         """
         Get an array of timestamps
 
@@ -666,7 +676,7 @@ class DecimatedData(ResisticsData):
             n_samples=level_metadata.n_samples,
         )
 
-    def plot(self, max_pts: Optional[int] = 10_000) -> go.Figure:
+    def plot(self, max_pts: int | None = 10_000) -> go.Figure:
         """
         Plot the decimated data
 
@@ -682,8 +692,9 @@ class DecimatedData(ResisticsData):
         go.Figure
             Plotly Figure
         """
-        from resistics.plot import get_time_fig
         import plotly.express as px
+
+        from resistics.plot import get_time_fig
 
         if len(self.data) == 0:
             logger.error("Data is empty, no decimation levels to plot")
@@ -729,7 +740,7 @@ class Decimator(ResisticsProcess):
     time data Decimate. The default is to use Resample.
     """
 
-    input_types: ClassVar[Dict[str, str]] = {
+    input_types: ClassVar[dict[str, str]] = {
         "dec_params": "decimation_parameters",
         "time_data": "time_data",
     }
@@ -802,8 +813,8 @@ class Decimator(ResisticsProcess):
 
     def _get_metadata(
         self,
-        metadata_dict: Dict[str, Any],
-        levels_metadata: List[DecimatedLevelMetadata],
+        metadata_dict: dict[str, Any],
+        levels_metadata: list[DecimatedLevelMetadata],
     ) -> DecimatedMetadata:
         """Get the metadata for the decimated data"""
         metadata_dict["fs"] = [x.fs for x in levels_metadata]
@@ -849,7 +860,7 @@ class DecimatedDataReader(ResisticsProcess):
 
     def run(
         self, dir_path: Path, metadata_only: bool = False
-    ) -> Union[DecimatedMetadata, DecimatedData]:
+    ) -> DecimatedMetadata | DecimatedData:
         """
         Read DecimatedData
 

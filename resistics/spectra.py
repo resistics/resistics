@@ -7,26 +7,29 @@ Fourier transform implementation is inspired by the implementation of the
 scipy stft function.
 """
 
-from loguru import logger
 from pathlib import Path
-from typing import Any, ClassVar, Union, Tuple, Dict, List, Optional
-from pydantic import ConfigDict, PositiveInt
+from typing import Any, ClassVar
+
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
+import plotly.graph_objects as go
+from loguru import logger
+from pydantic import ConfigDict, PositiveInt
 
 from resistics.common import (
+    History,
+    Metadata,
     ResisticsData,
     ResisticsModel,
     ResisticsProcess,
-    History,
+    ResisticsWriter,
+    WriteableMetadata,
+    validate_output_label,
 )
-from resistics.common import ResisticsWriter, Metadata, WriteableMetadata
-from resistics.common import validate_output_label
+from resistics.decimate import DecimationParameters
 from resistics.sampling import HighResDateTime
 from resistics.time import ChanMetadata
-from resistics.decimate import DecimationParameters
 from resistics.window import WindowedData, WindowedLevelMetadata
 
 
@@ -45,7 +48,7 @@ class SpectraLevelMetadata(Metadata):
     """The global window offset for local window 0"""
     n_freqs: int
     """The number of frequencies in the frequency data"""
-    freqs: List[float]
+    freqs: list[float]
     """List of frequencies"""
 
     @property
@@ -59,9 +62,9 @@ class SpectraMetadata(WriteableMetadata):
 
     model_config = ConfigDict(extra="ignore")
 
-    fs: List[float]
-    chans: List[str]
-    n_chans: Optional[int] = None
+    fs: list[float]
+    chans: list[str]
+    n_chans: int | None = None
     n_levels: int
     first_time: HighResDateTime
     last_time: HighResDateTime
@@ -72,8 +75,8 @@ class SpectraMetadata(WriteableMetadata):
     easting: float = -999.0
     northing: float = -999.0
     elevation: float = -999.0
-    chans_metadata: Dict[str, ChanMetadata]
-    levels_metadata: List[SpectraLevelMetadata]
+    chans_metadata: dict[str, ChanMetadata]
+    levels_metadata: list[SpectraLevelMetadata]
     ref_time: HighResDateTime
     history: History = History()
 
@@ -88,7 +91,7 @@ class SpectraData(ResisticsData):
     n_wins x n_chans x n_freqs
     """
 
-    def __init__(self, metadata: SpectraMetadata, data: Dict[int, np.ndarray]):
+    def __init__(self, metadata: SpectraMetadata, data: dict[int, np.ndarray]):
         """
         Initialise spectra data
 
@@ -118,7 +121,7 @@ class SpectraData(ResisticsData):
         idx = self.metadata.chans.index(chan)
         return self.data[level][..., idx, :]
 
-    def get_chans(self, level: int, chans: List[str]) -> np.ndarray:
+    def get_chans(self, level: int, chans: list[str]) -> np.ndarray:
         """Get the channels spectra data for a decimation level"""
         from resistics.errors import ChannelNotFoundError
 
@@ -137,7 +140,7 @@ class SpectraData(ResisticsData):
 
     def get_mag_phs(
         self, level: int, unwrap: bool = False
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Get magnitude and phase for a decimation level"""
         spec = self.data[level]
         if unwrap:
@@ -179,7 +182,7 @@ class SpectraData(ResisticsData):
             level_metadata.index_offset,
         )
 
-    def plot(self, max_pts: Optional[int] = 10_000) -> go.Figure:
+    def plot(self, max_pts: int | None = 10_000) -> go.Figure:
         """
         Stack spectra data for all decimation levels
 
@@ -197,7 +200,7 @@ class SpectraData(ResisticsData):
         """
         from resistics.plot import get_spectra_stack_fig
 
-        y_labels = {x: "Magnitude" for x in self.metadata.chans}
+        y_labels = dict.fromkeys(self.metadata.chans, "Magnitude")
         fig = get_spectra_stack_fig(self.metadata.chans, y_labels)
         colors = iter(px.colors.qualitative.Plotly)
         for ilevel in range(self.metadata.n_levels):
@@ -214,7 +217,7 @@ class SpectraData(ResisticsData):
         self,
         level: int,
         max_pts: int = 10_000,
-        grouping: Optional[str] = None,
+        grouping: str | None = None,
         offset: str = "0h",
     ) -> go.Figure:
         """
@@ -253,7 +256,7 @@ class SpectraData(ResisticsData):
         )
         # group by the grouping frequency, iterate over the groups and plot
         freqs = np.array(level_metadata.freqs)
-        y_labels = {x: "Magnitude" for x in self.metadata.chans}
+        y_labels = dict.fromkeys(self.metadata.chans, "Magnitude")
         fig = get_spectra_stack_fig(self.metadata.chans, y_labels)
         colors = iter(px.colors.qualitative.Plotly)
         for idx, group in df.groupby(pd.Grouper(freq=grouping, offset=offset)):
@@ -270,7 +273,7 @@ class SpectraData(ResisticsData):
         data: np.ndarray,
         legend: str,
         color: str = "blue",
-        max_pts: Optional[int] = 10_000,
+        max_pts: int | None = 10_000,
     ) -> go.Figure:
         """
         Add stacked spectra data to a plot
@@ -305,7 +308,7 @@ class SpectraData(ResisticsData):
             scatter = go.Scattergl(
                 x=chan_freqs,
                 y=chan_data,
-                line=dict(color=color),
+                line={"color": color},
                 name=legend,
                 legendgroup=legend,
                 showlegend=(idx == 0),
@@ -345,7 +348,7 @@ class SpectraData(ResisticsData):
         data = {}
         for idx, group in df.groupby(pd.Grouper(freq=grouping)):
             data[idx] = np.mean(np.absolute(self.data[level][group["local"]]), axis=0)
-        for idx, chan in enumerate(self.metadata.chans):
+        for idx, _chan in enumerate(self.metadata.chans):
             df_data = pd.DataFrame(
                 data={k: v[idx] for k, v in data.items()}, index=level_metadata.freqs
             )
@@ -353,12 +356,12 @@ class SpectraData(ResisticsData):
             z_min = np.ceil(z.min())
             z_max = np.floor(z.max())
             z_range = np.arange(z_min, z_max + 1)
-            colorbar = dict(
-                tickvals=z_range,
-                ticktext=[f"10^{int(x)}" for x in z_range],
-                y=0.92 - idx * colorbar_inc,
-                len=colorbar_len,
-            )
+            colorbar = {
+                "tickvals": z_range,
+                "ticktext": [f"10^{int(x)}" for x in z_range],
+                "y": 0.92 - idx * colorbar_inc,
+                "len": colorbar_len,
+            }
             heatmap = go.Heatmap(
                 z=z,
                 x=pd.to_datetime(df_data.columns) + pd.Timedelta(grouping) / 2,
@@ -461,12 +464,12 @@ class FourierTransform(ResisticsProcess):
         >>> plt.show() # doctest: +SKIP
     """
 
-    input_types: ClassVar[Dict[str, str]] = {"win_data": "windowed_data"}
+    input_types: ClassVar[dict[str, str]] = {"win_data": "windowed_data"}
     output_type: ClassVar[str] = "spectra_data"
     include_in_default_parameters: ClassVar[bool] = True
 
-    win_fnc: Union[str, Tuple[str, float]] = ("kaiser", 14)
-    detrend: Union[str, None] = "linear"
+    win_fnc: str | tuple[str, float] = ("kaiser", 14)
+    detrend: str | None = "linear"
     workers: int = -2
 
     def run(self, win_data: WindowedData) -> SpectraData:
@@ -562,7 +565,7 @@ class FourierTransform(ResisticsProcess):
         return get_window(self.win_fnc, win_size)
 
     def _get_level_metadata(
-        self, level_metadata: WindowedLevelMetadata, freqs: List[float]
+        self, level_metadata: WindowedLevelMetadata, freqs: list[float]
     ) -> SpectraLevelMetadata:
         """Get the spectra metadata for a decimation level"""
         metadata_dict = level_metadata.dict()
@@ -572,8 +575,8 @@ class FourierTransform(ResisticsProcess):
 
     def _get_metadata(
         self,
-        metadata_dict: Dict[str, Any],
-        levels_metadata: List[SpectraLevelMetadata],
+        metadata_dict: dict[str, Any],
+        levels_metadata: list[SpectraLevelMetadata],
     ) -> SpectraMetadata:
         """Get the metadata for the windowed data"""
         metadata_dict.pop("file_info")
@@ -662,7 +665,7 @@ class EvaluationFreqs(ResisticsProcess):
       6.8+8.8j  7.9+9.9j]
     """
 
-    input_types: ClassVar[Dict[str, str]] = {
+    input_types: ClassVar[dict[str, str]] = {
         "dec_params": "decimation_parameters",
         "spec_data": "spectra_data",
     }
@@ -670,7 +673,7 @@ class EvaluationFreqs(ResisticsProcess):
     include_in_default_parameters: ClassVar[bool] = True
 
     def execute(
-        self, inputs: Dict[str, Any], context: Any
+        self, inputs: dict[str, Any], context: Any
     ) -> "EvaluationFrequencyData":
         """Keep the decimation setup with the spectra artifact for persistence."""
         del context
@@ -780,7 +783,7 @@ class EvaluationFreqs(ResisticsProcess):
         return SpectraLevelMetadata(**metadata_dict)
 
     def _get_metadata(
-        self, metadata_dict: Dict[str, Any], levels_metadata: List[SpectraLevelMetadata]
+        self, metadata_dict: dict[str, Any], levels_metadata: list[SpectraLevelMetadata]
     ) -> SpectraMetadata:
         """Get metadata for the dataset"""
         metadata_dict.pop("file_info")
@@ -825,7 +828,7 @@ class SpectraDataReader(ResisticsProcess):
 
     def run(
         self, dir_path: Path, metadata_only: bool = False
-    ) -> Union[SpectraMetadata, SpectraData]:
+    ) -> SpectraMetadata | SpectraData:
         """
         Read SpectraData
 
@@ -874,11 +877,11 @@ class EvaluationFrequencyReader(ResisticsProcess):
     """Read evaluation-frequency data stored for an MTH5 project run."""
 
     output_type: ClassVar[str] = "eval_data"
-    runtime_requirements: ClassVar[List[str]] = ["project_path", "run_batch"]
+    runtime_requirements: ClassVar[list[str]] = ["project_path", "run_batch"]
     label: str = "default"
 
     def execute(
-        self, inputs: Dict[str, Any], runtime: Dict[str, Any]
+        self, inputs: dict[str, Any], runtime: dict[str, Any]
     ) -> EvaluationFrequencyData:
         """Read the spectra and persisted decimation parameters."""
         del inputs
@@ -904,14 +907,14 @@ class EvaluationFrequencyReader(ResisticsProcess):
 class EvaluationFrequencyWriter(ResisticsProcess):
     """Write evaluation-frequency data for later processing."""
 
-    input_types: ClassVar[Dict[str, str]] = {"eval_data": "eval_data"}
+    input_types: ClassVar[dict[str, str]] = {"eval_data": "eval_data"}
     output_type: ClassVar[str] = "job_result"
-    runtime_requirements: ClassVar[List[str]] = ["project_path", "run_batch"]
+    runtime_requirements: ClassVar[list[str]] = ["project_path", "run_batch"]
     label: str = "default"
 
     def execute(
-        self, inputs: Dict[str, Any], runtime: Dict[str, Any]
-    ) -> Dict[str, str]:
+        self, inputs: dict[str, Any], runtime: dict[str, Any]
+    ) -> dict[str, str]:
         """Persist spectra and their decimation parameters."""
         value = inputs["eval_data"]
         if isinstance(value, EvaluationFrequencyData):
@@ -941,11 +944,11 @@ class EvaluationFrequencyWriter(ResisticsProcess):
 class EvaluationFrequencyParameters(ResisticsProcess):
     """Return decimation parameters carried by evaluation-frequency data."""
 
-    input_types: ClassVar[Dict[str, str]] = {"eval_data": "eval_data"}
+    input_types: ClassVar[dict[str, str]] = {"eval_data": "eval_data"}
     output_type: ClassVar[str] = "decimation_parameters"
 
     def execute(
-        self, inputs: Dict[str, Any], runtime: Dict[str, Any]
+        self, inputs: dict[str, Any], runtime: dict[str, Any]
     ) -> DecimationParameters:
         """Extract the persisted decimation setup."""
         del runtime

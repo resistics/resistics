@@ -14,9 +14,8 @@ Run the check from anywhere inside the repository::
 
 from __future__ import annotations
 
-import subprocess  # noqa: S404 - all arguments are fixed by this repository
+import subprocess
 from pathlib import Path
-
 
 FORBIDDEN_TERMS = ("poetry", "poetry-core", "pypoetry")
 ALLOWED_PATHS = {
@@ -28,7 +27,7 @@ ALLOWED_PATHS = {
 
 def repository_files(root: Path) -> list[Path]:
     """Return tracked and unignored working-tree files below *root*."""
-    result = subprocess.run(  # noqa: S603 - executable and arguments are fixed
+    result = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
         cwd=root,
         capture_output=True,

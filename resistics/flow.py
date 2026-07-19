@@ -6,12 +6,13 @@ deliberately contain no UI layout or process parameter values.
 
 from __future__ import annotations
 
-from collections import deque
 import inspect
+import sys
+from collections import deque
+from collections.abc import Callable, Iterable
 from importlib import import_module
 from pathlib import Path
-import sys
-from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Type, TypeVar
+from typing import Any, Literal, TypeVar
 
 from pydantic import (
     BaseModel,
@@ -24,7 +25,7 @@ from pydantic import (
 
 from resistics.common import ResisticsProcess, validate_output_label
 
-ProgressCallback = Callable[[Dict[str, Any]], None]
+ProgressCallback = Callable[[dict[str, Any]], None]
 CancellationCallback = Callable[[], bool]
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -36,7 +37,7 @@ class FlowNode(BaseModel):
 
     id: str
     process: str
-    inputs: Dict[str, str] = Field(default_factory=dict)
+    inputs: dict[str, str] = Field(default_factory=dict)
     configuration_source: Literal["parameters", "criteria"] = "parameters"
 
 
@@ -47,16 +48,16 @@ class FlowStage(BaseModel):
 
     stage_id: str
     scope: Literal["run", "station_rate"]
-    nodes: List[FlowNode]
+    nodes: list[FlowNode]
 
     @field_validator("nodes")
     @classmethod
-    def validate_nodes_not_empty(cls, value: List[FlowNode]) -> List[FlowNode]:
+    def validate_nodes_not_empty(cls, value: list[FlowNode]) -> list[FlowNode]:
         if not value:
             raise ValueError("A flow stage must contain at least one node")
         return value
 
-    def node_map(self) -> Dict[str, FlowNode]:
+    def node_map(self) -> dict[str, FlowNode]:
         return {node.id: node for node in self.nodes}
 
 
@@ -69,15 +70,15 @@ class FlowDefinition(BaseModel):
     name: str
     description: str = ""
     version: str = "2"
-    stages: List[FlowStage]
+    stages: list[FlowStage]
 
     @model_validator(mode="after")
-    def validate_stages(self) -> "FlowDefinition":
+    def validate_stages(self) -> FlowDefinition:
         if not self.stages:
             raise ValueError("A flow must contain at least one stage")
         return self
 
-    def flow_stages(self) -> List[FlowStage]:
+    def flow_stages(self) -> list[FlowStage]:
         """Return the explicitly declared flow stages."""
         return list(self.stages)
 
@@ -89,9 +90,9 @@ class ParameterSet(BaseModel):
 
     name: str
     description: str = ""
-    processes: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+    processes: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
-    def for_process(self, process: str) -> Dict[str, Any]:
+    def for_process(self, process: str) -> dict[str, Any]:
         return dict(self.processes.get(process, {}))
 
 
@@ -101,7 +102,7 @@ class ProcessingJob(BaseModel):
     name: str
     flow: FlowDefinition
     parameters: ParameterSet
-    runtime: Dict[str, Any] = Field(default_factory=dict)
+    runtime: dict[str, Any] = Field(default_factory=dict)
     output_label: str = "default"
 
     @field_validator("output_label")
@@ -116,10 +117,10 @@ class ProcessDescriptor(BaseModel):
     path: str
     display_name: str
     description: str
-    input_types: Dict[str, str]
+    input_types: dict[str, str]
     output_type: str
-    runtime_requirements: List[str]
-    parameter_schema: Dict[str, Any]
+    runtime_requirements: list[str]
+    parameter_schema: dict[str, Any]
 
 
 BUILTIN_PROCESS_MODULES = (
@@ -139,7 +140,7 @@ def process_path(process_class: type[ResisticsProcess]) -> str:
 
 
 def resolve_process_class(
-    path: str, project_path: Optional[Path] = None
+    path: str, project_path: Path | None = None
 ) -> type[ResisticsProcess]:
     """Resolve and validate a process class named directly by a flow node."""
     if project_path is not None:
@@ -163,7 +164,7 @@ def resolve_process_class(
 
 
 def process_descriptor(
-    path: str, project_path: Optional[Path] = None
+    path: str, project_path: Path | None = None
 ) -> ProcessDescriptor:
     """Build a UI-safe descriptor from a directly resolved process path."""
     process_class = resolve_process_class(path, project_path)
@@ -188,10 +189,10 @@ def process_descriptor(
 class ProcessCatalog:
     """Discover flow processes for a project without governing execution."""
 
-    def __init__(self, project_path: Optional[Path] = None):
+    def __init__(self, project_path: Path | None = None):
         self.project_path = None if project_path is None else Path(project_path)
 
-    def discover(self) -> List[ProcessDescriptor]:
+    def discover(self) -> list[ProcessDescriptor]:
         """Return all built-in and trusted-plugin process descriptors."""
         classes = {}
         for module in self._modules():
@@ -227,26 +228,26 @@ class ProcessCatalog:
 
 class FlowValidationResult(BaseModel):
     ok: bool
-    errors: List[str] = Field(default_factory=list)
-    warnings: List[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class FlowValidator:
     """Validate graph dependencies, concrete processes, and configurations."""
 
-    def __init__(self, available_runtime: Optional[Iterable[str]] = None):
+    def __init__(self, available_runtime: Iterable[str] | None = None):
         self.available_runtime = set(available_runtime or [])
 
     @staticmethod
     def _process(path: str) -> type[ResisticsProcess]:
         return resolve_process_class(path)
 
-    def validate(
+    def validate(  # noqa: C901 - validation decomposition is owned by Phase 5.7
         self,
         processing_job: ProcessingJob,
-        stages: Optional[Iterable[FlowStage]] = None,
+        stages: Iterable[FlowStage] | None = None,
     ) -> FlowValidationResult:
-        errors: List[str] = []
+        errors: list[str] = []
         flow = processing_job.flow
         selected_stages = list(stages) if stages is not None else flow.flow_stages()
         for process_path in processing_job.parameters.processes:
@@ -256,7 +257,7 @@ class FlowValidator:
                 errors.append(str(exc))
         for stage in selected_stages:
             nodes = stage.node_map()
-            mask_names: Dict[str, str] = {}
+            mask_names: dict[str, str] = {}
             if len(nodes) != len(stage.nodes):
                 errors.append(f"Stage '{stage.stage_id}' contains duplicate node ids")
             for node in stage.nodes:
@@ -317,14 +318,14 @@ class FlowValidator:
                     errors.append(
                         f"Criteria configuration is required by node '{node.id}'"
                     )
-                for key in process.runtime_requirements:
+                errors.extend(
+                    f"Runtime value '{key}' is required by node '{node.id}'"
+                    for key in process.runtime_requirements
                     if (
                         processing_job.runtime.get(key) in (None, "")
                         and key not in self.available_runtime
-                    ):
-                        errors.append(
-                            f"Runtime value '{key}' is required by node '{node.id}'"
-                        )
+                    )
+                )
             try:
                 topological_order(stage)
             except ValueError as exc:
@@ -336,11 +337,11 @@ class FlowValidator:
         return FlowValidationResult(ok=not errors, errors=errors)
 
 
-def topological_order(flow: FlowStage) -> List[FlowNode]:
+def topological_order(flow: FlowStage) -> list[FlowNode]:
     """Return nodes in dependency order or raise for a cycle."""
     nodes = flow.node_map()
-    incoming = {node_id: 0 for node_id in nodes}
-    outgoing: Dict[str, List[str]] = {node_id: [] for node_id in nodes}
+    incoming = dict.fromkeys(nodes, 0)
+    outgoing: dict[str, list[str]] = {node_id: [] for node_id in nodes}
     for node in flow.nodes:
         for upstream_id in node.inputs.values():
             if upstream_id in nodes:
@@ -374,8 +375,8 @@ class FlowExecutor:
 
     def __init__(
         self,
-        progress_callback: Optional[ProgressCallback] = None,
-        cancellation_callback: Optional[CancellationCallback] = None,
+        progress_callback: ProgressCallback | None = None,
+        cancellation_callback: CancellationCallback | None = None,
     ):
         self.progress_callback = progress_callback
         self.cancellation_callback = cancellation_callback
@@ -383,8 +384,8 @@ class FlowExecutor:
     def run(
         self,
         processing_job: ProcessingJob,
-        contexts: Optional[Dict[str, Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
+        contexts: dict[str, dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """Run every stage once with optional stage-specific runtime context."""
         contexts = contexts or {}
         available = set(processing_job.runtime)
@@ -394,7 +395,7 @@ class FlowExecutor:
         validation = FlowValidator(available).validate(processing_job)
         if not validation.ok:
             raise ValueError("; ".join(validation.errors))
-        stage_results: Dict[str, Any] = {}
+        stage_results: dict[str, Any] = {}
         for stage in processing_job.flow.flow_stages():
             stage_results[stage.stage_id] = self.run_stage(
                 processing_job, stage, contexts.get(stage.stage_id, {})
@@ -405,15 +406,15 @@ class FlowExecutor:
         self,
         processing_job: ProcessingJob,
         stage: FlowStage,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Run one stage for one concrete run or station/rate batch."""
         runtime = dict(processing_job.runtime)
         runtime.update(context or {})
         # A job's output label is its artifact namespace.  Do not allow an
         # individual stage context to redirect data into another namespace.
         runtime["output_label"] = processing_job.output_label
-        results: Dict[str, Any] = {}
+        results: dict[str, Any] = {}
         for node in topological_order(stage):
             if self.cancellation_callback is not None and self.cancellation_callback():
                 self._emit({"event": "cancelled", "node_id": node.id})
@@ -459,16 +460,16 @@ class FlowExecutor:
             )
         return results
 
-    def _emit(self, event: Dict[str, Any]) -> None:
+    def _emit(self, event: dict[str, Any]) -> None:
         if self.progress_callback is not None:
             self.progress_callback(event)
 
 
-def _node(id: str, process: str, **inputs: str) -> FlowNode:
-    return FlowNode(id=id, process=process, inputs=inputs)
+def _node(node_id: str, process: str, **inputs: str) -> FlowNode:
+    return FlowNode(id=node_id, process=process, inputs=inputs)
 
 
-def _time_to_evals_nodes(windower: str) -> List[FlowNode]:
+def _time_to_evals_nodes(windower: str) -> list[FlowNode]:
     nodes = [
         _node("read", "resistics.time.MTH5TimeReader"),
         _node("interpolate_nans", "resistics.time.InterpolateNans", time_data="read"),
@@ -513,7 +514,7 @@ def _time_to_evals_nodes(windower: str) -> List[FlowNode]:
     return nodes
 
 
-def _evals_to_tf_nodes() -> List[FlowNode]:
+def _evals_to_tf_nodes() -> list[FlowNode]:
     """Nodes that gather persisted run artifacts for one station/rate batch."""
     return [
         FlowNode(
@@ -728,7 +729,7 @@ def standard_mt_flow() -> FlowDefinition:
     return single_site_mt_flow()
 
 
-def default_parameter_set(project_path: Optional[Path] = None) -> ParameterSet:
+def default_parameter_set(project_path: Path | None = None) -> ParameterSet:
     """Return defaults for all discovered opted-in process classes."""
     processes = {}
     for descriptor in ProcessCatalog(project_path).discover():
@@ -756,7 +757,7 @@ def parameter_set_for_flow(
     flow: FlowDefinition,
     name: str,
     description: str,
-    project_path: Optional[Path] = None,
+    project_path: Path | None = None,
 ) -> ParameterSet:
     """Return default parameters for only the configurable processes in ``flow``."""
     defaults = default_parameter_set(project_path)
@@ -774,7 +775,7 @@ def parameter_set_for_flow(
     return ParameterSet(name=name, description=description, processes=processes)
 
 
-def single_site_mt_parameter_set(project_path: Optional[Path] = None) -> ParameterSet:
+def single_site_mt_parameter_set(project_path: Path | None = None) -> ParameterSet:
     """Default parameters for the standard single-site MT flow."""
     return parameter_set_for_flow(
         single_site_mt_flow(),
@@ -785,7 +786,7 @@ def single_site_mt_parameter_set(project_path: Optional[Path] = None) -> Paramet
 
 
 def single_site_mt_target_parameter_set(
-    project_path: Optional[Path] = None,
+    project_path: Path | None = None,
 ) -> ParameterSet:
     """Default parameters for the target-window single-site MT flow."""
     return parameter_set_for_flow(
@@ -797,7 +798,7 @@ def single_site_mt_target_parameter_set(
 
 
 def remote_reference_mt_parameter_set(
-    project_path: Optional[Path] = None,
+    project_path: Path | None = None,
 ) -> ParameterSet:
     """Default parameters for the remote-reference MT flow."""
     return parameter_set_for_flow(
@@ -808,7 +809,7 @@ def remote_reference_mt_parameter_set(
     )
 
 
-def model_to_dict(model: BaseModel) -> Dict[str, Any]:
+def model_to_dict(model: BaseModel) -> dict[str, Any]:
     return model.model_dump()
 
 
@@ -818,7 +819,7 @@ def model_to_yaml(model: BaseModel) -> str:
     return yaml.safe_dump(model_to_dict(model), sort_keys=False)
 
 
-def model_from_yaml(model_type: Type[ModelT], yaml_text: str) -> ModelT:
+def model_from_yaml(model_type: type[ModelT], yaml_text: str) -> ModelT:
     import yaml
 
     data = yaml.safe_load(yaml_text) or {}
@@ -834,5 +835,5 @@ def model_to_yaml_file(model: BaseModel, path: Path) -> None:
     path.write_text(model_to_yaml(model))
 
 
-def model_from_yaml_file(model_type: Type[ModelT], path: Path) -> ModelT:
+def model_from_yaml_file(model_type: type[ModelT], path: Path) -> ModelT:
     return model_from_yaml(model_type, path.read_text())

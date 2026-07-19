@@ -1,7 +1,8 @@
 """
 Module for custom resistics errors
 """
-from typing import Collection, Optional, List, Union
+
+from collections.abc import Collection
 from pathlib import Path
 
 
@@ -86,7 +87,7 @@ class ReadError(Exception):
 class MetadataReadError(Exception):
     """Use when failed to read a metadata"""
 
-    def __init__(self, path: Path, message: Optional[str] = None):
+    def __init__(self, path: Path, message: str | None = None):
         self.path = path
         self.message = message
 
@@ -184,7 +185,7 @@ class CalibrationFileNotFound(Exception):
     """Use when calibration files are not found"""
 
     def __init__(
-        self, dir_path: Path, file_paths: Union[Path, List[Path]], message: str = ""
+        self, dir_path: Path, file_paths: Path | list[Path], message: str = ""
     ):
         self.dir_path = dir_path
         self.file_paths = file_paths if isinstance(file_paths, list) else [file_paths]

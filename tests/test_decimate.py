@@ -1,11 +1,12 @@
 """
 Test decimation
 """
-import pytest
-import numpy as np
 
-from resistics.time import TimeData
+import numpy as np
+import pytest
+
 from resistics.testing import time_data_linear
+from resistics.time import TimeData
 
 
 @pytest.mark.parametrize(

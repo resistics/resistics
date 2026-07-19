@@ -2,14 +2,14 @@
 Common resistics functions and classes used throughout the package
 """
 
-from loguru import logger
-from collections.abc import Callable
-from typing import ClassVar, List, Tuple, Union, Dict
-from typing import Any, Collection, Optional, Type
-from pathlib import Path
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from collections.abc import Callable, Collection
 from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, ClassVar
+
 import numpy as np
+from loguru import logger
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from resistics.sampling import RSDateTime, datetime_to_string
 
@@ -25,6 +25,8 @@ def json_fallback(value: Any) -> Any:
 
 ELECTRIC_CHANS = ["Ex", "Ey", "E1", "E2", "E3", "E4"]
 MAGNETIC_CHANS = ["Hx", "Hy", "Hz", "Bx", "By", "Bz"]
+
+
 def validate_output_label(value: str) -> str:
     """Validate one output-label path component used for derived artifacts."""
     value = value.strip()
@@ -35,9 +37,7 @@ def validate_output_label(value: str) -> str:
         or "\\" in value
         or "\x00" in value
     ):
-        raise ValueError(
-            "output_label must be a non-empty single path component"
-        )
+        raise ValueError("output_label must be a non-empty single path component")
     return value
 
 
@@ -142,7 +142,7 @@ def assert_dir(dir_path: Path) -> None:
         raise NotDirectoryError(dir_path)
 
 
-def dir_contents(dir_path: Path) -> Tuple[List[Path], List[Path]]:
+def dir_contents(dir_path: Path) -> tuple[list[Path], list[Path]]:
     """
     Get contents of directory
 
@@ -167,7 +167,7 @@ def dir_contents(dir_path: Path) -> Tuple[List[Path], List[Path]]:
     NotDirectoryError
         Path is not a directory
     """
-    from resistics.errors import PathNotFoundError, NotDirectoryError
+    from resistics.errors import NotDirectoryError, PathNotFoundError
 
     if not dir_path.exists():
         raise PathNotFoundError(dir_path)
@@ -184,7 +184,7 @@ def dir_contents(dir_path: Path) -> Tuple[List[Path], List[Path]]:
     return dirs, files
 
 
-def dir_files(dir_path: Path) -> List[Path]:
+def dir_files(dir_path: Path) -> list[Path]:
     """
     Get files in directory
 
@@ -204,7 +204,7 @@ def dir_files(dir_path: Path) -> List[Path]:
     return files
 
 
-def dir_subdirs(dir_path: Path) -> List[Path]:
+def dir_subdirs(dir_path: Path) -> list[Path]:
     """
     Get subdirectories in directory
 
@@ -248,9 +248,7 @@ def known_chan(chan: str) -> bool:
     >>> known_chan("cat")
     False
     """
-    if chan in ELECTRIC_CHANS or chan in MAGNETIC_CHANS:
-        return True
-    return False
+    return bool(chan in ELECTRIC_CHANS or chan in MAGNETIC_CHANS)
 
 
 def is_electric(chan: str) -> bool:
@@ -275,9 +273,7 @@ def is_electric(chan: str) -> bool:
     >>> is_electric("Hx")
     False
     """
-    if chan in ELECTRIC_CHANS:
-        return True
-    return False
+    return chan in ELECTRIC_CHANS
 
 
 def is_magnetic(chan: str) -> bool:
@@ -302,9 +298,7 @@ def is_magnetic(chan: str) -> bool:
     >>> is_magnetic("Hx")
     True
     """
-    if chan in MAGNETIC_CHANS:
-        return True
-    return False
+    return chan in MAGNETIC_CHANS
 
 
 def get_chan_type(chan: str) -> str:
@@ -453,7 +447,7 @@ class ResisticsModel(BaseModel):
     def __str__(self) -> str:
         return self.to_string()
 
-    def model_dump(self, *args, **kwargs) -> Dict[str, Any]:
+    def model_dump(self, *args, **kwargs) -> dict[str, Any]:
         """Dump model data, preserving subclass fields for process registries."""
         kwargs.setdefault("serialize_as_any", True)
         return super().model_dump(*args, **kwargs)
@@ -464,7 +458,7 @@ class ResisticsModel(BaseModel):
         kwargs.setdefault("fallback", json_fallback)
         return super().model_dump_json(*args, **kwargs)
 
-    def dict(self, *args, **kwargs) -> Dict[str, Any]:
+    def dict(self, *args, **kwargs) -> dict[str, Any]:
         """Backward-compatible dict dump using Pydantic v2 serialization."""
         return self.model_dump(*args, **kwargs)
 
@@ -475,6 +469,7 @@ class ResisticsModel(BaseModel):
     def to_string(self) -> str:
         """Class info as string"""
         import json
+
         import yaml
 
         json_dict = json.loads(self.model_dump_json())
@@ -483,6 +478,7 @@ class ResisticsModel(BaseModel):
     def summary(self) -> None:
         """Print a summary of the class"""
         import json
+
         from prettyprinter import cpprint
 
         cpprint(json.loads(self.model_dump_json()))
@@ -493,7 +489,7 @@ class ResisticsFile(ResisticsModel):
 
     created_on_local: datetime = Field(default_factory=datetime.now)
     created_on_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    version: Optional[str] = Field(default_factory=get_version)
+    version: str | None = Field(default_factory=get_version)
 
 
 class Metadata(ResisticsModel):
@@ -510,7 +506,7 @@ class Metadata(ResisticsModel):
 class WriteableMetadata(Metadata):
     """Base class for writeable metadata"""
 
-    file_info: Optional[ResisticsFile] = None
+    file_info: ResisticsFile | None = None
     """Information about a file, relevant if writing out or reading back in"""
 
     def write(self, json_path: Path):
@@ -560,9 +556,9 @@ class Record(ResisticsModel):
     """The local time when the process ran"""
     time_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))
     """The UTC time when the process ran"""
-    creator: Dict[str, Any]
+    creator: dict[str, Any]
     """The creator and its parameters as a dictionary"""
-    messages: List[str]
+    messages: list[str]
     """Any messages in the record"""
     record_type: str
     """The record type"""
@@ -613,7 +609,7 @@ class History(ResisticsModel):
     }
     """
 
-    records: List[Record] = Field(default_factory=list)
+    records: list[Record] = Field(default_factory=list)
 
     def add_record(self, record: Record):
         """
@@ -628,11 +624,11 @@ class History(ResisticsModel):
 
 
 def get_record(
-    creator: Dict[str, Any],
-    messages: Union[str, List[str]],
+    creator: dict[str, Any],
+    messages: str | list[str],
     record_type: str = "process",
-    time_utc: Optional[datetime] = None,
-    time_local: Optional[datetime] = None,
+    time_utc: datetime | None = None,
+    time_local: datetime | None = None,
 ) -> Record:
     """
     Get a process record
@@ -690,7 +686,7 @@ def get_record(
     )
 
 
-def get_history(record: Record, history: Optional[History] = None) -> History:
+def get_history(record: Record, history: History | None = None) -> History:
     """
     Get a new History instance or add a record to a copy of an existing one
 
@@ -784,11 +780,11 @@ class ResisticsProcess(ResisticsModel):
     a process record to the dataset
     """
 
-    input_types: ClassVar[Dict[str, str]] = {}
-    output_type: ClassVar[Optional[str]] = None
-    runtime_requirements: ClassVar[List[str]] = []
+    input_types: ClassVar[dict[str, str]] = {}
+    output_type: ClassVar[str | None] = None
+    runtime_requirements: ClassVar[list[str]] = []
     include_in_default_parameters: ClassVar[bool] = False
-    name: Optional[str] = None
+    name: str | None = None
 
     @model_validator(mode="after")
     def validate_name(self) -> "ResisticsProcess":
@@ -797,7 +793,7 @@ class ResisticsProcess(ResisticsModel):
             self.name = self.__class__.__name__
         return self
 
-    def parameters(self) -> Dict[str, Any]:
+    def parameters(self) -> dict[str, Any]:
         """
         Return any process parameters incuding the process name
 
@@ -814,7 +810,7 @@ class ResisticsProcess(ResisticsModel):
 
         return json.loads(self.model_dump_json())
 
-    def execute(self, inputs: Dict[str, Any], context: Any) -> Any:
+    def execute(self, inputs: dict[str, Any], context: Any) -> Any:
         """Execute this process as a flow node.
 
         The default preserves existing numerical ``run`` methods. Readers,
@@ -824,7 +820,7 @@ class ResisticsProcess(ResisticsModel):
         del context
         return self.run(**inputs)
 
-    def _get_record(self, messages: Union[str, List[str]]) -> Record:
+    def _get_record(self, messages: str | list[str]) -> Record:
         """
         Get the record for the processor
 
@@ -841,7 +837,7 @@ class ResisticsProcess(ResisticsModel):
         return get_record(self.parameters(), messages)
 
 
-class ResisticsBase(object):
+class ResisticsBase:
     """
     Resistics base class
 
@@ -907,6 +903,6 @@ class ResisticsWriter(ResisticsProcess):
             dir_path.mkdir(parents=True)
         return True
 
-    def _get_record(self, dir_path: Path, data_type: Type):
+    def _get_record(self, dir_path: Path, data_type: type):
         """Get a process record for the writer"""
         return super()._get_record([f"Writing out {data_type.__name__} to {dir_path}"])

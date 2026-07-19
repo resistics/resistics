@@ -2,22 +2,25 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from enum import Enum
+import builtins
 import json
-from pathlib import Path
 import re
+import warnings
+from collections.abc import Callable
+from datetime import UTC, datetime
+from enum import Enum
+from pathlib import Path
 from shutil import rmtree
 from threading import Event
 from time import monotonic
-from typing import Any, Callable, Dict, List, Optional, Union
-import warnings
+from typing import Any
 
-from loguru import logger
 import numpy as np
+from loguru import logger
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from resistics import __version__
+from resistics.common import fs_to_string, validate_output_label
 from resistics.flow import (
     FlowCancelled,
     FlowDefinition,
@@ -30,7 +33,6 @@ from resistics.flow import (
 )
 from resistics.gather import GatherCriteria
 from resistics.project import Project, get_results_path
-from resistics.common import fs_to_string, validate_output_label
 
 
 class JobDefinition(BaseModel):
@@ -39,8 +41,8 @@ class JobDefinition(BaseModel):
     name: str
     flow: str
     parameters: str
-    criteria: Optional[str] = None
-    scope: "JobScope" = Field(default_factory=lambda: JobScope())
+    criteria: str | None = None
+    scope: JobScope = Field(default_factory=lambda: JobScope())
     output_label: str = "default"
     overwrite: bool = False
 
@@ -53,14 +55,14 @@ class JobDefinition(BaseModel):
 class JobScope(BaseModel):
     """Survey, station, rate, and flow-stage restrictions for a submission."""
 
-    surveys: List[str] = Field(default_factory=list)
-    stations: List[str] = Field(default_factory=list)
-    sampling_frequencies: List[float] = Field(
+    surveys: list[str] = Field(default_factory=list)
+    stations: list[str] = Field(default_factory=list)
+    sampling_frequencies: list[float] = Field(
         default_factory=list,
         validation_alias=AliasChoices("sampling_frequencies", "sample_rates"),
         serialization_alias="sampling_frequencies",
     )
-    stages: List[str] = Field(
+    stages: list[str] = Field(
         default_factory=list,
         validation_alias=AliasChoices("stages", "stage_scope"),
         serialization_alias="stages",
@@ -73,14 +75,14 @@ class StationRateBatch(BaseModel):
     survey: str
     station: str
     sample_rate: float
-    run_paths: List[str]
+    run_paths: list[str]
 
     @property
     def station_path(self) -> str:
         return f"{self.survey}/{self.station}"
 
 
-class JobState(str, Enum):
+class JobState(str, Enum):  # noqa: UP042 - preserve existing string/Enum semantics
     """Lifecycle state for a locally managed processing job."""
 
     pending = "pending"
@@ -96,15 +98,15 @@ class JobProgressEvent(BaseModel):
     state: JobState
     message: str
     job_name: str
-    survey: Optional[str] = None
-    station: Optional[str] = None
-    run: Optional[str] = None
-    sample_rate: Optional[float] = None
-    node_id: Optional[str] = None
-    step_type: Optional[str] = None
-    error: Optional[str] = None
+    survey: str | None = None
+    station: str | None = None
+    run: str | None = None
+    sample_rate: float | None = None
+    node_id: str | None = None
+    step_type: str | None = None
+    error: str | None = None
     elapsed_seconds: float = 0.0
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class JobSummary(BaseModel):
@@ -116,8 +118,8 @@ class JobSummary(BaseModel):
     parameters: str = ""
     output_label: str = ""
     is_valid: bool = False
-    errors: List[str] = Field(default_factory=list)
-    warnings: List[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class ResolvedJob(BaseModel):
@@ -128,10 +130,10 @@ class ResolvedJob(BaseModel):
     processing_job: ProcessingJob
     flow_path: Path
     parameters_path: Path
-    criteria_path: Optional[Path] = None
-    criteria: Optional[GatherCriteria] = None
-    stages: List[FlowStage]
-    batches: List[StationRateBatch]
+    criteria_path: Path | None = None
+    criteria: GatherCriteria | None = None
+    stages: list[FlowStage]
+    batches: list[StationRateBatch]
     output_path: Path
 
 
@@ -139,9 +141,9 @@ class JobValidation(BaseModel):
     """Validation result with an optional resolved job."""
 
     ok: bool
-    errors: List[str] = Field(default_factory=list)
-    warnings: List[str] = Field(default_factory=list)
-    resolved_job: Optional[ResolvedJob] = None
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    resolved_job: ResolvedJob | None = None
 
 
 ProgressCallback = Callable[[JobProgressEvent], None]
@@ -167,7 +169,7 @@ class ProjectJobs:
         self.project = project
         self.jobs_path = project.project_path / "processing" / "jobs"
 
-    def list(self) -> List[JobSummary]:
+    def list(self) -> builtins.list[JobSummary]:
         """List and validate project YAML jobs without executing them."""
         paths = sorted(
             path
@@ -221,10 +223,10 @@ class ProjectJobs:
             )
         return path
 
-    def validate(self, job: Union[Path, str]) -> JobValidation:
+    def validate(self, job: Path | str) -> JobValidation:
         """Resolve and validate a job, returning user-facing errors."""
-        errors: List[str] = []
-        warnings: List[str] = []
+        errors: list[str] = []
+        warnings: list[str] = []
         try:
             job_path = self._job_path(job)
             definition = model_from_yaml_file(JobDefinition, job_path)
@@ -288,7 +290,7 @@ class ProjectJobs:
             resolved_job=resolved,
         )
 
-    def _criteria_errors(self, criteria: GatherCriteria) -> List[str]:
+    def _criteria_errors(self, criteria: GatherCriteria) -> builtins.list[str]:
         """Validate configured station/rate references against project inventory."""
         table = self.project.table.copy()
         if "station_path" not in table:
@@ -330,7 +332,7 @@ class ProjectJobs:
     @staticmethod
     def selected_stages(
         definition: JobDefinition, flow: FlowDefinition
-    ) -> List[FlowStage]:
+    ) -> builtins.list[FlowStage]:
         """Resolve the optional stage scope, preserving flow execution order."""
         available = flow.flow_stages()
         requested = definition.scope.stages
@@ -344,7 +346,7 @@ class ProjectJobs:
             raise ValueError("Job stage scope contains duplicate stage ids")
         return [stage for stage in available if stage.stage_id in set(requested)]
 
-    def _job_path(self, job: Union[Path, str]) -> Path:
+    def _job_path(self, job: Path | str) -> Path:
         value = Path(job)
         if value.is_absolute() or value.parent != Path("."):
             path = value.resolve()
@@ -365,7 +367,7 @@ class ProjectJobs:
         return self._one_candidate(kind[:-1], name, candidates)
 
     @staticmethod
-    def _candidates(directory: Path, name: str) -> List[Path]:
+    def _candidates(directory: Path, name: str) -> builtins.list[Path]:
         value = Path(name)
         if value.suffix in {".yaml", ".yml"}:
             candidate = directory / value.name
@@ -378,7 +380,7 @@ class ProjectJobs:
         return candidates
 
     @staticmethod
-    def _one_candidate(kind: str, name: str, candidates: List[Path]) -> Path:
+    def _one_candidate(kind: str, name: str, candidates: builtins.list[Path]) -> Path:
         if not candidates:
             raise ValueError(f"{kind.title()} file not found: {name}")
         if len(candidates) > 1:
@@ -396,7 +398,9 @@ class ProjectJobs:
             processing_job.output_label,
         )
 
-    def plan_batches(self, definition: JobDefinition) -> List[StationRateBatch]:
+    def plan_batches(
+        self, definition: JobDefinition
+    ) -> builtins.list[StationRateBatch]:
         """Expand a job scope into deterministic station/rate batches."""
         table = self.project.table.copy()
         scope = definition.scope
@@ -427,13 +431,14 @@ class ProjectJobs:
             self.project.project_path, batch.survey, batch.station, output_label
         ) / fs_to_string(batch.sample_rate)
 
+
 class JobRunner:
     """Execute one validated project job and emit structured progress."""
 
     def __init__(
         self,
         project: Project,
-        progress_callback: Optional[ProgressCallback] = None,
+        progress_callback: ProgressCallback | None = None,
     ):
         self.project = project
         self.progress_callback = progress_callback
@@ -459,7 +464,7 @@ class JobRunner:
         )
         state = JobState.completed
         error = None
-        partial_paths: List[Path] = []
+        partial_paths: list[Path] = []
         try:
             with warnings.catch_warnings(record=True) as caught_warnings:
                 warnings.simplefilter("always")
@@ -503,9 +508,9 @@ class JobRunner:
         self,
         executor: FlowExecutor,
         resolved_job: ResolvedJob,
-        batches: List[StationRateBatch],
+        batches: list[StationRateBatch],
         criteria: GatherCriteria,
-        partial_paths: List[Path],
+        partial_paths: list[Path],
         started: float,
     ) -> None:
         """Run durable run stages before their station/rate gather stages."""
@@ -575,8 +580,8 @@ class JobRunner:
                     staging_path.replace(output_path)
 
     def _run_stage_paths(
-        self, batches: List[StationRateBatch], criteria: GatherCriteria
-    ) -> List[str]:
+        self, batches: list[StationRateBatch], criteria: GatherCriteria
+    ) -> list[str]:
         """Expand target run work by one hop to required remote runs."""
         paths = {run_path for batch in batches for run_path in batch.run_paths}
         table = self.project.table.copy()
@@ -646,7 +651,7 @@ class JobRunner:
     def _record_warnings(
         self,
         log_path: Path,
-        caught_warnings: List[warnings.WarningMessage],
+        caught_warnings: list[warnings.WarningMessage],
         job_name: str,
         started: float,
     ) -> None:
@@ -654,11 +659,13 @@ class JobRunner:
         if not caught_warnings:
             return
         lines = ["\nCaptured Python warnings:\n"]
-        for warning in caught_warnings:
-            lines.append(
+        lines.extend(
+            (
                 f"{warning.category.__name__}: {warning.message} "
                 f"({warning.filename}:{warning.lineno})\n"
             )
+            for warning in caught_warnings
+        )
         with log_path.open("a", encoding="utf-8") as log_file:
             log_file.writelines(lines)
         self._emit(
@@ -668,7 +675,7 @@ class JobRunner:
             started,
         )
 
-    def _flow_event(self, job_name: str, event: Dict[str, Any], started: float) -> None:
+    def _flow_event(self, job_name: str, event: dict[str, Any], started: float) -> None:
         event_name = event["event"]
         state = JobState.failed if event_name == "failed" else JobState.running
         message = f"{event_name.title()}: {event.get('node_id', 'job')}"
@@ -688,13 +695,13 @@ class JobRunner:
         job_name: str,
         message: str,
         started: float,
-        survey: Optional[str] = None,
-        station: Optional[str] = None,
-        run: Optional[str] = None,
-        sample_rate: Optional[float] = None,
-        node_id: Optional[str] = None,
-        step_type: Optional[str] = None,
-        error: Optional[str] = None,
+        survey: str | None = None,
+        station: str | None = None,
+        run: str | None = None,
+        sample_rate: float | None = None,
+        node_id: str | None = None,
+        step_type: str | None = None,
+        error: str | None = None,
     ) -> None:
         if self.progress_callback is None:
             return

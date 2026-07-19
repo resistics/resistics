@@ -8,21 +8,26 @@ Resistics has a few built in solvers, but makes it possible to define custom
 solvers as required
 """
 
-from loguru import logger
 from pathlib import Path
-from typing import Any, ClassVar, List, Dict, Tuple, Union
-from tqdm import tqdm
+from typing import Any, ClassVar
+
 import numpy as np
 import pandas as pd
+from loguru import logger
 from regressioninc.base import Regressor
 from regressioninc.linear import LeastSquares
+from tqdm import tqdm
 
-from resistics.common import Metadata, WriteableMetadata, History
-from resistics.common import ResisticsData, ResisticsProcess
-from resistics.transfunc import Component, get_component_key
-from resistics.transfunc import TransferFunction
-from resistics.spectra import SpectraMetadata, SpectraData
-from resistics.gather import SiteCombinedMetadata, GatheredData
+from resistics.common import (
+    History,
+    Metadata,
+    ResisticsData,
+    ResisticsProcess,
+    WriteableMetadata,
+)
+from resistics.gather import GatheredData, SiteCombinedMetadata
+from resistics.spectra import SpectraData, SpectraMetadata
+from resistics.transfunc import Component, TransferFunction, get_component_key
 
 
 def get_least_squares_regressor() -> Regressor:
@@ -33,7 +38,7 @@ def get_least_squares_regressor() -> Regressor:
 class RegressionInputMetadata(Metadata):
     """Metadata for regression input data, mainly to track processing history"""
 
-    contributors: Dict[str, Union[SiteCombinedMetadata, SpectraMetadata]]
+    contributors: dict[str, SiteCombinedMetadata | SpectraMetadata]
     """Details about the data contributing to the regression input data"""
     history: History = History()
     """The processing history"""
@@ -107,9 +112,9 @@ class RegressionInputData(ResisticsData):
         self,
         metadata: RegressionInputMetadata,
         tf: TransferFunction,
-        freqs: List[float],
-        obs: List[Dict[str, np.ndarray]],
-        preds: List[np.ndarray],
+        freqs: list[float],
+        obs: list[dict[str, np.ndarray]],
+        preds: list[np.ndarray],
     ):
         """
         Initialisation of regression input data
@@ -141,7 +146,7 @@ class RegressionInputData(ResisticsData):
         """Get the number of frequencies"""
         return len(self.freqs)
 
-    def get_inputs(self, freq_idx: int, out_chan: str) -> Tuple[np.ndarray, np.ndarray]:
+    def get_inputs(self, freq_idx: int, out_chan: str) -> tuple[np.ndarray, np.ndarray]:
         """
         Get observations and predictions
 
@@ -180,7 +185,7 @@ class RegressionPreparerGathered(ResisticsProcess):
     requires GatheredData.
     """
 
-    input_types: ClassVar[Dict[str, str]] = {
+    input_types: ClassVar[dict[str, str]] = {
         "tf": "transfer_function",
         "gathered_data": "gathered_data",
     }
@@ -259,7 +264,7 @@ class RegressionPreparerGathered(ResisticsProcess):
 
     def _get_cross_powers(
         self, tf: TransferFunction, gathered_data: GatheredData, eval_idx: int
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Get cross powers
 
@@ -310,7 +315,7 @@ class RegressionPreparerGathered(ResisticsProcess):
 
     def _get_obs(
         self, tf: TransferFunction, out_powers: np.ndarray
-    ) -> Dict[str, np.ndarray]:
+    ) -> dict[str, np.ndarray]:
         """
         Get observations for an output channel
 
@@ -397,7 +402,7 @@ class RegressionPreparerSpectra(RegressionPreparerGathered):
 
     def _get_cross_powers(
         self, tf: TransferFunction, spec_data: SpectraData, level: int
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Get cross powers
 
@@ -484,13 +489,13 @@ class Solution(WriteableMetadata):
 
     tf: TransferFunction
     """The transfer function that was solved"""
-    freqs: List[float]
+    freqs: list[float]
     """The evaluation frequencies"""
-    components: Dict[str, Component]
+    components: dict[str, Component]
     """The solution"""
     history: History
     """The processing history"""
-    contributors: Dict[str, Union[SiteCombinedMetadata, SpectraMetadata]]
+    contributors: dict[str, SiteCombinedMetadata | SpectraMetadata]
     """The contributors to the solution with their respective details"""
 
     def __getitem__(self, key: str) -> np.ndarray:
@@ -587,9 +592,7 @@ class Solution(WriteableMetadata):
 class Solver(ResisticsProcess):
     """General resistics solver"""
 
-    input_types: ClassVar[Dict[str, str]] = {
-        "regression_input": "regression_input"
-    }
+    input_types: ClassVar[dict[str, str]] = {"regression_input": "regression_input"}
     output_type: ClassVar[str] = "transfer_function"
     include_in_default_parameters: ClassVar[bool] = False
 
@@ -712,13 +715,13 @@ class SolverOLS(SolverLinear):
 class SolutionWriter(ResisticsProcess):
     """Write a transfer-function solution to a job's staging output."""
 
-    input_types: ClassVar[Dict[str, str]] = {"solution": "transfer_function"}
+    input_types: ClassVar[dict[str, str]] = {"solution": "transfer_function"}
     output_type: ClassVar[str] = "job_result"
-    runtime_requirements: ClassVar[List[str]] = ["staging_output_path"]
+    runtime_requirements: ClassVar[list[str]] = ["staging_output_path"]
 
     def execute(
-        self, inputs: Dict[str, Any], runtime: Dict[str, Any]
-    ) -> Dict[str, str]:
+        self, inputs: dict[str, Any], runtime: dict[str, Any]
+    ) -> dict[str, str]:
         """Write the supplied solution to ``solution.json``."""
         path = Path(runtime["staging_output_path"])
         path.mkdir(parents=True, exist_ok=False)
