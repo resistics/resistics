@@ -45,6 +45,53 @@ def test_lttb_downsample(
     np.testing.assert_array_equal(ny, y_expected)
 
 
+def test_lttb_downsample_preserves_dtype_and_large_indices() -> None:
+    """LTTB selection must not lose precision by casting the source arrays."""
+    from resistics.plot import lttb_downsample
+
+    x = np.arange(100, dtype=np.int64) + 2**30
+    y = np.sin(np.arange(100) / 5)
+
+    nx, ny = lttb_downsample(x, y, max_pts=20)
+
+    assert nx.dtype == x.dtype
+    assert ny.dtype == y.dtype
+    assert nx.size == 20
+    assert nx[0] == x[0]
+    assert nx[-1] == x[-1]
+    assert np.all(np.diff(nx) > 0)
+
+
+def test_lttb_downsample_accepts_non_contiguous_arrays() -> None:
+    """LTTB selection accepts strided views used by plotting callers."""
+    from resistics.plot import lttb_downsample
+
+    x = np.arange(200, dtype=np.int64)[::2]
+    y = np.sin(np.arange(200) / 5)[::2]
+
+    nx, ny = lttb_downsample(x, y, max_pts=20)
+
+    assert nx.size == ny.size == 20
+    assert nx[0] == x[0]
+    assert nx[-1] == x[-1]
+
+
+def test_lttb_downsample_preserves_nan_gaps() -> None:
+    """Downsampling retains a NaN marker so Plotly does not bridge data gaps."""
+    from resistics.plot import lttb_downsample
+
+    x = np.arange(100, dtype=np.int64)
+    y = np.sin(x / 5)
+    y[40:50] = np.nan
+
+    nx, ny = lttb_downsample(x, y, max_pts=20)
+
+    assert nx.size == ny.size == 20
+    assert np.isnan(ny).any()
+    assert nx[0] == x[0]
+    assert nx[-1] == x[-1]
+
+
 @pytest.mark.parametrize(
     "y, max_pts, x_expected, y_expected",
     [

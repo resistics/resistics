@@ -682,7 +682,7 @@ class TimeData(ResisticsData):
             when plotting multiple TimeData
         max_pts : Optional[int], optional
             The maximum number of points for any channel plot before applying
-            lttbc downsampling, by default 10_000. If set to None, no
+            LTTB downsampling, by default 10_000. If set to None, no
             downsampling will be applied.
 
         Returns

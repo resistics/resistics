@@ -187,7 +187,7 @@ class SpectraData(ResisticsData):
         ----------
         max_pts : Optional[int], optional
             The maximum number of points in any individual plot before applying
-            lttbc downsampling, by default 10_000. If set to None, no
+            LTTB downsampling, by default 10_000. If set to None, no
             downsampling will be applied.
 
         Returns
@@ -226,7 +226,7 @@ class SpectraData(ResisticsData):
             The decimation level
         max_pts : int, optional
             The maximum number of points in any individual plot before applying
-            lttbc downsampling, by default 10_000
+            LTTB downsampling, by default 10_000
         grouping : Optional[str], optional
             A grouping interval as a pandas freq string, by default None
         offset : str, optional

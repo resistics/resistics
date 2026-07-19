@@ -23,9 +23,9 @@ requirement to split this broad programme into small pull requests or commits.
   processing, serialization, plotting, and TUI contracts.
 - Poetry and all Poetry-generated or Poetry-specific references are gone from
   resistics and `regressioninc`.
-- uv is the primary Python environment, dependency, build, and publishing tool
-  unless the evidence gate in Phase 6 justifies moving environment management
-  to Pixi.
+- uv is the primary local Python environment, dependency, build, and quality
+  tool unless the evidence gate in Phase 6 justifies moving environment
+  management to Pixi.
 - Ruff replaces Black and Flake8; pydoclint replaces darglint.
 - A fast, useful type checker replaces mypy, with existing findings baselined
   and new regressions rejected.
@@ -34,8 +34,9 @@ requirement to split this broad programme into small pull requests or commits.
   performed from frequently called UI state checks.
 - Large modules are split at stable boundaries without changing public APIs in
   the same commit.
-- CI tests supported Python versions and operating systems, and publishing uses
-  reproducible builds and PyPI Trusted Publishing.
+- Local commands reproducibly test the supported code, documentation, and
+  package boundaries. Hosted CI and publishing automation are follow-up work
+  and do not gate this code-hardening programme.
 - Dependency, security, type, coverage, and performance checks are useful
   signals rather than permanently failing or ignored jobs.
 - Public APIs and non-trivial internal operations have useful docstrings, with
@@ -63,6 +64,13 @@ requirement to split this broad programme into small pull requests or commits.
   settings merely because the corresponding workflow has been prepared.
 - Changes in the sibling `regressioninc` repository require a separate worktree
   and commit history in that repository.
+- Keep the editable sibling `regressioninc` source throughout this programme.
+  A registry release, standalone resistics installation, hosted CI, Read the
+  Docs deployment, and publishing automation are explicitly deferred until the
+  resistics hardening work and a separate regressioninc review are complete.
+- Production-ready in this plan means the code, tests, local tooling, local
+  documentation build, and documented sibling development environment meet
+  their gates. It does not claim that either package is ready for publication.
 
 ## Docstring Strategy
 
@@ -152,8 +160,9 @@ that no longer execute.
 - Configure pydoclint to check short docstrings rather than allowing a one-line
   placeholder to bypass contract checks. Use a baseline only for identified
   existing debt, never for newly added or materially changed public APIs.
-- Pre-commit checks changed Python files for docstring regressions, while CI
-  checks the complete production package and documentation build.
+- Pre-commit checks changed Python files for docstring regressions, while the
+  documented full local gate checks the complete production package and
+  documentation build.
 - Any suppression of a public docstring rule must state why generated,
   inherited, protocol-mandated, or callback-specific behaviour makes the rule
   inappropriate. Broad module-wide exemptions are temporary migration debt and
@@ -264,8 +273,8 @@ Suggested commit: `fix: restore green test and lint baseline`
   record the remaining I/O branches as Phase 4.1 debt, and convert the
   inventory into a strict zero-I/O regression gate during that refactor.
 - Add a repeatable cold-import timing command and representative TUI response
-  benchmark or profiling fixture. Keep timing assertions tolerant enough for CI
-  variance; use them primarily for before/after evidence.
+  benchmark or profiling fixture. Keep timing assertions tolerant enough for
+  machine variance; use them primarily for before/after evidence.
 - Capture current module sizes and complexity in documentation or a lightweight
   reporting command rather than creating hard line-count gates.
 - Inventory missing public docstrings, non-trivial undocumented private
@@ -283,11 +292,12 @@ Suggested commit: `test: establish hardening baselines`
 - Baseline measurements can be repeated by another contributor.
 - No production refactor has been mixed into measurement work.
 
-## Phase 1: Remove Poetry and Modernise Packaging
+## Phase 1: Remove Poetry and Modernise Local Packaging
 
-Goal: remove Poetry from the complete dependency and release path. The sibling
-package must be handled first because resistics currently resolves it through a
-local uv source and its build metadata still requires `poetry-core`.
+Goal: remove Poetry from the active local development, test, documentation, and
+build paths. Keep the sibling `regressioninc` uv source intentionally; its
+registry release and the hosted automation that depends on that release are
+deferred follow-ups rather than prerequisites for code hardening.
 
 ### Checkpoint 1.1 (`regressioninc`): Convert package metadata
 
@@ -320,26 +330,32 @@ Suggested commit in `regressioninc`:
 Suggested commit in `regressioninc`:
 `ci: remove remaining Poetry workflows`
 
-### Checkpoint 1.3 (`regressioninc`): Prepare a resolvable release boundary
+### Deferred Checkpoint 1.3 (`regressioninc`): Prepare a release boundary
 
-- Decide and document the first compatible release version, provisionally an
-  alpha such as `0.1.0a1` if the public interface is not stable.
-- Verify wheel and source distribution in isolated environments.
-- Publish only after explicit approval and successful dry-run validation.
+- Revisit regressioninc's public interface and numerical responsibilities in a
+  dedicated hardening effort after resistics reaches its local production gate.
+- Decide and document the first compatible release version only after that
+  review; do not bump the version merely to unblock resistics.
+- Verify wheel and source distribution in isolated environments before any
+  explicit release approval.
 
-Suggested commit in `regressioninc`:
-`docs: document regressioninc release contract`
+Owner: repository owner. Resume condition: resistics hardening is complete and
+the regressioninc design review has established a supportable release contract.
 
-Release/tag/publish is a manual GitHub checkpoint, not part of this commit.
+### Checkpoint 1.4 (`resistics`): Formalise the local sibling boundary
 
-### Checkpoint 1.4 (`resistics`): Remove the local package workaround
+- Retain `regressioninc = { path = "../regressioninc", editable = true }` as an
+  intentional uv source.
+- Refresh the resistics lock against the verified local regressioninc metadata
+  and keep locked sync as the canonical environment path.
+- Document the required sibling checkout layout and make failures actionable
+  when the local package is absent.
+- Verify sync, tests, the current narrative/API documentation with legacy
+  gallery execution disabled, and the resistics entry point using the paired
+  local repositories. Record obsolete executable-gallery failures for Phase 7;
+  do not claim a standalone registry installation.
 
-- Replace the editable sibling source override with a normal bounded
-  `regressioninc` dependency once an installable release exists.
-- Remove the local `[tool.uv.sources]` entry.
-- Confirm a clean checkout can resolve and test without the sibling directory.
-
-Suggested commit: `build: use released regressioninc package`
+Suggested commit: `build: formalise local regressioninc development source`
 
 ### Checkpoint 1.5: Harden resistics package metadata and artifacts
 
@@ -349,15 +365,15 @@ Suggested commit: `build: use released regressioninc package`
   upper bound, provisionally `>=3.11,<3.15`, if the compatibility matrix
   confirms support for every Python 3.11–3.14 minor release.
 - Check project URLs, license metadata, package data, and wheel/sdist contents.
-- Build without local uv sources, build a wheel from the sdist, and smoke-test
-  imports and the `resistics` entry point from the resulting wheel in an
-  isolated environment.
+- Build and inspect the resistics wheel and source distribution. Smoke-test the
+  package and entry point in an isolated environment supplied with a locally
+  built regressioninc wheel; defer registry-only resolution testing.
 - Defer adding a PEP 561 `py.typed` marker until Phase 3 confirms the supported
   public API meets the agreed type-checking standard.
 
 Suggested commit: `build: harden package metadata and artifacts`
 
-### Checkpoint 1.6: Replace commit CI
+### Deferred Checkpoint 1.6: Replace hosted commit CI
 
 - Preserve the user's intended Python 3.11 and 3.14 coverage from the current
   workflow edits.
@@ -371,7 +387,11 @@ Suggested commit: `build: harden package metadata and artifacts`
 
 Suggested commit: `ci: replace Poetry test workflow with uv`
 
-### Checkpoint 1.7: Replace publishing workflow
+Owner: repository owner. Resume after the local quality, typing,
+documentation, and package commands are stable enough to automate without
+redesigning them in workflow YAML.
+
+### Deferred Checkpoint 1.7: Replace publishing workflow
 
 - Trigger from protected version tags or GitHub releases according to the
   agreed release policy.
@@ -387,13 +407,18 @@ Suggested commit: `ci: publish verified distributions with trusted publishing`
 Enabling the PyPI trusted publisher and making a real release are separate
 manual GitHub/PyPI checkpoints.
 
-### Checkpoint 1.8: Remove final Poetry references
+### Checkpoint 1.8: Remove Poetry from active local paths
 
-- Convert `.readthedocs.yaml` to native uv installation using the docs group.
+- Make local documentation installation and builds uv-only. Defer hosted Read
+  the Docs configuration if it requires a separate sibling-checkout design;
+  remove the obsolete Poetry-based deployment configuration in the meantime.
+- Remove Poetry commands from hosted workflow files even though their final
+  replacement design is deferred. A deferred workflow must not preserve an
+  obsolete active dependency path.
 - Update contributor documentation, comments, badges, notebooks, and captured
   notebook output that still references Poetry paths.
 - Delete obsolete Poetry lock/configuration files if any remain.
-- Add a CI or repository script check for case-insensitive occurrences of
+- Add a repository script check for case-insensitive occurrences of
   `poetry`, `poetry-core`, or `pypoetry` in active code, configuration,
   automation, and user/contributor documentation. Explicitly exclude this
   migration plan while it remains the historical implementation record.
@@ -402,11 +427,14 @@ Suggested commit: `chore: remove final Poetry references`
 
 ### Phase 1 review gate
 
-- A clean checkout builds, tests, and builds documentation using uv only.
+- The documented paired sibling checkout syncs, tests, and builds the current
+  narrative/API documentation using uv only. Executable legacy-gallery debt is
+  measured and owned by Phase 7 rather than hidden.
 - Both packages build without `poetry-core`.
 - The repository search finds no unexplained Poetry references.
-- Publishing has been dry-run and inspected; no real release is required to
-  approve the code changes.
+- The local editable dependency and its effect on standalone package
+  installation are documented. Release, hosted CI, Read the Docs deployment,
+  and publishing checks remain owned deferrals and do not block Phase 2.
 
 ## Phase 2: Consolidate Formatting, Linting, and Documentation Checks
 
@@ -479,23 +507,24 @@ Suggested commits:
 
 Suggested commit: `docs: establish production docstring requirements`
 
-### Checkpoint 2.5: Simplify pre-commit and CI quality jobs
+### Checkpoint 2.5: Simplify pre-commit and local quality commands
 
 - Replace obsolete hook revisions and remove the deprecated Prettier mirror.
   Do not retain a JavaScript formatter unless a maintained non-Python asset has
   an explicit formatting need.
-- Use uv-backed local hooks so pre-commit, contributors, and CI run the same
-  locked tool versions rather than isolated hook environments.
+- Use uv-backed local hooks so pre-commit and contributors run the same locked
+  tool versions rather than isolated hook environments. Preserve simple
+  commands that future CI can invoke unchanged.
 - Invoke uv-backed hooks with `uv run --locked --no-sync` after the documented
   environment sync, preventing hooks from silently changing the environment.
 - Run Ruff format and Ruff check for staged Python files, retain YAML,
   end-of-file, and trailing-whitespace hygiene checks, and run pydoclint for
   changed production Python files.
-- Revisit a type-checking pre-push hook in Phase 3 only if the selected checker's
-  measured runtime is short enough for routine local use; CI remains the
-  mandatory full-project type gate.
-- Keep the full test suite, coverage, documentation build, package build,
-  security scan, and slow type checking in CI.
+- Revisit a type-checking pre-push hook in Phase 3 only if the selected
+  checker's measured runtime is short enough for routine local use.
+- Document full-project test, coverage, documentation, package, audit, and type
+  commands as the local production gate. Hosted automation of those commands is
+  deferred.
 - Verify hook installation and execution from a clean
   `uv sync --locked --all-groups` environment and document the setup command.
 - Remove `.flake8` and redundant configuration only after Ruff covers the
@@ -513,8 +542,8 @@ Suggested commit: `build: modernise uv-backed pre-commit checks`
   public APIs cannot bypass contract checking with a placeholder summary.
 - Existing examples and plots have an inventory and regression path for the
   MyST migration.
-- Black, Flake8, and darglint are absent from dependencies, hooks, CI, docs, and
-  badges.
+- Black, Flake8, and darglint are absent from dependencies, hooks, local
+  commands, docs, and badges.
 - The full test suite remains green after the mechanical formatting commit.
 
 ## Phase 3: Replace mypy with a Useful Type-Checking Gate
@@ -550,7 +579,7 @@ type checkers.
     behaviour;
   - NumPy, SciPy, ObsPy, MTH5, Plotly, and Textual type information;
   - diagnostic clarity and navigation;
-  - baseline and CI ergonomics.
+  - baseline and automation ergonomics.
 - Require either a committed project baseline that rejects new findings or a
   clean initial result. Do not adopt a checker by generating repository-wide
   inline ignore comments or globally disabling meaningful rule families.
@@ -565,11 +594,11 @@ Suggested commit: `docs: record type checker selection`
 
 - Default to Pyrefly if the evaluation confirms its expected Pydantic and
   diagnostic advantages; otherwise select Basedpyright.
-- Add one pinned development dependency, one configuration, one local command,
-  and one CI job.
+- Add one pinned development dependency, one configuration, and one local
+  command suitable for later automation.
 - Generate and commit a baseline for existing valid findings.
-- Configure CI to reject new findings without forcing an immediate repository-
-  wide annotation rewrite.
+- Configure the local project/pre-commit gate to reject new findings without
+  forcing an immediate repository-wide annotation rewrite.
 - Remove mypy dependencies, configuration, caches, hooks, and documentation.
 - Do not translate every old mypy exception automatically; retain only
   suppressions demonstrated to be necessary with the selected checker.
@@ -596,7 +625,7 @@ Suggested commit pattern: `refactor(<module>): harden type contracts`
 ### Phase 3 review gate
 
 - mypy is completely removed.
-- Exactly one type checker is mandatory in CI.
+- Exactly one type checker is mandatory in the project tooling.
 - Existing debt is represented by a shrinking baseline, not scattered blanket
   ignores.
 - New or edited public APIs are checked.
@@ -605,8 +634,8 @@ Suggested commit pattern: `refactor(<module>): harden type contracts`
   present in artifacts and public annotations satisfy the documented support
   level.
 - Reassess ty after it reaches an agreed maturity point or gains capabilities
-  materially relevant to resistics; do not run a second permanent CI gate in
-  anticipation.
+  materially relevant to resistics; do not install a second permanent checker
+  in anticipation.
 
 ## Phase 4: Make the TUI Responsive
 
@@ -809,31 +838,29 @@ using evidence rather than speculative migrations.
 
 Suggested commit: `build: remove unused direct dependencies`
 
-### Checkpoint 6.2: Test the lowest supported dependency set
+### Checkpoint 6.2: Test the lowest supported dependency set locally
 
-- Add a scheduled or manual CI job that resolves the lowest supported direct
-  versions where practical and exercises the built distribution, not only the
-  source checkout.
-- Keep normal lock-based CI reproducible.
+- Add a repeatable local command that resolves the lowest supported direct
+  versions where practical and exercises the paired local distributions, not
+  only the source checkouts.
+- Keep the normal lock-based local environment reproducible.
 - Document intentional upper bounds and compatibility constraints.
 - Fail clearly when a declared lower bound cannot install on the minimum
   supported Python version; fix the metadata instead of accepting an
   untestable promise.
 
-Suggested commit: `ci: test supported dependency bounds`
+Suggested commit: `build: test supported dependency bounds`
 
-### Checkpoint 6.3: Add dependency and workflow monitoring
+### Checkpoint 6.3: Add local dependency auditing
 
-- Configure Dependabot or an agreed equivalent for uv and GitHub Actions.
 - Add `uv audit` for the locked project, including relevant Python-version
   variants, with a documented policy for unavailable fixes and accepted risks.
-- Keep all third-party actions pinned by full SHA and update them through
-  reviewed automation.
-- Set minimal workflow permissions and protected publishing environments.
+- Record Dependabot, action pinning, minimal workflow permissions, and
+  protected publishing environments as hosted-automation follow-ups.
 
-Suggested commit: `ci: add dependency and workflow security checks`
+Suggested commit: `build: add dependency security checks`
 
-### Checkpoint 6.4: Decide uv versus Pixi from CI evidence
+### Checkpoint 6.4: Decide uv versus Pixi from compatibility evidence
 
 - Keep uv as the default while wheels and supported builds work across the
   Python/OS matrix.
@@ -843,8 +870,9 @@ Suggested commit: `ci: add dependency and workflow security checks`
   repeated unsupported-platform or solver problems that uv/PyPI cannot
   reasonably address.
 - If a trial is needed, keep it as an isolated experiment on `mth5` and compare
-  lock reproducibility, build/publish flow, contributor setup, CI time, and
-  maintenance burden before changing the primary environment workflow.
+  lock reproducibility, paired-repository builds, contributor setup, local
+  environment time, and maintenance burden before changing the primary
+  environment workflow.
 - Do not maintain uv and Pixi as equal permanent paths unless they solve
   demonstrably different supported use cases.
 
@@ -855,8 +883,10 @@ Suggested commit: `docs: record environment manager decision`
 ### Phase 6 review gate
 
 - Every direct dependency has a documented production or development purpose.
-- Supported Python/OS combinations install from a clean checkout.
-- Dependency vulnerabilities and action updates have visible ownership.
+- Supported Python combinations install from the documented paired checkout on
+  locally available platforms; the broader hosted OS matrix is deferred.
+- Dependency vulnerabilities have visible ownership, and hosted action updates
+  are recorded as follow-up work.
 - Any Pixi adoption is justified by reproduced failures, not concern alone.
 
 ## Phase 7: MyST Documentation Modernisation
@@ -1018,7 +1048,7 @@ Suggested commit: `docs: replace legacy gallery with MyST tutorials`
 
 Suggested commit: `docs: remove reStructuredText documentation path`
 
-### Checkpoint 7.6: Enforce documentation in CI and Read the Docs
+### Checkpoint 7.6: Enforce documentation locally
 
 - Build HTML with nitpicky cross-reference checking, warnings as errors, and
   keep-going enabled.
@@ -1027,13 +1057,13 @@ Suggested commit: `docs: remove reStructuredText documentation path`
   their expected figures.
 - Remove pytest's raw module-docstring scanning only after the Sphinx doctest
   builder covers the converted examples.
-- Run external link checking on a schedule so transient external failures do
-  not block every push.
-- Convert Read the Docs from Poetry to native uv installation using the docs
-  group and a supported Python version.
+- Provide an explicit local external-link check; scheduling it is a hosted
+  automation follow-up.
+- Record the future Read the Docs sibling-checkout and uv installation work as
+  a deployment follow-up rather than blocking the local documentation gate.
 - Request HTML output only.
 
-Suggested commit: `ci: enforce MyST documentation builds`
+Suggested commit: `docs: enforce local MyST documentation builds`
 
 ### Checkpoint 7.7: Update contributor and release documentation
 
@@ -1046,9 +1076,9 @@ Suggested commit: `ci: enforce MyST documentation builds`
 - State explicitly that rich examples and plots belong with their documented
   objects when that is where users will find them most useful.
 - Document how to run focused TUI performance checks.
-- Add a release checklist covering tag protection, Trusted Publishing, wheel
-  and source-distribution smoke tests, documentation deployment, and
-  rollback/yank decisions.
+- Keep release, tag protection, Trusted Publishing, and hosted documentation
+  deployment guidance in a clearly labelled follow-up section rather than
+  presenting those paths as active or verified.
 
 Suggested commit: `docs: finalise documentation guidance`
 
@@ -1075,7 +1105,8 @@ Suggested commit: `docs: finalise documentation guidance`
   documentation build rather than being present but unchecked.
 - API documentation includes current flow, job, project, mask, plotting, and
   TUI contracts.
-- A clean uv environment builds the documentation locally and on Read the Docs.
+- A clean paired uv environment builds the documentation locally; Read the Docs
+  deployment remains an owned follow-up.
 - Only HTML documentation output is produced or supported.
 
 ## Phase 8: Final Reconciliation and Audit
@@ -1108,13 +1139,15 @@ Suggested commit: `docs: record hardening outcomes`
 ### Final review gate
 
 - All desired outcomes are met or explicitly deferred with an owner and reason.
-- The repository can be cloned, synced, tested, documented, built, and type
-  checked without Poetry.
-- Release artifacts are reproducible and independently smoke-tested.
+- The documented sibling repositories can be synced, tested, documented,
+  built, audited, and type checked locally without Poetry.
+- Local artifacts are reproducible and smoke-tested together; standalone
+  registry resolution and release verification remain an explicit owner
+  deferral.
 - TUI responsiveness improvements are supported by before/after evidence.
 - Documentation is MyST-only, warnings-as-errors clean, and built through uv.
-- The docstring strategy is enforced in pre-commit and CI, with complete public
-  coverage and no unexplained broad suppressions.
+- The docstring strategy is enforced in pre-commit and the full local quality
+  gate, with complete public coverage and no unexplained broad suppressions.
 - Remaining large or complex modules have focused follow-up issues rather than
   vague cleanup tasks.
 - `mth5` satisfies every non-deferred production-readiness gate; branch
@@ -1122,18 +1155,16 @@ Suggested commit: `docs: record hardening outcomes`
 
 ## Recommended Initial Implementation Sequence
 
-Establish the packaging and measurement foundation in this order:
+Establish the local packaging and measurement foundation in this order:
 
 1. Phase 0.1: restore the green baseline.
 2. Phase 0.2: commit measurements and regression tests.
 3. `regressioninc` Phase 1.1: PEP 621 and uv packaging in its own repository.
 4. `regressioninc` Phase 1.2: automation cleanup in its own repository.
-5. `regressioninc` Phase 1.3: establish its installable release boundary.
-6. Resistics Phase 1.4: consume a released `regressioninc`.
-7. Resistics Phase 1.5: harden package metadata and artifacts.
-8. Resistics Phase 1.6: uv test CI.
-9. Resistics Phase 1.7: publishing workflow.
-10. Resistics Phase 1.8: final Poetry removal.
+5. Defer `regressioninc` Phase 1.3 until its dedicated design review.
+6. Resistics Phase 1.4: formalise the local sibling source and refresh the lock.
+7. Resistics Phase 1.5: harden metadata and paired local artifacts.
+8. Resistics Phase 1.8: remove Poetry from active local paths.
 
 After that foundation is complete, proceed through Ruff/pydoclint, checker
 selection, TUI performance, structural module splits, documentation
@@ -1159,9 +1190,10 @@ uv build --no-sources
 uv audit
 ```
 
-During the Poetry-removal transition, use the existing `.venv` for tests when a
-clean uv resolution is blocked by `regressioninc`; do not conceal that blocker
-with an undocumented local install.
+The documented sibling layout and editable uv source are the canonical local
+environment throughout this programme. Refresh the lock deliberately when the
+local regressioninc metadata changes; do not treat a mutable, undocumented
+checkout as reproducible evidence.
 
 ## References to Re-verify When Implementing
 

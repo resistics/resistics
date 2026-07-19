@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 1.2 verified and awaiting a durable commit
+Status: in progress; Checkpoint 1.5 verified with tsdownsample
 Created: 2026-07-19
 Last updated: 2026-07-19
 Working branch: `mth5`
@@ -26,24 +26,24 @@ the two documents do not drift independently.
 ## Current State
 
 - Programme state: `in_progress`
-- Active phase: Phase 1 - Remove Poetry and Modernise Packaging
-- Active checkpoint: `1.3` (`regressioninc`) - Prepare a resolvable release boundary
+- Active phase: Phase 1 - Remove Poetry and Modernise Local Packaging
+- Active checkpoint: `1.8` (`resistics`) - Remove Poetry from active local paths
 - Checkpoint state: `not_started`
 - Last completed checkpoint: `0.2` at `d9911e3`
-- Last verified checkpoint: `1.2` in `S004`
-- Last session: `S004`
-- Last verified commit: resistics `9052136`; regressioninc `9eb11a4` is the
-  base of uncommitted Checkpoint 1.1 work
+- Last verified checkpoint: `1.5` in `S008`
+- Last session: `S008`
+- Last verified commit: resistics `1e5b208`; regressioninc `9eb11a4` is the
+  base of uncommitted Checkpoints 1.1 and 1.2 work
 - Current blocker: none
-- Next exact action: inspect regressioninc's public version surface and package
-  metadata, choose and document the first compatible alpha release boundary,
-  then repeat isolated wheel/sdist verification without publishing it.
+- Next exact action: begin Checkpoint 1.8 with a case-insensitive Poetry
+  reference inventory, separating historical plan evidence from active local,
+  documentation, workflow, notebook, and configuration paths.
 
 Current worktree caveat:
 
-- `.agents/plans/code-hardening-implementation.md` contains the current S004
-  verification and handoff. The owner recorded S003 tracking at resistics
-  `9052136`.
+- `.agents/plans/code-hardening-implementation.md` contains the current S006
+  verification and handoff. The owner recorded S004 tracking at resistics
+  `1e5b208`.
 - `.github/workflows/commit_flow.yml` and
   `.github/workflows/publish_flow.yml` contain pre-existing user changes.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -55,9 +55,14 @@ Current worktree caveat:
 - Regressioninc's CI and publishing workflows, Read the Docs configuration,
   README, `.gitignore`, documentation configuration, legacy-reference checker,
   and Matplotlib compatibility edits are the scoped Checkpoint 1.2 changes.
-- Resistics `uv lock --check` is expected to report stale while its lock still
-  embeds metadata from the edited local regressioninc source. Do not rewrite
-  that lock piecemeal; Checkpoint 1.4 owns removal of the local-source boundary.
+- `README.md` and `uv.lock` contain the scoped Checkpoint 1.4 sibling-layout and
+  lock refresh changes. The lock is current against the local regressioninc
+  metadata.
+- `pyproject.toml`, `resistics/window.py`, and the additional README/lock edits
+  contain the scoped Checkpoint 1.5 metadata, compatibility, doctest, and
+  artifact-boundary changes.
+- `resistics/plot.py`, its plotting callers and tests, `pyproject.toml`, and
+  `uv.lock` contain the S008 replacement of lttbc with tsdownsample.
 - These files must not be reverted or overwritten during hardening work.
 
 ## Authority and Boundaries
@@ -65,6 +70,9 @@ Current worktree caveat:
 - Perform resistics implementation on `mth5`.
 - Do not open a pull request, promote `mth5`, rename the primary branch, publish
   either package, create a release, push a tag, or change repository settings.
+- Hosted CI, Read the Docs deployment, registry-only installation, and
+  publishing automation are recorded follow-ups and do not gate the local
+  code/tooling/documentation hardening programme.
 - Work in the sibling `regressioninc` repository requires a separate worktree,
   explicit scope, and its own commit history. Track its checkpoint status here,
   but never mix its files into a resistics commit.
@@ -147,12 +155,12 @@ dependencies are hard constraints:
 ```text
 Phase 0 baseline
     |
-    +--> regressioninc 1.1 -> 1.2 -> 1.3
-    |                              |
-    |                              v
-    +--------------------------> resistics 1.4 -> 1.5 -> 1.6 -> 1.7 -> 1.8
-                                                   |
-                                                   v
+    +--> regressioninc 1.1 -> 1.2
+    |                         |
+    |                         v
+    +--------------------> resistics 1.4 -> 1.5 -> 1.8
+                                              |
+                                              v
 Phase 2 quality/docstring tools -> Phase 3 type checker
               |                         |
               |                         +--> typed public API / py.typed decision
@@ -165,12 +173,18 @@ Phase 6 dependency/platform evidence -> Phase 7 final MyST documentation
                                         |
                                         v
                                   Phase 8 final audit
+
+Deferred owner follow-up after local hardening:
+regressioninc 1.3 -> hosted CI 1.6 -> publishing 1.7
 ```
 
 Additional sequencing rules:
 
-- Phase 1.4 cannot complete until an installable `regressioninc` boundary
-  exists. Publishing that boundary remains a manual user action.
+- Phase 1.4 retains the editable sibling regressioninc boundary and must refresh
+  the resistics lock whenever that package's metadata changes.
+- Checkpoints 1.3, 1.6, and 1.7 are owned deferrals. They do not block Phases
+  2-8, but the final audit must not claim standalone registry installation,
+  hosted automation, or publication readiness.
 - Ruff and pydoclint must be installed before their pre-commit hooks become
   mandatory.
 - The type-checker evaluation must precede removal of mypy.
@@ -179,8 +193,8 @@ Additional sequencing rules:
 - The Phase 7.1 parser prototype must pass before bulk docstring conversion.
 - The documentation migration follows stable public/module boundaries where
   possible, avoiding avoidable rewrites of freshly converted documentation.
-- Phase 8 cannot begin while a phase gate is incomplete or deferred without an
-  owner and documented production consequence.
+- Phase 8 cannot begin while a local code/tooling/documentation gate is
+  incomplete or any deferral lacks an owner and documented consequence.
 
 ## Checkpoint Tracker
 
@@ -195,13 +209,13 @@ or short command/result reference. Detailed output belongs in the session log or
 | Gate 0 | resistics | `complete` | `d9911e3`; 373 tests; repeatable report |
 | 1.1 | regressioninc | `verified` | S003; clean sync/build/wheel tests |
 | 1.2 | regressioninc | `verified` | S004; locked CI/docs/build and guard checks |
-| 1.3 | regressioninc | `not_started` | Depends on 1.2; release is manual |
-| 1.4 | resistics | `not_started` | Needs installable regressioninc |
-| 1.5 | resistics | `not_started` | Depends on 1.4 |
-| 1.6 | resistics | `not_started` | Depends on 1.5 |
-| 1.7 | resistics | `not_started` | Workflow only; no publication |
-| 1.8 | resistics | `not_started` | Depends on active uv paths |
-| Gate 1 | both | `not_started` | Depends on 1.1-1.8 |
+| 1.3 | regressioninc | `deferred` | Owner; after resistics and regressioninc review |
+| 1.4 | resistics | `verified` | S006; clean paired sync and 373 tests |
+| 1.5 | resistics | `verified` | S007-S008; tsdownsample; Python 3.11-3.14 |
+| 1.6 | resistics | `deferred` | Owner; automate stable local commands later |
+| 1.7 | resistics | `deferred` | Owner; after regressioninc release decision |
+| 1.8 | resistics | `not_started` | Depends on 1.5 local paths |
+| Gate 1 | both | `not_started` | Local gate depends on 1.1, 1.2, 1.4, 1.5, 1.8 |
 | 2.1 | resistics | `not_started` | Ruff lint migration |
 | 2.2 | resistics | `not_started` | Depends on 2.1 |
 | 2.3 | resistics | `not_started` | pydoclint in NumPy mode initially |
@@ -258,15 +272,16 @@ contains the full requirements.
 - Exit evidence: green existing suite, repeatable measurements, and Gate 0
   acceptance recorded.
 
-### Phase 1 - Packaging, uv, and automation
+### Phase 1 - Local packaging and uv
 
-- Session work: handle `regressioninc` packaging in its repository, establish
-  its installable boundary, remove the local source override, harden resistics
-  artifacts, and replace test/publish workflows.
-- Keep release configuration separate from an actual release. Record any manual
-  user action as a blocker with the precise artifact/version required.
-- Exit evidence: clean uv-only sync/build/test/docs paths and inspected wheel and
-  sdist artifacts from both packages.
+- Session work: keep regressioninc as a documented editable sibling, refresh
+  the paired lock, harden resistics metadata and paired artifacts, and remove
+  Poetry from active local development and documentation paths.
+- Do not spend programme time on hosted CI, registry publication, or standalone
+  dependency resolution. Preserve those as owned follow-ups with their
+  production consequence stated explicitly.
+- Exit evidence: clean paired uv-only sync/build/test/docs paths and inspected
+  local wheel/sdist artifacts from both packages.
 
 ### Phase 2 - Ruff, pydoclint, docstrings, and pre-commit
 
@@ -276,7 +291,7 @@ contains the full requirements.
 - Preserve a formatting-only boundary even if it shares a session with other
   work, so behavioural regressions remain diagnosable.
 - Exit evidence: legacy tools absent, public docstrings complete, baselines
-  recorded, pre-commit and CI invoking the same project versions.
+  recorded, and pre-commit/full local commands invoking locked project tools.
 
 ### Phase 3 - Type checking
 
@@ -383,7 +398,7 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 For timing measurements, record the machine/runtime context and multiple runs.
 Do not compare one cold run with one warm run or turn machine-specific timings
-into brittle CI assertions.
+into brittle automated assertions.
 
 ## Decision Log
 
@@ -432,6 +447,30 @@ old id when evidence changes the direction.
   compatibility fixes discovered by the clean docs environment in Checkpoint
   1.2. They are required for the replacement Read the Docs path to execute and
   do not pre-empt the broader Phase 7 documentation migration.
+- `D017` (2026-07-19): Supersede the release-first dependency sequence. Keep
+  regressioninc as the editable sibling uv source throughout resistics
+  hardening; refresh and verify the paired lock rather than publishing an alpha
+  solely to remove the local source.
+- `D018` (2026-07-19): Hosted CI, Read the Docs deployment, standalone registry
+  installation, and publishing automation are owner follow-ups. They do not
+  gate Ruff/pydoclint, type checking, TUI performance, module boundaries,
+  dependency auditing, MyST documentation, or the local final audit.
+- `D019` (2026-07-19): Checkpoint 1.4 verifies the current narrative/API docs
+  with Sphinx Gallery execution disabled. The full build's 18 obsolete example
+  failures are measured Phase 7 debt, not a reason to mix gallery migration
+  into the local dependency-boundary checkpoint.
+- `D020` (2026-07-19, superseded by D022): Declare and verify Python
+  `>=3.11,<3.15`. Python 3.11 initially resolved NumPy `<2` because the
+  compatible lttbc extension line was not NumPy-2 compatible.
+- `D021` (2026-07-19): Restrict the source distribution to the package source,
+  tests, build metadata, README, changelog, and license. Repository plans,
+  workflows, generated documentation, notebooks, and 68 MB of example datasets
+  remain available from the repository but are not package-source contents.
+- `D022` (2026-07-19): Replace lttbc with `tsdownsample>=0.1.5.1,<0.2` and
+  remove Resistics' provisional Python 3.11 NumPy upper bound. Use standard LTTB
+  for finite arrays and the documented NaN-aware MinMaxLTTB implementation when
+  a floating-point series contains gaps. Apply returned indices to the original
+  arrays to preserve dtype and large-index precision.
 
 ## Blocker Log
 
@@ -740,3 +779,227 @@ correct a factual error; note the correction explicitly.
   exports and PEP 621 metadata, selecting and documenting the compatible alpha
   release boundary, then repeating isolated artifact verification without
   publishing or changing repository settings.
+
+### S005 - 2026-07-19 - Retain the local regressioninc boundary
+
+- Checkpoint state at start: `1.3` had been set `in_progress`, but no release
+  boundary edit had landed.
+- Starting HEAD and worktree: resistics `9052136` on `mth5` with the tracker and
+  two pre-existing workflow files dirty; regressioninc `9eb11a4` on `main` with
+  the documented Checkpoints 1.1/1.2 work and owner-authored `base.py` edit.
+- Session objective: assess and record the owner's decision to prioritise local
+  production-quality code and modern tooling while retaining the sibling
+  regressioninc installation and deferring hosted/release work.
+- Work completed: revised the governing plan and this tracker so the editable
+  sibling source is intentional; replaced the release-first dependency chain
+  with a local uv boundary; changed package, quality, typing, dependency, and
+  documentation gates to use repeatable local commands; and moved hosted CI,
+  Read the Docs deployment, registry-only installation, and publishing into
+  explicit owner follow-ups.
+- Files changed: `.agents/plans/codebase-hardening.md` and
+  `.agents/plans/code-hardening-implementation.md`.
+- Decisions added or superseded: D017 supersedes the release-first sequence;
+  D018 makes hosted and publishing work non-gating.
+- Verification commands and results:
+  - Regressioninc status/diff review confirmed the aborted 1.3 edit changed no
+    product file and its version remains `0.1.0a0`.
+  - `uv lock --check` in resistics resolved 194 packages and reported that the
+    lock needs updating, confirming the first revised Checkpoint 1.4 action.
+  - `git diff --check` passed after the plan reconciliation.
+- Measurements/artifacts: none.
+- Known failures or incomplete work: resistics locked sync is not current until
+  Checkpoint 1.4 deliberately refreshes the local regressioninc metadata.
+  Standalone installation, hosted CI/Read the Docs, and publishing readiness
+  must not be claimed during the local hardening programme.
+- Checkpoint state at end: `1.3` is `deferred`; revised `1.4` is queued.
+- Commit readiness or commit id: the two planning-file updates are ready; no
+  commit was requested or created.
+- Exact next action: begin revised Checkpoint 1.4 by inspecting the local
+  regressioninc entries in `uv.lock`, run a deliberate `uv lock`, and verify a
+  locked paired-repository sync before changing production code.
+
+### S006 - 2026-07-19 - Formalise the local sibling boundary
+
+- Checkpoint state at start: revised `1.4` was `not_started`; regressioninc
+  release work and hosted automation were already deferred by S005.
+- Starting HEAD and worktree: resistics `1e5b208` on `mth5` with both plan files
+  and two owner workflow edits dirty; regressioninc remained at `9eb11a4` on
+  `main` with the documented Checkpoints 1.1/1.2 and Pydantic 2 changes.
+- Session objective: make the sibling regressioninc source an explicit,
+  reproducible local boundary and prove it from a clean paired directory layout.
+- Work completed: refreshed `uv.lock` against regressioninc's PEP 621 metadata;
+  documented the required sibling directory names, locked setup/test commands,
+  missing-path recovery, and non-registry scope in `README.md`; and clarified
+  that Phase 7 owns execution of the obsolete Sphinx Gallery examples.
+- Files changed by this checkpoint: `README.md`, `uv.lock`,
+  `.agents/plans/codebase-hardening.md`, and this implementation record. No
+  production Python file was changed.
+- Decisions added or superseded: D019 keeps legacy gallery execution out of the
+  dependency-boundary checkpoint while preserving the failure evidence for
+  Phase 7.
+- Verification commands and results:
+  - `uv lock` and final `uv lock --check`: resolved 194 packages. The 27-line
+    lock diff updates regressioninc's Pydantic requirement to `>=2.0` and
+    records its uv dependency groups; no unrelated package version changed.
+  - `uv sync --locked --all-groups` succeeded in the working tree and in a
+    clean temporary paired layout, where it built both editable projects and
+    installed 184 packages.
+  - The documented missing-sibling case failed immediately with
+    `Distribution not found at: .../regressioninc`, matching the README recovery
+    guidance.
+  - The full suite passed in both environments: 373 tests in 22.52 seconds and
+    373 tests in 23.04 seconds respectively.
+  - Installed metadata resolved regressioninc and resistics from their expected
+    sibling paths; the `resistics` console entry point loaded
+    `resistics.tui:main` as a callable. Direct `resistics.project` and
+    `resistics.gather` imports also passed.
+  - The unmodified full Sphinx build reproduced 18 legacy gallery failures:
+    removed modules, removed pandas arguments, and Chrome-dependent Plotly
+    rendering. With gallery execution disabled, the narrative/API HTML build
+    succeeded with 98 existing warnings. This is the measured Phase 7 baseline,
+    not a regressioninc-boundary failure.
+  - Final `git diff --check` passed.
+- Measurements/artifacts: local HTML evidence is under
+  `.artifacts/hardening/documentation/checkpoint-1.4-html-no-gallery/`; temporary
+  paired and missing-sibling environments are under `/tmp` only.
+- Known failures or incomplete work: executable legacy gallery documentation
+  and warning cleanup remain assigned to Phase 7. Standalone registry
+  installation, hosted CI/Read the Docs, and publishing remain the D018 owner
+  deferrals.
+- Checkpoint state at end: `1.4` is `verified`; local Gate 1 remains open.
+- Commit readiness or commit id: the scoped README/lock/plan changes are ready;
+  no commit was requested or created.
+- Exact next action: begin Checkpoint 1.5 by comparing resistics' alpha version,
+  classifier, Python range, URLs, license, and package contents before changing
+  metadata or building paired local artifacts.
+
+### S007 - 2026-07-19 - Harden metadata and paired artifacts
+
+- Checkpoint state at start: `1.5` was `in_progress` after Checkpoint 1.4 had
+  verified the paired editable-repository boundary.
+- Starting HEAD and worktree: resistics `1e5b208` on `mth5` with the two plan
+  files, Checkpoint 1.4 README/lock work, and two owner workflow edits dirty;
+  regressioninc remained at `9eb11a4` with its documented hardening changes.
+- Session objective: align Resistics metadata with the actual alpha release,
+  prove its supported Python range, reduce accidental distribution contents,
+  and verify wheel/sdist installation with a locally built regressioninc wheel.
+- Work completed: normalized version `1.0.0a3`; changed the Beta classifier to
+  Alpha; declared Python 3.11-3.14 classifiers and `>=3.11,<3.15`; made the
+  MIT license file explicit; corrected the documentation URL; required a
+  PEP-639-capable Hatchling; added a minimal sdist allow-list; updated stale
+  README Python/install text; and made the Windower example deterministic
+  across NumPy 1 and 2 while retaining it in the class docstring.
+- Compatibility correction: the first clean Python 3.11 run exposed an lttbc
+  wheel compiled against NumPy 1 being installed with NumPy 2. The package now
+  declares NumPy `<2` on Python 3.11 and modern NumPy on Python 3.12+, allowing
+  the resolver to select the compatible lttbc line without a uv-only override.
+- Files changed by this checkpoint: `pyproject.toml`, `README.md`,
+  `resistics/window.py`, `uv.lock`, the governing plan carried from earlier
+  sessions, and this implementation record. Owner workflow changes were not
+  modified.
+- Decisions added or superseded: D020 records the evidence-based NumPy marker;
+  D021 defines the source-distribution boundary. The planned `py.typed` marker
+  remains deferred until Phase 3.
+- Verification commands and results:
+  - Final locked suites passed against the exact working-tree source on CPython
+    3.11.15, 3.12.13, 3.13.5, and 3.14.6: 373 tests on every minor. The final
+    recorded runs took 33.64, 32.55, 21.77, and 30.03 seconds respectively;
+    three matrix runs were intentionally concurrent and are not performance
+    baselines.
+  - `uv lock --check` resolved 195 packages and passed. The split lock selects
+    NumPy 1.26.4/lttbc 0.2.4 below Python 3.12 and NumPy 2.5.0/lttbc 0.3.0 on
+    Python 3.12+.
+  - `uv build` produced `resistics-1.0.0a3.tar.gz` and the universal wheel. The
+    wheel contains only the 21 production modules and dist-info, including
+    `LICENCE.txt`; metadata and `resistics = resistics.tui:main` are correct.
+  - The allow-listed sdist contains package source, 16 test files, README,
+    changelog, license, and build metadata. It is 185,303 bytes, down from the
+    39,903,321-byte default artifact, and excludes internal plans, workflows,
+    notebooks, generated docs, and example datasets.
+  - Isolated Python 3.14 wheel and Python 3.12 sdist installs each resolved the
+    locally built `regressioninc-0.1.0a0` wheel, imported both packages from
+    site-packages, reported the expected versions/Python range, and exercised
+    the console launcher usage path with its expected exit status.
+  - The Read the Docs 1.0 URL, GitHub repository, and issue tracker resolved;
+    wheel and sdist metadata carry the corrected values and explicit MIT
+    license expression/file.
+  - Final `git diff --check` passed.
+- Measurements/artifacts: inspected distributions are under
+  `.artifacts/hardening/package/checkpoint-1.5/`; matrix and isolated install
+  environments are under `/tmp/resistics-checkpoint-1-5-*` only.
+- Known failures or incomplete work: registry-only regressioninc resolution,
+  hosted automation, publishing, and cross-platform coverage remain D018 owner
+  deferrals. Phase 3 owns the typed-package decision, and Phase 6 will perform
+  the broader lower-bound/dependency review.
+- Checkpoint state at end: `1.5` is `verified`; Checkpoint 1.8 is next and local
+  Gate 1 remains open.
+- Commit readiness or commit id: the scoped metadata, compatibility, artifact,
+  README/lock, and tracking changes are ready; no commit was requested or
+  created.
+- Exact next action: begin Checkpoint 1.8 by inventorying active Poetry
+  references case-insensitively, preserving historical plan evidence while
+  removing obsolete local, documentation, workflow, notebook, and config paths.
+
+### S008 - 2026-07-19 - Replace lttbc with tsdownsample
+
+- Checkpoint state at start: `1.5` had been verified in S007 but was reopened
+  after the owner approved replacing the unmaintained lttbc dependency rather
+  than retaining its Python 3.11 NumPy workaround.
+- Starting HEAD and worktree: resistics remained at `1e5b208` on `mth5` with
+  the accumulated verified hardening work and two pre-existing owner workflow
+  edits dirty; regressioninc remained at `9eb11a4` with its documented changes.
+- Session objective: replace lttbc with an actively released LTTB backend,
+  preserve plotting behaviour, remove the NumPy upper bound, and repeat all
+  Checkpoint 1.5 compatibility and artifact gates.
+- Work completed: replaced `lttbc>=0.2.1` with
+  `tsdownsample>=0.1.5.1,<0.2`; changed the wrapper to select original-array
+  indices without float32 conversion; made strided inputs contiguous only for
+  the native call; selected NaN-aware MinMaxLTTB for floating-point gaps; and
+  updated plotting docstrings to use the implementation-neutral LTTB term.
+- Tests added: exact existing point selection remains unchanged; large int64
+  indices and source dtypes are preserved; non-contiguous views are accepted;
+  and a NaN marker survives downsampling so Plotly does not bridge a data gap.
+- Files changed by this amendment: `pyproject.toml`, `uv.lock`,
+  `resistics/plot.py`, `resistics/time.py`, `resistics/spectra.py`,
+  `resistics/decimate.py`, `tests/test_plot.py`, and this implementation record.
+- Decisions added or superseded: D022 supersedes D020's temporary NumPy marker
+  while retaining the verified Python `>=3.11,<3.15` support declaration.
+- Verification commands and results:
+  - `uv lock` resolved 194 packages, removed lttbc 0.2.4 and 0.3.0, and added
+    tsdownsample 0.1.5.1. Resistics once again declares unqualified
+    `numpy>=1.20.2`; no lttbc package remains in the lock or artifacts.
+  - Six focused LTTB test cases passed, including the three new precision,
+    strided-view, and NaN-gap contracts.
+  - Clean paired locked environments passed 376 tests on CPython 3.11.15,
+    3.12.13, and 3.14.6 in 35.00, 32.34, and 31.80 seconds. The working CPython
+    3.13.5 environment passed 376 tests in 21.42 seconds.
+  - The temporary Python 3.11 environment was then upgraded from NumPy 1.26.4
+    to NumPy 2.4.6 outside the lock and passed all 376 tests in 22.98 seconds,
+    directly verifying that the former binary incompatibility is gone.
+  - In an isolated comparison using the existing Resistics wrapper contract,
+    standard tsdownsample LTTB selected exactly the same indices as lttbc for
+    the existing example and synthetic 100,000- and 1,000,000-point signals.
+    It was approximately 3.5-4 times faster while preserving original dtypes.
+  - Fresh Python 3.11 wheel and Python 3.14 sdist installs resolved the local
+    regressioninc wheel, installed tsdownsample with NumPy 2, omitted lttbc,
+    retained a NaN gap through the public wrapper, imported from site-packages,
+    and exercised the console launcher usage path successfully.
+  - Final wheel metadata contains `tsdownsample<0.2,>=0.1.5.1`, contains no
+    lttbc dependency or Python-specific NumPy restriction, and retains the
+    inspected S007 license, URL, entry-point, and package-content boundary.
+  - Final `uv lock --check` and `git diff --check` passed.
+- Measurements/artifacts: rebuilt distributions remain under
+  `.artifacts/hardening/package/checkpoint-1.5/`; clean matrix, comparison, and
+  artifact environments are under `/tmp/resistics-*` only.
+- Known failures or incomplete work: tsdownsample uses native Rust wheels, so
+  Phase 6 should retain wheel-availability review for any future niche target.
+  Its current release provides wheels for the declared Python minors on the
+  mainstream Linux, macOS, and Windows targets.
+- Checkpoint state at end: amended `1.5` is `verified`; Checkpoint 1.8 is again
+  next and local Gate 1 remains open.
+- Commit readiness or commit id: the dependency replacement and all prior
+  verified Checkpoint 1.4/1.5 changes are ready; no commit was requested or
+  created.
+- Exact next action: begin Checkpoint 1.8 by inventorying active Poetry
+  references case-insensitively, preserving historical plan evidence while
+  removing obsolete local, documentation, workflow, notebook, and config paths.

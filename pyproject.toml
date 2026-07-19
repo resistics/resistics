@@ -1,11 +1,12 @@
 [project]
 name = "resistics"
-version = "1.0.0-alpha.3"
+version = "1.0.0a3"
 description = "Python package for processing magnetotelluric data"
 authors = [{ name = "Neeraj Shah", email = "resistics@outlook.com" }]
-requires-python = ">=3.11,<=3.14"
+requires-python = ">=3.11,<3.15"
 readme = "README.md"
 license = "MIT"
+license-files = ["LICENCE.txt"]
 maintainers = [{ name = "Neeraj Shah", email = "resistics@outlook.com" }]
 keywords = [
     "geophysics",
@@ -15,8 +16,12 @@ keywords = [
     "statistics",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "License :: OSI Approved :: MIT License",
     "Intended Audience :: Science/Research",
@@ -25,7 +30,7 @@ dependencies = [
     "numpy>=1.20.2",
     "scipy>=1.6.2",
     "pandas>=1.2.3",
-    "lttbc>=0.2.1",
+    "tsdownsample>=0.1.5.1,<0.2",
     "attotime==0.2.3",
     "plotly>=5.11.0",
     "fast-sugiyama==0.5.3",
@@ -47,7 +52,7 @@ resistics = "resistics.tui:main"
 [project.urls]
 Homepage = "https://www.resistics.io"
 Repository = "https://github.com/resistics/resistics"
-Documentation = "https://www.resistics.io"
+Documentation = "https://resistics.readthedocs.io/"
 Source = "https://github.com/resistics/resistics"
 "Bug Tracker" = "https://github.com/resistics/resistics/issues"
 
@@ -88,8 +93,18 @@ default-groups = ["shared", "dev", "docs", "tests", "notebooks"]
 regressioninc = { path = "../regressioninc", editable = true }
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/CHANGELOG.rst",
+    "/LICENCE.txt",
+    "/README.md",
+    "/pyproject.toml",
+    "/resistics",
+    "/tests",
+]
 
 [tool.pytest.ini_options]
 addopts = "--doctest-modules"

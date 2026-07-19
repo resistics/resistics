@@ -1256,7 +1256,10 @@ class Windower(ResisticsProcess):
     information about each level is also in the levels_metadata attribute of
     WindowedMetadata.
 
+    >>> from loguru import logger
+    >>> logger.disable("resistics")
     >>> win_data = Windower().run(ref_time, win_params, dec_data)
+    >>> logger.enable("resistics")
     >>> win_data.data[0].shape
     (1365, 2, 16)
     >>> for level_metadata in win_data.metadata.levels_metadata:
@@ -1286,8 +1289,10 @@ class Windower(ResisticsProcess):
     Let's look at an example of data from the first decimation level for the
     first channel. This is simply a linear set of data ranging from 0...16_383.
 
-    >>> dec_data.data[0][0]
-    array([    0,     1,     2, ..., 16381, 16382, 16383], shape=(16384,))
+    >>> dec_data.data[0][0].shape
+    (16384,)
+    >>> dec_data.data[0][0][[0, 1, 2, -3, -2, -1]]
+    array([    0,     1,     2, 16381, 16382, 16383])
 
     Inspecting the first few windows shows they are as expected including the
     overlap.

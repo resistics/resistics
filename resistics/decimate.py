@@ -674,7 +674,7 @@ class DecimatedData(ResisticsData):
         ----------
         max_pts : Optional[int], optional
             The maximum number of points in any individual plot before applying
-            lttbc downsampling, by default 10_000. If set to None, no
+            LTTB downsampling, by default 10_000. If set to None, no
             downsampling will be applied.
 
         Returns

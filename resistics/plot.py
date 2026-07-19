@@ -10,10 +10,10 @@ from typing import Any, List, Dict, Tuple, Optional, Union
 from fast_sugiyama import from_edges
 import numpy as np
 import pandas as pd
-import lttbc
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from tsdownsample import LTTBDownsampler, NaNMinMaxLTTBDownsampler
 
 PLOTLY_TEMPLATE = "seaborn"
 PLOTLY_MARGIN = dict(l=0, r=0, b=0, t=50)
@@ -35,6 +35,8 @@ JOB_CARD_BASE_HEIGHT = 118
 JOB_CARD_LINE_HEIGHT = 17
 JOB_CARD_TEXT_SIZE = 12
 JOB_CARD_VALUE_MAX_LENGTH = 38
+_LTTB_DOWNSAMPLER = LTTBDownsampler()
+_NAN_LTTB_DOWNSAMPLER = NaNMinMaxLTTBDownsampler()
 
 
 def _flow_descriptors(flow, project_path: Optional[Path]):
@@ -981,20 +983,27 @@ def lttb_downsample(
     ------
     ValueError
         If the size of x does not match the size of y
+
+    Notes
+    -----
+    Selection indices are applied to the original arrays so their dtypes are
+    preserved. Floating-point data containing NaNs uses the NaN-aware
+    MinMaxLTTB implementation to retain markers for visible Plotly gaps.
     """
     if x.size != y.size:
         raise ValueError(f"x size {x.size} must equal y size {y.size}")
     if max_pts >= x.size:
         return x, y
 
-    x_dtype = x.dtype
-    y_dtype = y.dtype
-    nx, ny = lttbc.downsample(
-        x.astype(np.float32),
-        y.astype(np.float32),
-        max_pts,
+    contiguous_x = np.ascontiguousarray(x)
+    contiguous_y = np.ascontiguousarray(y)
+    downsampler = (
+        _NAN_LTTB_DOWNSAMPLER
+        if np.issubdtype(y.dtype, np.inexact) and np.isnan(y).any()
+        else _LTTB_DOWNSAMPLER
     )
-    return nx.astype(x_dtype), ny.astype(y_dtype)
+    indices = downsampler.downsample(contiguous_x, contiguous_y, n_out=max_pts)
+    return x[indices], y[indices]
 
 
 def apply_lttb(
