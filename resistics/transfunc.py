@@ -229,8 +229,8 @@ class TransferFunction(Metadata):
         {
             'name': 'ImpedanceTensor',
             'variation': 'ecross',
-            'out_chans': ['Ex', 'Ey'],
-            'in_chans': ['Hx', 'Hy'],
+            'out_chans': ['ex', 'ey'],
+            'in_chans': ['hx', 'hy'],
             'cross_chans': ['Ex', 'Ey'],
             'n_out': 2,
             'n_in': 2,

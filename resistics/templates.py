@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from resistics.flow import (
     FlowDefinition,
@@ -15,6 +16,9 @@ from resistics.flow import (
     single_site_mt_flow,
     single_site_mt_target_flow,
 )
+
+if TYPE_CHECKING:
+    from resistics.gather import GatherCriteria
 
 SINGLE_SITE_FLOW_FILENAME = "single_site_mt_standard.yaml"
 SINGLE_SITE_TARGET_FLOW_FILENAME = "single_site_mt_target.yaml"
