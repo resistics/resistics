@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 1.1 verified and awaiting a durable commit
+Status: in progress; Checkpoint 1.2 verified and awaiting a durable commit
 Created: 2026-07-19
 Last updated: 2026-07-19
 Working branch: `mth5`
@@ -27,22 +27,23 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 1 - Remove Poetry and Modernise Packaging
-- Active checkpoint: `1.1` (`regressioninc`) - Convert package metadata
-- Checkpoint state: `verified`
+- Active checkpoint: `1.3` (`regressioninc`) - Prepare a resolvable release boundary
+- Checkpoint state: `not_started`
 - Last completed checkpoint: `0.2` at `d9911e3`
-- Last verified checkpoint: `1.1` in `S003`
-- Last session: `S003`
-- Last verified commit: resistics `d9911e3`; regressioninc `9eb11a4` is the
+- Last verified checkpoint: `1.2` in `S004`
+- Last session: `S004`
+- Last verified commit: resistics `9052136`; regressioninc `9eb11a4` is the
   base of uncommitted Checkpoint 1.1 work
 - Current blocker: none
-- Next exact action: review and durably record the three scoped regressioninc
-  packaging changes, then begin Checkpoint 1.2 by replacing Poetry automation
-  and repository references without including the user's dirty `base.py`.
+- Next exact action: inspect regressioninc's public version surface and package
+  metadata, choose and document the first compatible alpha release boundary,
+  then repeat isolated wheel/sdist verification without publishing it.
 
 Current worktree caveat:
 
-- `.agents/plans/code-hardening-implementation.md` contains the current S003
-  tracking changes. Checkpoint 0.2 is recorded through resistics `d9911e3`.
+- `.agents/plans/code-hardening-implementation.md` contains the current S004
+  verification and handoff. The owner recorded S003 tracking at resistics
+  `9052136`.
 - `.github/workflows/commit_flow.yml` and
   `.github/workflows/publish_flow.yml` contain pre-existing user changes.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -51,6 +52,9 @@ Current worktree caveat:
 - `../regressioninc/pyproject.toml`, deletion of
   `../regressioninc/poetry.lock`, and `../regressioninc/uv.lock` are the scoped
   Checkpoint 1.1 changes.
+- Regressioninc's CI and publishing workflows, Read the Docs configuration,
+  README, `.gitignore`, documentation configuration, legacy-reference checker,
+  and Matplotlib compatibility edits are the scoped Checkpoint 1.2 changes.
 - Resistics `uv lock --check` is expected to report stale while its lock still
   embeds metadata from the edited local regressioninc source. Do not rewrite
   that lock piecemeal; Checkpoint 1.4 owns removal of the local-source boundary.
@@ -190,7 +194,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | 0.2 | resistics | `complete` | `b350893`-`d9911e3`; S002 evidence |
 | Gate 0 | resistics | `complete` | `d9911e3`; 373 tests; repeatable report |
 | 1.1 | regressioninc | `verified` | S003; clean sync/build/wheel tests |
-| 1.2 | regressioninc | `not_started` | Depends on 1.1 |
+| 1.2 | regressioninc | `verified` | S004; locked CI/docs/build and guard checks |
 | 1.3 | regressioninc | `not_started` | Depends on 1.2; release is manual |
 | 1.4 | resistics | `not_started` | Needs installable regressioninc |
 | 1.5 | resistics | `not_started` | Depends on 1.4 |
@@ -417,6 +421,17 @@ old id when evidence changes the direction.
 - `D013` (2026-07-19): Preserve regressioninc's declared runtime dependency set
   during the build-backend migration. Direct-dependency rationalisation and
   credible lower bounds belong to Phase 6, not the Poetry-removal checkpoint.
+- `D014` (2026-07-19): Regressioninc automation uses a locked uv environment,
+  tests the minimum and maximum supported Python versions on Linux and Windows,
+  and runs legacy Flake8/darglint only once until Phase 2 replaces them.
+- `D015` (2026-07-19): Regressioninc publishing remains a manually dispatched,
+  two-job workflow. The publish job has only OIDC permission and the `pypi`
+  environment; configuring that environment and the matching PyPI Trusted
+  Publisher remains a manual owner action.
+- `D016` (2026-07-19): Keep the narrow Matplotlib and Sphinx Gallery
+  compatibility fixes discovered by the clean docs environment in Checkpoint
+  1.2. They are required for the replacement Read the Docs path to execute and
+  do not pre-empt the broader Phase 7 documentation migration.
 
 ## Blocker Log
 
@@ -659,3 +674,69 @@ correct a factual error; note the correction explicitly.
 - Exact next action: run `git -C ../regressioninc status --short`, review only
   `pyproject.toml`, `uv.lock`, and the `poetry.lock` deletion, then durably
   record Checkpoint 1.1 before starting Checkpoint 1.2 automation cleanup.
+
+### S004 - 2026-07-19 - Replace regressioninc automation and references
+
+- Checkpoint state at start: `1.2` was `in_progress`; Checkpoint 1.1 remained
+  verified but uncommitted in regressioninc.
+- Starting HEAD and worktree: regressioninc `9eb11a4` on `main` with the
+  documented uncommitted Checkpoint 1.1 files and the owner's independent
+  Pydantic 2 edit in `regressioninc/base.py`; resistics was at `9052136` on
+  `mth5` with two pre-existing workflow edits.
+- Session objective: remove remaining Poetry-era automation and contributor
+  references, establish a repeatable repository guard, and prepare but not run
+  a Trusted Publishing workflow.
+- Work completed: replaced regressioninc's CI with locked uv minimum/maximum
+  Python jobs; added a separated manual build/OIDC publish workflow; switched
+  Read the Docs to its native uv installation method; documented the uv
+  developer and publishing paths; added a tracked/unignored-file repository
+  guard; and removed the obsolete `.gitignore` commentary. Clean documentation
+  verification also exposed and fixed current Matplotlib colormap calls, the
+  Sphinx Gallery temporary-file matcher, an absent static directory, and an
+  unpickleable gallery sort configuration.
+- Files changed by this checkpoint: `../regressioninc/.github/workflows/commit_flow.yml`,
+  `../regressioninc/.github/workflows/publish_flow.yml`,
+  `../regressioninc/.readthedocs.yaml`, `../regressioninc/.gitignore`,
+  `../regressioninc/README.md`, `../regressioninc/docs/source/conf.py`,
+  `../regressioninc/regressioninc/testing/complex.py`,
+  `../regressioninc/regressioninc/testing/real.py`, and
+  `../regressioninc/scripts/check_no_legacy_packaging.py`. The owner's dirty
+  `regressioninc/base.py` was preserved without modification.
+- Decisions added or superseded: D014 records the regressioninc CI shape; D015
+  records the manual, least-privilege Trusted Publishing boundary; D016 records
+  the compatibility fixes needed to make the modern docs environment run.
+- Verification commands and results:
+  - `python scripts/check_no_legacy_packaging.py`: passed against the real
+    working tree. A deliberate untracked probe produced the expected exit 1
+    and exact file/line finding.
+  - PyYAML `yaml.compose` parsed both GitHub workflows and
+    `.readthedocs.yaml`; final `git diff --check` passed.
+  - `uv lock --check`: resolved the existing 105-package lock without changes.
+  - Clean `uv sync --locked --no-default-groups --group dev --group tests
+    --group docs`: installed 98 packages and built regressioninc successfully.
+  - Flake8 and darglint passed against `regressioninc` in the clean environment.
+  - A headless `plot_2d` smoke test exercised the updated real-data colormap
+    path and produced a figure successfully.
+  - `pytest --cov=regressioninc --cov-branch`: 28 passed on Python 3.13.5;
+    measured branch coverage was 43%.
+  - A second clean docs-only locked environment installed 57 packages.
+    `sphinx-build -W --keep-going -b html` then executed all seven gallery
+    examples and completed with zero warnings after fetching the configured
+    intersphinx inventories.
+  - `uv build --no-sources` produced the wheel and source distribution. An
+    extracted-artifact scan found no forbidden packaging reference outside the
+    deliberately self-describing repository checker.
+- Measurements/artifacts: temporary environments, HTML, and distributions
+  were kept under `/tmp`; no generated artifacts were added to either worktree.
+- Known failures or incomplete work: GitHub Actions and publishing were not
+  executed. Before any manual publish, the owner must configure the GitHub
+  `pypi` environment and a matching PyPI Trusted Publisher for
+  `publish_flow.yml`. Checkpoints 1.1 and 1.2 remain uncommitted together with
+  the separate owner-authored `base.py` edit.
+- Checkpoint state at end: `1.2` is `verified`; Gate 1 remains open.
+- Commit readiness or commit id: the scoped Checkpoint 1.2 changes are ready
+  for a regressioninc commit; no commit was requested or created.
+- Exact next action: begin Checkpoint 1.3 by inspecting regressioninc's version
+  exports and PEP 621 metadata, selecting and documenting the compatible alpha
+  release boundary, then repeating isolated artifact verification without
+  publishing or changing repository settings.
