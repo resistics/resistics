@@ -4,6 +4,7 @@ import asyncio
 import json
 from pathlib import Path
 from threading import Thread
+from time import perf_counter
 from types import SimpleNamespace
 
 import pandas as pd
@@ -194,6 +195,115 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
 
     asyncio.run(run_test())
     assert project.closed
+
+
+def test_cached_action_checks_are_fast_and_do_not_repeat_io(
+    monkeypatch, record_property, tmp_path
+):
+    """Keep in-memory Footer checks fast and independent of project I/O.
+
+    Plot and data-deletion checks still have known I/O paths. Checkpoint 4.1
+    will move those paths behind cached state and extend this regression gate.
+    """
+    project = FakeProject(tmp_path / "project")
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            screen = app.screen
+            io_calls = []
+
+            def record_call(name, operation):
+                def wrapped(*args, **kwargs):
+                    io_calls.append(name)
+                    return operation(*args, **kwargs)
+
+                return wrapped
+
+            monkeypatch.setattr(
+                project,
+                "file_summary",
+                record_call("project.file_summary", project.file_summary),
+            )
+            monkeypatch.setattr(
+                project,
+                "list_runs",
+                record_call("project.list_runs", project.list_runs),
+            )
+            monkeypatch.setattr(
+                project,
+                "get_project_data_json",
+                record_call(
+                    "project.get_project_data_json", project.get_project_data_json
+                ),
+            )
+            monkeypatch.setattr(
+                project,
+                "preview_project_data_deletion",
+                record_call(
+                    "project.preview_project_data_deletion",
+                    project.preview_project_data_deletion,
+                ),
+            )
+            for method_name in (
+                "exists",
+                "glob",
+                "is_dir",
+                "is_file",
+                "iterdir",
+                "open",
+                "read_bytes",
+                "read_text",
+                "resolve",
+                "rglob",
+                "stat",
+            ):
+                operation = getattr(Path, method_name)
+                monkeypatch.setattr(
+                    Path,
+                    method_name,
+                    record_call(f"Path.{method_name}", operation),
+                )
+            monkeypatch.setattr(
+                tui_module,
+                "model_from_yaml_file",
+                record_call(
+                    "model_from_yaml_file", tui_module.model_from_yaml_file
+                ),
+            )
+            monkeypatch.setattr(
+                screen.project_jobs,
+                "validate",
+                record_call("project_jobs.validate", screen.project_jobs.validate),
+            )
+
+            actions = (
+                "edit_yaml",
+                "create_job",
+                "copy_yaml",
+                "delete_yaml",
+                "save_yaml",
+                "discard_yaml",
+                "close_project",
+                "restore_defaults",
+                "run_selected_job",
+                "cancel_job",
+                "expand_data_node",
+                "collapse_data_node",
+            )
+            started = perf_counter()
+            for _ in range(100):
+                for action in actions:
+                    screen.check_action(action, ())
+            elapsed = perf_counter() - started
+
+            record_property("cached_action_checks_seconds", f"{elapsed:.6f}")
+            assert io_calls == []
+            assert elapsed < 2.0
+
+    asyncio.run(run_test())
 
 
 def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
