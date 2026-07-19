@@ -740,7 +740,6 @@ class TimeData(ResisticsData):
 
 
 class TimeReader(ResisticsProcess):
-
     apply_scalings: bool = True
     extension: str | None = None
 
@@ -1369,7 +1368,6 @@ def new_time_data(
 
 
 class TimeProcess(ResisticsProcess):
-
     input_types: ClassVar[dict[str, str]] = {"time_data": "time_data"}
     output_type: ClassVar[str] = "time_data"
     include_in_default_parameters: ClassVar[bool] = False
@@ -1624,7 +1622,6 @@ class Subsamples(TimeProcess):
 
 
 class InterpolateNans(TimeProcess):
-
     include_in_default_parameters: ClassVar[bool] = True
     """
     Interpolate nan values in the data
@@ -1695,7 +1692,6 @@ class InterpolateNans(TimeProcess):
 
 
 class RemoveMean(TimeProcess):
-
     include_in_default_parameters: ClassVar[bool] = True
     """
     Remove channel mean value from each channel

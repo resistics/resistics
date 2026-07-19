@@ -1124,9 +1124,9 @@ def test_tui_copies_highlighted_flow_parameters_and_criteria_without_opening(
                 copy_form = app.screen
                 assert isinstance(copy_form, CopyYamlFileScreen)
                 assert copy_form.source == source
-                copy_form.query_one("#copy-yaml-name", Input).value = (
-                    f"{source.stem}_copy"
-                )
+                copy_form.query_one(
+                    "#copy-yaml-name", Input
+                ).value = f"{source.stem}_copy"
                 copy_form.copy()
                 await pilot.pause()
                 copied = source.with_name(f"{source.stem}_copy.yaml")

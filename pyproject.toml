@@ -59,7 +59,6 @@ Source = "https://github.com/resistics/resistics"
 [dependency-groups]
 shared = ["matplotlib"]
 dev = [
-    "black",
     "pre-commit",
     "ruff>=0.15.22,<0.16",
     "darglint",
@@ -124,15 +123,18 @@ directory = ".artifacts/hardening/coverage/html"
 [tool.coverage.xml]
 output = ".artifacts/hardening/coverage/coverage.xml"
 
-[tool.black]
-line-length = 88
-target-version = ["py38"]
-
 [tool.ruff]
 line-length = 88
 target-version = "py311"
 extend-exclude = ["docs", "examples"]
 force-exclude = true
+
+[tool.ruff.format]
+docstring-code-format = false
+indent-style = "space"
+line-ending = "auto"
+quote-style = "double"
+skip-magic-trailing-comma = false
 
 [tool.ruff.lint]
 select = [
@@ -152,7 +154,7 @@ select = [
     "W",
 ]
 ignore = [
-    "E501", # Black remains the line-length authority until Checkpoint 2.2.
+    "E501", # Ruff format is the line-length authority.
 ]
 
 [tool.ruff.lint.mccabe]

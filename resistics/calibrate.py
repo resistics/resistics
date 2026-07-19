@@ -504,13 +504,11 @@ class Calibrator(ResisticsProcess):
 
 
 class InstrumentCalibrator(Calibrator):
-
     readers: list[InstrumentCalibrationReader]
     """List of readers for reading in instrument calibration files"""
 
 
 class SensorCalibrator(Calibrator):
-
     readers: list[SensorCalibrationReader]
     """List of readers for reading in sensor calibration files"""
 

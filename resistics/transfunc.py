@@ -377,13 +377,13 @@ class TransferFunction(Metadata):
         if il >= self.n_out:
             empty_len = max_len + 4
             return f"{'':{empty_len}s}"
-        return f"| { self.out_chans[il]:{max_len}s} |"
+        return f"| {self.out_chans[il]:{max_len}s} |"
 
     def _in_chan_string(self, il: int, max_len: int) -> str:
         """Get the in channel string"""
         if il >= self.n_in:
             return ""
-        return f"| { self.in_chans[il]:{max_len}s} |"
+        return f"| {self.in_chans[il]:{max_len}s} |"
 
     def _tensor_string(self, il: int, max_len: int) -> str:
         """Get the tensor string"""
@@ -393,7 +393,7 @@ class TransferFunction(Metadata):
         elements = "| "
         for chan in self.in_chans:
             component = f"{self.out_chans[il]}_{chan}"
-            elements += f"{component:{2*max_len + 1}s} "
+            elements += f"{component:{2 * max_len + 1}s} "
         elements += "|"
         return elements
 

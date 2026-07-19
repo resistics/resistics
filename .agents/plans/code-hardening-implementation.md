@@ -27,23 +27,23 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 2 - Ruff, pydoclint, docstrings, and pre-commit
-- Active checkpoint: `2.2` (`resistics`) - Switch formatting from Black to Ruff
+- Active checkpoint: `2.3` (`resistics`) - Replace darglint with pydoclint
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `1.8` at `a45a864`
-- Last verified checkpoint: `2.1` in `S010`
-- Last session: `S010`
-- Last verified commit: resistics `a45a864`; regressioninc `9eb11a4` is the
+- Last completed checkpoint: `2.1` at `f2d7c0d`
+- Last verified checkpoint: `2.2` in `S011`
+- Last session: `S011`
+- Last verified commit: resistics `f2d7c0d`; regressioninc `9eb11a4` is the
   base of uncommitted Checkpoints 1.1 and 1.2 work
 - Current blocker: none
-- Next exact action: begin Checkpoint 2.2 by comparing Black and Ruff formatting
-  on the exact S010 tree, review the mechanical diff, then remove Black only
-  after Ruff format preserves the intended 88-column style and tests pass.
+- Next exact action: begin Checkpoint 2.3 by measuring darglint's current
+  findings and runtime, installing pydoclint in NumPy mode, and establishing a
+  reviewed baseline without weakening checks for new or touched public APIs.
 
 Current worktree caveat:
 
-- Resistics `a45a864` records the accumulated work through Checkpoint 1.8. The
-  current dirty Resistics files are the scoped Checkpoint 2.1 Ruff migration
-  and this S010 verification record.
+- Resistics `f2d7c0d` records the accumulated work through Checkpoint 2.1. The
+  current dirty Resistics files are the scoped Checkpoint 2.2 formatting
+  migration and this S011 verification record.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -55,10 +55,10 @@ Current worktree caveat:
 - Regressioninc's CI and publishing workflows, Read the Docs configuration,
   README, `.gitignore`, documentation configuration, legacy-reference checker,
   and Matplotlib compatibility edits are the scoped Checkpoint 1.2 changes.
-- `.flake8` is intentionally deleted. `pyproject.toml`, `uv.lock`, the Ruff
-  pre-commit hook, and the mechanically modernised Python source/tests contain
-  the scoped S010 migration. Black and darglint remain active until Checkpoints
-  2.2 and 2.3 respectively.
+- Ruff format is now the sole Resistics Python formatter. The six mechanically
+  formatted Python files plus `pyproject.toml`, `.pre-commit-config.yaml`,
+  `README.md`, and `uv.lock` contain the scoped S011 migration. Darglint remains
+  active until Checkpoint 2.3.
 - These files must not be reverted or overwritten during hardening work.
 
 ## Authority and Boundaries
@@ -213,7 +213,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | 1.8 | resistics | `verified` | S009; active-reference guard and uv local gate |
 | Gate 1 | both | `verified` | S003-S009; local uv sync/test/build/docs gate |
 | 2.1 | resistics | `verified` | S010; Ruff 0.15.22 clean; 376 tests |
-| 2.2 | resistics | `not_started` | Depends on 2.1 |
+| 2.2 | resistics | `verified` | S011; Ruff format clean; 376 tests |
 | 2.3 | resistics | `not_started` | pydoclint in NumPy mode initially |
 | 2.4 | resistics | `not_started` | Public docstring contract |
 | 2.5 | resistics | `not_started` | Depends on 2.1-2.4 |
@@ -483,6 +483,14 @@ old id when evidence changes the direction.
   expression-complexity plugins; preserve their measured 17- and 4-finding
   baselines as explicit Phase 4/5 refactoring debt. Four current McCabe
   violations use function-level suppressions so new complexity remains checked.
+- `D025` (2026-07-19): Make Ruff 0.15.22 the sole Resistics Python formatter
+  with an explicit Black-compatible 88-column, double-quote, space-indent, and
+  magic-trailing-comma contract. Keep docstring code formatting disabled so
+  embedded examples, plots, and directive syntax remain author-controlled.
+  Ruff continues to honour the existing `fmt: off/on` data-layout boundary.
+  Remove Black from Resistics, while treating the remaining Black name in
+  `uv.lock` as sibling regressioninc development metadata rather than a
+  resolved Resistics tool.
 
 ## Blocker Log
 
@@ -1134,3 +1142,50 @@ correct a factual error; note the correction explicitly.
 - Exact next action: compare Ruff formatting against Black on this exact tree,
   review the formatting-only diff, then remove Black and its badge/hook/config
   after the Ruff-formatted suite passes.
+
+### S011 - 2026-07-19 - Switch formatting from Black to Ruff
+
+- Checkpoint state at start: `2.2` was `not_started`; Checkpoint 2.1 had been
+  committed at Resistics `f2d7c0d` on `mth5`, and the worktree was clean.
+- Starting HEAD and worktree: Resistics was clean at `f2d7c0d`; regressioninc
+  remained at `9eb11a4` with its separately documented uncommitted hardening
+  changes.
+- Session objective: establish Ruff as the sole Resistics formatter while
+  keeping the format-only diff isolated, reviewed, and behaviour-neutral.
+- Comparison and review: the committed tree passed Black. Ruff identified six
+  files for formatting and left 33 unchanged. The reviewed delta removed extra
+  class-body blank lines, normalized three f-string expressions, joined one
+  adjacent mask-error string, and selected equivalent wrapping for chained
+  Textual calls in production and tests. It changed no control flow or values.
+- Work completed: formatted the six files; added the explicit D025 Ruff format
+  contract; removed Black from the Resistics development group, configuration,
+  and pre-commit; added the pinned Ruff formatting hook after Ruff lint fixes;
+  and replaced the README Black badge with Ruff.
+- Files changed by this checkpoint: `resistics/calibrate.py`,
+  `resistics/mask.py`, `resistics/time.py`, `resistics/transfunc.py`,
+  `resistics/tui.py`, `tests/test_tui.py`, `pyproject.toml`, `uv.lock`,
+  `.pre-commit-config.yaml`, `README.md`, and this implementation record.
+- Decisions added or superseded: D025 records the explicit formatter contract
+  and protects embedded docstring examples/directives from automatic rewriting.
+- Verification commands and results:
+  - `ruff format --check resistics tests scripts`: all 39 files formatted.
+  - `ruff check resistics tests scripts`: all checks passed.
+  - Both pinned `ruff-check` and `ruff-format` pre-commit hooks passed against
+    all files.
+  - The full suite passed: 376 tests in 22.54 seconds.
+  - `uv lock` resolved 176 packages and removed Black 26.5.1 plus its
+    transitive-only Click and pytokens packages; `uv lock --check` passed.
+  - Black's executable is absent from the synced environment. Resistics source,
+    configuration, README, and hooks contain no active Black reference.
+  - The legacy-packaging guard and final `git diff --check` passed.
+- Known failures or incomplete work: `uv.lock` still records the Black name in
+  sibling regressioninc's development metadata, but Black is not a resolved
+  Resistics package. Darglint and the remaining old pre-commit hygiene/Prettier
+  hooks stay active until Checkpoints 2.3 and 2.5.
+- Checkpoint state at end: `2.2` is `verified`; Checkpoint 2.3 is next.
+- Commit readiness or commit id: the isolated formatter diff, Black removal,
+  Ruff hook/configuration, and verification record are ready; no commit was
+  requested or created.
+- Exact next action: measure darglint's findings and runtime, install pydoclint
+  in NumPy mode, and establish the reviewed Checkpoint 2.3 baseline without
+  weakening new or touched public API checks.

@@ -120,8 +120,7 @@ class WindowMask(ResisticsData):
                 )
             if list(table.columns) != expected_columns:
                 raise ValueError(
-                    f"Mask level {level_meta.level} columns must be "
-                    f"{expected_columns}"
+                    f"Mask level {level_meta.level} columns must be {expected_columns}"
                 )
             if any(not pd.api.types.is_bool_dtype(dtype) for dtype in table.dtypes):
                 raise ValueError(

@@ -1565,9 +1565,9 @@ class ProjectExplorerScreen(Screen[None]):
                 key=key,
             )
         if not self.job_summaries:
-            self.query_one("#job-content", TextArea).text = (
-                "No YAML jobs found in processing/jobs"
-            )
+            self.query_one(
+                "#job-content", TextArea
+            ).text = "No YAML jobs found in processing/jobs"
 
     @staticmethod
     def _yaml_paths(directory: Path) -> list[Path]:
@@ -1663,9 +1663,9 @@ class ProjectExplorerScreen(Screen[None]):
                 )
                 logger.debug(f"Unable to read flow {path}: {exc}")
         if not self.flow_paths:
-            self.query_one("#flow-content", TextArea).text = (
-                "No YAML flows found in processing/flows"
-            )
+            self.query_one(
+                "#flow-content", TextArea
+            ).text = "No YAML flows found in processing/flows"
 
     def _populate_parameters(self) -> None:
         """Populate the read-only parameter-set browser."""
@@ -1694,9 +1694,9 @@ class ProjectExplorerScreen(Screen[None]):
                 )
                 logger.debug(f"Unable to read parameter set {path}: {exc}")
         if not self.parameter_paths:
-            self.query_one("#parameter-content", TextArea).text = (
-                "No YAML parameter sets found in processing/parameters"
-            )
+            self.query_one(
+                "#parameter-content", TextArea
+            ).text = "No YAML parameter sets found in processing/parameters"
 
     def _populate_criteria(self) -> None:
         """Populate the read-only criteria browser."""
@@ -1720,9 +1720,9 @@ class ProjectExplorerScreen(Screen[None]):
                 table.add_row(path.stem, "-", "[red]invalid[/red]", key=key)
                 logger.debug(f"Unable to read criteria {path}: {exc}")
         if not self.criteria_paths:
-            self.query_one("#criteria-content", TextArea).text = (
-                "No YAML criteria files found in processing/criteria"
-            )
+            self.query_one(
+                "#criteria-content", TextArea
+            ).text = "No YAML criteria files found in processing/criteria"
 
     @on(Tree.NodeSelected, "#data-tree")
     def show_data_metadata(self, event: Tree.NodeSelected) -> None:
