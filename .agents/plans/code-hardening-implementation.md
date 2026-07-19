@@ -26,26 +26,27 @@ the two documents do not drift independently.
 ## Current State
 
 - Programme state: `in_progress`
-- Active phase: Phase 1 - Remove Poetry and Modernise Local Packaging
-- Active checkpoint: `1.8` (`resistics`) - Remove Poetry from active local paths
+- Active phase: Phase 2 - Ruff, pydoclint, docstrings, and pre-commit
+- Active checkpoint: `2.1` (`resistics`) - Replace Black and Flake8 with Ruff
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `0.2` at `d9911e3`
-- Last verified checkpoint: `1.5` in `S008`
-- Last session: `S008`
-- Last verified commit: resistics `1e5b208`; regressioninc `9eb11a4` is the
+- Last completed checkpoint: `1.5` at `61e1396`
+- Last verified checkpoint: `1.8` and Gate 1 in `S009`
+- Last session: `S009`
+- Last verified commit: resistics `61e1396`; regressioninc `9eb11a4` is the
   base of uncommitted Checkpoints 1.1 and 1.2 work
 - Current blocker: none
-- Next exact action: begin Checkpoint 1.8 with a case-insensitive Poetry
-  reference inventory, separating historical plan evidence from active local,
-  documentation, workflow, notebook, and configuration paths.
+- Next exact action: begin Checkpoint 2.1 by inventorying Black and Flake8
+  configuration, dependencies, suppressions, scripts, and pre-commit hooks,
+  then map every active rule to its Ruff equivalent before changing enforcement.
 
 Current worktree caveat:
 
-- `.agents/plans/code-hardening-implementation.md` contains the current S006
-  verification and handoff. The owner recorded S004 tracking at resistics
-  `1e5b208`.
-- `.github/workflows/commit_flow.yml` and
-  `.github/workflows/publish_flow.yml` contain pre-existing user changes.
+- Resistics `61e1396` records the accumulated work through amended Checkpoint
+  1.5. The current dirty Resistics files are the scoped Checkpoint 1.8 changes
+  and this S009 verification record.
+- `.github/workflows/commit_flow.yml`, `.github/workflows/publish_flow.yml`, and
+  `.readthedocs.yaml` are intentionally deleted by S009. The owner's Python
+  3.11/3.14 CI intent remains a requirement of deferred Checkpoint 1.6.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
   for Pydantic 2 and must not be reverted or absorbed silently into packaging
   work.
@@ -62,7 +63,10 @@ Current worktree caveat:
   contain the scoped Checkpoint 1.5 metadata, compatibility, doctest, and
   artifact-boundary changes.
 - `resistics/plot.py`, its plotting callers and tests, `pyproject.toml`, and
-  `uv.lock` contain the S008 replacement of lttbc with tsdownsample.
+  `uv.lock` contain the committed S008 replacement of lttbc with tsdownsample.
+- `README.md`, `notebooks/check_standalone_single.ipynb`, and
+  `scripts/check_no_legacy_packaging.py` contain the remaining S009 local-path
+  and guard changes.
 - These files must not be reverted or overwritten during hardening work.
 
 ## Authority and Boundaries
@@ -214,8 +218,8 @@ or short command/result reference. Detailed output belongs in the session log or
 | 1.5 | resistics | `verified` | S007-S008; tsdownsample; Python 3.11-3.14 |
 | 1.6 | resistics | `deferred` | Owner; automate stable local commands later |
 | 1.7 | resistics | `deferred` | Owner; after regressioninc release decision |
-| 1.8 | resistics | `not_started` | Depends on 1.5 local paths |
-| Gate 1 | both | `not_started` | Local gate depends on 1.1, 1.2, 1.4, 1.5, 1.8 |
+| 1.8 | resistics | `verified` | S009; active-reference guard and uv local gate |
+| Gate 1 | both | `verified` | S003-S009; local uv sync/test/build/docs gate |
 | 2.1 | resistics | `not_started` | Ruff lint migration |
 | 2.2 | resistics | `not_started` | Depends on 2.1 |
 | 2.3 | resistics | `not_started` | pydoclint in NumPy mode initially |
@@ -471,6 +475,12 @@ old id when evidence changes the direction.
   for finite arrays and the documented NaN-aware MinMaxLTTB implementation when
   a floating-point series contains gaps. Apply returned indices to the original
   arrays to preserve dtype and large-index precision.
+- `D023` (2026-07-19): Delete the obsolete Resistics commit, publishing, and
+  Read the Docs deployment configurations instead of partially translating
+  them. The editable sibling dependency has no hosted checkout design yet, so
+  an incomplete uv rewrite would imply automation that cannot work. Preserve
+  the owner's Python 3.11/3.14 matrix intent for Checkpoint 1.6 and rebuild
+  hosted documentation and publication only in their owned deferrals.
 
 ## Blocker Log
 
@@ -1003,3 +1013,59 @@ correct a factual error; note the correction explicitly.
 - Exact next action: begin Checkpoint 1.8 by inventorying active Poetry
   references case-insensitively, preserving historical plan evidence while
   removing obsolete local, documentation, workflow, notebook, and config paths.
+
+### S009 - 2026-07-19 - Remove Poetry from active Resistics paths
+
+- Checkpoint state at start: `1.8` was `not_started`; amended Checkpoint 1.5
+  was committed and verified, while hosted CI, Read the Docs deployment, and
+  publishing remained explicit owner deferrals.
+- Starting HEAD and worktree: Resistics `61e1396` on `mth5` with the owner's
+  Python 3.11/3.14 edits still present in both obsolete workflow files;
+  regressioninc remained at `9eb11a4` with its documented hardening changes.
+- Session objective: remove every active Poetry dependency path, make local
+  documentation usage explicitly uv-only, and prevent legacy packaging
+  references from returning without prematurely designing hosted automation.
+- Work completed: deleted the obsolete commit and publishing workflows and the
+  Poetry-backed Read the Docs configuration; documented the locked uv Sphinx
+  command with legacy gallery execution disabled; removed a captured pypoetry
+  environment path from a notebook warning; and added a case-insensitive
+  repository checker covering tracked and unignored files.
+- Guard boundary: the checker excludes only its own source and the two
+  hardening plans, which must name retired tools as historical evidence. It
+  scans active code, configuration, automation, documentation, notebooks, lock
+  files, and untracked contributor work.
+- Files changed by this checkpoint: deletion of
+  `.github/workflows/commit_flow.yml`,
+  `.github/workflows/publish_flow.yml`, and `.readthedocs.yaml`; updates to
+  `README.md` and `notebooks/check_standalone_single.ipynb`; addition of
+  `scripts/check_no_legacy_packaging.py`; and this implementation record.
+- Decisions added or superseded: D023 records why obsolete hosted files are
+  removed rather than replaced before the sibling-checkout design exists. It
+  preserves the owner's Python matrix intent for the deferred CI checkpoint.
+- Verification commands and results:
+  - `uv sync --locked --all-groups` resolved 194 packages and checked all 184
+    packages in the complete local environment.
+  - The exact documented `uv run --locked --no-sync sphinx-build` command built
+    HTML successfully with gallery execution disabled. It reported the 93
+    currently visible legacy warnings, retained as measured Phase 7 debt.
+  - The full source suite passed: 376 tests in 21.67 seconds.
+  - `uv build --no-sources` rebuilt the 1.0.0a3 wheel and source distribution
+    under `.artifacts/hardening/package/gate-1/`; the sdist retained its narrow
+    43-member package/test/metadata boundary.
+  - Final `uv lock --check` resolved 194 packages and passed.
+  - Both repositories' legacy-packaging checkers reported no active references.
+    Resistics' final `git diff --check` also passed.
+- Measurements/artifacts: local HTML is under
+  `.artifacts/hardening/documentation/checkpoint-1.8-html-uv/`; the rebuilt
+  distributions are under `.artifacts/hardening/package/gate-1/`.
+- Known failures or incomplete work: no hosted CI, Read the Docs deployment, or
+  publishing workflow is active. D018/D023 assign their replacement to the
+  repository owner after stable local commands and a sibling-checkout design
+  exist. The documentation warnings and obsolete gallery remain Phase 7 debt.
+- Checkpoint state at end: `1.8` and local Gate 1 are `verified`; Phase 2 can
+  start at Checkpoint 2.1.
+- Commit readiness or commit id: the scoped Checkpoint 1.8 removals, guard, and
+  documentation changes are ready; no commit was requested or created.
+- Exact next action: inventory Black and Flake8 configuration, dependencies,
+  suppressions, scripts, and pre-commit hooks for Checkpoint 2.1, then map every
+  active rule to Ruff before changing enforcement.

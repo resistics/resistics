@@ -62,6 +62,13 @@ uv sync --locked --all-groups
 uv run --locked --no-sync pytest
 ```
 
+Build the current narrative and API documentation without re-running the
+known-stale executable gallery examples with:
+
+```console
+uv run --locked --no-sync sphinx-build -D sphinx_gallery_conf.plot_gallery=0 -b html docs/source .artifacts/hardening/documentation/html
+```
+
 The sibling path is declared in `pyproject.toml` as `../regressioninc`. If uv
 reports that this path does not exist, clone or move the RegressionInC
 repository into the layout above before syncing. This development branch does
