@@ -109,6 +109,35 @@ class FakeProject:
         self.closed = True
 
 
+def _record_call(calls, name, operation):
+    def wrapped(*args, **kwargs):
+        calls.append(name)
+        return operation(*args, **kwargs)
+
+    return wrapped
+
+
+def _measure_action_checks(screen, actions, io_calls) -> float:
+    io_calls.clear()
+    started = perf_counter()
+    for _ in range(100):
+        for action in actions:
+            screen.check_action(action, ())
+    elapsed = perf_counter() - started
+    assert io_calls == []
+    return elapsed
+
+
+def _find_tree_node(node, data):
+    if node.data == data:
+        return node
+    for child in node.children:
+        found = _find_tree_node(child, data)
+        if found is not None:
+            return found
+    return None
+
+
 def test_tui_mounts_project_views(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
     flow = standard_mt_flow()
@@ -201,12 +230,49 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
 def test_cached_action_checks_are_fast_and_do_not_repeat_io(
     monkeypatch, record_property, tmp_path
 ):
-    """Keep in-memory Footer checks fast and independent of project I/O.
-
-    Plot and data-deletion checks still have known I/O paths. Checkpoint 4.1
-    will move those paths behind cached state and extend this regression gate.
-    """
+    """Keep every Footer check fast and independent of project I/O."""
     project = FakeProject(tmp_path / "project")
+    project.n_runs = 1
+    project.project_data_paths = [project.project_path / "data/derived"]
+    project.table = pd.DataFrame(
+        [
+            {
+                "survey": "survey",
+                "station": "field",
+                "sample_rate": 128.0,
+                "run_path": "survey/field/run1",
+            }
+        ]
+    )
+    project.mth5_data_items = [
+        ProjectDataItem(
+            source="mth5",
+            path="/Experiment/Surveys/survey/Stations/field/run1",
+            name="run1",
+            kind="group",
+            data_type="time",
+        )
+    ]
+    project.list_runs = lambda survey=None, station=None: [
+        SimpleNamespace(survey="survey", station="field", run="run1")
+    ]
+    flow_path = project.project_path / "processing/flows/standard.yaml"
+    flow_path.parent.mkdir(parents=True)
+    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    parameters_path = project.project_path / "processing/parameters/default.yaml"
+    parameters_path.parent.mkdir(parents=True)
+    parameters_path.write_text(model_to_yaml(default_parameter_set()))
+    job_path = project.project_path / "processing/jobs/field.yaml"
+    job_path.write_text(
+        model_to_yaml(
+            JobDefinition(
+                name="field",
+                flow="standard.yaml",
+                parameters="default.yaml",
+                scope=JobScope(stations=["field"]),
+            )
+        )
+    )
     monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
@@ -216,34 +282,30 @@ def test_cached_action_checks_are_fast_and_do_not_repeat_io(
             screen = app.screen
             io_calls = []
 
-            def record_call(name, operation):
-                def wrapped(*args, **kwargs):
-                    io_calls.append(name)
-                    return operation(*args, **kwargs)
-
-                return wrapped
-
             monkeypatch.setattr(
                 project,
                 "file_summary",
-                record_call("project.file_summary", project.file_summary),
+                _record_call(io_calls, "project.file_summary", project.file_summary),
             )
             monkeypatch.setattr(
                 project,
                 "list_runs",
-                record_call("project.list_runs", project.list_runs),
+                _record_call(io_calls, "project.list_runs", project.list_runs),
             )
             monkeypatch.setattr(
                 project,
                 "get_project_data_json",
-                record_call(
-                    "project.get_project_data_json", project.get_project_data_json
+                _record_call(
+                    io_calls,
+                    "project.get_project_data_json",
+                    project.get_project_data_json,
                 ),
             )
             monkeypatch.setattr(
                 project,
                 "preview_project_data_deletion",
-                record_call(
+                _record_call(
+                    io_calls,
                     "project.preview_project_data_deletion",
                     project.preview_project_data_deletion,
                 ),
@@ -265,17 +327,23 @@ def test_cached_action_checks_are_fast_and_do_not_repeat_io(
                 monkeypatch.setattr(
                     Path,
                     method_name,
-                    record_call(f"Path.{method_name}", operation),
+                    _record_call(io_calls, f"Path.{method_name}", operation),
                 )
             monkeypatch.setattr(
                 tui_module,
                 "model_from_yaml_file",
-                record_call("model_from_yaml_file", tui_module.model_from_yaml_file),
+                _record_call(
+                    io_calls,
+                    "model_from_yaml_file",
+                    tui_module.model_from_yaml_file,
+                ),
             )
             monkeypatch.setattr(
                 screen.project_jobs,
                 "validate",
-                record_call("project_jobs.validate", screen.project_jobs.validate),
+                _record_call(
+                    io_calls, "project_jobs.validate", screen.project_jobs.validate
+                ),
             )
 
             actions = (
@@ -291,15 +359,42 @@ def test_cached_action_checks_are_fast_and_do_not_repeat_io(
                 "cancel_job",
                 "expand_data_node",
                 "collapse_data_node",
+                "plot",
             )
-            started = perf_counter()
-            for _ in range(100):
-                for action in actions:
-                    screen.check_action(action, ())
-            elapsed = perf_counter() - started
+
+            elapsed = _measure_action_checks(screen, actions, io_calls)
+
+            tabs = screen.query_one(TabbedContent)
+            data_tree = screen.query_one("#data-tree", Tree)
+            data_node = _find_tree_node(
+                data_tree.root,
+                (
+                    "mth5",
+                    "/Experiment/Surveys/survey/Stations/field/run1",
+                ),
+            )
+            assert data_node is not None
+            tabs.active = "data"
+            data_tree.focus()
+            data_tree.move_cursor(data_node)
+            await pilot.pause()
+            elapsed += _measure_action_checks(screen, actions, io_calls)
+
+            tabs.active = "flows"
+            flow_table = screen.query_one("#flow-table", DataTable)
+            flow_table.focus()
+            flow_table.move_cursor(row=0)
+            await pilot.pause()
+            elapsed += _measure_action_checks(screen, actions, io_calls)
+
+            tabs.active = "jobs"
+            job_table = screen.query_one("#job-table", DataTable)
+            job_table.focus()
+            job_table.move_cursor(row=0)
+            await pilot.pause()
+            elapsed += _measure_action_checks(screen, actions, io_calls)
 
             record_property("cached_action_checks_seconds", f"{elapsed:.6f}")
-            assert io_calls == []
             assert elapsed < 2.0
 
     asyncio.run(run_test())

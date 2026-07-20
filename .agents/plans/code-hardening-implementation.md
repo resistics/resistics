@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 3.2 verified with Pyrefly mandatory
+Status: in progress; Checkpoint 4.1 verified with pure action checks
 Created: 2026-07-19
 Last updated: 2026-07-20
 Working branch: `mth5`
@@ -27,26 +27,26 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 4 - Make the TUI responsive
-- Active checkpoint: `4.1` (`resistics`) - Make action-state checks pure and cheap
+- Active checkpoint: `4.2` (`resistics`) - Eliminate redundant refreshes
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `3.3` in `S021`
-- Last verified checkpoint: Phase 3 review gate in `S022`
-- Last session: `S022`
-- Last verified commit: resistics `419c495` plus the untracked pydoclint and
-  Pyrefly baselines and `resistics/py.typed`; regressioninc `9eb11a4` is the
-  base of uncommitted Checkpoints 1.1 and 1.2 work
+- Last completed checkpoint: `4.1` in `S023`
+- Last verified checkpoint: `4.1` in `S023`
+- Last session: `S023`
+- Last verified commit: resistics `35096de` plus the verified uncommitted
+  Checkpoint 4.1 worktree; regressioninc `9eb11a4` is the base of uncommitted
+  Checkpoints 1.1 and 1.2 work
 - Current blocker: none
-- Next exact action: inventory every `check_action` and equivalent binding
-  predicate, establish a failing zero-I/O benchmark around the current action
-  checks, then introduce explicit cached screen/application state updated only
-  by owned selection and data transitions.
+- Next exact action: inventory every `refresh_bindings()` call and map it to its
+  owning state transition, establish handler-time measurements, then remove
+  duplicate tab, cursor, and nested-control refreshes without changing Footer
+  behavior.
 
 Current worktree caveat:
 
-- Resistics `419c495` records the tracked hardening work through Checkpoint 3.3.
-  `pydoclint-baseline.txt`, `pyrefly-baseline.json`, and `resistics/py.typed`
-  remain untracked after that owner commit. They are required Phase 2/3
-  artifacts and must be included in the next owner-selected commit.
+- Resistics `35096de` records the tracked hardening work through the Phase 3
+  review gate, including `pydoclint-baseline.txt` and `resistics/py.typed`.
+  The empty `pyrefly-baseline.json` remains untracked and is a required Phase 3
+  artifact. The verified Checkpoint 4.1 TUI and test edits are uncommitted.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -233,7 +233,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | 3.2 | resistics | `verified` | S016; locked Pyrefly gate, 175-entry baseline |
 | 3.3 | resistics | `verified` | S017-S021; baseline 175 -> 0; PEP 561 artifacts verified |
 | Gate 3 | resistics | `verified` | S022; Pyrefly retained, 0 diagnostics, PEP 561 artifacts verified |
-| 4.1 | resistics | `not_started` | Pure action-state checks |
+| 4.1 | resistics | `verified` | S023; 5,200 checks; zero instrumented I/O |
 | 4.2 | resistics | `not_started` | Binding refresh measurements |
 | 4.3 | resistics | `not_started` | Explorer index and invalidation |
 | 4.4 | resistics | `not_started` | Worker/cancellation boundaries |
@@ -398,7 +398,7 @@ and must be re-measured in Phase 0 before they are treated as verified.
 | mypy | 210 errors across 17 files | 209 across 17 files | removed | S016 |
 | Pyrefly | not installed | 175 errors across 17 files | 0 new errors | S016 |
 | TUI cold import | approximately 2.18 seconds | 2.2659 s median | same | S002 report |
-| Cached TUI action checks | not measured | 1,200 in 0.002322 s; zero instrumented I/O | same | S002 XML |
+| Cached TUI action checks | not measured | 5,200 in 0.002322 s; zero instrumented I/O | same | S023 XML |
 | Public docstring coverage | not measured | 80.2%; 566/706 | same | S002 report |
 | Executable docstring examples | not measured | 778 prompts | same | S002 report |
 | Executable docstring plots | not measured | 16 directives | same | S002 report |
@@ -1648,6 +1648,15 @@ correct a factual error; note the correction explicitly.
   modules with zero warning-level diagnostics in 0.52-0.63 seconds and retains
   the explicit empty-baseline gate. Do not add ty as a dependency or second
   permanent checker; reassess it only after a material capability release.
+- `D037` (2026-07-20): Make `ProjectExplorerScreen.check_action` a pure
+  in-memory predicate. Cache project and selected-data plot targets, validated
+  flow paths, project-data deletion eligibility, and existing job validation
+  summaries while their owning catalogue or selection transitions already do
+  the required reads. Refresh those values on mount, explicit resource
+  refreshes, data selection, deletion, and terminal job events. Action
+  invocation may perform its owned load, but Footer eligibility evaluation may
+  not read the filesystem, MTH5, YAML, JSON, solutions, flows, parameters, or
+  jobs.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -2093,3 +2102,56 @@ correct a factual error; note the correction explicitly.
 - Exact next action: begin Checkpoint 4.1 by inventorying every `check_action`
   and equivalent binding predicate, then add a zero-I/O benchmark that fails on
   filesystem, MTH5, YAML, JSON, solution, flow, parameter, or job reads.
+
+### S023 - 2026-07-20 - Make TUI action-state checks pure and cheap
+
+- Checkpoint state at start: `4.1` was `not_started`; the Phase 3 review gate
+  was verified in S022.
+- Starting branch, HEAD, and worktree: `mth5` at owner commit `35096de`. The
+  owner had committed the PEP 561 marker, implementation-record update, and
+  pydoclint baseline. The required empty `pyrefly-baseline.json` remained
+  untracked and was preserved.
+- Session objective: inventory all Footer eligibility predicates, establish a
+  failing zero-I/O test, cache state at its owning transitions, and verify that
+  repeated `check_action` calls are pure and cheap.
+- Inventory and failing evidence: `ProjectExplorerScreen.check_action` was the
+  only action predicate. Project plotting called `file_summary`; data plotting
+  traversed project/MTH5 and solution state; flow plotting parsed YAML; job
+  plotting validated job resources; and project-data deletion previewed the
+  filesystem. Extending the existing benchmark to `plot` failed with 100
+  repeated `project.file_summary` calls before implementation.
+- Work completed: added `_ProjectActionState` for project/data plot targets,
+  validated flow paths, and derived-data deletion eligibility. Catalogue
+  population, selection transitions, explicit refreshes, deletion, and
+  terminal job events now update that cache while already owning the relevant
+  reads. Job eligibility reuses existing cached summaries and validation.
+  Split the former complex predicate into small in-memory helpers; action
+  methods retain responsibility for loads performed only after invocation.
+- Test coverage: expanded the action-state test across all 13 actions and four
+  meaningful Project, MTH5 Data, Flow, and Job states. It instruments project
+  summary/catalogue/deletion methods, job validation, YAML loading, and common
+  `Path` read/query methods, and fails on any I/O during 5,200 eligibility
+  checks.
+- Files changed: `resistics/tui.py`, `tests/test_tui.py`, and this implementation
+  record. The pre-existing untracked Pyrefly baseline was not changed.
+- Decisions added or superseded: D037 records the pure predicate boundary and
+  cache invalidation ownership.
+- Verification commands and results:
+  - The action benchmark completed 5,200 checks in 0.002322 seconds with zero
+    instrumented I/O; the result is recorded in
+    `.artifacts/hardening/performance/tui-actions.xml`.
+  - The complete TUI suite passed 28 tests in 20.66 seconds; the full suite
+    passed 387 tests in 22.63 seconds.
+  - Ruff format checked 42 maintained Python files and Ruff lint passed.
+    Pydoclint reported no unbaselined violations; Pyrefly reported zero
+    warning-level diagnostics with the two established suppressions.
+  - All seven configured pre-commit hooks passed, and `git diff --check`
+    passed.
+- Known failures or incomplete work: none within Checkpoint 4.1.
+- Checkpoint state at end: `4.1` is `verified`; Checkpoint 4.2 is next.
+- Commit readiness or commit id: the cached-state implementation, zero-I/O
+  regression test, and S023 record are verified and ready for an
+  owner-selected commit; no commit was requested or created.
+- Exact next action: inventory every `refresh_bindings()` call, map it to its
+  owning state transition, record handler-time baselines, and remove duplicate
+  refreshes on tab activation, cursor movement, and nested control updates.

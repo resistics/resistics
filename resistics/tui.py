@@ -7,7 +7,7 @@ import re
 import sys
 import warnings
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from time import monotonic
@@ -84,6 +84,27 @@ PlotTarget: TypeAlias = (
     | tuple[Literal["project"], None]
     | tuple[Literal["time"], TimePlotSelection]
 )
+
+
+@dataclass
+class _ProjectActionState:
+    """Cache action eligibility that would otherwise require project I/O.
+
+    Attributes
+    ----------
+    plot_targets : dict[str, PlotTarget | None]
+        Cached plot targets for the Project and Data tabs.
+    valid_flow_paths : set[Path]
+        Flow files that passed validation during the latest tree population.
+    has_project_data_to_delete : bool
+        Whether the latest data catalogue contains removable derived data.
+    """
+
+    plot_targets: dict[str, PlotTarget | None] = field(
+        default_factory=lambda: {"project": None, "data": None}
+    )
+    valid_flow_paths: set[Path] = field(default_factory=set)
+    has_project_data_to_delete: bool = False
 
 
 class _DataTreeNode(Protocol):
@@ -1105,6 +1126,7 @@ class ProjectExplorerScreen(Screen[None]):
         self.job_runner: JobRunner | None = None
         self.job_state: JobState | None = None
         self.data_items: dict[str, ProjectDataItem] = {}
+        self.action_state = _ProjectActionState()
         self.editing_yaml = False
         self.editing_path: Path | None = None
         self.editing_model = None
@@ -1206,6 +1228,9 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _populate_overview(self) -> None:
         summary = self.project.file_summary()
+        self.action_state.plot_targets["project"] = (
+            ("project", None) if summary.n_runs > 0 else None
+        )
         content = (
             f"[b]{self.project.project_path.name}[/b]\n\n"
             f"Project: {self.project.project_path}\n"
@@ -1231,6 +1256,7 @@ class ProjectExplorerScreen(Screen[None]):
         project_node = tree.root.add("Project", data=("project", "."))
         mth5_node = tree.root.add("MTH5", data=("mth5", "/"))
         self.data_items.clear()
+        self.action_state.plot_targets["data"] = None
         try:
             project_items = self.project.list_project_data_items()
         except Exception as exc:
@@ -1241,6 +1267,12 @@ class ProjectExplorerScreen(Screen[None]):
         except Exception as exc:
             mth5_items = []
             self.notify(f"Unable to inspect MTH5 data: {exc}", severity="warning")
+        try:
+            self.action_state.has_project_data_to_delete = bool(
+                self.project.preview_project_data_deletion().paths
+            )
+        except Exception:
+            self.action_state.has_project_data_to_delete = False
         self._add_data_catalog(project_node, project_items)
         self._add_data_catalog(mth5_node, mth5_items)
         tree.root.expand()
@@ -1480,34 +1512,46 @@ class ProjectExplorerScreen(Screen[None]):
         return None
 
     def _flow_plot_target(self) -> PlotTarget | None:
-        """Return the focused or opened valid flow YAML as a plot target."""
+        """Return the focused or opened cached-valid flow plot target."""
         highlighted = self._highlighted_yaml_file()
         path: Path | None
         if highlighted is not None and highlighted[1] == "#flow-content":
             path = highlighted[0]
         else:
             path = self.selected_flow_path
-        if path is None:
-            return None
-        try:
-            model_from_yaml_file(FlowDefinition, path)
-        except Exception:
+        if path is None or path not in self.action_state.valid_flow_paths:
             return None
         return ("flow", path)
 
     def _job_plot_target(self) -> PlotTarget | None:
-        """Return the focused or opened valid job YAML as a plot target."""
-        path = self._highlighted_job_path() or self.selected_job_path
-        if path is None:
-            return None
-        validation = self.project_jobs.validate(path)
-        if not validation.ok or validation.resolved_job is None:
-            return None
-        return ("job", path)
+        """Return the focused or opened cached-valid job plot target."""
+        highlighted_path = self._highlighted_job_path()
+        if highlighted_path is not None:
+            summary = next(
+                (
+                    value
+                    for value in self.job_summaries.values()
+                    if value.path == highlighted_path
+                ),
+                None,
+            )
+            return (
+                ("job", highlighted_path)
+                if summary is not None and summary.is_valid
+                else None
+            )
+        if (
+            self.selected_job_path is not None
+            and self.selected_validation is not None
+            and self.selected_validation.ok
+            and self.selected_validation.resolved_job is not None
+        ):
+            return ("job", self.selected_job_path)
+        return None
 
     def _has_project_timeline(self) -> bool:
-        """Return whether there are any project runs to display."""
-        return self.project.file_summary().n_runs > 0
+        """Return the cached project-timeline eligibility."""
+        return self.action_state.plot_targets["project"] is not None
 
     def _update_plot_controls(self) -> None:
         """Refresh the Footer after project data or tab state changes."""
@@ -1520,7 +1564,7 @@ class ProjectExplorerScreen(Screen[None]):
         self._open_plot(("project", None))
 
     def _start_selected_data_plot(self) -> None:
-        target = self._data_plot_target()
+        target = self.action_state.plot_targets["data"]
         if target is None:
             return
         self.notify("Opening plot")
@@ -1729,6 +1773,7 @@ class ProjectExplorerScreen(Screen[None]):
         table.clear(columns=True)
         table.add_columns("Flow", "ID", "Version", "Nodes", "Status")
         self.flow_paths.clear()
+        self.action_state.valid_flow_paths.clear()
         for path in self._yaml_paths(
             self.project.project_path / "processing" / "flows"
         ):
@@ -1736,6 +1781,7 @@ class ProjectExplorerScreen(Screen[None]):
             self.flow_paths[key] = path
             try:
                 flow = model_from_yaml_file(FlowDefinition, path)
+                self.action_state.valid_flow_paths.add(path)
                 n_nodes = sum(len(stage.nodes) for stage in flow.flow_stages())
                 table.add_row(
                     flow.name,
@@ -1852,7 +1898,8 @@ class ProjectExplorerScreen(Screen[None]):
 
     @on(Tree.NodeHighlighted, "#data-tree")
     def update_data_plot_selection(self, event: Tree.NodeHighlighted) -> None:
-        """Refresh the Footer when the highlighted item changes."""
+        """Cache plot eligibility when the highlighted data item changes."""
+        self.action_state.plot_targets["data"] = self._data_plot_target(event.node)
         self.refresh_bindings()
 
     @on(DataTable.RowSelected, "#job-table")
@@ -2412,6 +2459,7 @@ class ProjectExplorerScreen(Screen[None]):
         if event.state in {JobState.completed, JobState.failed, JobState.cancelled}:
             self.job_runner = None
             self._populate_jobs()
+            self._populate_data_tree()
         self.refresh_bindings()
 
     @on(TabbedContent.TabActivated)
@@ -2420,11 +2468,21 @@ class ProjectExplorerScreen(Screen[None]):
         self._update_plot_controls()
         self.refresh_bindings()
 
-    def check_action(  # noqa: C901 - action-state split is owned by Phase 4.1
-        self, action: str, parameters: tuple[object, ...]
-    ):
-        """Expose only Footer actions relevant to the active tab and job state."""
-        active = self.query_one(TabbedContent).active
+    def _check_resource_action(self, action: str, active: str) -> bool:
+        """Check one YAML-resource action using only in-memory state.
+
+        Parameters
+        ----------
+        action : str
+            Action name to check.
+        active : str
+            Identifier of the active tab.
+
+        Returns
+        -------
+        bool
+            Whether the action is currently available.
+        """
         if action == "edit_yaml":
             return (
                 not self.editing_yaml
@@ -2438,69 +2496,125 @@ class ProjectExplorerScreen(Screen[None]):
                 and self.job_state != JobState.running
             )
         if action == "delete_yaml" and active == "data":
-            if self.editing_yaml or self.job_state == JobState.running:
-                return False
-            try:
-                return bool(self.project.preview_project_data_deletion().paths)
-            except Exception:
-                return False
-        if action in {"copy_yaml", "delete_yaml"}:
-            selected = self._highlighted_yaml_file() or self._selected_yaml_file()
             return (
                 not self.editing_yaml
                 and self.job_state != JobState.running
-                and selected is not None
+                and self.action_state.has_project_data_to_delete
+            )
+        if action in {"copy_yaml", "delete_yaml"}:
+            return (
+                not self.editing_yaml
+                and self.job_state != JobState.running
+                and (
+                    self._highlighted_yaml_file() is not None
+                    or self._selected_yaml_file() is not None
+                )
             )
         if action in {"save_yaml", "discard_yaml"}:
             return self.editing_yaml
+        return not self.editing_yaml and active in {
+            "flows",
+            "parameters",
+            "criteria",
+        }
+
+    def _check_selected_job_action(self, active: str) -> bool | None:
+        """Check job execution eligibility from cached validation summaries.
+
+        Parameters
+        ----------
+        active : str
+            Identifier of the active tab.
+
+        Returns
+        -------
+        bool | None
+            Whether a selected job can run, or ``None`` to disable it.
+        """
+        if active != "jobs":
+            return False
+        highlighted_path = self._highlighted_job_path()
+        if highlighted_path is not None:
+            summary = next(
+                (
+                    value
+                    for value in self.job_summaries.values()
+                    if value.path == highlighted_path
+                ),
+                None,
+            )
+            return True if summary is not None and summary.is_valid else None
+        return (
+            True
+            if self.selected_validation is not None and self.selected_validation.ok
+            else None
+        )
+
+    def _check_data_tree_action(self, action: str) -> bool:
+        """Check expansion eligibility from the current in-memory tree node.
+
+        Parameters
+        ----------
+        action : str
+            Expansion or collapse action name.
+
+        Returns
+        -------
+        bool
+            Whether the tree action is currently available.
+        """
+        node = self._data_tree_cursor()
+        if node is None or not node.allow_expand:
+            return False
+        return (
+            not node.is_expanded if action == "expand_data_node" else node.is_expanded
+        )
+
+    def _check_plot_action(self, active: str) -> bool:
+        """Check plot eligibility using cached project and selection state.
+
+        Parameters
+        ----------
+        active : str
+            Identifier of the active tab.
+
+        Returns
+        -------
+        bool
+            Whether the active tab has a valid cached plot target.
+        """
+        if active in {"project", "data"}:
+            return self.action_state.plot_targets[active] is not None
+        if active == "flows":
+            return not self.editing_yaml and self._flow_plot_target() is not None
+        if active == "jobs":
+            return not self.editing_yaml and self._job_plot_target() is not None
+        return False
+
+    def check_action(self, action: str, parameters: tuple[object, ...]):
+        """Expose only Footer actions relevant to cached screen state."""
+        active = self.query_one(TabbedContent).active
+        resource_actions = {
+            "edit_yaml",
+            "create_job",
+            "copy_yaml",
+            "delete_yaml",
+            "save_yaml",
+            "discard_yaml",
+            "restore_defaults",
+        }
+        if action in resource_actions:
+            return self._check_resource_action(action, active)
         if action == "close_project":
             return self.job_state != JobState.running and not self.editing_yaml
-        if action == "restore_defaults":
-            return not self.editing_yaml and active in {
-                "flows",
-                "parameters",
-                "criteria",
-            }
         if action == "run_selected_job":
-            if active != "jobs":
-                return False
-            highlighted_path = self._highlighted_job_path()
-            if highlighted_path is not None:
-                summary = next(
-                    (
-                        value
-                        for value in self.job_summaries.values()
-                        if value.path == highlighted_path
-                    ),
-                    None,
-                )
-                return True if summary is not None and summary.is_valid else None
-            return (
-                True
-                if self.selected_validation is not None and self.selected_validation.ok
-                else None
-            )
+            return self._check_selected_job_action(active)
         if action == "cancel_job":
             return active == "activity" and self.job_state == JobState.running
         if action in {"expand_data_node", "collapse_data_node"}:
-            node = self._data_tree_cursor()
-            if node is None or not node.allow_expand:
-                return False
-            return (
-                not node.is_expanded
-                if action == "expand_data_node"
-                else node.is_expanded
-            )
+            return self._check_data_tree_action(action)
         if action == "plot":
-            if active == "project":
-                return self._has_project_timeline()
-            if active == "data":
-                return self._data_plot_target() is not None
-            if active == "flows":
-                return not self.editing_yaml and self._flow_plot_target() is not None
-            if active == "jobs":
-                return not self.editing_yaml and self._job_plot_target() is not None
-            return False
+            return self._check_plot_action(active)
         return super().check_action(action, parameters)
 
     def action_plot(self) -> None:
