@@ -1210,13 +1210,7 @@ class ProjectExplorerScreen(Screen[None]):
         yield Footer()
 
     def on_mount(self) -> None:
-        self._populate_overview()
-        self._populate_data_tree()
-        self._populate_flows()
-        self._populate_parameters()
-        self._populate_criteria()
-        self._populate_jobs()
-        self._update_plot_controls()
+        self._populate_project_views()
         if self.startup_warnings:
             self.query_one("#activity-log", RichLog).write(
                 f"[yellow]Suppressed {len(self.startup_warnings)} warning(s) "
@@ -1225,6 +1219,17 @@ class ProjectExplorerScreen(Screen[None]):
 
     def on_unmount(self) -> None:
         self.project.close_mth5()
+
+    def _populate_project_views(self) -> None:
+        """Rebuild every project view and refresh bindings after the batch."""
+        with self.app.batch_update():
+            self._populate_overview()
+            self._populate_data_tree()
+            self._populate_flows()
+            self._populate_parameters()
+            self._populate_criteria()
+            self._populate_jobs()
+        self.refresh_bindings()
 
     def _populate_overview(self) -> None:
         summary = self.project.file_summary()
@@ -1278,7 +1283,6 @@ class ProjectExplorerScreen(Screen[None]):
         tree.root.expand()
         project_node.expand()
         mth5_node.expand()
-        self.refresh_bindings()
 
     def _add_data_catalog(
         self, root: _DataTreeNode, items: list[ProjectDataItem]
@@ -1553,10 +1557,6 @@ class ProjectExplorerScreen(Screen[None]):
         """Return the cached project-timeline eligibility."""
         return self.action_state.plot_targets["project"] is not None
 
-    def _update_plot_controls(self) -> None:
-        """Refresh the Footer after project data or tab state changes."""
-        self.refresh_bindings()
-
     def _start_project_plot(self) -> None:
         if not self._has_project_timeline():
             return
@@ -1686,7 +1686,6 @@ class ProjectExplorerScreen(Screen[None]):
         self.job_summaries.clear()
         self.selected_job_path = None
         self.selected_validation = None
-        self.refresh_bindings()
         for summary in self.project_jobs.list():
             key = str(summary.path)
             self.job_summaries[key] = summary
@@ -1761,10 +1760,12 @@ class ProjectExplorerScreen(Screen[None]):
         except Exception as exc:
             self.notify(f"Unable to create job: {exc}", severity="error")
             return
-        self._populate_jobs()
-        self.selected_job_path = path
-        self.selected_validation = self.project_jobs.validate(path)
-        self._show_yaml("#job-content", path)
+        with self.app.batch_update():
+            self._populate_jobs()
+            self.selected_job_path = path
+            self.selected_validation = self.project_jobs.validate(path)
+            self._show_yaml("#job-content", path)
+        self.refresh_bindings()
         self.notify(f"Created {path.name}")
 
     def _populate_flows(self) -> None:
@@ -1871,7 +1872,6 @@ class ProjectExplorerScreen(Screen[None]):
             details.text = json.dumps(
                 {"message": "Select Project or MTH5 data"}, indent=2
             )
-            self.refresh_bindings()
             return
         try:
             source, path = item
@@ -1893,8 +1893,6 @@ class ProjectExplorerScreen(Screen[None]):
                 details.text = metadata.model_dump_json(indent=2)
         except Exception as exc:
             details.text = json.dumps({"error": str(exc)}, indent=2)
-        finally:
-            self.refresh_bindings()
 
     @on(Tree.NodeHighlighted, "#data-tree")
     def update_data_plot_selection(self, event: Tree.NodeHighlighted) -> None:
@@ -1931,12 +1929,19 @@ class ProjectExplorerScreen(Screen[None]):
     @on(DataTable.RowHighlighted)
     def refresh_yaml_highlight_bindings(self, event: DataTable.RowHighlighted) -> None:
         """Refresh YAML actions when a resource-table cursor moves."""
-        if event.data_table.id in {
-            "flow-table",
-            "parameter-table",
-            "criteria-table",
-            "job-table",
-        }:
+        resource_tabs = {
+            "flow-table": "flows",
+            "parameter-table": "parameters",
+            "criteria-table": "criteria",
+            "job-table": "jobs",
+        }
+        active = self.query_one(TabbedContent).active
+        table_id = event.data_table.id
+        if (
+            table_id is not None
+            and event.data_table.has_focus
+            and resource_tabs.get(table_id) == active
+        ):
             self.refresh_bindings()
 
     @on(DataTable.RowSelected, "#flow-table")
@@ -2195,10 +2200,12 @@ class ProjectExplorerScreen(Screen[None]):
         except Exception as exc:
             self.notify(f"Unable to delete Project data: {exc}", severity="error")
             return
-        self._populate_data_tree()
-        self.query_one("#data-metadata", TextArea).text = json.dumps(
-            {"message": "Select Project or MTH5 data"}, indent=2
-        )
+        with self.app.batch_update():
+            self._populate_data_tree()
+            self.query_one("#data-metadata", TextArea).text = json.dumps(
+                {"message": "Select Project or MTH5 data"}, indent=2
+            )
+        self.refresh_bindings()
         self.notify(f"Deleted {deleted.count} Project data path(s)")
 
     def _select_yaml_file(self, editor_id: str, path: Path) -> None:
@@ -2285,6 +2292,7 @@ class ProjectExplorerScreen(Screen[None]):
         if editor_id == "#job-content":
             self.selected_job_path = saved_path
             self.selected_validation = self.project_jobs.validate(saved_path)
+        self.refresh_bindings()
         self.notify(f"Saved {saved_path.name}")
 
     def action_discard_yaml(self) -> None:
@@ -2297,6 +2305,7 @@ class ProjectExplorerScreen(Screen[None]):
             return
         self._show_yaml(self.editing_editor_id, self.editing_path)
         self._clear_yaml_editing()
+        self.refresh_bindings()
         self.notify("YAML edits discarded")
 
     @staticmethod
@@ -2326,18 +2335,18 @@ class ProjectExplorerScreen(Screen[None]):
         self.editing_path = None
         self.editing_model = None
         self.editing_editor_id = None
-        self.refresh_bindings()
 
     def _refresh_yaml_resource(self, editor_id: str) -> None:
         """Refresh the table associated with a saved YAML resource."""
-        if editor_id == "#flow-content":
-            self._populate_flows()
-        elif editor_id == "#parameter-content":
-            self._populate_parameters()
-        elif editor_id == "#criteria-content":
-            self._populate_criteria()
-        elif editor_id == "#job-content":
-            self._populate_jobs()
+        with self.app.batch_update():
+            if editor_id == "#flow-content":
+                self._populate_flows()
+            elif editor_id == "#parameter-content":
+                self._populate_parameters()
+            elif editor_id == "#criteria-content":
+                self._populate_criteria()
+            elif editor_id == "#job-content":
+                self._populate_jobs()
 
     def action_run_selected_job(self) -> None:
         """Confirm and run the opened or focused highlighted job."""
@@ -2356,7 +2365,8 @@ class ProjectExplorerScreen(Screen[None]):
     def _restore_flows(self) -> None:
         """Restore only missing built-in flow templates."""
         installed = install_builtin_flow_templates(self.project.project_path)
-        self._populate_flows()
+        with self.app.batch_update():
+            self._populate_flows()
         if installed:
             self.notify(f"Restored {len(installed)} flow template(s)")
         else:
@@ -2365,7 +2375,8 @@ class ProjectExplorerScreen(Screen[None]):
     def _restore_parameters(self) -> None:
         """Restore only missing built-in parameter-set templates."""
         installed = install_builtin_parameter_templates(self.project.project_path)
-        self._populate_parameters()
+        with self.app.batch_update():
+            self._populate_parameters()
         if installed:
             self.notify(f"Restored {len(installed)} parameter-set template(s)")
         else:
@@ -2374,7 +2385,8 @@ class ProjectExplorerScreen(Screen[None]):
     def _restore_criteria(self) -> None:
         """Restore only missing criteria examples."""
         installed = install_builtin_criteria_templates(self.project.project_path)
-        self._populate_criteria()
+        with self.app.batch_update():
+            self._populate_criteria()
         if installed:
             self.notify(f"Restored {len(installed)} criteria example(s)")
         else:
@@ -2389,6 +2401,9 @@ class ProjectExplorerScreen(Screen[None]):
             self._restore_parameters()
         elif active == "criteria":
             self._restore_criteria()
+        else:
+            return
+        self.refresh_bindings()
 
     def _submission_confirmed(self, confirmed: bool | None) -> None:
         if confirmed:
@@ -2426,10 +2441,13 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _set_running(self) -> None:
         self.job_state = JobState.running
-        self.refresh_bindings()
         self.query_one("#activity-status", Static).update("Job running")
         self.query_one("#activity-log", RichLog).clear()
-        self.query_one(TabbedContent).active = "activity"
+        tabs = self.query_one(TabbedContent)
+        if tabs.active == "activity":
+            self.refresh_bindings()
+        else:
+            tabs.active = "activity"
 
     def _show_progress(self, event: JobProgressEvent) -> None:
         self.job_state = event.state
@@ -2458,14 +2476,14 @@ class ProjectExplorerScreen(Screen[None]):
         )
         if event.state in {JobState.completed, JobState.failed, JobState.cancelled}:
             self.job_runner = None
-            self._populate_jobs()
-            self._populate_data_tree()
+            with self.app.batch_update():
+                self._populate_jobs()
+                self._populate_data_tree()
         self.refresh_bindings()
 
     @on(TabbedContent.TabActivated)
     def refresh_tab_bindings(self) -> None:
         """Refresh the Footer when the active tab changes."""
-        self._update_plot_controls()
         self.refresh_bindings()
 
     def _check_resource_action(self, action: str, active: str) -> bool:
@@ -2652,13 +2670,7 @@ class ProjectExplorerScreen(Screen[None]):
                 "Save or discard the current YAML edits first", severity="warning"
             )
             return
-        self._populate_overview()
-        self._populate_data_tree()
-        self._populate_flows()
-        self._populate_parameters()
-        self._populate_criteria()
-        self._populate_jobs()
-        self._update_plot_controls()
+        self._populate_project_views()
         self.notify("Project refreshed")
 
     def action_cancel_job(self) -> None:

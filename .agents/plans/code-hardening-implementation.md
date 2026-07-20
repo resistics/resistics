@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 4.1 verified with pure action checks
+Status: in progress; Checkpoint 4.2 verified with owned binding refreshes
 Created: 2026-07-19
 Last updated: 2026-07-20
 Working branch: `mth5`
@@ -27,26 +27,25 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 4 - Make the TUI responsive
-- Active checkpoint: `4.2` (`resistics`) - Eliminate redundant refreshes
+- Active checkpoint: `4.3` (`resistics`) - Add a cached project explorer index
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `4.1` in `S023`
-- Last verified checkpoint: `4.1` in `S023`
-- Last session: `S023`
-- Last verified commit: resistics `35096de` plus the verified uncommitted
-  Checkpoint 4.1 worktree; regressioninc `9eb11a4` is the base of uncommitted
+- Last completed checkpoint: `4.2` in `S024`
+- Last verified checkpoint: `4.2` in `S024`
+- Last session: `S024`
+- Last verified commit: resistics `521b783` plus the verified uncommitted
+  Checkpoint 4.2 worktree; regressioninc `9eb11a4` is the base of uncommitted
   Checkpoints 1.1 and 1.2 work
 - Current blocker: none
-- Next exact action: inventory every `refresh_bindings()` call and map it to its
-  owning state transition, establish handler-time measurements, then remove
-  duplicate tab, cursor, and nested-control refreshes without changing Footer
-  behavior.
+- Next exact action: inventory repeated project explorer directory, MTH5,
+  flow, parameter, criteria, and job scans; define file-identity cache keys and
+  invalidation owners; then add failing cache-hit and invalidation tests.
 
 Current worktree caveat:
 
-- Resistics `35096de` records the tracked hardening work through the Phase 3
-  review gate, including `pydoclint-baseline.txt` and `resistics/py.typed`.
+- Resistics `521b783` records the tracked hardening work through Checkpoint 4.1,
+  including the pure action-state cache and zero-I/O regression coverage.
   The empty `pyrefly-baseline.json` remains untracked and is a required Phase 3
-  artifact. The verified Checkpoint 4.1 TUI and test edits are uncommitted.
+  artifact. The verified Checkpoint 4.2 TUI and test edits are uncommitted.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -234,7 +233,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | 3.3 | resistics | `verified` | S017-S021; baseline 175 -> 0; PEP 561 artifacts verified |
 | Gate 3 | resistics | `verified` | S022; Pyrefly retained, 0 diagnostics, PEP 561 artifacts verified |
 | 4.1 | resistics | `verified` | S023; 5,200 checks; zero instrumented I/O |
-| 4.2 | resistics | `not_started` | Binding refresh measurements |
+| 4.2 | resistics | `verified` | S024; owned refreshes; handlers below 50 ms |
 | 4.3 | resistics | `not_started` | Explorer index and invalidation |
 | 4.4 | resistics | `not_started` | Worker/cancellation boundaries |
 | 4.5 | resistics | `not_started` | Cold-import measurements |
@@ -386,7 +385,7 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 384 passed | S016 |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 388 passed | S024 |
 | Branch coverage | approximately 76% | 75.96% | 76.19% | S014; coverage XML |
 | Production Python | approximately 21,011 lines | 21,015 | 21,015 | S002 report |
 | Tests | approximately 5,941 lines | 6,051 | 6,051 | S002 report |
@@ -399,6 +398,7 @@ and must be re-measured in Phase 0 before they are treated as verified.
 | Pyrefly | not installed | 175 errors across 17 files | 0 new errors | S016 |
 | TUI cold import | approximately 2.18 seconds | 2.2659 s median | same | S002 report |
 | Cached TUI action checks | not measured | 5,200 in 0.002322 s; zero instrumented I/O | same | S023 XML |
+| TUI binding refresh ownership | not measured | calls 200/3/3/1 | calls 100/1/1/0; 13.007 ms maximum | S024 XML |
 | Public docstring coverage | not measured | 80.2%; 566/706 | same | S002 report |
 | Executable docstring examples | not measured | 778 prompts | same | S002 report |
 | Executable docstring plots | not measured | 16 directives | same | S002 report |
@@ -1657,6 +1657,14 @@ correct a factual error; note the correction explicitly.
   invocation may perform its owned load, but Footer eligibility evaluation may
   not read the filesystem, MTH5, YAML, JSON, solutions, flows, parameters, or
   jobs.
+- `D038` (2026-07-20): Refresh Footer bindings at the outer state transition
+  after all related model and widget mutations have completed. Catalogue
+  population helpers do not publish intermediate binding state. Full project,
+  terminal-job, YAML-resource, create, delete, and restore rebuilds suspend
+  Textual repaints through `App.batch_update`; their owner publishes one final
+  binding refresh. Tab activation publishes once, data metadata rendering
+  publishes none, and table-cursor refreshes are limited to the focused table
+  on its active resource tab.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -2155,3 +2163,61 @@ correct a factual error; note the correction explicitly.
 - Exact next action: inventory every `refresh_bindings()` call, map it to its
   owning state transition, record handler-time baselines, and remove duplicate
   refreshes on tab activation, cursor movement, and nested control updates.
+
+### S024 - 2026-07-20 - Eliminate redundant TUI binding refreshes
+
+- Checkpoint state at start: `4.2` was `not_started`; Checkpoint 4.1 was
+  verified in S023 and committed by the owner.
+- Starting branch, HEAD, and worktree: `mth5` at owner commit `521b783`. Only
+  the required empty `pyrefly-baseline.json` was untracked; it was preserved.
+- Session objective: map each binding refresh to its owning state transition,
+  measure representative handlers, remove duplicate publications, and batch
+  related table and tree repaint work without changing Footer behavior.
+- Inventory and failing evidence: 17 explicit refresh sites mixed final state
+  transitions with intermediate catalogue population and content-only work.
+  Tab activation refreshed twice; full project refresh and terminal job
+  completion each refreshed three times; data metadata rendering refreshed
+  once despite changing no action eligibility. The failing regression probe
+  recorded refresh counts `200/3/3/1` for 100 tab handlers, one project refresh,
+  one terminal progress event, and one metadata render.
+- Work completed: introduced one batched full-view population boundary; removed
+  intermediate refreshes from Data and Job population; made metadata rendering
+  content-only; limited table-highlight refreshes to the focused table on its
+  active tab; and moved edit/save/discard, job creation, deletion, restoration,
+  processing, and refresh publications to the end of their owning transition.
+  Full-view, resource, terminal-job, create, delete, and restore rebuilds use
+  Textual's repaint batching boundary.
+- Test coverage: added a regression benchmark that instruments actual binding
+  publications for tab, full-refresh, terminal-progress, and metadata handlers,
+  asserts counts `100/1/1/0`, and enforces the Phase 4 representative-handler
+  target of less than 50 ms.
+- Files changed: `resistics/tui.py`, `tests/test_tui.py`, and this implementation
+  record. The pre-existing untracked Pyrefly baseline was not changed.
+- Decisions added or superseded: D038 records outer-transition refresh
+  ownership and the repaint batching boundary.
+- Measurements and artifacts:
+  - Before: 100 tab handlers took 0.000712 seconds; project refresh took
+    0.013549 seconds; terminal progress took 0.003499 seconds; metadata
+    rendering took 0.000306 seconds; refresh counts were `200/3/3/1`.
+  - After: 100 tab handlers took 0.000294 seconds; project refresh took
+    0.013007 seconds; terminal progress took 0.003279 seconds; metadata
+    rendering took 0.000304 seconds; refresh counts were `100/1/1/0`.
+  - The ignored before/after JUnit evidence is under
+    `.artifacts/hardening/performance/tui-refresh-before.xml` and
+    `.artifacts/hardening/performance/tui-refresh-after.xml`.
+- Verification commands and results:
+  - The complete TUI suite passed 29 tests in 19.25 seconds; the full suite
+    passed 388 tests in 23.38 seconds.
+  - Ruff format checked 42 maintained Python files and Ruff lint passed.
+    Pydoclint reported no unbaselined violations; Pyrefly reported zero
+    warning-level diagnostics with the two established suppressions.
+  - All seven configured pre-commit hooks passed, and `git diff --check`
+    passed.
+- Known failures or incomplete work: none within Checkpoint 4.2.
+- Checkpoint state at end: `4.2` is `verified`; Checkpoint 4.3 is next.
+- Commit readiness or commit id: the refresh-ownership implementation,
+  repaint batching, regression benchmark, and S024 record are verified and
+  ready for an owner-selected commit; no commit was requested or created.
+- Exact next action: inventory repeated explorer directory, MTH5, flow,
+  parameter, criteria, and job scans; define file-identity cache keys and
+  invalidation owners; then add failing cache-hit and stale-file tests.

@@ -400,6 +400,97 @@ def test_cached_action_checks_are_fast_and_do_not_repeat_io(
     asyncio.run(run_test())
 
 
+def test_binding_refreshes_follow_owned_state_transitions(
+    monkeypatch, record_property, tmp_path
+):
+    """Refresh the Footer once after state changes and not for content-only work."""
+    project = FakeProject(tmp_path / "project")
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)):
+            screen = app.screen
+            refresh_calls = []
+            refresh_bindings = screen.refresh_bindings
+
+            def tracked_refresh_bindings():
+                refresh_calls.append(perf_counter())
+                refresh_bindings()
+
+            monkeypatch.setattr(screen, "refresh_bindings", tracked_refresh_bindings)
+
+            started = perf_counter()
+            for _ in range(100):
+                screen.refresh_tab_bindings()
+            tab_seconds = perf_counter() - started
+            tab_calls = len(refresh_calls)
+
+            refresh_calls.clear()
+            started = perf_counter()
+            screen.action_refresh()
+            project_refresh_seconds = perf_counter() - started
+            project_refresh_calls = len(refresh_calls)
+
+            refresh_calls.clear()
+            started = perf_counter()
+            screen._show_progress(
+                JobProgressEvent(
+                    state=JobState.completed,
+                    message="Job complete",
+                    job_name="field",
+                )
+            )
+            progress_seconds = perf_counter() - started
+            progress_refresh_calls = len(refresh_calls)
+
+            refresh_calls.clear()
+            started = perf_counter()
+            screen.show_data_metadata(
+                SimpleNamespace(node=SimpleNamespace(data=("category", "Time data")))
+            )
+            metadata_seconds = perf_counter() - started
+            metadata_refresh_calls = len(refresh_calls)
+
+            record_property("tab_handler_seconds_100", f"{tab_seconds:.6f}")
+            record_property(
+                "project_refresh_handler_seconds", f"{project_refresh_seconds:.6f}"
+            )
+            record_property(
+                "terminal_progress_handler_seconds", f"{progress_seconds:.6f}"
+            )
+            record_property("metadata_handler_seconds", f"{metadata_seconds:.6f}")
+            record_property(
+                "binding_refresh_calls",
+                ",".join(
+                    str(value)
+                    for value in (
+                        tab_calls,
+                        project_refresh_calls,
+                        progress_refresh_calls,
+                        metadata_refresh_calls,
+                    )
+                ),
+            )
+
+            assert tab_calls == 100
+            assert project_refresh_calls == 1
+            assert progress_refresh_calls == 1
+            assert metadata_refresh_calls == 0
+            assert (
+                max(
+                    tab_seconds / 100,
+                    project_refresh_seconds,
+                    progress_seconds,
+                    metadata_seconds,
+                )
+                < 0.05
+            )
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
 def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
     project.project_data_items = [
