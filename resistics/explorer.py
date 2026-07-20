@@ -1,0 +1,589 @@
+"""Cached, UI-neutral project discovery for interactive explorers."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal, TypeAlias, TypeVar
+
+from resistics.flow import FlowDefinition, ParameterSet, model_from_yaml_file
+from resistics.gather import GatherCriteria
+from resistics.job import (
+    JobDefinition,
+    JobSummary,
+    JobValidation,
+    ProjectJobs,
+)
+from resistics.project import MTH5FileSummary, Project, ProjectDataItem, RunSummary
+
+ResourceKind: TypeAlias = Literal["flows", "parameters", "criteria", "jobs"]
+IndexSection: TypeAlias = Literal["project", "flows", "parameters", "criteria", "jobs"]
+ResourceModel: TypeAlias = (
+    FlowDefinition | ParameterSet | GatherCriteria | JobDefinition
+)
+_ProjectValue = TypeVar("_ProjectValue")
+
+
+@dataclass(frozen=True)
+class ExplorerFileIdentity:
+    """Filesystem identity used to reuse one parsed resource.
+
+    Attributes
+    ----------
+    path : Path
+        Project resource path.
+    modified_ns : int
+        Nanosecond modification timestamp reported by the filesystem.
+    size : int
+        File size in bytes.
+    """
+
+    path: Path
+    modified_ns: int
+    size: int
+
+
+@dataclass(frozen=True)
+class ExplorerIssue:
+    """Non-fatal project discovery failure retained for presentation layers.
+
+    Attributes
+    ----------
+    section : str
+        Explorer section that could not be read.
+    message : str
+        User-facing failure detail.
+    """
+
+    section: str
+    message: str
+
+
+@dataclass(frozen=True)
+class IndexedResource:
+    """Parsed YAML resource or its stable validation failure.
+
+    Attributes
+    ----------
+    kind : ResourceKind
+        Project resource namespace.
+    identity : ExplorerFileIdentity
+        File identity used as the parsed-value cache key.
+    model : ResourceModel | None
+        Parsed model, or ``None`` when validation failed.
+    error : str | None
+        Validation error for malformed content.
+    """
+
+    kind: ResourceKind
+    identity: ExplorerFileIdentity
+    model: ResourceModel | None
+    error: str | None = None
+
+    @property
+    def path(self) -> Path:
+        """Return the resource path represented by the identity."""
+        return self.identity.path
+
+    @property
+    def is_valid(self) -> bool:
+        """Return whether the resource parsed into its expected model."""
+        return self.model is not None
+
+
+@dataclass(frozen=True)
+class IndexedJob:
+    """One cached job summary and its complete validation result.
+
+    Attributes
+    ----------
+    resource : IndexedResource
+        Parsed job file record.
+    summary : JobSummary
+        Display summary derived from validation.
+    validation : JobValidation
+        Cached resolved validation used for selection and execution.
+    """
+
+    resource: IndexedResource
+    summary: JobSummary
+    validation: JobValidation
+
+
+@dataclass(frozen=True)
+class ProjectExplorerState:
+    """Cached project and MTH5 catalogue state without live file handles.
+
+    Attributes
+    ----------
+    project_path : Path
+        Root of the indexed project.
+    mth5_identity : ExplorerFileIdentity | None
+        MTH5 path identity when the file can be statted.
+    summary : MTH5FileSummary
+        Cached MTH5 metadata summary.
+    project_data_items : tuple[ProjectDataItem, ...]
+        Cached derived project artifact hierarchy.
+    mth5_data_items : tuple[ProjectDataItem, ...]
+        Cached MTH5 group and dataset hierarchy.
+    has_project_data_to_delete : bool
+        Whether the cached project catalogue contains removable derived data.
+    issues : tuple[ExplorerIssue, ...]
+        Non-fatal discovery failures encountered while building the state.
+    """
+
+    project_path: Path
+    mth5_identity: ExplorerFileIdentity | None
+    summary: MTH5FileSummary
+    project_data_items: tuple[ProjectDataItem, ...]
+    mth5_data_items: tuple[ProjectDataItem, ...]
+    has_project_data_to_delete: bool
+    issues: tuple[ExplorerIssue, ...] = ()
+
+
+class ProjectExplorerIndex:
+    """Cache project discovery DTOs and parsed processing resources.
+
+    The index owns no MTH5 or HDF5 handle. Cache hits perform no project or
+    filesystem reads. Callers explicitly invalidate the affected section after
+    internal mutations or invalidate every section before an external refresh.
+
+    Parameters
+    ----------
+    project : Project
+        Open project that owns discovery operations and job validation.
+    """
+
+    def __init__(self, project: Project):
+        self.project = project
+        self.project_jobs = ProjectJobs(project)
+        self._project_state: ProjectExplorerState | None = None
+        self._runs: tuple[RunSummary, ...] | None = None
+        self._resources: dict[ResourceKind, tuple[IndexedResource, ...]] = {}
+        self._parsed_files: dict[
+            tuple[ResourceKind, ExplorerFileIdentity], IndexedResource
+        ] = {}
+        self._jobs: tuple[IndexedJob, ...] | None = None
+
+    def project_state(self) -> ProjectExplorerState:
+        """Return cached project discovery state, building it on a miss.
+
+        Returns
+        -------
+        ProjectExplorerState
+            Handle-free project and MTH5 catalogue DTOs.
+        """
+        if self._project_state is not None:
+            return self._project_state
+
+        issues: list[ExplorerIssue] = []
+        summary = self.project.file_summary()
+        project_items = self._project_values(
+            "project data", self.project.list_project_data_items, issues
+        )
+        mth5_items = self._project_values(
+            "MTH5 data", self.project.list_mth5_data_items, issues
+        )
+        try:
+            has_project_data = bool(self.project.preview_project_data_deletion().paths)
+        except Exception as exc:
+            has_project_data = False
+            issues.append(ExplorerIssue("project data deletion", str(exc)))
+        self._project_state = ProjectExplorerState(
+            project_path=self.project.project_path,
+            mth5_identity=self._optional_identity(summary.mth5_path),
+            summary=summary,
+            project_data_items=tuple(project_items),
+            mth5_data_items=tuple(mth5_items),
+            has_project_data_to_delete=has_project_data,
+            issues=tuple(issues),
+        )
+        return self._project_state
+
+    def runs(self) -> tuple[RunSummary, ...]:
+        """Return cached MTH5 run summaries, building them on first selection.
+
+        Returns
+        -------
+        tuple[RunSummary, ...]
+            Stable run summaries used to resolve MTH5 data selections.
+        """
+        if self._runs is None:
+            self._runs = tuple(self.project.list_runs())
+        return self._runs
+
+    def resources(self, kind: ResourceKind) -> tuple[IndexedResource, ...]:
+        """Return cached parsed resources for one project namespace.
+
+        Parameters
+        ----------
+        kind : ResourceKind
+            Flow, parameter, criteria, or job namespace.
+
+        Returns
+        -------
+        tuple[IndexedResource, ...]
+            Stable path-ordered resource records, including malformed files.
+        """
+        cached = self._resources.get(kind)
+        if cached is not None:
+            return cached
+        directory = self.project.project_path / "processing" / kind
+        records = tuple(
+            self._resource(kind, identity)
+            for identity in self._yaml_identities(directory)
+        )
+        self._resources[kind] = records
+        return records
+
+    def jobs(self) -> tuple[IndexedJob, ...]:
+        """Return cached job summaries and loaded-resource validation results.
+
+        Returns
+        -------
+        tuple[IndexedJob, ...]
+            Path-ordered jobs, including malformed or unresolved definitions.
+        """
+        if self._jobs is not None:
+            return self._jobs
+        self._jobs = tuple(
+            self._indexed_job(resource) for resource in self.resources("jobs")
+        )
+        return self._jobs
+
+    def job_validation(self, path: Path) -> JobValidation | None:
+        """Return cached validation for one exact project job path.
+
+        Parameters
+        ----------
+        path : Path
+            Job path selected by a caller.
+
+        Returns
+        -------
+        JobValidation | None
+            Cached result, or ``None`` when the path is not indexed.
+        """
+        return next(
+            (job.validation for job in self.jobs() if job.resource.path == path), None
+        )
+
+    def resource_for_path(
+        self, kind: ResourceKind, path: Path
+    ) -> IndexedResource | None:
+        """Return one cached resource by exact path.
+
+        Parameters
+        ----------
+        kind : ResourceKind
+            Resource namespace containing the path.
+        path : Path
+            Exact project resource path.
+
+        Returns
+        -------
+        IndexedResource | None
+            Matching record, if it exists in the cached namespace.
+        """
+        return next(
+            (resource for resource in self.resources(kind) if resource.path == path),
+            None,
+        )
+
+    def invalidate(self, *sections: IndexSection) -> None:
+        """Invalidate selected sections and every dependent job result.
+
+        Parameters
+        ----------
+        *sections : IndexSection
+            Project or resource sections changed by an owning operation.
+        """
+        for section in sections:
+            if section == "project":
+                self._project_state = None
+                self._runs = None
+            else:
+                self._resources.pop(section, None)
+            self._jobs = None
+
+    def invalidate_all(self) -> None:
+        """Invalidate all discovery sections before an external refresh."""
+        self._project_state = None
+        self._runs = None
+        self._resources.clear()
+        self._jobs = None
+
+    @staticmethod
+    def _project_values(
+        name: str,
+        operation: Callable[[], list[_ProjectValue]],
+        issues: list[ExplorerIssue],
+    ) -> list[_ProjectValue]:
+        """Run one non-critical project query and retain failures as issues.
+
+        Parameters
+        ----------
+        name : str
+            Section name recorded if the operation fails.
+        operation : Callable[[], list[_ProjectValue]]
+            Project query returning explorer DTOs.
+        issues : list[ExplorerIssue]
+            Mutable issue collection for non-fatal failures.
+
+        Returns
+        -------
+        list[_ProjectValue]
+            Query values, or an empty list after a failure.
+        """
+        try:
+            return operation()
+        except Exception as exc:
+            issues.append(ExplorerIssue(name, str(exc)))
+            return []
+
+    @staticmethod
+    def _optional_identity(path: Path) -> ExplorerFileIdentity | None:
+        """Return a file identity, or ``None`` for an unavailable path.
+
+        Parameters
+        ----------
+        path : Path
+            File whose identity may be unavailable.
+
+        Returns
+        -------
+        ExplorerFileIdentity | None
+            Available identity, otherwise ``None``.
+        """
+        try:
+            return ProjectExplorerIndex._identity(path)
+        except OSError:
+            return None
+
+    @staticmethod
+    def _identity(path: Path) -> ExplorerFileIdentity:
+        """Return the modification-time and size identity for one file.
+
+        Parameters
+        ----------
+        path : Path
+            Existing file to identify.
+
+        Returns
+        -------
+        ExplorerFileIdentity
+            Stable identity for the current file version.
+        """
+        status = path.stat()
+        return ExplorerFileIdentity(
+            path=path, modified_ns=status.st_mtime_ns, size=status.st_size
+        )
+
+    @staticmethod
+    def _yaml_identities(directory: Path) -> tuple[ExplorerFileIdentity, ...]:
+        """Scan one resource directory into stable path-ordered identities.
+
+        Parameters
+        ----------
+        directory : Path
+            Project resource directory to scan.
+
+        Returns
+        -------
+        tuple[ExplorerFileIdentity, ...]
+            Identities for YAML files in path order.
+        """
+        paths = sorted(
+            path
+            for pattern in ("*.yaml", "*.yml")
+            for path in directory.glob(pattern)
+            if path.is_file()
+        )
+        return tuple(ProjectExplorerIndex._identity(path) for path in paths)
+
+    def _resource(
+        self, kind: ResourceKind, identity: ExplorerFileIdentity
+    ) -> IndexedResource:
+        """Return one identity-cached parsed resource or validation failure.
+
+        Parameters
+        ----------
+        kind : ResourceKind
+            Resource namespace assigning the expected model.
+        identity : ExplorerFileIdentity
+            Current file identity.
+
+        Returns
+        -------
+        IndexedResource
+            Parsed record or cached validation failure.
+        """
+        key = (kind, identity)
+        cached = self._parsed_files.get(key)
+        if cached is not None:
+            return cached
+        try:
+            model = self._parse(kind, identity.path)
+            resource = IndexedResource(kind=kind, identity=identity, model=model)
+        except Exception as exc:
+            resource = IndexedResource(
+                kind=kind, identity=identity, model=None, error=str(exc)
+            )
+        self._parsed_files[key] = resource
+        return resource
+
+    @staticmethod
+    def _parse(kind: ResourceKind, path: Path) -> ResourceModel:
+        """Parse one resource with the model assigned to its namespace.
+
+        Parameters
+        ----------
+        kind : ResourceKind
+            Resource namespace assigning the expected model.
+        path : Path
+            YAML file to parse.
+
+        Returns
+        -------
+        ResourceModel
+            Validated resource model.
+        """
+        if kind == "flows":
+            return model_from_yaml_file(FlowDefinition, path)
+        if kind == "parameters":
+            return model_from_yaml_file(ParameterSet, path)
+        if kind == "criteria":
+            return model_from_yaml_file(GatherCriteria, path)
+        return model_from_yaml_file(JobDefinition, path)
+
+    def _indexed_job(self, resource: IndexedResource) -> IndexedJob:
+        """Resolve one parsed job through the cached resource namespaces.
+
+        Parameters
+        ----------
+        resource : IndexedResource
+            Parsed or malformed job resource.
+
+        Returns
+        -------
+        IndexedJob
+            Display summary and complete validation result.
+        """
+        validation = self._validate_job_resource(resource)
+        resolved = validation.resolved_job
+        if resolved is None:
+            summary = JobSummary(
+                name=resource.path.stem,
+                path=resource.path,
+                errors=validation.errors,
+                warnings=validation.warnings,
+            )
+        else:
+            definition = resolved.definition
+            summary = JobSummary(
+                name=definition.name,
+                path=resource.path,
+                flow=definition.flow,
+                parameters=definition.parameters,
+                output_label=definition.output_label,
+                is_valid=validation.ok,
+                errors=validation.errors,
+                warnings=validation.warnings,
+            )
+        return IndexedJob(resource, summary, validation)
+
+    def _validate_job_resource(self, resource: IndexedResource) -> JobValidation:
+        """Validate one job using only models cached by this index.
+
+        Parameters
+        ----------
+        resource : IndexedResource
+            Parsed or malformed job resource.
+
+        Returns
+        -------
+        JobValidation
+            Loaded-resource validation result.
+        """
+        if not isinstance(resource.model, JobDefinition):
+            return JobValidation(
+                ok=False, errors=[resource.error or "Job YAML is invalid"]
+            )
+        try:
+            flow_resource = self._reference("flows", resource.model.flow)
+            parameters_resource = self._reference(
+                "parameters", resource.model.parameters
+            )
+            if not isinstance(flow_resource.model, FlowDefinition):
+                return JobValidation(
+                    ok=False,
+                    errors=[flow_resource.error or "Flow YAML is invalid"],
+                )
+            if not isinstance(parameters_resource.model, ParameterSet):
+                return JobValidation(
+                    ok=False,
+                    errors=[parameters_resource.error or "Parameter YAML is invalid"],
+                )
+            criteria_resource = None
+            criteria = None
+            if resource.model.criteria:
+                criteria_resource = self._reference("criteria", resource.model.criteria)
+                if not isinstance(criteria_resource.model, GatherCriteria):
+                    return JobValidation(
+                        ok=False,
+                        errors=[criteria_resource.error or "Criteria YAML is invalid"],
+                    )
+                criteria = criteria_resource.model
+        except Exception as exc:
+            return JobValidation(ok=False, errors=[str(exc)])
+        return self.project_jobs.validate_loaded(
+            job_path=resource.path,
+            definition=resource.model,
+            flow_path=flow_resource.path,
+            flow=flow_resource.model,
+            parameters_path=parameters_resource.path,
+            parameters=parameters_resource.model,
+            criteria_path=(
+                None if criteria_resource is None else criteria_resource.path
+            ),
+            criteria=criteria,
+        )
+
+    def _reference(self, kind: ResourceKind, name: str) -> IndexedResource:
+        """Resolve one job reference within a cached resource namespace.
+
+        Parameters
+        ----------
+        kind : ResourceKind
+            Referenced resource namespace.
+        name : str
+            Exact filename or extension-free resource name.
+
+        Returns
+        -------
+        IndexedResource
+            Unique cached resource matching the reference.
+
+        Raises
+        ------
+        ValueError
+            If the name is unsafe, missing, or ambiguous.
+        """
+        value = Path(name)
+        if value.is_absolute() or value.parent != Path("."):
+            raise ValueError(f"{kind[:-1].title()} must be a project file name")
+        resources = self.resources(kind)
+        candidates = (
+            [resource for resource in resources if resource.path.name == value.name]
+            if value.suffix in {".yaml", ".yml"}
+            else [
+                resource for resource in resources if resource.path.stem == value.name
+            ]
+        )
+        if not candidates:
+            raise ValueError(f"{kind[:-1].title()} not found: {name}")
+        if len(candidates) > 1:
+            names = ", ".join(resource.path.name for resource in candidates)
+            raise ValueError(f"Ambiguous {kind[:-1]} {name!r}: {names}")
+        return candidates[0]

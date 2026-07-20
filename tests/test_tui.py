@@ -491,6 +491,78 @@ def test_binding_refreshes_follow_owned_state_transitions(
     assert project.closed
 
 
+def test_tui_invalidates_explorer_index_after_owned_mutations(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    flow_path = project.project_path / "processing/flows/standard.yaml"
+    flow_path.parent.mkdir(parents=True)
+    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    parameters_path = project.project_path / "processing/parameters/default.yaml"
+    parameters_path.parent.mkdir(parents=True)
+    parameters_path.write_text(model_to_yaml(default_parameter_set()))
+    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)):
+            screen = app.screen
+            invalidations = []
+            invalidate = screen.explorer_index.invalidate
+            invalidate_all = screen.explorer_index.invalidate_all
+
+            def tracked_invalidate(*sections):
+                invalidations.append(sections)
+                invalidate(*sections)
+
+            def tracked_invalidate_all():
+                invalidations.append(("all",))
+                invalidate_all()
+
+            monkeypatch.setattr(screen.explorer_index, "invalidate", tracked_invalidate)
+            monkeypatch.setattr(
+                screen.explorer_index, "invalidate_all", tracked_invalidate_all
+            )
+
+            screen.action_refresh()
+
+            screen.query_one(TabbedContent).active = "flows"
+            screen.selected_flow_path = flow_path
+            screen._show_yaml("#flow-content", flow_path)
+            screen.action_edit_yaml()
+            screen.query_one("#flow-content", TextArea).text += "\n# edited\n"
+            screen.action_save_yaml()
+
+            definition = JobDefinition(
+                name="field", flow="standard.yaml", parameters="default.yaml"
+            )
+            screen._job_template_created(definition)
+            job_path = project.project_path / "processing/jobs/field.yaml"
+            screen._yaml_file_deleted(job_path, "#job-content", True)
+
+            project.project_data_paths = ["data/derived"]
+            screen._project_data_deletion_confirmed(
+                project.preview_project_data_deletion(), True
+            )
+            screen._show_progress(
+                JobProgressEvent(
+                    state=JobState.completed,
+                    message="Job complete",
+                    job_name="field",
+                )
+            )
+
+            assert invalidations == [
+                ("all",),
+                ("flows",),
+                ("jobs",),
+                ("jobs",),
+                ("project",),
+                ("project", "jobs"),
+            ]
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
 def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
     project.project_data_items = [

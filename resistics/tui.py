@@ -38,6 +38,7 @@ from textual.widgets import (
 )
 
 from resistics.common import validate_output_label
+from resistics.explorer import ProjectExplorerIndex, ResourceKind
 from resistics.flow import (
     FlowDefinition,
     ParameterSet,
@@ -1113,7 +1114,8 @@ class ProjectExplorerScreen(Screen[None]):
     def __init__(self, project: Project, startup_warnings: list[str] | None = None):
         super().__init__()
         self.project = project
-        self.project_jobs = ProjectJobs(project)
+        self.explorer_index = ProjectExplorerIndex(project)
+        self.project_jobs = self.explorer_index.project_jobs
         self.flow_paths: dict[str, Path] = {}
         self.parameter_paths: dict[str, Path] = {}
         self.criteria_paths: dict[str, Path] = {}
@@ -1232,7 +1234,7 @@ class ProjectExplorerScreen(Screen[None]):
         self.refresh_bindings()
 
     def _populate_overview(self) -> None:
-        summary = self.project.file_summary()
+        summary = self.explorer_index.project_state().summary
         self.action_state.plot_targets["project"] = (
             ("project", None) if summary.n_runs > 0 else None
         )
@@ -1254,6 +1256,7 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _populate_data_tree(self) -> None:
         """Populate the filtered Project and MTH5 data hierarchy."""
+        state = self.explorer_index.project_state()
         tree = self.query_one("#data-tree", Tree)
         tree.clear()
         tree.root.label = "Data"
@@ -1262,24 +1265,14 @@ class ProjectExplorerScreen(Screen[None]):
         mth5_node = tree.root.add("MTH5", data=("mth5", "/"))
         self.data_items.clear()
         self.action_state.plot_targets["data"] = None
-        try:
-            project_items = self.project.list_project_data_items()
-        except Exception as exc:
-            project_items = []
-            self.notify(f"Unable to inspect project data: {exc}", severity="warning")
-        try:
-            mth5_items = self.project.list_mth5_data_items()
-        except Exception as exc:
-            mth5_items = []
-            self.notify(f"Unable to inspect MTH5 data: {exc}", severity="warning")
-        try:
-            self.action_state.has_project_data_to_delete = bool(
-                self.project.preview_project_data_deletion().paths
+        self.action_state.has_project_data_to_delete = state.has_project_data_to_delete
+        for issue in state.issues:
+            self.notify(
+                f"Unable to inspect {issue.section}: {issue.message}",
+                severity="warning",
             )
-        except Exception:
-            self.action_state.has_project_data_to_delete = False
-        self._add_data_catalog(project_node, project_items)
-        self._add_data_catalog(mth5_node, mth5_items)
+        self._add_data_catalog(project_node, list(state.project_data_items))
+        self._add_data_catalog(mth5_node, list(state.mth5_data_items))
         tree.root.expand()
         project_node.expand()
         mth5_node.expand()
@@ -1448,7 +1441,7 @@ class ProjectExplorerScreen(Screen[None]):
 
         matches = [
             summary
-            for summary in self.project.list_runs()
+            for summary in self.explorer_index.runs()
             if (
                 validate_mth5_name(summary.survey) == survey
                 and validate_mth5_name(summary.station) == station
@@ -1686,7 +1679,8 @@ class ProjectExplorerScreen(Screen[None]):
         self.job_summaries.clear()
         self.selected_job_path = None
         self.selected_validation = None
-        for summary in self.project_jobs.list():
+        for indexed_job in self.explorer_index.jobs():
+            summary = indexed_job.summary
             key = str(summary.path)
             self.job_summaries[key] = summary
             status = (
@@ -1705,30 +1699,36 @@ class ProjectExplorerScreen(Screen[None]):
                 "#job-content", TextArea
             ).text = "No YAML jobs found in processing/jobs"
 
-    @staticmethod
-    def _yaml_paths(directory: Path) -> list[Path]:
-        """Return project YAML files in a stable display order."""
-        return sorted(
-            path
-            for pattern in ("*.yaml", "*.yml")
-            for path in directory.glob(pattern)
-            if path.is_file()
-        )
-
     def _job_resource_options(
-        self, resource_type: str, model_type
+        self, resource_type: ResourceKind
     ) -> list[tuple[str, str]]:
-        """Return valid resource files as dropdown labels and exact filenames."""
-        directory = self.project.project_path / "processing" / resource_type
+        """Return valid resource files as dropdown labels and exact filenames.
+
+        Parameters
+        ----------
+        resource_type : ResourceKind
+            Flow, parameter, or criteria namespace used by the job form.
+
+        Returns
+        -------
+        list[tuple[str, str]]
+            Display labels paired with exact project-local filenames.
+        """
         options = []
-        for path in self._yaml_paths(directory):
-            try:
-                model = model_from_yaml_file(model_type, path)
-            except Exception as exc:
-                logger.debug(f"Unable to use {resource_type} resource {path}: {exc}")
+        for resource in self.explorer_index.resources(resource_type):
+            if resource.model is None:
+                logger.debug(
+                    f"Unable to use {resource_type} resource {resource.path}: "
+                    f"{resource.error}"
+                )
                 continue
-            display_name = getattr(model, "name", None) or path.stem
-            options.append((f"{display_name} ({path.name})", path.name))
+            display_name = getattr(resource.model, "name", None) or resource.path.stem
+            options.append(
+                (
+                    f"{display_name} ({resource.path.name})",
+                    resource.path.name,
+                )
+            )
         return options
 
     def action_create_job(self) -> None:
@@ -1738,11 +1738,11 @@ class ProjectExplorerScreen(Screen[None]):
                 "Job creation is unavailable while a job is running", severity="warning"
             )
             return
-        flow_options = self._job_resource_options("flows", FlowDefinition)
-        parameter_options = self._job_resource_options("parameters", ParameterSet)
-        criteria_options = self._job_resource_options("criteria", GatherCriteria)
+        flow_options = self._job_resource_options("flows")
+        parameter_options = self._job_resource_options("parameters")
+        criteria_options = self._job_resource_options("criteria")
         existing_names = {
-            path.stem for path in self._yaml_paths(self.project_jobs.jobs_path)
+            resource.path.stem for resource in self.explorer_index.resources("jobs")
         }
         self.app.push_screen(
             CreateJobScreen(
@@ -1760,10 +1760,11 @@ class ProjectExplorerScreen(Screen[None]):
         except Exception as exc:
             self.notify(f"Unable to create job: {exc}", severity="error")
             return
+        self.explorer_index.invalidate("jobs")
         with self.app.batch_update():
             self._populate_jobs()
             self.selected_job_path = path
-            self.selected_validation = self.project_jobs.validate(path)
+            self.selected_validation = self.explorer_index.job_validation(path)
             self._show_yaml("#job-content", path)
         self.refresh_bindings()
         self.notify(f"Created {path.name}")
@@ -1775,13 +1776,12 @@ class ProjectExplorerScreen(Screen[None]):
         table.add_columns("Flow", "ID", "Version", "Nodes", "Status")
         self.flow_paths.clear()
         self.action_state.valid_flow_paths.clear()
-        for path in self._yaml_paths(
-            self.project.project_path / "processing" / "flows"
-        ):
+        for resource in self.explorer_index.resources("flows"):
+            path = resource.path
             key = str(path)
             self.flow_paths[key] = path
-            try:
-                flow = model_from_yaml_file(FlowDefinition, path)
+            if isinstance(resource.model, FlowDefinition):
+                flow = resource.model
                 self.action_state.valid_flow_paths.add(path)
                 n_nodes = sum(len(stage.nodes) for stage in flow.flow_stages())
                 table.add_row(
@@ -1792,7 +1792,7 @@ class ProjectExplorerScreen(Screen[None]):
                     "[green]valid[/green]",
                     key=key,
                 )
-            except Exception as exc:
+            else:
                 table.add_row(
                     path.stem,
                     "-",
@@ -1801,7 +1801,7 @@ class ProjectExplorerScreen(Screen[None]):
                     "[red]invalid[/red]",
                     key=key,
                 )
-                logger.debug(f"Unable to read flow {path}: {exc}")
+                logger.debug(f"Unable to read flow {path}: {resource.error}")
         if not self.flow_paths:
             self.query_one(
                 "#flow-content", TextArea
@@ -1813,26 +1813,26 @@ class ProjectExplorerScreen(Screen[None]):
         table.clear(columns=True)
         table.add_columns("Parameters", "Processes", "Status")
         self.parameter_paths.clear()
-        directory = self.project.project_path / "processing" / "parameters"
-        for path in self._yaml_paths(directory):
+        for resource in self.explorer_index.resources("parameters"):
+            path = resource.path
             key = str(path)
             self.parameter_paths[key] = path
-            try:
-                parameters = model_from_yaml_file(ParameterSet, path)
+            if isinstance(resource.model, ParameterSet):
+                parameters = resource.model
                 table.add_row(
                     parameters.name,
                     str(len(parameters.processes)),
                     "[green]valid[/green]",
                     key=key,
                 )
-            except Exception as exc:
+            else:
                 table.add_row(
                     path.stem,
                     "-",
                     "[red]invalid[/red]",
                     key=key,
                 )
-                logger.debug(f"Unable to read parameter set {path}: {exc}")
+                logger.debug(f"Unable to read parameter set {path}: {resource.error}")
         if not self.parameter_paths:
             self.query_one(
                 "#parameter-content", TextArea
@@ -1844,21 +1844,21 @@ class ProjectExplorerScreen(Screen[None]):
         table.clear(columns=True)
         table.add_columns("Criteria", "Remote references", "Status")
         self.criteria_paths.clear()
-        directory = self.project.project_path / "processing" / "criteria"
-        for path in self._yaml_paths(directory):
+        for resource in self.explorer_index.resources("criteria"):
+            path = resource.path
             key = str(path)
             self.criteria_paths[key] = path
-            try:
-                criteria = model_from_yaml_file(GatherCriteria, path)
+            if isinstance(resource.model, GatherCriteria):
+                criteria = resource.model
                 table.add_row(
                     path.stem,
                     str(criteria.remote_reference_count()),
                     "[green]valid[/green]",
                     key=key,
                 )
-            except Exception as exc:
+            else:
                 table.add_row(path.stem, "-", "[red]invalid[/red]", key=key)
-                logger.debug(f"Unable to read criteria {path}: {exc}")
+                logger.debug(f"Unable to read criteria {path}: {resource.error}")
         if not self.criteria_paths:
             self.query_one(
                 "#criteria-content", TextArea
@@ -1910,17 +1910,16 @@ class ProjectExplorerScreen(Screen[None]):
         key = str(event.row_key.value)
         summary = self.job_summaries[key]
         self.selected_job_path = summary.path
-        self.selected_validation = self.project_jobs.validate(summary.path)
+        self.selected_validation = self.explorer_index.job_validation(summary.path)
         validation = self.selected_validation
         self._show_yaml("#job-content", summary.path)
-        if validation.ok:
+        if validation is not None and validation.ok:
             self.notify("Job YAML is valid")
         else:
-            logger.debug(
-                f"Invalid job YAML {summary.path}: {'; '.join(validation.errors)}"
-            )
+            errors = [] if validation is None else validation.errors
+            logger.debug(f"Invalid job YAML {summary.path}: {'; '.join(errors)}")
             self.notify(
-                f"Job YAML is invalid ({len(validation.errors)} error(s)); "
+                f"Job YAML is invalid ({len(errors)} error(s)); "
                 "source shown for repair or deletion",
                 severity="warning",
             )
@@ -1954,10 +1953,9 @@ class ProjectExplorerScreen(Screen[None]):
             return
         path = self.flow_paths[str(event.row_key.value)]
         self.selected_flow_path = path
-        try:
-            model_from_yaml_file(FlowDefinition, path)
-        except Exception as exc:
-            logger.debug(f"Invalid flow YAML {path}: {exc}")
+        resource = self.explorer_index.resource_for_path("flows", path)
+        if resource is None or not resource.is_valid:
+            logger.debug(f"Invalid flow YAML {path}: {resource and resource.error}")
             self.notify(
                 "Flow YAML is invalid; source shown for repair or deletion",
                 severity="warning",
@@ -1975,10 +1973,11 @@ class ProjectExplorerScreen(Screen[None]):
             return
         path = self.parameter_paths[str(event.row_key.value)]
         self.selected_parameter_path = path
-        try:
-            model_from_yaml_file(ParameterSet, path)
-        except Exception as exc:
-            logger.debug(f"Invalid parameter YAML {path}: {exc}")
+        resource = self.explorer_index.resource_for_path("parameters", path)
+        if resource is None or not resource.is_valid:
+            logger.debug(
+                f"Invalid parameter YAML {path}: {resource and resource.error}"
+            )
             self.notify(
                 "Parameter YAML is invalid; source shown for repair or deletion",
                 severity="warning",
@@ -1996,10 +1995,9 @@ class ProjectExplorerScreen(Screen[None]):
             return
         path = self.criteria_paths[str(event.row_key.value)]
         self.selected_criteria_path = path
-        try:
-            model_from_yaml_file(GatherCriteria, path)
-        except Exception as exc:
-            logger.debug(f"Invalid criteria YAML {path}: {exc}")
+        resource = self.explorer_index.resource_for_path("criteria", path)
+        if resource is None or not resource.is_valid:
+            logger.debug(f"Invalid criteria YAML {path}: {resource and resource.error}")
             self.notify(
                 "Criteria YAML is invalid; source shown for repair or deletion",
                 severity="warning",
@@ -2200,6 +2198,7 @@ class ProjectExplorerScreen(Screen[None]):
         except Exception as exc:
             self.notify(f"Unable to delete Project data: {exc}", severity="error")
             return
+        self.explorer_index.invalidate("project")
         with self.app.batch_update():
             self._populate_data_tree()
             self.query_one("#data-metadata", TextArea).text = json.dumps(
@@ -2218,7 +2217,7 @@ class ProjectExplorerScreen(Screen[None]):
             self.selected_criteria_path = path
         elif editor_id == "#job-content":
             self.selected_job_path = path
-            self.selected_validation = self.project_jobs.validate(path)
+            self.selected_validation = self.explorer_index.job_validation(path)
         self._show_yaml(editor_id, path)
         self.refresh_bindings()
 
@@ -2291,7 +2290,7 @@ class ProjectExplorerScreen(Screen[None]):
         self._show_yaml(editor_id, saved_path)
         if editor_id == "#job-content":
             self.selected_job_path = saved_path
-            self.selected_validation = self.project_jobs.validate(saved_path)
+            self.selected_validation = self.explorer_index.job_validation(saved_path)
         self.refresh_bindings()
         self.notify(f"Saved {saved_path.name}")
 
@@ -2338,6 +2337,16 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _refresh_yaml_resource(self, editor_id: str) -> None:
         """Refresh the table associated with a saved YAML resource."""
+        resource_types: dict[str, ResourceKind] = {
+            "#flow-content": "flows",
+            "#parameter-content": "parameters",
+            "#criteria-content": "criteria",
+            "#job-content": "jobs",
+        }
+        resource_type = resource_types.get(editor_id)
+        if resource_type is None:
+            return
+        self.explorer_index.invalidate(resource_type)
         with self.app.batch_update():
             if editor_id == "#flow-content":
                 self._populate_flows()
@@ -2347,12 +2356,14 @@ class ProjectExplorerScreen(Screen[None]):
                 self._populate_criteria()
             elif editor_id == "#job-content":
                 self._populate_jobs()
+            if resource_type != "jobs":
+                self._populate_jobs()
 
     def action_run_selected_job(self) -> None:
         """Confirm and run the opened or focused highlighted job."""
         highlighted_path = self._highlighted_job_path()
         if highlighted_path is not None:
-            validation = self.project_jobs.validate(highlighted_path)
+            validation = self.explorer_index.job_validation(highlighted_path)
             self.selected_job_path = highlighted_path
             self.selected_validation = validation
         else:
@@ -2365,8 +2376,10 @@ class ProjectExplorerScreen(Screen[None]):
     def _restore_flows(self) -> None:
         """Restore only missing built-in flow templates."""
         installed = install_builtin_flow_templates(self.project.project_path)
+        self.explorer_index.invalidate("flows")
         with self.app.batch_update():
             self._populate_flows()
+            self._populate_jobs()
         if installed:
             self.notify(f"Restored {len(installed)} flow template(s)")
         else:
@@ -2375,8 +2388,10 @@ class ProjectExplorerScreen(Screen[None]):
     def _restore_parameters(self) -> None:
         """Restore only missing built-in parameter-set templates."""
         installed = install_builtin_parameter_templates(self.project.project_path)
+        self.explorer_index.invalidate("parameters")
         with self.app.batch_update():
             self._populate_parameters()
+            self._populate_jobs()
         if installed:
             self.notify(f"Restored {len(installed)} parameter-set template(s)")
         else:
@@ -2385,8 +2400,10 @@ class ProjectExplorerScreen(Screen[None]):
     def _restore_criteria(self) -> None:
         """Restore only missing criteria examples."""
         installed = install_builtin_criteria_templates(self.project.project_path)
+        self.explorer_index.invalidate("criteria")
         with self.app.batch_update():
             self._populate_criteria()
+            self._populate_jobs()
         if installed:
             self.notify(f"Restored {len(installed)} criteria example(s)")
         else:
@@ -2476,6 +2493,7 @@ class ProjectExplorerScreen(Screen[None]):
         )
         if event.state in {JobState.completed, JobState.failed, JobState.cancelled}:
             self.job_runner = None
+            self.explorer_index.invalidate("project", "jobs")
             with self.app.batch_update():
                 self._populate_jobs()
                 self._populate_data_tree()
@@ -2670,6 +2688,7 @@ class ProjectExplorerScreen(Screen[None]):
                 "Save or discard the current YAML edits first", severity="warning"
             )
             return
+        self.explorer_index.invalidate_all()
         self._populate_project_views()
         self.notify("Project refreshed")
 

@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 4.2 verified with owned binding refreshes
+Status: in progress; Checkpoint 4.3 verified with cached explorer indexing
 Created: 2026-07-19
 Last updated: 2026-07-20
 Working branch: `mth5`
@@ -27,25 +27,27 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 4 - Make the TUI responsive
-- Active checkpoint: `4.3` (`resistics`) - Add a cached project explorer index
+- Active checkpoint: `4.4` (`resistics`) - Move blocking loads to workers
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `4.2` in `S024`
-- Last verified checkpoint: `4.2` in `S024`
-- Last session: `S024`
-- Last verified commit: resistics `521b783` plus the verified uncommitted
-  Checkpoint 4.2 worktree; regressioninc `9eb11a4` is the base of uncommitted
+- Last completed checkpoint: `4.3` in `S025`
+- Last verified checkpoint: `4.3` in `S025`
+- Last session: `S025`
+- Last verified commit: resistics `148a877` plus the verified uncommitted
+  Checkpoint 4.3 worktree; regressioninc `9eb11a4` is the base of uncommitted
   Checkpoints 1.1 and 1.2 work
 - Current blocker: none
-- Next exact action: inventory repeated project explorer directory, MTH5,
-  flow, parameter, criteria, and job scans; define file-identity cache keys and
-  invalidation owners; then add failing cache-hit and invalidation tests.
+- Next exact action: inventory synchronous project-opening and explorer loads,
+  define immutable worker results and generation-based stale-result rejection,
+  then add a responsiveness test proving the screen mounts before discovery
+  completes.
 
 Current worktree caveat:
 
-- Resistics `521b783` records the tracked hardening work through Checkpoint 4.1,
-  including the pure action-state cache and zero-I/O regression coverage.
+- Resistics `148a877` records the tracked hardening work through Checkpoint 4.2,
+  including owned binding refreshes and handler timing coverage.
   The empty `pyrefly-baseline.json` remains untracked and is a required Phase 3
-  artifact. The verified Checkpoint 4.2 TUI and test edits are uncommitted.
+  artifact. The verified Checkpoint 4.3 explorer, TUI, and test edits are
+  uncommitted.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -234,7 +236,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | Gate 3 | resistics | `verified` | S022; Pyrefly retained, 0 diagnostics, PEP 561 artifacts verified |
 | 4.1 | resistics | `verified` | S023; 5,200 checks; zero instrumented I/O |
 | 4.2 | resistics | `verified` | S024; owned refreshes; handlers below 50 ms |
-| 4.3 | resistics | `not_started` | Explorer index and invalidation |
+| 4.3 | resistics | `verified` | S025; identity cache and owned invalidation |
 | 4.4 | resistics | `not_started` | Worker/cancellation boundaries |
 | 4.5 | resistics | `not_started` | Cold-import measurements |
 | 4.6 | both | `not_started` | Structured progress boundary |
@@ -385,7 +387,7 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 388 passed | S024 |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 396 passed | S025 |
 | Branch coverage | approximately 76% | 75.96% | 76.19% | S014; coverage XML |
 | Production Python | approximately 21,011 lines | 21,015 | 21,015 | S002 report |
 | Tests | approximately 5,941 lines | 6,051 | 6,051 | S002 report |
@@ -399,6 +401,7 @@ and must be re-measured in Phase 0 before they are treated as verified.
 | TUI cold import | approximately 2.18 seconds | 2.2659 s median | same | S002 report |
 | Cached TUI action checks | not measured | 5,200 in 0.002322 s; zero instrumented I/O | same | S023 XML |
 | TUI binding refresh ownership | not measured | calls 200/3/3/1 | calls 100/1/1/0; 13.007 ms maximum | S024 XML |
+| Explorer resource parsing | repeated by table, job, and selection | one parse per file identity | zero reads on cache hits | S025 tests |
 | Public docstring coverage | not measured | 80.2%; 566/706 | same | S002 report |
 | Executable docstring examples | not measured | 778 prompts | same | S002 report |
 | Executable docstring plots | not measured | 16 directives | same | S002 report |
@@ -1665,6 +1668,15 @@ correct a factual error; note the correction explicitly.
   binding refresh. Tab activation publishes once, data metadata rendering
   publishes none, and table-cursor refreshes are limited to the focused table
   on its active resource tab.
+- `D039` (2026-07-20): Put explorer discovery behind the UI-neutral
+  `ProjectExplorerIndex`. Cache only handle-free project DTOs, run summaries,
+  parsed Pydantic resources, validation errors, job summaries, and resolved job
+  validations; never retain an HDF5 object. Identify YAML cache entries by
+  project-local path, nanosecond modification time, and byte size. A cache hit
+  performs no project or filesystem read. Resource changes invalidate their
+  namespace and dependent jobs; data deletion and processing invalidate
+  project state; explicit external refresh invalidates all sections. Unchanged
+  file identities may reuse parsed models across invalidation.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -2221,3 +2233,64 @@ correct a factual error; note the correction explicitly.
 - Exact next action: inventory repeated explorer directory, MTH5, flow,
   parameter, criteria, and job scans; define file-identity cache keys and
   invalidation owners; then add failing cache-hit and stale-file tests.
+
+### S025 - 2026-07-20 - Add the cached project explorer index
+
+- Checkpoint state at start: `4.3` was `not_started`; Checkpoint 4.2 was
+  verified in S024 and committed by the owner.
+- Starting branch, HEAD, and worktree: `mth5` at owner commit `148a877`. Only
+  the required empty `pyrefly-baseline.json` was untracked; it was preserved.
+- Session objective: centralise explorer discovery and parsing behind a
+  UI-neutral cache, define file identities and invalidation ownership, and
+  protect cache hits, stale files, malformed resources, and MTH5 lifecycle.
+- Inventory and failing evidence: overview and Data independently queried
+  project state; every resource table rescanned and reparsed YAML; job listing
+  reparsed every referenced flow, parameter set, and criteria file per job;
+  selection validated the same job again; and job-form options repeated the
+  scans. The initial seven-test explorer contract failed at collection because
+  no index service existed.
+- Work completed: added `ProjectExplorerIndex` with handle-free project state,
+  lazy run summaries, non-fatal discovery issues, parsed resource records, and
+  cached job summaries/validations. YAML identities combine path,
+  nanosecond-resolution modification time, and byte size. Section cache hits
+  perform no reads; invalidated unchanged identities reuse their parsed model.
+  Split `ProjectJobs.validate_loaded` from file resolution so indexed jobs use
+  already-parsed resources without changing standalone `validate` behavior.
+- TUI integration: overview, Data, resource tables, job options, and selection
+  now consume indexed state. Resource edits, copies, deletes, creation, and
+  default restoration invalidate their namespace and dependent jobs. Derived
+  data deletion invalidates project state; terminal processing invalidates
+  project and jobs; explicit refresh invalidates every section. Job tables are
+  rebuilt when a referenced flow, parameter set, or criteria definition
+  changes.
+- Test coverage: seven UI-neutral tests cover cache identity, section-isolated
+  invalidation, stale and deleted files, malformed YAML error caching, parsed
+  resource reuse across job validation, dependent-job invalidation, and cached
+  DTO access after the project MTH5 handle closes. A TUI integration test maps
+  external refresh, flow edit, job create/delete, derived-data deletion, and
+  processing completion to their exact invalidation calls.
+- Files changed: new `resistics/explorer.py` and `tests/test_explorer.py`, plus
+  `resistics/job.py`, `resistics/tui.py`, `tests/test_tui.py`, the pydoclint
+  baseline, and this implementation record. The pre-existing untracked Pyrefly
+  baseline was not changed.
+- Decisions added or superseded: D039 records handle-free cache contents, file
+  identity, dependency invalidation, and explicit external-refresh semantics.
+- Verification commands and results:
+  - The focused explorer, job, and TUI suites passed 52 tests; the full suite
+    passed 396 tests in 23.42 seconds.
+  - Ruff format checked 44 maintained Python files and Ruff lint passed.
+    Pydoclint reported no unbaselined violations; explicit regeneration removed
+    nine stale line-sensitive entries, leaving 1,714. Pyrefly reported zero
+    warning-level diagnostics with the two established suppressions.
+  - All seven configured pre-commit hooks passed, and `git diff --check`
+    passed.
+- Known failures or incomplete work: none within Checkpoint 4.3.
+- Checkpoint state at end: `4.3` is `verified`; Checkpoint 4.4 is next.
+- Commit readiness or commit id: the explorer index, loaded-resource job
+  validation boundary, invalidation integration, tests, baseline update, and
+  S025 record are verified and ready for an owner-selected commit; no commit
+  was requested or created.
+- Exact next action: inventory synchronous project-opening and explorer loads,
+  define immutable worker results and generation-based stale-result rejection,
+  and add a responsiveness test proving the screen mounts before discovery
+  completes.

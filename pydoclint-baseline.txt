@@ -1586,15 +1586,6 @@ resistics/tui.py
     DOC201: Method `ProjectExplorerScreen._build_plot_figure` does not have a return section in docstring
     DOC501: Method `ProjectExplorerScreen._build_plot_figure` has raise statements, but the docstring does not have a "Raises" section
     DOC503: Method `ProjectExplorerScreen._build_plot_figure` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
-    DOC101: Method `ProjectExplorerScreen._yaml_paths`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._yaml_paths`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [directory: Path].
-    DOC201: Method `ProjectExplorerScreen._yaml_paths` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._yaml_paths` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Method `ProjectExplorerScreen._job_resource_options`: Docstring contains fewer arguments than in function signature.
-    DOC107: Method `ProjectExplorerScreen._job_resource_options`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Method `ProjectExplorerScreen._job_resource_options`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [model_type: , resource_type: str].
-    DOC201: Method `ProjectExplorerScreen._job_resource_options` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._job_resource_options` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC101: Method `ProjectExplorerScreen._job_template_created`: Docstring contains fewer arguments than in function signature.
     DOC103: Method `ProjectExplorerScreen._job_template_created`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [definition: JobDefinition | None].
     DOC101: Method `ProjectExplorerScreen.update_data_plot_selection`: Docstring contains fewer arguments than in function signature.

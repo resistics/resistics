@@ -237,8 +237,6 @@ class ProjectJobs:
 
     def validate(self, job: Path | str) -> JobValidation:
         """Resolve and validate a job, returning user-facing errors."""
-        errors: list[str] = []
-        warnings: list[str] = []
         try:
             job_path = self._job_path(job)
             definition = model_from_yaml_file(JobDefinition, job_path)
@@ -251,6 +249,60 @@ class ProjectJobs:
             if definition.criteria:
                 criteria_path = self._reference_path("criteria", definition.criteria)
                 criteria = model_from_yaml_file(GatherCriteria, criteria_path)
+        except Exception as exc:
+            return JobValidation(ok=False, errors=[str(exc)])
+        return self.validate_loaded(
+            job_path=job_path,
+            definition=definition,
+            flow_path=flow_path,
+            flow=flow,
+            parameters_path=parameters_path,
+            parameters=parameters,
+            criteria_path=criteria_path,
+            criteria=criteria,
+        )
+
+    def validate_loaded(
+        self,
+        *,
+        job_path: Path,
+        definition: JobDefinition,
+        flow_path: Path,
+        flow: FlowDefinition,
+        parameters_path: Path,
+        parameters: ParameterSet,
+        criteria_path: Path | None = None,
+        criteria: GatherCriteria | None = None,
+    ) -> JobValidation:
+        """Validate one job from resources already loaded by a caller.
+
+        Parameters
+        ----------
+        job_path : Path
+            Project-local job definition path.
+        definition : JobDefinition
+            Parsed job definition.
+        flow_path : Path
+            Resolved flow definition path.
+        flow : FlowDefinition
+            Parsed flow definition.
+        parameters_path : Path
+            Resolved parameter-set path.
+        parameters : ParameterSet
+            Parsed parameter set.
+        criteria_path : Path | None
+            Resolved criteria path when the job references criteria.
+        criteria : GatherCriteria | None
+            Parsed criteria when the job references criteria.
+
+        Returns
+        -------
+        JobValidation
+            Complete validation result without reading YAML resources.
+        """
+        errors: list[str] = []
+        warnings: list[str] = []
+        try:
             runtime = {"project_path": str(self.project.project_path)}
             processing_job = ProcessingJob(
                 name=definition.name,
