@@ -26,25 +26,27 @@ the two documents do not drift independently.
 ## Current State
 
 - Programme state: `in_progress`
-- Active phase: Phase 3 - Replace mypy with a useful type-checking gate
-- Active checkpoint: Phase 3 review gate
+- Active phase: Phase 4 - Make the TUI responsive
+- Active checkpoint: `4.1` (`resistics`) - Make action-state checks pure and cheap
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `2.2` at `070c414`
-- Last verified checkpoint: `3.3` in `S021`
-- Last session: `S021`
-- Last verified commit: resistics `312710b` plus the documented Checkpoint 2.4
-  remainder and Checkpoint 2.5 worktree; regressioninc `9eb11a4` is the base of
-  uncommitted Checkpoints 1.1 and 1.2 work
+- Last completed checkpoint: `3.3` in `S021`
+- Last verified checkpoint: Phase 3 review gate in `S022`
+- Last session: `S022`
+- Last verified commit: resistics `419c495` plus the untracked pydoclint and
+  Pyrefly baselines and `resistics/py.typed`; regressioninc `9eb11a4` is the
+  base of uncommitted Checkpoints 1.1 and 1.2 work
 - Current blocker: none
-- Next exact action: run the Phase 3 review gate, including the planned ty
-  reassessment, and verify that the sole-checker, empty-baseline, runtime,
-  suppression, public typing, and artifact criteria remain satisfied.
+- Next exact action: inventory every `check_action` and equivalent binding
+  predicate, establish a failing zero-I/O benchmark around the current action
+  checks, then introduce explicit cached screen/application state updated only
+  by owned selection and data transitions.
 
 Current worktree caveat:
 
-- Resistics `312710b` records the tracked portions of Checkpoints 2.3 and 2.4.
-  The pydoclint baseline, authoring page/index entry, and all scoped Checkpoint
-  2.5 hook, guidance, hygiene, and lock changes remain in the verified worktree.
+- Resistics `419c495` records the tracked hardening work through Checkpoint 3.3.
+  `pydoclint-baseline.txt`, `pyrefly-baseline.json`, and `resistics/py.typed`
+  remain untracked after that owner commit. They are required Phase 2/3
+  artifacts and must be included in the next owner-selected commit.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -230,7 +232,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | 3.1 | resistics | `verified` | S015; Pyrefly 1.1.1 selected |
 | 3.2 | resistics | `verified` | S016; locked Pyrefly gate, 175-entry baseline |
 | 3.3 | resistics | `verified` | S017-S021; baseline 175 -> 0; PEP 561 artifacts verified |
-| Gate 3 | resistics | `not_started` | Ready; depends on review and planned ty reassessment |
+| Gate 3 | resistics | `verified` | S022; Pyrefly retained, 0 diagnostics, PEP 561 artifacts verified |
 | 4.1 | resistics | `not_started` | Pure action-state checks |
 | 4.2 | resistics | `not_started` | Binding refresh measurements |
 | 4.3 | resistics | `not_started` | Explorer index and invalidation |
@@ -1637,6 +1639,15 @@ correct a factual error; note the correction explicitly.
   marker. Keep the two demonstrated rule-specific suppressions from D031;
   neither weakens a public contract. Verify the marker by inspecting both the
   wheel and source distribution before treating Checkpoint 3.3 as complete.
+- `D036` (2026-07-20): Retain Pyrefly 1.1.1 as the sole mandatory checker at
+  the Phase 3 review gate. A refreshed ephemeral reassessment confirmed that
+  ty remains at 0.0.61: it checked the production directory in about 0.17
+  seconds but reported 29 diagnostics, primarily from lost Pandas `NaT` and
+  numeric union narrowing, and still exposes inline-ignore generation rather
+  than a project-baseline workflow. Pyrefly checks the same 21 production
+  modules with zero warning-level diagnostics in 0.52-0.63 seconds and retains
+  the explicit empty-baseline gate. Do not add ty as a dependency or second
+  permanent checker; reassess it only after a material capability release.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -2036,3 +2047,49 @@ correct a factual error; note the correction explicitly.
 - Exact next action: run the Phase 3 review gate, including the planned ty
   reassessment, and verify the sole-checker, empty-baseline, performance,
   suppression, public typing, and artifact criteria.
+
+### S022 - 2026-07-20 - Verify the Phase 3 type-checking review gate
+
+- Gate state at start: Checkpoints 3.1-3.3 were `verified`; the Phase 3 review
+  gate was `not_started` pending the planned ty reassessment and consolidated
+  checker, performance, suppression, and artifact evidence.
+- Starting branch, HEAD, and worktree: `mth5` at owner commit `419c495`. That
+  commit contains the tracked hardening stack through S021. The pydoclint and
+  Pyrefly baselines and `resistics/py.typed` remain untracked; they were
+  preserved and are explicitly required in the next owner-selected commit.
+- Tooling audit: project configuration, pre-commit, the lock, and the synced
+  development tree contain exactly one checker, Pyrefly 1.1.1. `mypy.ini` is
+  deleted and active tooling contains no mypy, BasedPyright, Pyright, or ty
+  dependency/configuration. The Pyrefly error baseline is an empty list. The
+  only source suppressions remain the two rule-specific D031 boundaries.
+- Performance: three sequential locked Pyrefly checks covered all 21
+  production modules and their 899 dependencies with zero warning-level
+  diagnostics. Wall times were 0.63, 0.52, and 0.56 seconds; reported analysis
+  times were 0.64, 0.57, and 0.58 seconds with about 503-505 MiB physical
+  memory. This remains short enough for the always-run local hook.
+- ty reassessment: refreshed PyPI metadata and ran current ty 0.0.61
+  ephemerally against `resistics`, Python 3.11, and the project environment.
+  It completed in about 0.17 seconds but reported 29 diagnostics, largely
+  Pandas `NaT` and numeric union-narrowing losses, plus the two already
+  demonstrated NumPy/Pydantic boundary cases. Its CLI still has no
+  project-baseline workflow. D036 retains Pyrefly and leaves ty uninstalled.
+- Public typing and artifact evidence: a fresh isolated `uv build --no-sources`
+  produced the 1.0.0a3 wheel and sdist under
+  `/tmp/resistics-phase3-gate-20260720`. ZIP and tar inspection found
+  `resistics/py.typed` in both. Wheel metadata reports Python `>=3.11,<3.15`.
+- Verification commands and results:
+  - `uv lock --check` resolved the locked 177-package environment without
+    changes. Ruff format checked 42 files; Ruff lint and pydoclint passed;
+    Pyrefly reported zero warning-level diagnostics; `git diff --check` passed.
+  - The full suite passed 387 tests in 24.01 seconds.
+  - All seven pre-commit hooks passed using the existing isolated hook cache.
+- Gate state at end: the Phase 3 review gate is `verified`. Mypy is absent,
+  Pyrefly is the sole fast mandatory checker, the error baseline is empty,
+  edited public APIs are covered, suppressions are narrow and demonstrated,
+  and complete inline typing is documented and present in both artifacts.
+- Commit readiness or commit id: no commit was requested or created. The plan
+  update plus the three required untracked baseline/marker artifacts are ready
+  for the next owner-selected commit.
+- Exact next action: begin Checkpoint 4.1 by inventorying every `check_action`
+  and equivalent binding predicate, then add a zero-I/O benchmark that fails on
+  filesystem, MTH5, YAML, JSON, solution, flow, parameter, or job reads.
