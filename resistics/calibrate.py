@@ -256,9 +256,15 @@ class SensorCalibrationReader(CalibrationReader):
 
 
 class SensorCalibrationJSON(SensorCalibrationReader):
-    """Read in JSON formatted calibration data"""
+    """Read in JSON formatted calibration data.
 
-    extension: str = ".json"
+    Attributes
+    ----------
+    extension : str | None
+        Calibration filename extension.
+    """
+
+    extension: str | None = ".json"
 
     def read_calibration_data(
         self, file_path: Path, chan_metadata: ChanMetadata
@@ -312,9 +318,14 @@ class SensorCalibrationTXT(SensorCalibrationReader):
     See Also
     --------
     SensorCalibrationJSON : Reader for JSON calibration files
+
+    Attributes
+    ----------
+    extension : str | None
+        Calibration filename extension.
     """
 
-    extension: str = ".TXT"
+    extension: str | None = ".TXT"
 
     def read_calibration_data(
         self, file_path: Path, chan_metadata: ChanMetadata
@@ -475,9 +486,7 @@ class Calibrator(ResisticsProcess):
         chan_data = chan_data[:, np.newaxis, :] / transfunc[np.newaxis, :]
         return np.squeeze(chan_data)
 
-    def _interpolate(
-        self, freqs: np.ndarray, cal_data: CalibrationData
-    ) -> pd.DataFrame:
+    def _interpolate(self, freqs: np.ndarray, cal_data: CalibrationData) -> np.ndarray:
         """
         Interpolate the calibration data to the same frequencies as the time
         data
@@ -494,10 +503,8 @@ class Calibrator(ResisticsProcess):
 
         Returns
         -------
-        pd.DataFrame
-            The data interpolated to the frequencies and with an additional
-            column, complex, which is the complex values for the magnitude and
-            phase combinations.
+        np.ndarray
+            Complex calibration values interpolated to the frequencies.
         """
         mag = np.interp(freqs, cal_data.frequency, cal_data.magnitude)
         phs = np.interp(freqs, cal_data.frequency, cal_data.phase)

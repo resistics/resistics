@@ -111,6 +111,7 @@ from resistics.common import (
     ResisticsProcess,
     ResisticsWriter,
     WriteableMetadata,
+    save_compressed_arrays,
 )
 from resistics.decimate import DecimatedData, DecimatedLevelMetadata
 from resistics.errors import ProcessRunError
@@ -1067,7 +1068,7 @@ class WindowedMetadata(WriteableMetadata):
 
     fs: list[float]
     chans: list[str]
-    n_chans: int | None = None
+    n_chans: int = 0
     n_levels: int
     first_time: HighResDateTime
     last_time: HighResDateTime
@@ -1593,7 +1594,7 @@ class WindowerTarget(Windower):
 class WindowedDataWriter(ResisticsWriter):
     """Writer of resistics windowed data"""
 
-    def run(self, dir_path: Path, win_data: WindowedData) -> None:
+    def run(self, dir_path: Path, data: ResisticsData) -> None:
         """
         Write out WindowedData
 
@@ -1601,24 +1602,31 @@ class WindowedDataWriter(ResisticsWriter):
         ----------
         dir_path : Path
             The directory path to write to
-        win_data : WindowedData
+        data : ResisticsData
             Windowed data to write out
 
         Raises
         ------
+        TypeError
+            If ``data`` is not windowed data.
         WriteError
             If unable to write to the directory
         """
         from resistics.errors import WriteError
 
+        if not isinstance(data, WindowedData):
+            raise TypeError("WindowedDataWriter requires WindowedData")
+        win_data = data
         if not self._check_dir(dir_path):
             raise WriteError(dir_path, "Unable to write to directory, check logs")
         logger.info(f"Writing windowed data to {dir_path}")
         metadata_path = dir_path / "metadata.json"
         data_path = dir_path / "data"
-        np.savez_compressed(data_path, **{str(x): y for x, y in win_data.data.items()})
+        save_compressed_arrays(
+            data_path, {str(level): values for level, values in win_data.data.items()}
+        )
         metadata = win_data.metadata.model_copy()
-        metadata.history.add_record(self._get_record(dir_path, type(win_data)))
+        metadata.history.add_record(self._get_writer_record(dir_path, type(win_data)))
         metadata.write(metadata_path)
 
 

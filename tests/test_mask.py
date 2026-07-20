@@ -6,12 +6,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from resistics.common import ResisticsData
 from resistics.decimate import DecimationSetup
 from resistics.mask import (
     AbsoluteAmplitudeMask,
     AbsoluteTimeRange,
     DailyTimeRange,
     TimeMask,
+    WindowMaskProcess,
     WindowMaskReader,
     WindowMaskWriter,
     get_run_mask_path,
@@ -47,10 +49,16 @@ def decimation_parameters(fs=1.0):
 def test_concrete_mask_names_are_fixed_class_properties():
     assert TimeMask.name == "TimeMask"
     assert AbsoluteAmplitudeMask.name == "AbsoluteAmplitudeMask"
+    assert "name" not in WindowMaskProcess.model_fields
     assert "name" not in TimeMask.model_fields
     assert "name" not in AbsoluteAmplitudeMask.model_fields
     with pytest.raises(ValueError, match="Extra inputs are not permitted"):
         TimeMask(name="custom")
+
+
+def test_window_mask_writer_rejects_other_resistics_data(tmp_path):
+    with pytest.raises(TypeError, match="requires WindowMask data"):
+        WindowMaskWriter().run(tmp_path / "mask", ResisticsData())
 
 
 def test_mask_paths_are_namespaced_by_output_label():

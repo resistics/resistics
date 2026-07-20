@@ -3,20 +3,20 @@ Classes and methods for storing and manipulating time data, including:
 
 - The TimeMetadata model for defining metadata for TimeData
 - The TimeData class for storing TimeData
-- Implementations of time data readers for numpy and ascii formatted TimeData
+- MTH5 ingestion into channel-labelled TimeData
 - TimeData processors
 """
 
 import types
 from collections.abc import Callable
-from pathlib import Path
-from typing import Any, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Literal, cast
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import xarray as xr
 from loguru import logger
-from pydantic import ConfigDict, PositiveFloat, ValidationInfo, conint, field_validator
+from pydantic import ConfigDict, Field, PositiveFloat, ValidationInfo, field_validator
 
 from resistics.common import (
     History,
@@ -24,7 +24,6 @@ from resistics.common import (
     Record,
     ResisticsData,
     ResisticsProcess,
-    ResisticsWriter,
     WriteableMetadata,
     get_chan_type,
 )
@@ -35,41 +34,62 @@ from resistics.sampling import (
     RSDateTime,
     RSTimeDelta,
     to_datetime,
-    to_timestamp,
 )
 
 
 class ChanMetadata(Metadata):
-    """Channel metadata"""
+    """Channel metadata.
+
+    Attributes
+    ----------
+    model_config : ConfigDict
+        Pydantic assignment-validation configuration.
+    name : str
+        Channel component name.
+    data_files : list[str] | None
+        Legacy source filenames, absent for MTH5-backed channels.
+    chan_type : str
+        Electric, magnetic, auxiliary, or another MTH5 channel type.
+    chan_source : str | None
+        Component name in the source dataset.
+    sensor : str
+        Sensor type.
+    serial : str
+        Sensor serial identifier.
+    gain1 : float
+        Primary channel gain.
+    gain2 : float
+        Secondary channel gain.
+    scaling : float
+        Scaling applied to channel samples.
+    chopper : bool
+        Whether sensor chopper mode was enabled.
+    dipole_dist : float
+        Electric dipole length.
+    sensor_calibration_file : str
+        Explicit sensor calibration filename.
+    instrument_calibration_file : str
+        Explicit instrument calibration filename.
+    mth5_metadata : dict[str, Any]
+        MTH5 channel metadata preserved at ingestion.
+    """
 
     model_config = ConfigDict(validate_assignment=True)
 
     name: str
-    """The name of the channel"""
     data_files: list[str] | None = None
-    """The data files"""
-    chan_type: str | None = None
-    """The channel type, electric, magnetic or unknown"""
+    chan_type: str = ""
     chan_source: str | None = None
-    """The name of channel in the data source, can be ignored if not required"""
     sensor: str = ""
-    """The name of the sensor"""
     serial: str = ""
-    """The serial number of the sensor"""
     gain1: float = 1
-    """Primary channel gain"""
     gain2: float = 1
-    """Secondary channel gain"""
     scaling: float = 1
-    """Scaling to apply to the data. May include the gains and other scaling"""
     chopper: bool = False
-    """Boolean flag for chopper on"""
     dipole_dist: float = 1
-    """Dipole spacing for the channel"""
     sensor_calibration_file: str = ""
-    """Explicit name of sensor calibration file"""
     instrument_calibration_file: str = ""
-    """Explicit name of instrument calibration file"""
+    mth5_metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("data_files", mode="before")
     @classmethod
@@ -83,7 +103,7 @@ class ChanMetadata(Metadata):
     @classmethod
     def validate_chan_type(cls, value: str, info: ValidationInfo) -> str:
         """Validate the channel type"""
-        if isinstance(value, str):
+        if value:
             return value
         try:
             return get_chan_type(info.data["name"])
@@ -102,40 +122,73 @@ class ChanMetadata(Metadata):
 
 
 class TimeMetadata(WriteableMetadata):
-    """Time metadata"""
+    """Metadata for one MTH5-backed time-series run.
+
+    Attributes
+    ----------
+    model_config : ConfigDict
+        Pydantic assignment-validation configuration.
+    fs : float
+        Sampling frequency in hertz.
+    chans : list[str]
+        Ordered channel component names.
+    n_chans : int
+        Number of channels.
+    n_samples : int
+        Number of samples per channel.
+    first_time : HighResDateTime
+        Time of the first sample.
+    last_time : HighResDateTime
+        Time of the last sample.
+    system : str
+        Data-logger type.
+    serial : str
+        Data-logger serial identifier.
+    wgs84_latitude : float
+        Station latitude in WGS84.
+    wgs84_longitude : float
+        Station longitude in WGS84.
+    easting : float
+        Station easting in local coordinates.
+    northing : float
+        Station northing in local coordinates.
+    elevation : float
+        Station elevation.
+    chans_metadata : dict[str, ChanMetadata]
+        Metadata indexed by channel component.
+    history : History
+        Processing history.
+    survey : str
+        MTH5 survey identifier.
+    station : str
+        MTH5 station identifier.
+    run : str
+        MTH5 run identifier.
+    mth5_metadata : dict[str, Any]
+        MTH5 survey, station, and run metadata preserved at ingestion.
+    """
 
     model_config = ConfigDict(validate_assignment=True)
 
     fs: float
-    """The sampling frequency"""
     chans: list[str]
-    """List of channels"""
-    n_chans: int | None = None
-    """The number of channels"""
+    n_chans: int = 0
     n_samples: int
-    """The number of samples"""
     first_time: HighResDateTime
-    """The datetime of the first sample"""
     last_time: HighResDateTime
-    """The datetime of the last sample"""
     system: str = ""
-    """The system used for recording"""
     serial: str = ""
-    """Serial number of the system"""
     wgs84_latitude: float = -999.0
-    """Latitude in WGS84"""
     wgs84_longitude: float = -999.0
-    """Longitude in WGS84"""
     easting: float = -999.0
-    """The easting of the site in local cartersian coordinates"""
     northing: float = -999.0
-    """The northing of the site in local cartersian coordinates"""
     elevation: float = -999.0
-    """The elevation of the site"""
     chans_metadata: dict[str, ChanMetadata]
-    """List of channel metadata"""
     history: History = History()
-    """Processing history"""
+    survey: str = ""
+    station: str = ""
+    run: str = ""
+    mth5_metadata: dict[str, Any] = Field(default_factory=dict)
 
     def __getitem__(self, chan: str) -> ChanMetadata:
         """
@@ -170,7 +223,8 @@ class TimeMetadata(WriteableMetadata):
             'chopper': False,
             'dipole_dist': 1.0,
             'sensor_calibration_file': '',
-            'instrument_calibration_file': ''
+            'instrument_calibration_file': '',
+            'mth5_metadata': {}
         }
         """
         from resistics.common import check_chan
@@ -352,7 +406,8 @@ def get_time_metadata(
                 'chopper': False,
                 'dipole_dist': 1.0,
                 'sensor_calibration_file': '',
-                'instrument_calibration_file': ''
+                'instrument_calibration_file': '',
+                'mth5_metadata': {}
             },
             'Hy': {
                 'name': 'Hy',
@@ -367,10 +422,15 @@ def get_time_metadata(
                 'chopper': False,
                 'dipole_dist': 1.0,
                 'sensor_calibration_file': '',
-                'instrument_calibration_file': ''
+                'instrument_calibration_file': '',
+                'mth5_metadata': {}
             }
         },
-        'history': {'records': []}
+        'history': {'records': []},
+        'survey': '',
+        'station': '',
+        'run': '',
+        'mth5_metadata': {}
     }
     """
     chans = time_dict["chans"]
@@ -440,10 +500,10 @@ def adjust_time_metadata(
     from resistics.sampling import to_timedelta
 
     metadata.fs = fs
-    metadata.first_time = first_time
+    metadata.first_time = cast(HighResDateTime, first_time)
     metadata.n_samples = n_samples
     duration = to_timedelta(1 / fs) * (n_samples - 1)
-    metadata.last_time = first_time + duration
+    metadata.last_time = cast(HighResDateTime, first_time + duration)
     return metadata
 
 
@@ -451,8 +511,8 @@ class TimeData(ResisticsData):
     """
     Class for holding time data
 
-    The data values are stored in an numpy array attribute named data. This has
-    shape:
+    Samples are stored internally as an xarray object labelled by channel and
+    time. The ``data`` property exposes its mutable NumPy array with shape:
 
     n_chans x n_samples
 
@@ -460,8 +520,8 @@ class TimeData(ResisticsData):
     ----------
     metadata : TimeMetadata
         Metadata for the TimeData
-    data : np.ndarray
-        Numpy array of the data
+    data : np.ndarray | xr.DataArray | xr.Dataset
+        Channel-labelled data or a NumPy array in channel/sample order.
 
     Examples
     --------
@@ -481,15 +541,70 @@ class TimeData(ResisticsData):
     def __init__(
         self,
         metadata: TimeMetadata,
-        data: np.ndarray,
+        data: np.ndarray | xr.DataArray | xr.Dataset,
     ) -> None:
-        """Initialise time data"""
-        logger.debug(f"Creating TimeData with data type {data.dtype}")
+        """Initialise time data.
+
+        Raises
+        ------
+        ValueError
+            If channels are duplicated or the labelled data shape is invalid.
+        """
         self.metadata = metadata
-        self.data = data
-        self._chan_to_idx: dict[str, int] = {}
-        for idx, chan in enumerate(self.metadata.chans):
-            self._chan_to_idx[chan] = idx
+        if len(set(metadata.chans)) != len(metadata.chans):
+            raise ValueError("TimeData channel names must be unique")
+        if isinstance(data, xr.Dataset):
+            missing = set(metadata.chans).difference(data.data_vars)
+            if missing:
+                raise ValueError(f"MTH5 dataset is missing channels {sorted(missing)}")
+            array = data[metadata.chans].to_array(dim="channel")
+            if "time" not in array.dims:
+                raise ValueError("MTH5 dataset must have a time dimension")
+            array = array.transpose("channel", "time")
+        elif isinstance(data, xr.DataArray):
+            if set(data.dims) != {"channel", "time"}:
+                raise ValueError("TimeData arrays require channel and time dimensions")
+            array = data.transpose("channel", "time").sel(channel=metadata.chans)
+        else:
+            values = np.asarray(data)
+            timestamps = pd.date_range(
+                start=pd.Timestamp(metadata.first_time.isoformat()),
+                periods=metadata.n_samples,
+                freq=pd.Timedelta(1 / metadata.fs, unit="s"),
+            )
+            array = xr.DataArray(
+                values,
+                dims=("channel", "time"),
+                coords={"channel": metadata.chans, "time": timestamps},
+            )
+        expected_shape = (metadata.n_chans, metadata.n_samples)
+        if array.shape != expected_shape:
+            raise ValueError(
+                f"TimeData shape {array.shape} != expected {expected_shape}"
+            )
+        self._array = array.assign_coords(channel=metadata.chans)
+        self._chan_to_idx = {chan: idx for idx, chan in enumerate(metadata.chans)}
+        logger.debug(f"Creating TimeData with data type {self.data.dtype}")
+
+    @property
+    def data(self) -> np.ndarray:
+        """Return the mutable NumPy sample array in channel/time order."""
+        return np.asarray(self._array.data)
+
+    @property
+    def dataset(self) -> xr.Dataset:
+        """Return samples as an MTH5-compatible channel-variable dataset."""
+        return self._array.to_dataset(dim="channel")
+
+    def to_xarray(self) -> xr.DataArray:
+        """Return the labelled channel/time sample array.
+
+        Returns
+        -------
+        xr.DataArray
+            Samples labelled by channel and time.
+        """
+        return self._array
 
     def __getitem__(self, chan: str) -> np.ndarray:
         """
@@ -553,7 +668,7 @@ class TimeData(ResisticsData):
         from resistics.common import check_chan
 
         check_chan(chan, self.metadata.chans)
-        return self.data[self._chan_to_idx[chan]]
+        return np.asarray(self._array.sel(channel=chan).data)
 
     def set_chan(self, chan: str, chan_data: np.ndarray) -> None:
         """
@@ -582,7 +697,7 @@ class TimeData(ResisticsData):
             )
         if chan_data.dtype != self.data.dtype:
             raise ValueError(f"dtype {chan_data.dtype} != existing {self.data.dtype}")
-        self.data[self._chan_to_idx[chan]] = chan_data
+        self._array.loc[{"channel": chan}] = chan_data
 
     def get_timestamps(
         self, samples: np.ndarray | None = None, estimate: bool = True
@@ -663,7 +778,9 @@ class TimeData(ResisticsData):
 
     def copy(self) -> "TimeData":
         """Get a deepcopy of the time data object"""
-        return TimeData(self.metadata.model_copy(deep=True), np.array(self.data))
+        return TimeData(
+            self.metadata.model_copy(deep=True), self._array.copy(deep=True)
+        )
 
     def plot(
         self,
@@ -739,264 +856,8 @@ class TimeData(ResisticsData):
         return outstr
 
 
-class TimeReader(ResisticsProcess):
-    """Base reader for time-series metadata and samples."""
-
-    apply_scalings: bool = True
-    extension: str | None = None
-
-    def run(
-        self,
-        dir_path: Path,
-        metadata_only: bool | None = False,
-        metadata: TimeMetadata | None = None,
-        from_time: DateTimeLike | None = None,
-        to_time: DateTimeLike | None = None,
-        from_sample: int | None = None,
-        to_sample: int | None = None,
-    ) -> TimeMetadata | TimeData:
-        """
-        Read time series data
-
-        Parameters
-        ----------
-        dir_path : Path
-            The directory path
-        metadata_only : Optional[bool], optional
-            Read only the metadata, by default False
-        metadata : Optional[TimeMetadata], optional
-            Pass the metadata if its already been read in, by default None.
-        from_time : Union[DateTimeLike, None], optional
-            Timestamp to read from, by default None
-        to_time : Union[DateTimeLike, None], optional
-            Timestamp to read to, by default None
-        from_sample : Union[int, None], optional
-            Sample to read from, by default None
-        to_sample : Union[int, None], optional
-            Sample to read to, by default None
-
-        Returns
-        -------
-        TimeData
-            A TimeData instance
-        """
-        if metadata_only:
-            logger.info(f"Reading time series metadata only from {dir_path}")
-            return self.read_metadata(dir_path)
-        logger.info(f"Reading time series data from {dir_path}")
-        if metadata is None:
-            logger.debug(f"Reading time series metadata from {dir_path}")
-            metadata = self.read_metadata(dir_path)
-        else:
-            logger.debug("Using provided time series metadata")
-
-        from_sample, to_sample = self._get_read_samples(
-            metadata, from_time, to_time, from_sample, to_sample
-        )
-        logger.debug(f"Reading samples from {from_sample} to {to_sample}")
-        time_data = self.read_data(dir_path, metadata, from_sample, to_sample)
-        if self.apply_scalings:
-            logger.debug("Applying scaling to time series data")
-            return self.scale_data(time_data)
-        return time_data
-
-    def read_metadata(self, dir_path: Path) -> TimeMetadata:
-        """
-        Read time series data metadata
-
-        Parameters
-        ----------
-        dir_path : Path
-            The directory path of the time series data
-
-
-        Raises
-        ------
-        NotImplementedError
-            To be implemented in child classes
-        """
-        raise NotImplementedError(
-            "read_metadata should be implemented in child classes"
-        )
-
-    def read_data(
-        self, dir_path: Path, metadata: TimeMetadata, read_from: int, read_to: int
-    ) -> TimeData:
-        """
-        Read raw data with minimal scalings applied
-
-        Parameters
-        ----------
-        dir_path : path
-            The directory path to read from
-        metadata : TimeMetadata
-            Time series data metadata
-        read_from : int
-            Sample to read data from
-        read_to : int
-            Sample to read data to
-
-        Raises
-        ------
-        NotImplementedError
-            To be implemented in child TimeReader classes
-        """
-        raise NotImplementedError("read_data needs to be implemented in child classes")
-
-    def scale_data(self, time_data: TimeData) -> TimeData:
-        """
-        Scale data to physically meaningful units.
-
-        For magnetotelluric data, this is assumed to be mV/km for electric
-        channels, mV for magnetic channels (or nT for certain sensors)
-
-        The base class assumes the data is already in the correct units and
-        requires no scaling.
-
-        Parameters
-        ----------
-        time_data : TimeData
-            TimeData read in from file
-
-        Returns
-        -------
-        TimeData
-            TimeData scaled to give physically meaningful units
-        """
-        return time_data
-
-    def _check_data_files(self, dir_path: Path, metadata: TimeMetadata) -> bool:
-        """Check all data files in TimeMetadata exist"""
-        from resistics.common import is_file
-
-        chk = True
-        for chan_metadata in metadata.chans_metadata.values():
-            for data_file in chan_metadata.data_files:
-                if not is_file(dir_path / data_file):
-                    logger.debug(f"Data file {data_file} does not exist in {dir_path}")
-                    chk = False
-        return chk
-
-    def _check_extensions(self, dir_path: Path, metadata: TimeMetadata) -> bool:
-        """Check the data files have the correct extensions"""
-        chk = True
-        for chan_metadata in metadata.chans_metadata.values():
-            for data_file in chan_metadata.data_files:
-                if (dir_path / data_file).suffix != self.extension:
-                    logger.debug(f"Extension of {data_file} != {self.extension}")
-                    chk = False
-        return chk
-
-    def _get_read_samples(
-        self,
-        metadata: TimeMetadata,
-        from_time: DateTimeLike | None = None,
-        to_time: DateTimeLike | None = None,
-        from_sample: int | None = None,
-        to_sample: int | None = None,
-    ) -> tuple[int, int]:
-        """
-        Get samples to read from a mixture of from and to times or from and to samples.
-
-        Times and samples can be used together. However, any provided times take priority over matching provided samples.
-
-        Parameters
-        ----------
-        metadata : TimeMetadata
-            Time series data metadata
-        from_time : Union[DateTimeLike, None], optional
-            Timestamp to read from, by default None
-        to_time : Union[DateTimeLike, None], optional
-            Timestamp to read to, by default None
-        from_sample : Union[int, None], optional
-            Sample to read from, by default None
-        to_sample : Union[int, None], optional
-            Sample to read to, by default None
-
-        Returns
-        -------
-        read_from : int
-            Sample to read from
-        read_to : int
-            Sample to read to
-        """
-        from resistics.sampling import (
-            check_sample,
-            from_time_to_sample,
-            to_datetime,
-            to_time_to_sample,
-        )
-
-        n_samples = metadata.n_samples
-
-        if from_time is not None:
-            read_from = from_time_to_sample(
-                metadata.fs,
-                metadata.first_time,
-                metadata.last_time,
-                to_datetime(from_time),
-            )
-        elif from_sample is not None:
-            check_sample(n_samples, from_sample)
-            read_from = from_sample
-        else:
-            read_from = 0
-
-        if to_time is not None:
-            read_to = to_time_to_sample(
-                metadata.fs,
-                metadata.first_time,
-                metadata.last_time,
-                to_datetime(to_time),
-            )
-        elif to_sample is not None:
-            check_sample(n_samples, to_sample)
-            read_to = to_sample
-        else:
-            read_to = n_samples - 1
-
-        if read_from >= read_to:
-            raise ValueError(f"From sample {read_from} >= to sample {read_to}")
-        return read_from, read_to
-
-    def _get_return_metadata(
-        self, metadata: TimeMetadata, read_from: int, read_to: int
-    ) -> TimeMetadata:
-        """
-        Get metadata to return
-
-        Parameters
-        ----------
-        metadata : TimeMetadata
-            Time series data metadata
-        read_from : int
-            Sample to read from
-        read_to : int
-            Sample to read to
-
-        Returns
-        -------
-        TimeMetadata
-            TimeMetadata for the TimeData
-        """
-        from resistics.sampling import sample_to_datetime
-
-        from_time = sample_to_datetime(
-            metadata.fs,
-            metadata.first_time,
-            read_from,
-        )
-        n_read = read_to - read_from + 1
-        metadata = TimeMetadata(**metadata.dict())
-        return adjust_time_metadata(metadata, metadata.fs, from_time, n_read)
-
-
-class MTH5TimeReader(TimeReader):
-    """Read a selected MTH5 ``RunGroup`` into :class:`TimeData`.
-
-    Unlike directory-backed readers, MTH5 selection is performed by the
-    project before the reader receives the concrete run group.
-    """
+class MTH5TimeReader(ResisticsProcess):
+    """Read a selected MTH5 run group into channel-labelled :class:`TimeData`."""
 
     output_type: ClassVar[str] = "time_data"
     runtime_requirements: ClassVar[list[str]] = ["project", "run_batch"]
@@ -1025,17 +886,16 @@ class MTH5TimeReader(TimeReader):
         sample_rate: float | None = None,
     ) -> TimeData:
         """Read one bounded MTH5 run."""
-        start = None if from_time is None else str(to_timestamp(from_time).isoformat())
-        end = None if to_time is None else str(to_timestamp(to_time).isoformat())
+        start = None if from_time is None else pd.Timestamp(from_time).isoformat()
+        end = None if to_time is None else pd.Timestamp(to_time).isoformat()
         n_samples = None
         if from_sample is not None or to_sample is not None:
             if sample_rate is None:
                 raise ValueError("sample_rate is required for MTH5 sample bounds")
             first = 0 if from_sample is None else from_sample
-            run_ts = run_group.to_runts()
-            full_data = _mth5_run_ts_to_time_data(run_ts, chans=chans)
+            full_data = _mth5_run_ts_to_time_data(run_group.to_runts(), chans=chans)
             start = str(
-                to_timestamp(full_data.metadata.first_time)
+                pd.Timestamp(full_data.metadata.first_time.isoformat())
                 + pd.to_timedelta(first / sample_rate, unit="s")
             )
             if to_sample is not None:
@@ -1044,8 +904,72 @@ class MTH5TimeReader(TimeReader):
         return _mth5_run_ts_to_time_data(run_ts, chans=chans)
 
 
+def _mth5_metadata_dict(value: Any) -> dict[str, Any]:
+    """Convert MTH5 metadata to a serialisable dictionary.
+
+    Parameters
+    ----------
+    value : Any
+        MTH5 metadata object or dictionary.
+
+    Returns
+    -------
+    dict[str, Any]
+        Single-level metadata dictionary.
+    """
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    try:
+        return value.to_dict(single=True)
+    except TypeError:
+        return value.to_dict()
+
+
+def _nested_mth5_value(value: Any, *names: str, default: Any = "") -> Any:
+    """Read a nested MTH5 metadata value without concrete-type coupling.
+
+    Parameters
+    ----------
+    value : Any
+        Root metadata object.
+    *names : str
+        Attribute path to follow.
+    default : Any
+        Value returned when the path is absent.
+
+    Returns
+    -------
+    Any
+        Nested value or ``default``.
+    """
+    for name in names:
+        value = getattr(value, name, None)
+        if value is None:
+            return default
+    return value
+
+
+def _mth5_identifier(value: Any) -> str:
+    """Return a normalised MTH5 metadata identifier.
+
+    Parameters
+    ----------
+    value : Any
+        MTH5 metadata object.
+
+    Returns
+    -------
+    str
+        Identifier, or an empty string when absent.
+    """
+    result = getattr(value, "id", "")
+    return "" if result is None else str(result)
+
+
 def _mth5_run_ts_to_time_data(run_ts: Any, chans: list[str] | None = None) -> TimeData:
-    """Convert an MTH5 RunTS-like object to resistics time data."""
+    """Convert an MTH5 RunTS-like object to channel-labelled resistics data."""
     if hasattr(run_ts, "dataset"):
         dataset = run_ts.dataset
     elif hasattr(run_ts, "to_xarray"):
@@ -1060,275 +984,73 @@ def _mth5_run_ts_to_time_data(run_ts: Any, chans: list[str] | None = None) -> Ti
         dataset = dataset[chans]
     if not chans:
         raise ValueError("No channels found in MTH5 run")
-    data = np.vstack([np.asarray(dataset[chan].data) for chan in chans])
-    first_chan = dataset[chans[0]]
-    fs = float(
-        getattr(first_chan, "sample_rate", None)
-        or first_chan.attrs.get("sample_rate")
-        or first_chan.attrs.get("sampling_rate")
-    )
-    if getattr(first_chan, "start", None) is not None:
-        first_time = to_datetime(first_chan.start)
-    elif "time" in getattr(first_chan, "coords", {}):
-        first_time = to_datetime(pd.to_datetime(first_chan.coords["time"].values[0]))
-    else:
-        raise ValueError("Unable to determine MTH5 channel start time")
+    dataset = dataset[chans]
+    if "time" not in dataset.coords or dataset.sizes.get("time", 0) == 0:
+        raise ValueError("MTH5 run has no time samples")
+
+    first_time = to_datetime(pd.Timestamp(dataset.coords["time"].values[0]))
+    last_time = to_datetime(pd.Timestamp(dataset.coords["time"].values[-1]))
+    fs = float(getattr(run_ts, "sample_rate", 0) or dataset.attrs.get("sample_rate", 0))
+    if fs <= 0:
+        raise ValueError("Unable to determine MTH5 run sample rate")
+
+    run_metadata = getattr(run_ts, "run_metadata", None)
+    station_metadata = getattr(run_ts, "station_metadata", None)
+    survey_metadata = getattr(run_ts, "survey_metadata", None)
+    channel_metadata = {
+        str(getattr(value, "component", "")): value
+        for value in getattr(run_metadata, "channels", [])
+    }
     metadata = TimeMetadata(
         fs=fs,
         chans=chans,
         n_chans=len(chans),
-        n_samples=data.shape[1],
+        n_samples=dataset.sizes["time"],
         first_time=first_time,
-        last_time=first_time,
+        last_time=last_time,
+        survey=_mth5_identifier(survey_metadata),
+        station=_mth5_identifier(station_metadata),
+        run=_mth5_identifier(run_metadata),
+        system=str(_nested_mth5_value(run_metadata, "data_logger", "type")),
+        serial=str(_nested_mth5_value(run_metadata, "data_logger", "id")),
+        wgs84_latitude=float(
+            _nested_mth5_value(station_metadata, "location", "latitude", default=-999)
+        ),
+        wgs84_longitude=float(
+            _nested_mth5_value(station_metadata, "location", "longitude", default=-999)
+        ),
+        elevation=float(
+            _nested_mth5_value(station_metadata, "location", "elevation", default=-999)
+        ),
+        mth5_metadata={
+            "survey": _mth5_metadata_dict(survey_metadata),
+            "station": _mth5_metadata_dict(station_metadata),
+            "run": _mth5_metadata_dict(run_metadata),
+        },
         chans_metadata={
             chan: ChanMetadata(
                 name=chan,
                 data_files=None,
-                chan_type=(
-                    "electric"
-                    if chan.lower().startswith("e")
-                    else (
-                        "magnetic" if chan.lower().startswith(("h", "b")) else "unknown"
-                    )
+                chan_source=chan,
+                chan_type=str(
+                    dataset[chan].attrs.get("type")
+                    or getattr(channel_metadata.get(chan), "type", "unknown")
                 ),
+                sensor=str(
+                    _nested_mth5_value(channel_metadata.get(chan), "sensor", "type")
+                ),
+                serial=str(
+                    _nested_mth5_value(channel_metadata.get(chan), "sensor", "id")
+                ),
+                mth5_metadata={
+                    **_mth5_metadata_dict(channel_metadata.get(chan)),
+                    **dict(dataset[chan].attrs),
+                },
             )
             for chan in chans
         },
     )
-    metadata = adjust_time_metadata(metadata, fs, first_time, data.shape[1])
-    return TimeData(metadata, data)
-
-
-class TimeReaderJSON(TimeReader):
-    """Base class for TimeReaders that use a resistics JSON header"""
-
-    def read_metadata(self, dir_path: Path) -> TimeMetadata:
-        """
-        Read the time series data metadata and return
-
-        Parameters
-        ----------
-        dir_path : Path
-            Path to time series data directory
-
-        Returns
-        -------
-        TimeMetadata
-            Metadata for time series data
-
-        Raises
-        ------
-        MetadataReadError
-            If the headers cannot be parsed
-        TimeDataReadError
-            If the data files do not match the expected extension
-        """
-        from resistics.errors import MetadataReadError, TimeDataReadError
-
-        if self.extension is None:
-            raise TimeDataReadError(dir_path, "No data file extension defined")
-
-        metadata_path = dir_path / "metadata.json"
-        try:
-            metadata = TimeMetadata.model_validate_json(metadata_path.read_bytes())
-        except KeyError:
-            raise MetadataReadError(
-                metadata_path, "No metadata found in metadata file"
-            ) from None
-
-        if not self._check_data_files(dir_path, metadata):
-            raise TimeDataReadError(dir_path, "All data files do not exist")
-        if not self._check_extensions(dir_path, metadata):
-            raise TimeDataReadError(dir_path, f"Data file suffix not {self.extension}")
-        return metadata
-
-
-class TimeReaderAscii(TimeReaderJSON):
-    """
-    Class for reading Ascii data
-
-    Ascii data expected to be a single file with all the data. The delimiter can
-    be set using the delimiter class attribute as can the number of header
-    lines with the n_header attribute.
-    """
-
-    extension: str = ".txt"
-    delimiter: str | None = None
-    n_header: int = 0
-
-    def read_data(
-        self, dir_path: Path, metadata: TimeMetadata, read_from: int, read_to: int
-    ) -> TimeData:
-        """
-        Read data from Ascii files
-
-        Parameters
-        ----------
-        dir_path : path
-            The directory path to read from
-        metadata : TimeMetadata
-            Time series data metadata
-        read_from : int
-            Sample to read data from
-        read_to : int
-            Sample to read data to
-
-        Returns
-        -------
-        TimeData
-            TimeData
-
-        Raises
-        ------
-        ValueError
-            If metadata is None
-        """
-        dtype = np.float32
-        n_samples = read_to - read_from + 1
-        data = np.empty(shape=(len(metadata.chans), n_samples), dtype=dtype)
-
-        logger.info(f"Reading data from {dir_path}")
-        messages = [f"Reading raw data from {dir_path}"]
-        messages.append(f"Sampling frequency {metadata.fs} Hz")
-        # all channels have the same data path
-        data_path = dir_path / metadata.chans_metadata[metadata.chans[0]].data_files[0]
-        data = np.loadtxt(
-            data_path,
-            dtype=dtype,
-            delimiter=self.delimiter,
-            skiprows=read_from + self.n_header,
-            max_rows=n_samples,
-        )
-        data = data.transpose()
-        metadata = self._get_return_metadata(metadata, read_from, read_to)
-        messages.append(f"From sample, time: {read_from}, {metadata.first_time!s}")
-        messages.append(f"To sample, time: {read_to}, {metadata.last_time!s}")
-        metadata.history.add_record(self._get_record(messages))
-        logger.info(f"Data successfully read from {dir_path}")
-        return TimeData(metadata, data)
-
-
-class TimeReaderNumpy(TimeReaderJSON):
-    """
-    Class for reading Numpy data
-
-    This is expected to be a single data file for all channels. The ordering is
-    assumed to be the same as the channels definition in the metadata.
-    """
-
-    extension: str = ".npy"
-
-    def read_data(
-        self, dir_path: Path, metadata: TimeMetadata, read_from: int, read_to: int
-    ) -> TimeData:
-        """
-        Read raw data saved in numpy data
-
-        Parameters
-        ----------
-        dir_path : path
-            The directory path to read from
-        metadata : TimeMetadata
-            Time series data metadata
-        read_from : int
-            Sample to read data from
-        read_to : int
-            Sample to read data to
-
-        Returns
-        -------
-        TimeData
-            TimeData
-
-        Raises
-        ------
-        ValueError
-            If metadata is None
-        """
-        messages = [f"Reading raw data from {dir_path}"]
-        messages.append(f"Sampling frequency {metadata.fs} Hz")
-        data_path = dir_path / metadata.chans_metadata[metadata.chans[0]].data_files[0]
-        data = np.load(data_path, mmap_mode="r")[:, read_from : read_to + 1]
-        metadata = self._get_return_metadata(metadata, read_from, read_to)
-        messages.append(f"From sample, time: {read_from}, {metadata.first_time!s}")
-        messages.append(f"To sample, time: {read_to}, {metadata.last_time!s}")
-        metadata.history.add_record(self._get_record(messages))
-        logger.info(f"Data successfully read from {dir_path}")
-        return TimeData(metadata, data)
-
-
-class TimeWriterNumpy(ResisticsWriter):
-    """
-    Write out time data in numpy binary format
-
-    Data is written out as a single data file including all channels
-    """
-
-    def run(self, dir_path: Path, time_data: TimeData) -> None:
-        """
-        Write out TimeData
-
-        Parameters
-        ----------
-        dir_path : Path
-            The directory path to write to
-        time_data : TimeData
-            TimeData to write out
-
-        Raises
-        ------
-        WriteError
-            If unable to write to the directory
-        """
-        from resistics.errors import WriteError
-
-        if not self._check_dir(dir_path):
-            raise WriteError(dir_path, "Unable to write to directory, check logs")
-        logger.info(f"Writing time numpy data to {dir_path}")
-        metadata_path = dir_path / "metadata.json"
-        data_path = dir_path / "data.npy"
-        np.save(data_path, time_data.data)
-        metadata = time_data.metadata.model_copy(deep=True)
-        for chan in time_data.metadata.chans:
-            metadata[chan].data_files = [data_path.name]
-        metadata.history.add_record(self._get_record(dir_path, type(time_data)))
-        metadata.write(metadata_path)
-
-
-class TimeWriterAscii(ResisticsWriter):
-    """
-    Write out time data in ascii format
-    """
-
-    def run(self, dir_path: Path, time_data: TimeData) -> None:
-        """
-        Write out TimeData
-
-        Parameters
-        ----------
-        dir_path : Path
-            The directory path to write to
-        time_data : TimeData
-            TimeData to write out
-
-        Raises
-        ------
-        WriteError
-            If unable to write to the directory
-        """
-        from resistics.errors import WriteError
-
-        if not self._check_dir(dir_path):
-            raise WriteError(dir_path, "Unable to write to directory, check logs")
-        logger.info(f"Writing time ASCII data to {dir_path}")
-        metadata_path = dir_path / "metadata.json"
-        metadata = time_data.metadata.model_copy(deep=True)
-        for chan in time_data.metadata.chans:
-            chan_path = dir_path / f"{chan.lower()}.ascii"
-            np.savetxt(chan_path, time_data[chan], fmt="%.6f", newline="\n")
-            metadata[chan].data_files = [chan_path.name]
-        metadata.history.add_record(self._get_record(dir_path, type(time_data)))
-        metadata.write(metadata_path)
+    return TimeData(metadata, dataset)
 
 
 def new_time_data(
@@ -1601,11 +1323,11 @@ class Subsamples(TimeProcess):
         logger.info(f"Adjusted sample range {from_sample} to {to_sample}")
         # checks
         if from_sample >= to_sample:
-            raise ProcessRunError(f"From {from_sample} not < to {to_sample}")
+            raise ProcessRunError(self.name, f"From {from_sample} not < to {to_sample}")
         if not check_sample(n_samples, from_sample):
-            raise ProcessRunError(f"From sample {from_sample} out of range")
+            raise ProcessRunError(self.name, f"From sample {from_sample} out of range")
         if not check_sample(n_samples, to_sample):
-            raise ProcessRunError(f"To sample {to_sample} out of range")
+            raise ProcessRunError(self.name, f"To sample {to_sample} out of range")
         # convert samples to datetimes
         n_subsamples = to_sample - from_sample + 1
         fs = time_data.metadata.fs
@@ -2349,8 +2071,8 @@ class Decimate(TimeProcess):
         >>> plt.show() # doctest: +SKIP
     """
 
-    factor: conint(ge=1)
-    max_single_factor: conint(ge=2) = 3
+    factor: Annotated[int, Field(ge=1)]
+    max_single_factor: Annotated[int, Field(ge=2)] = 3
 
     def run(self, time_data: TimeData) -> TimeData:
         """

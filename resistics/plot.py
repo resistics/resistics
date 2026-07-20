@@ -735,8 +735,8 @@ def plot_job(resolved_job, project_path: Path | None = None) -> go.Figure:
     )
     vertex_spacing = max(
         FLOW_LAYOUT_VERTEX_SPACING,
-        int(JOB_CARD_WIDTH + 60),
-        int(card_height + 80),
+        JOB_CARD_WIDTH + 60,
+        card_height + 80,
     )
     nodes, edges, node_numbers, positions, routed_edges = _flow_layout(
         flow, descriptors, vertex_spacing=vertex_spacing
@@ -1070,21 +1070,15 @@ def plot_timeline(
         Plotly figure
     """
 
-    def check_datetime(x):
-        if isinstance(x, pd.Timestamp):
-            return x.to_pydatetime()
-        return x
-
     # get range for x axis
-    min_time = df["start"].min()
-    max_time = df["end"].max()
+    min_time = pd.Timestamp(df["start"].min())
+    max_time = pd.Timestamp(df["end"].max())
     if ref_time is not None and ref_time < min_time:
-        ref_time = check_datetime(ref_time)
         min_time = ref_time
     # get axis range and covert to datetime
     pad = 0.1 * (max_time - min_time)
-    min_time = check_datetime(min_time - pad)
-    max_time = check_datetime(max_time + pad)
+    range_start = (min_time - pad).to_pydatetime()
+    range_end = (max_time + pad).to_pydatetime()
 
     # sort for ordering
     df = df.sort_values([y_col, "start"])
@@ -1099,9 +1093,14 @@ def plot_timeline(
         title=title,
     )
     if ref_time is not None:
-        fig.add_vline(x=ref_time, line_width=3, line_dash="dash", line_color="red")
+        fig.add_vline(
+            x=ref_time.to_pydatetime(),
+            line_width=3,
+            line_dash="dash",
+            line_color="red",
+        )
     fig.update_layout(template=PLOTLY_TEMPLATE, margin=dict(PLOTLY_MARGIN))
-    fig.update_xaxes(range=[min_time, max_time])
+    fig.update_xaxes(range=[range_start, range_end])
     fig.update_yaxes(title=None, autorange="reversed")
     fig.update_layout(legend={"itemclick": False, "itemdoubleclick": False})
     return fig

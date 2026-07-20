@@ -81,14 +81,14 @@ def time_metadata_1chan(
     TimeMetadata
         TimeMetadata
     """
-    first_time = pd.to_datetime(first_time)
+    first_timestamp = pd.to_datetime(first_time)
     time_dict = {
         "chans": ["chan1"],
         "fs": fs,
         "n_samples": n_samples,
         "n_chans": 1,
-        "first_time": first_time,
-        "last_time": first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
+        "first_time": first_timestamp,
+        "last_time": first_timestamp + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
     }
     chans_dict = {
         "chan1": {
@@ -120,14 +120,14 @@ def time_metadata_2chan(
     TimeMetadata
         TimeMetadata
     """
-    first_time = pd.to_datetime(first_time)
+    first_timestamp = pd.to_datetime(first_time)
     time_dict = {
         "chans": ["chan1", "chan2"],
         "fs": fs,
         "n_samples": n_samples,
         "n_chans": 2,
-        "first_time": first_time,
-        "last_time": first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
+        "first_time": first_timestamp,
+        "last_time": first_timestamp + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
     }
     chans_dict = {
         "chan1": {
@@ -170,15 +170,15 @@ def time_metadata_general(
     TimeMetadata
         An instance of TimeMetadata with the approripate properties
     """
-    first_time = pd.to_datetime(first_time)
+    first_timestamp = pd.to_datetime(first_time)
     time_dict = {
         "chans": chans,
         "fs": fs,
         "dt": 1 / fs,
         "n_chans": len(chans),
         "n_samples": n_samples,
-        "first_time": first_time,
-        "last_time": first_time + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
+        "first_time": first_timestamp,
+        "last_time": first_timestamp + pd.Timedelta(1 / fs, "s") * (n_samples - 1),
     }
     chans_dict = {chan: {"name": chan, "data_files": "Ex.ascii"} for chan in chans}
     for chan in chans:
@@ -767,20 +767,20 @@ def spectra_metadata_multilevel(
     ValueError
         If the number of user input channels does not equal two
     """
-    if isinstance(n_wins, int):
-        n_wins = (n_wins * np.ones(shape=(n_levels))).tolist()
-    if isinstance(index_offset, int):
-        index_offset = (index_offset * np.ones(shape=(n_levels))).tolist()
+    level_n_wins = [n_wins] * n_levels if isinstance(n_wins, int) else n_wins
+    level_offsets = (
+        [index_offset] * n_levels if isinstance(index_offset, int) else index_offset
+    )
 
     levels_metadata = []
     levels_fs = []
-    for ilevel, offset in zip(range(n_levels), index_offset, strict=False):
+    for ilevel, offset in zip(range(n_levels), level_offsets, strict=False):
         factor = np.power(2, ilevel)
         fs = fs / factor
         levels_metadata.append(
             SpectraLevelMetadata(
                 fs=fs,
-                n_wins=n_wins[ilevel],
+                n_wins=level_n_wins[ilevel],
                 win_size=20,
                 olap_size=5,
                 index_offset=offset,
@@ -820,7 +820,7 @@ def spectra_data_basic() -> SpectraData:
         ]
     )
     # fmt:on
-    freqs = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+    freqs = [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0]
     level_metadata = SpectraLevelMetadata(
         fs=180,
         n_wins=2,
@@ -1019,7 +1019,6 @@ def transfer_function_random(
         cross_chans = in_chans
 
     return TransferFunction(
-        name="testing",
         variation="random",
         in_chans=in_chans,
         out_chans=out_chans,
@@ -1110,7 +1109,7 @@ def solution_mt() -> Solution:
     """
     tf = ImpedanceTensor()
     fs = 256
-    freqs = [100, 80, 60, 40, 20, 10]
+    freqs = [100.0, 80.0, 60.0, 40.0, 20.0, 10.0]
     components = components_mt()
     metadata = regression_input_metadata_single_site(fs, freqs, tf)
     return Solution(

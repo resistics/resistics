@@ -8,7 +8,7 @@ scipy stft function.
 """
 
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 import pandas as pd
@@ -25,6 +25,7 @@ from resistics.common import (
     ResisticsProcess,
     ResisticsWriter,
     WriteableMetadata,
+    save_compressed_arrays,
     validate_output_label,
 )
 from resistics.decimate import DecimationParameters
@@ -64,7 +65,7 @@ class SpectraMetadata(WriteableMetadata):
 
     fs: list[float]
     chans: list[str]
-    n_chans: int | None = None
+    n_chans: int = 0
     n_levels: int
     first_time: HighResDateTime
     last_time: HighResDateTime
@@ -244,10 +245,12 @@ class SpectraData(ResisticsData):
         """
         from resistics.plot import get_spectra_stack_fig
 
-        if grouping is None:
+        group_frequency = grouping
+        if group_frequency is None:
             first_date = pd.Timestamp(self.metadata.first_time.isoformat()).floor("D")
             last_date = pd.Timestamp(self.metadata.last_time.isoformat()).ceil("D")
-            grouping = last_date - first_date
+            duration_seconds = max(1, int((last_date - first_date).total_seconds()))
+            group_frequency = f"{duration_seconds}s"
         level_metadata = self.metadata.levels_metadata[level]
         df = pd.DataFrame(
             data=np.arange(level_metadata.n_wins),
@@ -259,7 +262,7 @@ class SpectraData(ResisticsData):
         y_labels = dict.fromkeys(self.metadata.chans, "Magnitude")
         fig = get_spectra_stack_fig(self.metadata.chans, y_labels)
         colors = iter(px.colors.qualitative.Plotly)
-        for idx, group in df.groupby(pd.Grouper(freq=grouping, offset=offset)):
+        for idx, group in df.groupby(pd.Grouper(freq=group_frequency, offset=offset)):
             stack = np.mean(np.absolute(self.data[level][group["local"]]), axis=0)
             fig = self._add_stack_data(
                 fig, freqs, stack, str(idx), color=next(colors), max_pts=max_pts
@@ -343,7 +346,9 @@ class SpectraData(ResisticsData):
 
         fig = get_spectra_section_fig(self.metadata.chans)
         colorbar_len = 0.90 / self.metadata.n_chans
-        colorbar_inc = 0.84 / (self.metadata.n_chans - 1)
+        colorbar_inc = (
+            0.0 if self.metadata.n_chans == 1 else 0.84 / (self.metadata.n_chans - 1)
+        )
         # group by the grouping frequency, iterate over the groups and plot
         data = {}
         for idx, group in df.groupby(pd.Grouper(freq=grouping)):
@@ -469,7 +474,7 @@ class FourierTransform(ResisticsProcess):
     include_in_default_parameters: ClassVar[bool] = True
 
     win_fnc: str | tuple[str, float] = ("kaiser", 14)
-    detrend: str | None = "linear"
+    detrend: Literal["linear", "constant"] | None = "linear"
     workers: int = -2
 
     def run(self, win_data: WindowedData) -> SpectraData:
@@ -794,7 +799,7 @@ class EvaluationFreqs(ResisticsProcess):
 class SpectraDataWriter(ResisticsWriter):
     """Writer of resistics spectra data"""
 
-    def run(self, dir_path: Path, spec_data: SpectraData) -> None:
+    def run(self, dir_path: Path, data: ResisticsData) -> None:
         """
         Write out SpectraData
 
@@ -802,24 +807,31 @@ class SpectraDataWriter(ResisticsWriter):
         ----------
         dir_path : Path
             The directory path to write to
-        spec_data : SpectraData
+        data : ResisticsData
             Spectra data to write out
 
         Raises
         ------
+        TypeError
+            If ``data`` is not spectra data.
         WriteError
             If unable to write to the directory
         """
         from resistics.errors import WriteError
 
+        if not isinstance(data, SpectraData):
+            raise TypeError("SpectraDataWriter requires SpectraData")
+        spec_data = data
         if not self._check_dir(dir_path):
             raise WriteError(dir_path, "Unable to write to directory, check logs")
         logger.info(f"Writing spectra data to {dir_path}")
         metadata_path = dir_path / "metadata.json"
         data_path = dir_path / "data"
-        np.savez_compressed(data_path, **{str(x): y for x, y in spec_data.data.items()})
+        save_compressed_arrays(
+            data_path, {str(level): values for level, values in spec_data.data.items()}
+        )
         metadata = spec_data.metadata.model_copy()
-        metadata.history.add_record(self._get_record(dir_path, type(spec_data)))
+        metadata.history.add_record(self._get_writer_record(dir_path, type(spec_data)))
         metadata.write(metadata_path)
 
 
@@ -881,14 +893,14 @@ class EvaluationFrequencyReader(ResisticsProcess):
     label: str = "default"
 
     def execute(
-        self, inputs: dict[str, Any], runtime: dict[str, Any]
+        self, inputs: dict[str, Any], context: dict[str, Any]
     ) -> EvaluationFrequencyData:
         """Read the spectra and persisted decimation parameters."""
         del inputs
-        batch = runtime["run_batch"]
-        label = validate_output_label(runtime.get("output_label", self.label))
+        batch = context["run_batch"]
+        label = validate_output_label(context.get("output_label", self.label))
         path = (
-            Path(runtime["project_path"])
+            Path(context["project_path"])
             / "data"
             / batch["survey"]
             / batch["station"]
@@ -913,7 +925,7 @@ class EvaluationFrequencyWriter(ResisticsProcess):
     label: str = "default"
 
     def execute(
-        self, inputs: dict[str, Any], runtime: dict[str, Any]
+        self, inputs: dict[str, Any], context: dict[str, Any]
     ) -> dict[str, str]:
         """Persist spectra and their decimation parameters."""
         value = inputs["eval_data"]
@@ -923,10 +935,10 @@ class EvaluationFrequencyWriter(ResisticsProcess):
             raise ValueError(
                 "EvaluationFrequencyWriter requires EvaluationFrequencyData"
             )
-        batch = runtime["run_batch"]
-        label = validate_output_label(runtime.get("output_label", self.label))
+        batch = context["run_batch"]
+        label = validate_output_label(context.get("output_label", self.label))
         path = (
-            Path(runtime["project_path"])
+            Path(context["project_path"])
             / "data"
             / batch["survey"]
             / batch["station"]
@@ -948,10 +960,10 @@ class EvaluationFrequencyParameters(ResisticsProcess):
     output_type: ClassVar[str] = "decimation_parameters"
 
     def execute(
-        self, inputs: dict[str, Any], runtime: dict[str, Any]
+        self, inputs: dict[str, Any], context: dict[str, Any]
     ) -> DecimationParameters:
         """Extract the persisted decimation setup."""
-        del runtime
+        del context
         artifact = inputs["eval_data"]
         if not isinstance(artifact, EvaluationFrequencyData):
             raise ValueError("EvaluationFrequencyParameters requires evaluation data")

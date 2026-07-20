@@ -54,20 +54,46 @@ names:
 └── resistics/
 ```
 
-From the `resistics` directory, create the complete locked environment and run
-the test suite with:
+From the `resistics` directory, create the complete locked environment with:
 
 ```console
 uv sync --locked --all-groups
-uv run --locked --no-sync pytest
 ```
 
-Build the current narrative and API documentation without re-running the
-known-stale executable gallery examples with:
+Install the repository's pre-commit hook once, then run the same maintained
+file-hygiene and locked Python quality checks on demand with:
 
 ```console
-uv run --locked --no-sync sphinx-build -D sphinx_gallery_conf.plot_gallery=0 -b html docs/source .artifacts/hardening/documentation/html
+uv run --locked --no-sync pre-commit install
+uv run --locked --no-sync pre-commit run --all-files
 ```
+
+The complete local production gate is:
+
+```console
+uv run --locked --no-sync ruff format --check resistics tests scripts
+uv run --locked --no-sync ruff check resistics tests scripts
+uv run --locked --no-sync pydoclint resistics
+uv run --locked --no-sync pyrefly check
+uv run --locked --no-sync pytest
+uv run --locked --no-sync pytest --cov=resistics --cov-branch --cov-report=term --cov-report=html --cov-report=xml
+uv run --locked --no-sync sphinx-build -D sphinx_gallery_conf.plot_gallery=0 -b html docs/source .artifacts/hardening/documentation/html
+uv build --no-sources
+uv audit --locked
+uv run --locked --no-sync python scripts/check_no_legacy_packaging.py
+```
+
+The gallery-disabled documentation command retains the measured legacy warning
+backlog until the Phase 7 documentation migration. Dependency-audit policy is
+hardened in Phase 6. Pyrefly is the sole type checker. All production modules
+are error- and warning-clean under the pinned checker, and the distribution
+advertises its inline public annotations through PEP 561. The committed empty
+baseline makes any new error-level finding fail the local gate; updating it is
+a deliberate maintenance action, not part of the normal local gate.
+
+The Python pre-commit hooks use `uv run --locked --no-sync` internally. Run
+the sync command above after pulling a lockfile or dependency change; hooks
+will fail rather than silently alter that environment.
 
 The sibling path is declared in `pyproject.toml` as `../regressioninc`. If uv
 reports that this path does not exist, clone or move the RegressionInC

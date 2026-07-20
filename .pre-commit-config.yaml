@@ -1,31 +1,34 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v6.0.0
     hooks:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.0.0-alpha.9-for-vscode
-    hooks:
-      - id: prettier
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.22
+  - repo: local
     hooks:
       - id: ruff-check
         name: ruff check
         description: Python linting
-        args: [--fix, --exit-non-zero-on-fix]
+        entry: uv run --locked --no-sync ruff check --fix --exit-non-zero-on-fix
+        language: system
         types_or: [python, pyi]
       - id: ruff-format
         name: ruff format
         description: Python formatting
+        entry: uv run --locked --no-sync ruff format
+        language: system
         types_or: [python, pyi]
-  - repo: https://github.com/jsh9/pydoclint
-    rev: "0.9.1"
-    hooks:
       - id: pydoclint
         name: pydoclint
         description: Docstring linting
-        args: [--config=pyproject.toml]
+        entry: uv run --locked --no-sync pydoclint --config=pyproject.toml
+        language: system
         files: ^resistics/.*\.py$
+      - id: pyrefly
+        name: pyrefly
+        description: Type checking
+        entry: uv run --locked --no-sync pyrefly check
+        language: system
+        pass_filenames: false
+        always_run: true

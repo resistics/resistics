@@ -1,7 +1,10 @@
 from pathlib import Path
 
+import numpy as np
+
 from resistics.calibrate import (
     CalibrationData,
+    Calibrator,
     SensorCalibrationJSON,
     SensorCalibrationTXT,
 )
@@ -17,6 +20,21 @@ def get_cal_data() -> CalibrationData:
         frequency=[1, 2, 3, 4, 5],
         magnitude=[10, 11, 12, 13, 14],
         phase=[0.1, 0.2, 0.3, 0.4, 0.5],
+    )
+
+
+def test_calibration_interpolation_returns_complex_array():
+    """Calibration interpolation should preserve its numerical array contract."""
+    frequencies = np.array([1.0, 2.5, 5.0])
+
+    interpolated = Calibrator()._interpolate(frequencies, get_cal_data())
+
+    expected_magnitude = np.array([10.0, 11.5, 14.0])
+    expected_phase = np.array([0.1, 0.25, 0.5])
+    assert isinstance(interpolated, np.ndarray)
+    assert np.iscomplexobj(interpolated)
+    np.testing.assert_allclose(
+        interpolated, expected_magnitude * np.exp(1j * expected_phase)
     )
 
 

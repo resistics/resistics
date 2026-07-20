@@ -9,12 +9,11 @@ solvers as required
 """
 
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Protocol
 
 import numpy as np
 import pandas as pd
 from loguru import logger
-from regressioninc.base import Regressor
 from regressioninc.linear import LeastSquares
 from tqdm import tqdm
 
@@ -30,7 +29,36 @@ from resistics.spectra import SpectraData, SpectraMetadata
 from resistics.transfunc import Component, TransferFunction, get_component_key
 
 
-def get_least_squares_regressor() -> Regressor:
+class _FittableRegressor(Protocol):
+    # Minimal regressioninc/plugin boundary required by the linear solver.
+    coef: np.ndarray | None
+
+    def fit(self, X: np.ndarray, y: np.ndarray) -> object: ...
+
+
+def _cross_channels(tf: TransferFunction) -> list[str]:
+    return tf.cross_chans
+
+
+def _dimensions(tf: TransferFunction) -> tuple[int, int]:
+    return tf.n_out, tf.n_in
+
+
+def _observations(
+    tf: TransferFunction, out_powers: np.ndarray
+) -> dict[str, np.ndarray]:
+    return {
+        out_chan: out_powers[:, idx, ...].flatten()
+        for idx, out_chan in enumerate(tf.out_chans)
+    }
+
+
+def _predictors(in_powers: np.ndarray) -> np.ndarray:
+    values = np.swapaxes(in_powers, 1, 2)
+    return values.reshape(-1, values.shape[-1])
+
+
+def get_least_squares_regressor() -> _FittableRegressor:
     """Return the regressioninc least-squares regressor."""
     return LeastSquares()
 
@@ -335,10 +363,7 @@ class RegressionPreparerGathered(ResisticsProcess):
         Dict[str, np.ndarray]
             Dictionary with output channel as key and observations as value
         """
-        return {
-            out_chan: out_powers[:, idx, ...].flatten()
-            for idx, out_chan in enumerate(tf.out_chans)
-        }
+        return _observations(tf, out_powers)
 
     def _get_preds(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
         """
@@ -364,11 +389,10 @@ class RegressionPreparerGathered(ResisticsProcess):
         np.ndarray
             The predictors
         """
-        in_powers = np.swapaxes(in_powers, 1, 2)
-        return in_powers.reshape(-1, in_powers.shape[-1])
+        return _predictors(in_powers)
 
 
-class RegressionPreparerSpectra(RegressionPreparerGathered):
+class RegressionPreparerSpectra(ResisticsProcess):
     """
     Prepare regression data directly from spectra data
 
@@ -378,7 +402,23 @@ class RegressionPreparerSpectra(RegressionPreparerGathered):
     --------
     RegressionPreparerGathered : Produce regression input data from gathered
     data
+
+    Attributes
+    ----------
+    input_types : ClassVar[dict[str, str]]
+        Flow ports for a transfer function and spectra data.
+    output_type : ClassVar[str]
+        Flow type produced for solver input.
+    include_in_default_parameters : ClassVar[bool]
+        Whether default parameter sets include this preparer.
     """
+
+    input_types: ClassVar[dict[str, str]] = {
+        "tf": "transfer_function",
+        "spec_data": "spectra_data",
+    }
+    output_type: ClassVar[str] = "regression_input"
+    include_in_default_parameters: ClassVar[bool] = True
 
     def run(self, tf: TransferFunction, spec_data: SpectraData) -> RegressionInputData:
         """Construct the linear equation for solving"""
@@ -393,8 +433,8 @@ class RegressionPreparerSpectra(RegressionPreparerGathered):
                     f"Preparing regression data: level {ilevel}, freq. {idx} = {freq}"
                 )
                 freqs.append(freq)
-                obs.append(self._get_obs(tf, out_powers[..., idx]))
-                preds.append(self._get_preds(tf, in_powers[..., idx]))
+                obs.append(_observations(tf, out_powers[..., idx]))
+                preds.append(_predictors(in_powers[..., idx]))
         record = self._get_record("Produced regression input data for spectra data")
         metadata = RegressionInputMetadata(contributors={"data": spec_data.metadata})
         metadata.history.add_record(record)
@@ -438,7 +478,7 @@ class RegressionPreparerSpectra(RegressionPreparerGathered):
         # prepare to calculate the crosspowers
         out_data = spec_data.get_chans(level, tf.out_chans)
         in_data = spec_data.get_chans(level, tf.in_chans)
-        cross_data = spec_data.get_chans(level, tf.cross_chans)
+        cross_data = spec_data.get_chans(level, _cross_channels(tf))
         cross_data = np.conj(cross_data[:, np.newaxis, ...])
 
         # multiply using broadcasting
@@ -575,7 +615,8 @@ class Solution(WriteableMetadata):
         np.ndarray
             The tensor as a numpy array
         """
-        tensor = np.zeros(shape=(self.tf.n_out, self.tf.n_in), dtype=np.complex128)
+        n_out, n_in = _dimensions(self.tf)
+        tensor = np.zeros(shape=(n_out, n_in), dtype=np.complex128)
         for out_idx, out_chan in enumerate(self.tf.out_chans):
             for in_idx, in_chan in enumerate(self.tf.in_chans):
                 key = get_component_key(out_chan, in_chan)
@@ -608,7 +649,7 @@ class SolverLinear(Solver):
     """Flag for adding an intercept term"""
 
     def _solve(
-        self, regression_input: RegressionInputData, model: Regressor
+        self, regression_input: RegressionInputData, model: _FittableRegressor
     ) -> Solution:
         """
         Get the regression solution for all evaluation frequencies
@@ -627,7 +668,8 @@ class SolverLinear(Solver):
         """
         n_freqs = regression_input.n_freqs
         tf = regression_input.tf
-        tensors = np.ndarray((n_freqs, tf.n_out, tf.n_in), dtype=np.complex128)
+        n_out, n_in = _dimensions(tf)
+        tensors = np.ndarray((n_freqs, n_out, n_in), dtype=np.complex128)
         logger.info(f"Solving for {n_freqs} evaluation frequencies")
         for eval_idx in tqdm(range(n_freqs)):
             for iout, out_chan in enumerate(tf.out_chans):
@@ -636,7 +678,7 @@ class SolverLinear(Solver):
         return self._get_solution(tf, regression_input, tensors)
 
     def _get_coef(
-        self, model: Regressor, obs: np.ndarray, preds: np.ndarray
+        self, model: _FittableRegressor, obs: np.ndarray, preds: np.ndarray
     ) -> np.ndarray:
         """
         Get coefficients for a single evaluation frequency and output channel
@@ -654,8 +696,15 @@ class SolverLinear(Solver):
         -------
         np.ndarray
             The coefficients
+
+        Raises
+        ------
+        ValueError
+            If the regressor completes without producing coefficients.
         """
         model.fit(preds, obs)
+        if model.coef is None:
+            raise ValueError("Regressor did not produce coefficients")
         return model.coef
 
     def _get_solution(
@@ -722,10 +771,23 @@ class SolutionWriter(ResisticsProcess):
     runtime_requirements: ClassVar[list[str]] = ["staging_output_path"]
 
     def execute(
-        self, inputs: dict[str, Any], runtime: dict[str, Any]
+        self, inputs: dict[str, Any], context: dict[str, Any]
     ) -> dict[str, str]:
-        """Write the supplied solution to ``solution.json``."""
-        path = Path(runtime["staging_output_path"])
+        """Write the supplied solution to ``solution.json``.
+
+        Parameters
+        ----------
+        inputs : dict[str, Any]
+            Flow inputs containing the transfer-function solution.
+        context : dict[str, Any]
+            Runtime context containing the staging output path.
+
+        Returns
+        -------
+        dict[str, str]
+            Result path exposed to the job runner.
+        """
+        path = Path(context["staging_output_path"])
         path.mkdir(parents=True, exist_ok=False)
         inputs["solution"].write(path / "solution.json")
         return {"result_path": str(path)}

@@ -322,14 +322,103 @@ class _MTH5InspectionMixin:
     mth5_data: MTH5
     table: pd.DataFrame
 
+    def fs(self) -> list[float]:
+        """Return the distinct sampling frequencies in the inspection source.
+
+        Returns
+        -------
+        list[float]
+            Sampling frequencies represented by the source.
+
+        Raises
+        ------
+        NotImplementedError
+            If a concrete inspection source does not implement the contract.
+        """
+        raise NotImplementedError
+
+    def get_survey(self, survey: str) -> SurveyGroup:
+        """Return a survey group by identifier.
+
+        Parameters
+        ----------
+        survey : str
+            Survey identifier.
+
+        Returns
+        -------
+        SurveyGroup
+            Matching MTH5 survey group.
+
+        Raises
+        ------
+        NotImplementedError
+            If a concrete inspection source does not implement the contract.
+        """
+        raise NotImplementedError
+
+    def get_station(self, survey: str, station: str) -> StationGroup:
+        """Return a station group within a survey.
+
+        Parameters
+        ----------
+        survey : str
+            Survey identifier.
+        station : str
+            Station identifier.
+
+        Returns
+        -------
+        StationGroup
+            Matching MTH5 station group.
+
+        Raises
+        ------
+        NotImplementedError
+            If a concrete inspection source does not implement the contract.
+        """
+        raise NotImplementedError
+
+    def get_run(self, survey: str, station: str, run: str) -> RunGroup:
+        """Return a run group within a survey and station.
+
+        Parameters
+        ----------
+        survey : str
+            Survey identifier.
+        station : str
+            Station identifier.
+        run : str
+            Run identifier.
+
+        Returns
+        -------
+        RunGroup
+            Matching MTH5 run group.
+
+        Raises
+        ------
+        NotImplementedError
+            If a concrete inspection source does not implement the contract.
+        """
+        raise NotImplementedError
+
+    def _filter_table(
+        self,
+        survey: str | None = None,
+        station: str | None = None,
+        fs: float | None = None,
+    ) -> pd.DataFrame:
+        raise NotImplementedError
+
     def file_summary(self) -> MTH5FileSummary:
         table = self.table
         return MTH5FileSummary(
             mth5_path=self.mth5_path,
             file_version=str(self.mth5_data.file_version),
-            n_surveys=int(table["survey"].nunique()) if not table.empty else 0,
-            n_stations=int(table["station_path"].nunique()) if not table.empty else 0,
-            n_runs=int(table["run_path"].nunique()) if not table.empty else 0,
+            n_surveys=table["survey"].nunique() if not table.empty else 0,
+            n_stations=table["station_path"].nunique() if not table.empty else 0,
+            n_runs=table["run_path"].nunique() if not table.empty else 0,
             n_channels=len(table.index),
             sample_rates=self.fs(),
             start_time=_iso_min(table, "start"),
@@ -342,8 +431,8 @@ class _MTH5InspectionMixin:
             ans.append(
                 SurveySummary(
                     survey=str(survey),
-                    n_stations=int(table["station"].nunique()),
-                    n_runs=int(table["run_path"].nunique()),
+                    n_stations=table["station"].nunique(),
+                    n_runs=table["run_path"].nunique(),
                 )
             )
         return ans
@@ -357,7 +446,7 @@ class _MTH5InspectionMixin:
                     survey=str(survey_name),
                     station=str(station),
                     station_path=f"{survey_name}/{station}",
-                    n_runs=int(rows["run"].nunique()),
+                    n_runs=rows["run"].nunique(),
                     sample_rates=sorted(float(x) for x in rows["sample_rate"].unique()),
                     start_time=_iso_min(rows, "start"),
                     end_time=_iso_max(rows, "end"),
@@ -466,7 +555,12 @@ class MTH5File(_MTH5InspectionMixin, ResisticsModel):
         """Close the underlying MTH5 file handle."""
         self.mth5_data.close_mth5()
 
-    def _filter_table(self, survey=None, station=None, fs=None) -> pd.DataFrame:
+    def _filter_table(
+        self,
+        survey: str | None = None,
+        station: str | None = None,
+        fs: float | None = None,
+    ) -> pd.DataFrame:
         return _filter_table(self.table, survey, station, fs)
 
 
@@ -1128,9 +1222,3 @@ def _read_run(
         to_sample=to_sample,
         sample_rate=selected.sample_rate,
     )
-
-
-# The full gathering module still uses these type names while its MTH5
-# remote-reference adapter is being built out.
-Measurement = None
-Site = None

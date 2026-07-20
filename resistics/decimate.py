@@ -6,13 +6,13 @@ Module for time data decimation including classes and for the following
 """
 
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from loguru import logger
-from pydantic import ConfigDict, PositiveInt, conint, model_validator
+from pydantic import ConfigDict, Field, PositiveInt, model_validator
 
 from resistics.common import (
     History,
@@ -22,6 +22,7 @@ from resistics.common import (
     ResisticsProcess,
     ResisticsWriter,
     WriteableMetadata,
+    save_compressed_arrays,
 )
 from resistics.sampling import HighResDateTime
 from resistics.time import ChanMetadata, TimeData, TimeMetadata
@@ -143,12 +144,11 @@ def get_eval_freqs(
     >>> get_eval_freqs(256, n_freqs=3)
     array([64.      , 45.254834, 32.      ])
     """
-    if f_min is None and n_freqs is None:
-        raise ValueError("One of f_min and n_freqs must be passed")
-    elif f_min is not None:
+    if f_min is not None:
         return get_eval_freqs_min(fs, f_min)
-    else:
+    if n_freqs is not None:
         return get_eval_freqs_size(fs, n_freqs)
+    raise ValueError("One of f_min and n_freqs must be passed")
 
 
 class DecimationParameters(ResisticsModel):
@@ -197,19 +197,19 @@ class DecimationParameters(ResisticsModel):
     min_samples: PositiveInt
     eval_freqs: list[float]
     dec_factors: list[int]
-    dec_increments: list[int] | None = None
-    dec_fs: list[float] | None = None
+    dec_increments: list[int] = Field(default_factory=list)
+    dec_fs: list[float] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def set_derived_decimation_fields(self) -> "DecimationParameters":
         """Initialise derived decimation fields if not provided."""
-        if self.dec_increments is None:
+        if not self.dec_increments:
             divisor = np.ones(shape=(self.n_levels), dtype=int)
             divisor[1:] = self.dec_factors[:-1]
             self.dec_increments = (
                 np.divide(self.dec_factors, divisor).astype(int).tolist()
             )
-        if self.dec_fs is None:
+        if not self.dec_fs:
             factors = np.array(self.dec_factors).astype(float)
             self.dec_fs = (self.fs * np.reciprocal(factors)).tolist()
         return self
@@ -534,7 +534,7 @@ class DecimatedMetadata(WriteableMetadata):
 
     fs: list[float]
     chans: list[str]
-    n_chans: int | None = None
+    n_chans: int = 0
     n_levels: int
     first_time: HighResDateTime
     last_time: HighResDateTime
@@ -750,7 +750,7 @@ class Decimator(ResisticsProcess):
 
     resample: bool = True
     """Boolean flag for using resampling instead of decimation"""
-    max_single_factor: conint(ge=3) = 3
+    max_single_factor: Annotated[int, Field(ge=3)] = 3
     """Maximum single decimation factor, only used if resample is False"""
 
     def run(
@@ -827,7 +827,7 @@ class Decimator(ResisticsProcess):
 class DecimatedDataWriter(ResisticsWriter):
     """Writer of resistics decimated data"""
 
-    def run(self, dir_path: Path, dec_data: DecimatedData) -> None:
+    def run(self, dir_path: Path, data: ResisticsData) -> None:
         """
         Write out DecimatedData
 
@@ -835,24 +835,31 @@ class DecimatedDataWriter(ResisticsWriter):
         ----------
         dir_path : Path
             The directory path to write to
-        dec_data : DecimatedData
+        data : ResisticsData
             Decimated data to write out
 
         Raises
         ------
+        TypeError
+            If ``data`` is not decimated data.
         WriteError
             If unable to write to the directory
         """
         from resistics.errors import WriteError
 
+        if not isinstance(data, DecimatedData):
+            raise TypeError("DecimatedDataWriter requires DecimatedData")
+        dec_data = data
         if not self._check_dir(dir_path):
             raise WriteError(dir_path, "Unable to write to directory, check logs")
         logger.info(f"Writing decimated data to {dir_path}")
         metadata_path = dir_path / "metadata.json"
         data_path = dir_path / "data"
-        np.savez_compressed(data_path, **{str(x): y for x, y in dec_data.data.items()})
+        save_compressed_arrays(
+            data_path, {str(level): values for level, values in dec_data.data.items()}
+        )
         metadata = dec_data.metadata.model_copy()
-        metadata.history.add_record(self._get_record(dir_path, type(dec_data)))
+        metadata.history.add_record(self._get_writer_record(dir_path, type(dec_data)))
         metadata.write(metadata_path)
 
 

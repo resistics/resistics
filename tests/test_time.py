@@ -2,7 +2,6 @@
 Test time data and processors
 """
 
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -10,21 +9,12 @@ import pandas as pd
 import pytest
 
 from resistics.errors import ChannelNotFoundError, ProcessRunError
-from resistics.sampling import DateTimeLike, to_datetime
+from resistics.sampling import to_datetime
 from resistics.testing import (
     time_data_random,
     time_data_simple,
-    time_metadata_1chan,
-    time_metadata_mt,
 )
-from resistics.time import (
-    ChanMetadata,
-    TimeData,
-    TimeMetadata,
-    TimeReader,
-    TimeReaderAscii,
-    TimeReaderNumpy,
-)
+from resistics.time import ChanMetadata, TimeData, TimeMetadata
 
 
 def test_chan_metadata():
@@ -158,9 +148,15 @@ def test_time_data(fs: float, n_samples: int, first_time: str, time_data: TimeDa
     timestamps = pd.date_range(
         start=first_time, periods=n_samples, freq=pd.Timedelta(1 / fs, "s")
     )
-    pd.testing.assert_index_equal(time_data.get_timestamps(estimate=True), timestamps)
+    actual_timestamps = time_data.get_timestamps(estimate=True)
+    assert isinstance(actual_timestamps, pd.DatetimeIndex)
+    pd.testing.assert_index_equal(actual_timestamps, timestamps)
+    selected_timestamps = time_data.get_timestamps(
+        samples=np.array([1, 5]), estimate=True
+    )
+    assert isinstance(selected_timestamps, pd.DatetimeIndex)
     pd.testing.assert_index_equal(
-        time_data.get_timestamps(samples=np.array([1, 5]), estimate=True),
+        selected_timestamps,
         timestamps[np.array([1, 5])],
     )
     # copy
@@ -174,171 +170,58 @@ def test_time_data(fs: float, n_samples: int, first_time: str, time_data: TimeDa
         time_data["unknown"] = np.ones(shape=(n_samples), dtype=np.float32)
 
 
-@pytest.mark.parametrize(
-    "metadata, from_time, to_time, exception, expected_from, expected_to",
-    [
-        (
-            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
-            None,
-            None,
-            None,
-            0,
-            99,
-        ),
-        (
-            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
-            "2020-01-01 00:00:01",
-            None,
-            None,
-            10,
-            99,
-        ),
-        (
-            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
-            None,
-            "2020-01-01 00:00:05",
-            None,
-            0,
-            50,
-        ),
-        (
-            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
-            "2019-12-31 23:59:55",
-            "2020-01-01 00:00:05",
-            None,
-            0,
-            50,
-        ),
-        (
-            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
-            "2020-01-01 00:00:01",
-            "2020-01-01 00:00:11",
-            None,
-            10,
-            99,
-        ),
-        (
-            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
-            "2020-01-01 00:00:01.34",
-            "2020-01-01 00:00:06.56",
-            None,
-            14,
-            65,
-        ),
-        (
-            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
-            "2020-01-01 00:00:11",
-            "2020-01-01 00:00:21",
-            ValueError,
-            0,
-            0,
-        ),
-        (
-            time_metadata_1chan(10, "2020-01-01 00:00:00", 100),
-            "2020-01-01 00:00:03",
-            "2020-01-01 00:00:02",
-            ValueError,
-            0,
-            0,
-        ),
-    ],
-)
-def test_time_data_get_read_samples_from_date_range(
-    metadata: TimeMetadata,
-    from_time: DateTimeLike,
-    to_time: DateTimeLike,
-    exception: None | Exception,
-    expected_from: int,
-    expected_to: int,
-):
-    """Test getting the read from and read to samples from input datetime range"""
-    reader = TimeReader()
-    if exception is not None:
-        with pytest.raises(exception):
-            from_sample, to_sample = reader._get_read_samples(
-                metadata, from_time=from_time, to_time=to_time
-            )
-        return
-    from_sample, to_sample = reader._get_read_samples(
-        metadata, from_time=from_time, to_time=to_time
+def test_mth5_reader_preserves_labels_and_source_metadata():
+    """Real MTH5 ingestion keeps channel/time labels and source metadata."""
+    import xarray as xr
+    from mth5.timeseries import RunTS
+
+    from resistics.time import MTH5TimeReader
+
+    time = pd.date_range("2026-01-01", periods=4, freq="500ms")
+    dataset = xr.Dataset(
+        {
+            "ex": xr.DataArray(
+                np.arange(4, dtype=np.float32),
+                dims=("time",),
+                attrs={"type": "electric", "units": "mV/km"},
+            ),
+            "hx": xr.DataArray(
+                np.arange(4, dtype=np.float32) + 10,
+                dims=("time",),
+                attrs={"type": "magnetic", "units": "nT"},
+            ),
+        },
+        coords={"time": time},
     )
-    assert from_sample == expected_from
-    assert to_sample == expected_to
-
-
-@pytest.mark.parametrize(
-    "metadata, from_sample, to_sample, exception, expected_from, expected_to",
-    [
-        (time_metadata_1chan(10, n_samples=100), None, None, None, 0, 99),
-        (time_metadata_1chan(10, n_samples=100), 11, 22, None, 11, 22),
-        (time_metadata_1chan(10, n_samples=100), -5, 1000, ValueError, 0, 100),
-        (time_metadata_1chan(10, n_samples=100), 22, 22, ValueError, 0, 0),
-        (time_metadata_1chan(10, n_samples=100), 22, 11, ValueError, 0, 0),
-    ],
-)
-def test_time_data_get_read_samples_from_sample_range(
-    metadata: TimeMetadata,
-    from_sample: int,
-    to_sample: int,
-    exception: None | Exception,
-    expected_from: int,
-    expected_to: int,
-):
-    """Test getting the read from and read to samples from input sample range"""
-    reader = TimeReader()
-    if exception is not None:
-        with pytest.raises(exception):
-            from_sample, to_sample = reader._get_read_samples(
-                metadata, from_sample=from_sample, to_sample=to_sample
-            )
-        return
-    from_sample, to_sample = reader._get_read_samples(
-        metadata, from_sample=from_sample, to_sample=to_sample
+    run_ts = RunTS(
+        dataset,
+        run_metadata={"id": "run_1", "sample_rate": 2.0},
+        station_metadata={
+            "id": "station_1",
+            "location.latitude": 50.0,
+            "location.longitude": -1.0,
+            "location.elevation": 100.0,
+        },
+        survey_metadata={"id": "survey_1"},
     )
-    assert from_sample == expected_from
-    assert to_sample == expected_to
 
+    class FakeRunGroup:
+        def to_runts(self, start=None, end=None, n_samples=None):
+            assert start is None
+            assert end is None
+            assert n_samples is None
+            return run_ts
 
-@pytest.mark.parametrize(
-    "reader",
-    [(TimeReaderNumpy()), (TimeReaderAscii())],
-)
-def test_time_reader(monkeypatch, reader: TimeReader):
-    """Test time readers"""
+    time_data = MTH5TimeReader().run(FakeRunGroup())
 
-    test_metadata = time_metadata_mt()
-    test_data = np.ones(shape=(4, test_metadata.n_samples))
-
-    def mock_read_bytes(*args):
-        """Mock the read_bytes used by pydantic"""
-        return test_metadata.json().encode()
-
-    def mock_true(*args):
-        """Mock is file"""
-        return True
-
-    def mock_data(*args, **kwargs):
-        """Mock data"""
-        return test_data
-
-    def mock_data_transpose(*args, **kwargs):
-        """Mock data"""
-        return test_data.T
-
-    monkeypatch.setattr(Path, "read_bytes", mock_read_bytes)
-    monkeypatch.setattr(Path, "exists", mock_true)
-    monkeypatch.setattr(Path, "is_file", mock_true)
-    monkeypatch.setattr(TimeReader, "_check_extensions", mock_true)
-    monkeypatch.setattr(np, "load", mock_data)
-    monkeypatch.setattr(np, "loadtxt", mock_data_transpose)
-
-    dir_path = Path("test")
-    metadata = reader.run(dir_path, metadata_only=True)
-    assert metadata == test_metadata
-    time_data = reader.run(dir_path)
-    test_metadata.history = time_data.metadata.history
-    assert time_data.metadata == test_metadata
-    np.testing.assert_equal(time_data.data, test_data)
+    assert time_data.metadata.chans == ["ex", "hx"]
+    assert time_data.metadata.survey == "survey_1"
+    assert time_data.metadata.station == "station_1"
+    assert time_data.metadata.run == "run_1"
+    assert time_data.metadata.wgs84_latitude == 50.0
+    assert time_data.to_xarray().dims == ("channel", "time")
+    assert list(time_data.dataset.data_vars) == ["ex", "hx"]
+    np.testing.assert_array_equal(time_data["hx"], dataset["hx"].data)
 
 
 @pytest.mark.parametrize(

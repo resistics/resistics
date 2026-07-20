@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import resistics.gather as gather_module
+import resistics.project as project_module
 from resistics.decimate import DecimationSetup
 from resistics.flow import model_from_yaml
 from resistics.gather import (
@@ -32,6 +34,20 @@ from resistics.spectra import (
 )
 from resistics.testing import evaluation_data, solution_mt, time_metadata_general
 from resistics.transfunc import ImpedanceTensor
+
+
+def test_obsolete_directory_gather_api_is_removed():
+    for name in (
+        "get_site_evals_metadata",
+        "get_site_level_wins",
+        "get_site_wins",
+        "Selection",
+        "Selector",
+        "ProjectGather",
+    ):
+        assert not hasattr(gather_module, name)
+    assert not hasattr(project_module, "Measurement")
+    assert not hasattr(project_module, "Site")
 
 
 def test_quick_gather_run():

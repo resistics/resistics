@@ -2,12 +2,14 @@
 Module defining transfer functions
 """
 
-from typing import Any, ClassVar, Union
+from __future__ import annotations
+
+from typing import Annotated, Any, ClassVar
 
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from pydantic import constr, field_validator, model_validator
+from pydantic import Field, model_validator
 from pydantic_core import core_schema
 
 from resistics.common import Metadata
@@ -88,6 +90,25 @@ class TransferFunction(Metadata):
         Users interested in writing a custom transfer function should inherit
         from this generic Transfer function
 
+    Attributes
+    ----------
+    name : str
+        Registered transfer-function model name.
+    variation : Annotated[str, Field(max_length=16)]
+        Short label identifying this variation.
+    out_chans : list[str]
+        Output channels.
+    in_chans : list[str]
+        Input channels.
+    cross_chans : list[str]
+        Channels used to calculate cross spectra.
+    n_out : int
+        Number of output channels.
+    n_in : int
+        Number of input channels.
+    n_cross : int
+        Number of cross-power channels.
+
     See Also
     --------
     ImpandanceTensor : Transfer function for the MT impedance tensor
@@ -113,23 +134,23 @@ class TransferFunction(Metadata):
                                    | Hz |
     """
 
-    _types: ClassVar[dict[str, type["TransferFunction"]]] = {}
+    _types: ClassVar[dict[str, type[TransferFunction]]] = {}
     """Store types which will help automatic instantiation"""
-    name: str | None = None
+    name: str = ""
     """The name of the transfer function, this will be set automatically"""
-    variation: constr(max_length=16) = "generic"
+    variation: Annotated[str, Field(max_length=16)] = "generic"
     """A short additional bit of information about this variation"""
     out_chans: list[str]
     """The output channels"""
     in_chans: list[str]
     """The input channels"""
-    cross_chans: list[str] | None = None
+    cross_chans: list[str] = Field(default_factory=list)
     """The channels to use for calculating the cross spectra"""
-    n_out: int | None = None
+    n_out: int = 0
     """The number of output channels"""
-    n_in: int | None = None
+    n_in: int = 0
     """The number of input channels"""
-    n_cross: int | None = None
+    n_cross: int = 0
     """The number of cross power channels"""
 
     def __init_subclass__(cls) -> None:
@@ -171,9 +192,7 @@ class TransferFunction(Metadata):
         yield cls.validate
 
     @classmethod
-    def validate(
-        cls, value: Union["TransferFunction", dict[str, Any]]
-    ) -> "TransferFunction":
+    def validate(cls, value: TransferFunction | dict[str, Any]) -> TransferFunction:
         """
         Validate a TransferFunction
 
@@ -239,14 +258,15 @@ class TransferFunction(Metadata):
             'n_cross': 2
         }
 
-        That's more like it. Unknown transfer function names are preserved
-        as dictionary input, allowing custom transfer function definitions to
-        be handled outside the built-in registry.
+        That's more like it. Unknown transfer function names are rejected so
+        malformed or unavailable model types cannot leak dictionaries through
+        a field declared as a TransferFunction.
 
         >>> mytf = {"name": "NewTF", "cross_chans": ["Ex", "Ey"]}
         >>> test = TransferFunction.validate(mytf)
-        >>> test
-        {'name': 'NewTF', 'cross_chans': ['Ex', 'Ey']}
+        Traceback (most recent call last):
+        ...
+        ValueError: Unknown transfer function 'NewTF'
 
         Or if the dictionary does not have a name key
 
@@ -272,53 +292,49 @@ class TransferFunction(Metadata):
         if "name" not in value:
             raise KeyError("No name provided for initialisation of TransferFunction")
         data = dict(value)
-        name = data.get("name")
+        name = data.pop("name")
+        if not isinstance(name, str) or not name:
+            raise ValueError("Transfer function name must be a non-empty string")
         if name == "TransferFunction":
-            data.pop("name")
-            return data
-        if cls is TransferFunction and name not in cls._types:
-            return value
-        # check other known Transfer Functions
+            return TransferFunction(**data)
+        model_type = cls._types.get(name)
+        if model_type is None:
+            raise ValueError(f"Unknown transfer function '{name}'")
         try:
-            data.pop("name")
-            return cls._types[name](**data)
+            return model_type(**data)
         except Exception:
             raise ValueError(f"Unable to initialise {name} from dictionary") from None
 
     @model_validator(mode="after")
-    def validate_name(self) -> "TransferFunction":
-        """Inialise the name attribute of the transfer function"""
-        if self.name is None:
+    def validate_contract(self) -> TransferFunction:
+        """Resolve and validate all channel-derived fields.
+
+        Returns
+        -------
+        TransferFunction
+            The validated transfer function with concrete derived fields.
+
+        Raises
+        ------
+        ValueError
+            If a supplied dimension disagrees with its channel list.
+        """
+        if not self.name:
             self.name = self.__class__.__name__
+        if "cross_chans" not in self.model_fields_set:
+            self.cross_chans = list(self.in_chans)
+
+        dimensions = {
+            "n_out": len(self.out_chans),
+            "n_in": len(self.in_chans),
+            "n_cross": len(self.cross_chans),
+        }
+        for field, expected in dimensions.items():
+            if field in self.model_fields_set and getattr(self, field) != expected:
+                channels_field = field.removeprefix("n_") + "_chans"
+                raise ValueError(f"{field} must equal len({channels_field})")
+            setattr(self, field, expected)
         return self
-
-    @field_validator("cross_chans", mode="before")
-    def validate_cross_chans(cls, value: None | list[str], info) -> list[str]:
-        """Validate cross spectra channels"""
-        if value is None:
-            return info.data["in_chans"]
-        return value
-
-    @field_validator("n_out", mode="before")
-    def validate_n_out(cls, value: None | int, info) -> int:
-        """Validate number of output channels"""
-        if value is None:
-            return len(info.data["out_chans"])
-        return value
-
-    @field_validator("n_in", mode="before")
-    def validate_n_in(cls, value: None | int, info) -> int:
-        """Validate number of input channels"""
-        if value is None:
-            return len(info.data["in_chans"])
-        return value
-
-    @field_validator("n_cross", mode="before")
-    def validate_n_cross(cls, value: None | int, info) -> int:
-        """Validate number of cross channels"""
-        if value is None:
-            return len(info.data["cross_chans"])
-        return value
 
     def n_eqns_per_output(self) -> int:
         """Get the number of equations per output"""
@@ -343,7 +359,6 @@ class TransferFunction(Metadata):
 
         >>> from resistics.transfunc import TransferFunction
         >>> tf = TransferFunction(
-        ...     name="example",
         ...     variation="a",
         ...     in_chans=["a", "b", "c"],
         ...     out_chans=["x", "y"]
@@ -412,6 +427,15 @@ class ImpedanceTensor(TransferFunction):
     - Z = E/H is in mV / m . nT
     - Units of resistance = Ohm = V / A
 
+    Attributes
+    ----------
+    variation : Annotated[str, Field(max_length=16)]
+        Short label identifying this impedance-tensor variation.
+    out_chans : list[str]
+        Electric output channels.
+    in_chans : list[str]
+        Magnetic input channels.
+
     Examples
     --------
     >>> from resistics.transfunc import ImpedanceTensor
@@ -421,7 +445,7 @@ class ImpedanceTensor(TransferFunction):
     | ey |   | ey_hx ey_hy | | hy |
     """
 
-    variation: constr(max_length=16) = "default"
+    variation: Annotated[str, Field(max_length=16)] = "default"
     out_chans: list[str] = ["ex", "ey"]
     in_chans: list[str] = ["hx", "hy"]
 
@@ -631,6 +655,15 @@ class Tipper(TransferFunction):
 
     The tipper angle is arctan (Re(Ty)/Re(Tx))
 
+    Attributes
+    ----------
+    variation : Annotated[str, Field(max_length=16)]
+        Short label identifying this tipper variation.
+    out_chans : list[str]
+        Vertical magnetic output channel.
+    in_chans : list[str]
+        Horizontal magnetic input channels.
+
     Notes
     -----
     Information about units
@@ -646,7 +679,7 @@ class Tipper(TransferFunction):
                              | Hy |
     """
 
-    variation: constr(max_length=16) = "default"
+    variation: Annotated[str, Field(max_length=16)] = "default"
     out_chans: list[str] = ["Hz"]
     in_chans: list[str] = ["Hx", "Hy"]
 

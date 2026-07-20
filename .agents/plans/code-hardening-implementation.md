@@ -1,8 +1,8 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 2.4 verified with public docstring enforcement
+Status: in progress; Checkpoint 3.2 verified with Pyrefly mandatory
 Created: 2026-07-19
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 Working branch: `mth5`
 Starting HEAD: `c345ae6`
 Governing plan: [codebase-hardening.md](codebase-hardening.md)
@@ -26,24 +26,25 @@ the two documents do not drift independently.
 ## Current State
 
 - Programme state: `in_progress`
-- Active phase: Phase 2 - Ruff, pydoclint, docstrings, and pre-commit
-- Active checkpoint: `2.5` (`resistics`) - Simplify pre-commit and local quality commands
+- Active phase: Phase 3 - Replace mypy with a useful type-checking gate
+- Active checkpoint: Phase 3 review gate
 - Checkpoint state: `not_started`
 - Last completed checkpoint: `2.2` at `070c414`
-- Last verified checkpoint: `2.4` in `S013`
-- Last session: `S013`
-- Last verified commit: resistics `070c414`; regressioninc `9eb11a4` is the
-  base of uncommitted Checkpoints 1.1 and 1.2 work
+- Last verified checkpoint: `3.3` in `S021`
+- Last session: `S021`
+- Last verified commit: resistics `312710b` plus the documented Checkpoint 2.4
+  remainder and Checkpoint 2.5 worktree; regressioninc `9eb11a4` is the base of
+  uncommitted Checkpoints 1.1 and 1.2 work
 - Current blocker: none
-- Next exact action: begin Checkpoint 2.5 by inventorying the remaining hygiene
-  and Prettier hooks, then replace the isolated environments with locked,
-  uv-backed local quality commands.
+- Next exact action: run the Phase 3 review gate, including the planned ty
+  reassessment, and verify that the sole-checker, empty-baseline, runtime,
+  suppression, public typing, and artifact criteria remain satisfied.
 
 Current worktree caveat:
 
-- Resistics `070c414` records the accumulated work through Checkpoint 2.2. The
-  current dirty Resistics files contain the scoped, verified Checkpoints 2.3
-  and 2.4 migrations plus their S012-S013 verification records.
+- Resistics `312710b` records the tracked portions of Checkpoints 2.3 and 2.4.
+  The pydoclint baseline, authoring page/index entry, and all scoped Checkpoint
+  2.5 hook, guidance, hygiene, and lock changes remain in the verified worktree.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -59,6 +60,14 @@ Current worktree caveat:
   NumPy-style docstring contract checks through an explicit committed baseline;
   short docstrings are checked. Ruff enforces public production docstring
   presence, with narrow Pydantic-validator and Textual-callback exceptions.
+- Pre-commit uses maintained v6 file-hygiene hooks plus locked uv-backed local
+  Ruff and pydoclint hooks. The local hook is installed in this checkout.
+- Pyrefly 1.1.1 is the sole mandatory type checker. Its locked project command
+  checks all 21 production modules without error- or warning-level findings;
+  the committed error baseline is empty, and new findings fail locally and in
+  pre-commit. Two narrow demonstrated suppressions remain. The complete inline
+  typing contract is advertised by `py.typed`, verified in wheel and sdist.
+  mypy and its project cache/configuration are absent.
 - These files must not be reverted or overwritten during hardening work.
 
 ## Authority and Boundaries
@@ -216,12 +225,12 @@ or short command/result reference. Detailed output belongs in the session log or
 | 2.2 | resistics | `verified` | S011; Ruff format clean; 376 tests |
 | 2.3 | resistics | `verified` | S012; pydoclint 0.9.1 baseline; 376 tests |
 | 2.4 | resistics | `verified` | S013; public docs clean; 384 tests |
-| 2.5 | resistics | `not_started` | Depends on 2.1-2.4 |
-| Gate 2 | resistics | `not_started` | Depends on 2.1-2.5 |
-| 3.1 | resistics | `not_started` | Evidence-based checker evaluation |
-| 3.2 | resistics | `not_started` | Depends on 3.1 |
-| 3.3 | resistics | `not_started` | Depends on 3.2 |
-| Gate 3 | resistics | `not_started` | Depends on 3.1-3.3 |
+| 2.5 | resistics | `verified` | S014; clean sync/hooks; 384 tests |
+| Gate 2 | resistics | `verified` | S010-S014; sole Ruff/pydoclint uv gate |
+| 3.1 | resistics | `verified` | S015; Pyrefly 1.1.1 selected |
+| 3.2 | resistics | `verified` | S016; locked Pyrefly gate, 175-entry baseline |
+| 3.3 | resistics | `verified` | S017-S021; baseline 175 -> 0; PEP 561 artifacts verified |
+| Gate 3 | resistics | `not_started` | Ready; depends on review and planned ty reassessment |
 | 4.1 | resistics | `not_started` | Pure action-state checks |
 | 4.2 | resistics | `not_started` | Binding refresh measurements |
 | 4.3 | resistics | `not_started` | Explorer index and invalidation |
@@ -375,8 +384,8 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 373 passed | S002 |
-| Branch coverage | approximately 76% | 75.96% | 75.96% | S002; coverage XML |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 384 passed | S016 |
+| Branch coverage | approximately 76% | 75.96% | 76.19% | S014; coverage XML |
 | Production Python | approximately 21,011 lines | 21,015 | 21,015 | S002 report |
 | Tests | approximately 5,941 lines | 6,051 | 6,051 | S002 report |
 | `resistics/tui.py` | 2,673 lines | 2,673 | 2,673 | S002 report |
@@ -384,7 +393,8 @@ and must be re-measured in Phase 0 before they are treated as verified.
 | Flake8 | approximately 40 findings | 43 findings | 43 findings | S001 |
 | Legacy complexity | not recorded | 17 CCR001; 5 C901; 4 ECE001 | same | S002 |
 | Black format | not recorded | 26 files differ | 26 files differ | S001 |
-| mypy | 210 errors across 17 files | 209 across 17 files | same | S002 |
+| mypy | 210 errors across 17 files | 209 across 17 files | removed | S016 |
+| Pyrefly | not installed | 175 errors across 17 files | 0 new errors | S016 |
 | TUI cold import | approximately 2.18 seconds | 2.2659 s median | same | S002 report |
 | Cached TUI action checks | not measured | 1,200 in 0.002322 s; zero instrumented I/O | same | S002 XML |
 | Public docstring coverage | not measured | 80.2%; 566/706 | same | S002 report |
@@ -508,6 +518,41 @@ old id when evidence changes the direction.
   dunders/framework entry points should not acquire duplicate prose. Preserve
   API-local examples, plots, and Sphinx directives in place; protect their
   current inventory with AST-based tests and normal doctest collection.
+- `D028` (2026-07-19): Keep only `pre-commit-hooks` v6.0.0 as an external hook
+  repository for YAML, end-of-file, and trailing-whitespace hygiene. Run Ruff
+  and pydoclint as `repo: local`, `language: system` hooks whose entries use
+  `uv run --locked --no-sync`; this makes the lock the single Python-tool
+  version authority and prevents commit-time environment mutation. Remove the
+  deprecated Prettier mirror because no maintained non-Python asset requires a
+  JavaScript formatter. Document the complete local command surface, but leave
+  the mandatory type command explicitly empty until Phase 3 selects one useful
+  mypy replacement. Include `uv audit --locked` in the local gate; immediately
+  apply available focused transitive security upgrades rather than accepting a
+  failing audit without policy.
+- `D029` (2026-07-20): Select Pyrefly 1.1.1 for Checkpoint 3.2. On the common
+  8,031-line evaluation slice it combined a bounded 71-error baseline, the
+  clearest Pydantic v2 modelling, useful NumPy/SciPy inference, sub-second CLI
+  checks, a 0.01-second watched recheck, and an explicit non-mutating baseline
+  update workflow. Basedpyright 1.39.9 found useful additional Pandas and
+  Textual contracts but its recommended defaults produced 1,304 baseline
+  entries, rejected valid lax Pydantic constructors, and took about 3.7 seconds
+  warm. ty 0.0.61 was fastest and accepted Pydantic coercion, but lost
+  serialization and SciPy results to `Unknown` and exposed no project-baseline
+  command. Retain neither rejected candidate as a project dependency. Reassess
+  ty at the Phase 3 review gate or when it gains a baseline workflow and the
+  missing third-party/Pydantic result precision.
+- `D030` (2026-07-20): Pin Pyrefly exactly at 1.1.1 in the development group
+  and make `uv run --locked --no-sync pyrefly check` the sole type command.
+  Configure its default preset for the Python 3.11 minimum and all 21
+  `resistics` production modules. Commit error-level debt in the root
+  `pyrefly-baseline.json`; baseline regeneration requires an explicit
+  `--update-baseline` command and is never part of the normal gate. Run the
+  project command as an always-run, filename-independent local pre-commit hook
+  so configuration and cross-module findings cannot escape a file-scoped
+  invocation. Keep the 15 lower-severity warnings visible to editors but below
+  the mandatory CLI threshold until Checkpoint 3.3 triages them. Remove mypy,
+  its configuration, cache ignores, generated project cache, documentation,
+  and lock-only dependencies instead of translating its old exceptions.
 
 ## Blocker Log
 
@@ -1325,3 +1370,669 @@ correct a factual error; note the correction explicitly.
 - Exact next action: inventory the remaining pre-commit hygiene and Prettier
   hooks, then replace isolated hook environments with locked uv-backed local
   commands for Checkpoint 2.5.
+
+### S014 - 2026-07-19 - Simplify pre-commit and the local quality gate
+
+- Checkpoint state at start: `2.5` was `not_started`; the owner had committed
+  the tracked Checkpoint 2.3/2.4 changes as Resistics `312710b`, while the new
+  pydoclint baseline and docstring authoring page/index remained uncommitted.
+- Starting HEAD and worktree: Resistics `312710b` on `mth5` with only those
+  three documented Checkpoint 2.4 paths dirty; regressioninc remained at
+  `9eb11a4` with its separately documented uncommitted hardening changes.
+- Session objective: remove obsolete and duplicated pre-commit environments,
+  make the lock authoritative for Python quality tools, and document and prove
+  a repeatable local production gate.
+- Hook inventory and work completed: replaced `pre-commit-hooks` v4.4.0 with
+  current v6.0.0; removed the deprecated Prettier mirror; replaced the isolated
+  Ruff and pydoclint repositories with three local `language: system` hooks
+  using `uv run --locked --no-sync`; and installed the repository pre-commit
+  hook. The configuration now has one maintained external hygiene repository
+  and no isolated Python quality-tool environments.
+- Hygiene migration: the upgraded end-of-file hook removed one extra terminal
+  blank line from `.gitignore`. Every hook passed across all tracked product
+  files and the untracked Checkpoint 2.4 documentation/baseline files. The
+  managed workspace exposes `.agents` as read-only, so the mutating
+  end-of-file hook cannot open those files during `--all-files`; all non-mutating
+  hooks passed them, and the product-tree command passed without an exclusion
+  in repository configuration.
+- Clean-environment proof: a fresh temporary Python 3.14.6 environment synced
+  all groups from the 178-package lock, installed 168 packages including the
+  editable sibling regressioninc, validated the configuration, and passed all
+  six product hooks. Re-syncing that environment after the security refresh
+  installed the current lock and the same hook set passed again without sync.
+- Local-gate guidance: expanded the README with exact locked setup,
+  installation, pre-commit, Ruff, pydoclint, test, coverage, Sphinx, build,
+  dependency-audit, and legacy-packaging commands. The type slot is explicitly
+  unassigned until Phase 3 selects one checker; mypy is not presented as a
+  production signal during that transition.
+- Security audit: the initial OSV-backed `uv audit --locked` found eight Pillow
+  12.2.0 advisories and one setuptools 82.0.1 advisory, all with fixes. A
+  focused lock refresh selected Pillow 12.3.0 and setuptools 83.0.0. The final
+  audit found no known vulnerabilities or adverse statuses in 177 audited
+  packages.
+- Files changed by this checkpoint: `.pre-commit-config.yaml`, `.gitignore`,
+  `README.md`, `uv.lock`, and this implementation record. The untracked
+  pydoclint baseline and docstring authoring files remain required Checkpoint
+  2.4 work and must be included at the next durable boundary.
+- Decisions added or superseded: D028 defines the locked local-hook topology,
+  removal of Prettier, temporary absence of a mandatory type command, and
+  treatment of immediately fixable audit findings.
+- Verification commands and results:
+  - The installed `.git/hooks/pre-commit` points to the synced project
+    environment and `.pre-commit-config.yaml`; configuration validation passed.
+  - All six hooks passed the complete product tree from both the main synced
+    environment and the fresh Python 3.14 environment.
+  - Ruff format, Ruff lint, and pydoclint passed through those locked hooks.
+  - The full suite passed: 384 tests in 21.42 seconds.
+  - Branch coverage passed its configured threshold at 76.19%; HTML and XML
+    reports were generated under `.artifacts/hardening/coverage/`.
+  - The gallery-disabled Sphinx HTML build succeeded with the known 99-warning
+    Phase 7 backlog at
+    `.artifacts/hardening/documentation/checkpoint-2.5-html`.
+  - `uv build --no-sources` produced the 189,714-byte source distribution and
+    161,242-byte wheel. `uv lock --check`, the final zero-finding OSV audit,
+    the legacy-packaging guard, and `git diff --check` passed.
+- Known failures or incomplete work: a full `pre-commit run --all-files` cannot
+  run the mutating end-of-file hook against the sandbox-owned read-only
+  `.agents` paths in this managed session; this is not encoded as a repository
+  exclusion. Type checking remains intentionally unassigned until Phase 3. The
+  documentation warning backlog remains Phase 7 work.
+- Checkpoint state at end: `2.5` and the Phase 2 review gate are `verified`;
+  Checkpoint 3.1 is next.
+- Commit readiness or commit id: the Checkpoint 2.4 remainder and Checkpoint
+  2.5 hook/guidance/security changes are verified and ready; no commit was
+  requested or created.
+- Exact next action: install and benchmark Pyrefly, basedpyright, and ty one at
+  a time against the same representative modules, then record the Checkpoint
+  3.1 selection evidence without making any candidate mandatory prematurely.
+
+### S015 - 2026-07-20 - Evaluate and select a modern type checker
+
+- Checkpoint state at start: `3.1` was `not_started`; Resistics was at
+  `312710b` with the documented verified Checkpoint 2.4 remainder and
+  Checkpoint 2.5 worktree still present.
+- Starting branch, HEAD, and worktree: `mth5` at `312710b`; the only dirty
+  paths were the S014-documented implementation record, hook, guidance,
+  hygiene, documentation, baseline, and lock paths. No candidate dependency or
+  configuration was already installed in the project.
+- Session objective: compare Pyrefly, basedpyright, and ty on the same bounded
+  production slice, select one checker using diagnostic and adoption evidence,
+  and leave installation and the repository-wide baseline to Checkpoint 3.2.
+- Evaluation environment and method: Linux 6.18.33.1 WSL2 x86_64, CPython
+  3.13.5 project environment, Python 3.11 target, and uv 0.11.25. Temporary
+  isolated uv invocations installed Pyrefly 1.1.1, basedpyright 1.39.9 (Pyright
+  1.1.411), and ty 0.0.61 one at a time. Every checker analysed the same
+  `flow`, `job`, `project`, `gather`, `regression`, and `tui` files: 8,031
+  physical source lines. The existing `.venv` supplied third-party packages.
+- Runtime results from fresh checker processes after candidate download:
+  Pyrefly took 0.501 seconds on the first run and 0.477, 0.383, and 0.382
+  seconds subsequently; basedpyright took 3.924 seconds initially and 3.899,
+  3.694, and 3.663 seconds subsequently; ty took 0.279 seconds initially and
+  0.282, 0.282, and 0.259 seconds subsequently. These are local comparative
+  timings, not automated performance thresholds.
+- Incremental/editor evidence: all three candidates provide a language server
+  and a watched check. Touching `flow.py` while each watcher was live produced
+  a prompt recheck; Pyrefly reported 0.01 seconds internally. basedpyright and
+  ty did not expose an internal watched-recheck duration in their terminal
+  output, so no invented numeric comparison is recorded for them.
+- Finding volume: Pyrefly reported 71 errors plus five lower-severity warnings
+  (30 gather, 22 TUI, eight project, eight regression, and three flow). ty
+  reported 69 diagnostics with nearly the same core set. basedpyright reported
+  137 error-level findings; its recommended default set generated 1,304 total
+  baseline entries, dominated by unknown/Any propagation, unused results,
+  unannotated class attributes, and strictness warnings.
+- Defect usefulness: manual triage confirmed at least ten distinct actionable
+  contract families rather than ten duplicate line reports: nullable process
+  output/name invariants; the obsolete `Site = None` gather boundary; nullable
+  gather channel lists; possibly absent gathered metadata; incomplete MTH5
+  inspection-mixin protocols; validator-established but statically optional
+  transfer-function dimensions; the undeclared `Regressor.fit`/`coef`
+  protocol; incompatible override parameter contracts; Textual app/callback
+  optionality; and un-narrowed path/plot payloads. The dominant false-positive
+  or suppression burden was repeated dynamic MTH5 group access, Textual's
+  generic `App` boundary, broad Pandas indexing unions, and Pydantic invariants
+  established only by validators.
+- Pydantic and library probe: a runtime-verified Pydantic v2 model accepted the
+  lax generated constructor `Reading(samples="3")`. Pyrefly and ty accepted
+  it, while basedpyright rejected it. Pyrefly retained `dict[str, Any]` for
+  `model_dump`, NumPy shape and complex dtype information, and useful partial
+  SciPy array types. basedpyright also retained useful NumPy/SciPy types but
+  warned about missing stubs for SciPy, ObsPy, MTH5, and Plotly. ty reduced the
+  serialized Pydantic result and SciPy results to `Unknown` and lost the NumPy
+  dtype. All three identified ObsPy, MTH5, Plotly, and Textual nominal types;
+  Textual remained `App[Unknown]` in all three.
+- Diagnostic and navigation review: all candidates emitted source ranges,
+  stable rule names, and LSP-capable navigation. ty had the richest default
+  source-frame presentation, basedpyright supplied detailed subtype chains but
+  often very long output, and Pyrefly's full-text mode combined source frames
+  with concise narrowing suggestions while its minimal/JSON/GitHub/JUnit modes
+  support automation.
+- Baseline evidence: Pyrefly generated a 71-entry JSON baseline only when
+  explicitly passed `--update-baseline`; a subsequent check returned zero
+  errors, and a deliberately added assignment regression was still rejected.
+  basedpyright generated a 1,304-entry baseline and subsequently returned zero,
+  but its documented default automatically rewrites removed baseline entries.
+  ty 0.0.61 exposed suppression generation but no project-baseline command, so
+  its non-clean result cannot satisfy the governing new-finding gate without a
+  custom wrapper or broad rule suppression.
+- Selection: D029 selects Pyrefly 1.1.1. It provides the best combined
+  Pydantic v2 accuracy, useful scientific-library inference, bounded baseline,
+  non-mutating gate ergonomics, diagnostic clarity, and sub-second runtime.
+  basedpyright remains the evidence-backed fallback; ty remains a future
+  reassessment candidate rather than a second installed checker.
+- Repository changes: only this implementation record changed during S015.
+  Temporary candidate environments, probe files, candidate baselines, and the
+  basedpyright evaluation configuration were outside the tracked project; no
+  checker was added to `pyproject.toml` or `uv.lock`.
+- Verification: every candidate completed against all six modules with
+  resolved project dependencies; Pydantic probe runtime succeeded; Pyrefly's
+  baseline rejected a new finding; watcher rechecks completed; `git
+  diff --check` passed; and the final worktree contained no unexpected path.
+  Product tests were not rerun because the checkpoint changed no production,
+  test, dependency, or mandatory-tooling file.
+- Checkpoint state at end: `3.1` is `verified`; Checkpoint 3.2 is next.
+- Commit readiness or commit id: the S015 selection record is verified and can
+  share the next owner-selected documentation boundary; no commit was requested
+  or created.
+- Exact next action: add one pinned Pyrefly development dependency and its
+  project configuration, generate and prove a repository-wide baseline, then
+  remove mypy and make the locked Pyrefly command mandatory in Checkpoint 3.2.
+
+### S016 - 2026-07-20 - Install Pyrefly and retire mypy
+
+- Checkpoint state at start: `3.2` was `not_started`; Checkpoint 3.1 had
+  selected Pyrefly 1.1.1, but no checker dependency, configuration, baseline,
+  command, or hook was yet installed.
+- Starting branch, HEAD, and worktree: `mth5` at `312710b`; the documented
+  verified Checkpoint 2.4 remainder, Checkpoint 2.5 changes, and S015 selection
+  record were the only dirty paths. They were preserved throughout.
+- Session objective: install exactly one selected checker, establish a
+  non-mutating new-finding gate over production source, remove mypy completely,
+  and prove the locked command from direct, hook, dependency, and test paths.
+- Checker installation and configuration: pinned `pyrefly==1.1.1` in the
+  development dependency group. Added one `[tool.pyrefly]` configuration using
+  the default preset, Python 3.11 target, `resistics` project include, concise
+  CLI output, and the root `pyrefly-baseline.json`. Configuration discovery
+  resolved the project interpreter, editable sibling, and all 21 production
+  modules without hard-coded site-package paths.
+- Baseline: generated 175 error-level entries across 17 production modules;
+  the largest families are 51 bad argument types, 37 missing attributes, 18
+  unsupported operations, 13 override parameter-name mismatches, and ten bad
+  assignments. Fifteen lower-severity warnings remain below the CLI threshold
+  and visible in editor diagnostics. The baseline contains only relative
+  `resistics/` paths and no temporary probe entry.
+- Regression-gate proof: the normal configured command reported zero new
+  errors in about 0.70 seconds. A temporary new production module assigning a
+  string to an annotated integer failed with one unsuppressed `bad-assignment`;
+  removing that module restored zero. Baseline regeneration requires the
+  explicit `--baseline pyrefly-baseline.json --update-baseline` command, so the
+  normal checker and hook cannot accept new debt silently.
+- Hook and guidance: added an always-run local Pyrefly hook using
+  `uv run --locked --no-sync pyrefly check`, with filenames disabled so it
+  checks the configured project once rather than producing file-scoped results.
+  Added the same command to the README production gate and documented the
+  deliberate baseline-update policy.
+- Mypy removal: deleted the test-group mypy dependency, `mypy.ini`, all project
+  mypy cache ignores and guidance, and the generated `.mypy_cache`. The lock
+  removed mypy 2.1.0 plus its four lock-only support packages `ast-serialize`,
+  `librt`, `mypy-extensions`, and `pathspec`. Active project files and the lock
+  contain no mypy reference; similarly named modules remaining inside `.venv`
+  belong to unrelated installed dependencies and are not a Resistics checker.
+- Lock and environment: the refreshed lock resolves 174 packages and the synced
+  CPython 3.13.5 environment installed Pyrefly while uninstalling mypy and its
+  support packages. The OSV-backed audit found no known vulnerabilities or
+  adverse statuses across 173 audited packages.
+- Files changed by this checkpoint: `.gitignore`, `.pre-commit-config.yaml`,
+  `README.md`, `pyproject.toml`, `uv.lock`, deletion of `mypy.ini`, new
+  `pyrefly-baseline.json`, and this implementation record. Some tracked paths
+  already contain the separately documented S014 changes; those were not
+  reverted or attributed to S016.
+- Decisions added or superseded: D030 defines the pinned version, production
+  scope, minimum Python target, explicit baseline policy, mandatory hook shape,
+  warning threshold, and complete mypy retirement.
+- `D031` (2026-07-20): For the first Checkpoint 3.3 contract group, make the
+  MTH5 inspection mixin's required operations explicit and model mask artifact
+  names as fixed class identities rather than optional user parameters. Retain
+  only two demonstrated, rule-specific Pyrefly suppressions in this group: the
+  intentional Pydantic instance-field-to-`ClassVar` override protected by a
+  runtime model-field test, and NumPy's incorrect `savez_compressed(**arrays)`
+  stub interpretation. Do not replace either contract with a broad ignore or
+  a cast. Keep third-party missing-stub and intentional Pandas scalar
+  normalisation diagnostics warning-only for later Checkpoint 3.3 triage.
+- `D032` (2026-07-20): At Textual boundaries, represent plot requests as a
+  discriminated payload union, express the minimal tree-node service as a
+  protocol, narrow screen ownership to `ResisticsTui` with a runtime-checked
+  helper, and centralise nullable focus traversal over generic widgets. These
+  contracts replace all TUI baseline entries without casts, checker ignores,
+  or coupling application code to Textual's private tree-node module. Reject
+  malformed plot payloads before data access and preserve the existing
+  launcher/navigation behavior through real Textual integration tests.
+- `D033` (2026-07-20): Remove the obsolete directory-based gather API instead
+  of formalising compatibility protocols for code that cannot operate on the
+  MTH5-only `Project`. Delete `get_site_evals_metadata`,
+  `get_site_level_wins`, `get_site_wins`, `Selection`, `Selector`,
+  `ProjectGather`, and the `Measurement = None`/`Site = None` placeholders.
+  Preserve `GatherCriteria`, `GatherSelection`, `EvaluationFrequencyGather`,
+  `Gather`, `QuickGather`, and the shared combined-data containers. Model the
+  spectra regression preparer as a sibling with its own flow inputs rather
+  than a subtype of the gathered-data preparer, and express solver plugins by
+  the minimal fit/coefficient protocol they must satisfy. Do not add a legacy
+  import shim or checker suppression for removed APIs.
+- `D034` (2026-07-20): Pull the time-ingestion portion of the planned MTH5-only
+  cleanup forward into Checkpoint 3.3. Remove the NumPy/ASCII directory readers
+  and writers, their tests, examples, and standalone notebooks rather than
+  hardening obsolete persistence contracts. Make MTH5 `RunTS.dataset` the sole
+  ingestion boundary and store `TimeData` internally as an xarray array with
+  explicit `channel` and `time` dimensions, while retaining a mutable NumPy
+  view for the established SciPy numerical processors. Preserve serialisable
+  survey, station, run, and channel MTH5 metadata. Keep compressed persistence
+  for derived decimated, windowed, spectra, and mask artifacts behind one
+  shared helper and one demonstrated NumPy-stub suppression. Declare xarray as
+  a direct dependency because production code now imports it directly.
+- `D035` (2026-07-20): Advertise complete inline PEP 561 typing for Resistics
+  after all 21 production modules reached zero error- and warning-level
+  diagnostics under pinned Pyrefly 1.1.1 and the error baseline became empty.
+  Add the maintained PyYAML and tqdm stub packages to the locked development
+  environment, document the support level, and include an empty `py.typed`
+  marker. Keep the two demonstrated rule-specific suppressions from D031;
+  neither weakens a public contract. Verify the marker by inspecting both the
+  wheel and source distribution before treating Checkpoint 3.3 as complete.
+- Verification commands and results:
+  - `uv lock --check` passed with 174 resolved packages, and locked all-group
+    sync completed successfully.
+  - `pyrefly dump-config` found the correct project interpreter, import roots,
+    editable sibling, and 21 covered production files.
+  - Direct locked Pyrefly checks and the isolated-cache pre-commit Pyrefly hook
+    passed with zero new errors; the deliberate regression probe failed as
+    required.
+  - Ruff formatting checked 40 files, Ruff lint passed, and pydoclint reported
+    no violations.
+  - The full suite passed: 384 tests in 21.80 seconds.
+  - The OSV audit, baseline schema/path assertions, active mypy-reference scan,
+    project-cache absence check, and `git diff --check` passed.
+- Environment-specific note: pre-commit's default cache is read-only in the
+  managed workspace. Re-running it with `PRE_COMMIT_HOME` set to a temporary
+  writable cache initialized the maintained hook repository and passed the new
+  Pyrefly hook; no repository workaround or exclusion was added.
+- Checkpoint state at end: `3.2` is `verified`; Checkpoint 3.3 is next. The
+  Phase 3 review gate remains open until baseline reduction is complete.
+- Commit readiness or commit id: the Pyrefly dependency, configuration,
+  baseline, hook, guidance, mypy removal, lock refresh, and S016 record are
+  verified and ready for an owner-selected commit; no commit was requested or
+  created.
+- Exact next action: inventory the baseline entries for `flow`, `job`,
+  `project`, and `mask`, then add focused regression tests before correcting
+  the first Checkpoint 3.3 contract group.
+
+### S017 - 2026-07-20 - Harden flow, project, and mask contracts
+
+- Checkpoint state at start: `3.3` was `in_progress`; Checkpoint 3.2 had
+  established the mandatory Pyrefly gate with 175 baseline errors across 17
+  production modules.
+- Starting branch, HEAD, and worktree: `mth5` at `312710b`; the documented
+  verified Checkpoint 2.4 remainder and Checkpoints 2.5/3.2 worktree were
+  preserved. No unrelated dirty path was modified or reverted.
+- Session objective: complete the first Checkpoint 3.3 module group by
+  inventorying `flow`, `job`, `project`, and `mask`, correcting their core
+  contracts, adding focused runtime protection, and shrinking both applicable
+  baselines without weakening either mandatory gate.
+- Inventory: the group contained 17 Pyrefly baseline errors: three in `flow`,
+  zero in `job`, eight in `project`, and six in `mask`. They represented a
+  nullable process output invariant, nullable mask identity, an undeclared
+  mask calculation method, an incomplete MTH5 inspection-mixin contract,
+  writer override shape, two intentional fixed-name Pydantic overrides, and a
+  NumPy keyword-stub mismatch.
+- Contract corrections: `process_descriptor` now narrows the concrete
+  process output invariant before constructing its non-optional DTO. The MTH5
+  inspection mixin declares the sampling-frequency, survey, station, run, and
+  table-filter operations used by its shared behavior, and `MTH5File` now
+  matches that typed filter signature. `WindowMaskWriter` preserves the base
+  writer signature and rejects non-mask `ResisticsData` explicitly.
+  `WindowMaskProcess` declares a fixed class-level artifact name and its
+  calculation signature, removing nullable-name handling from flow validation
+  and mask persistence while preserving the existing Pydantic API.
+- Suppression evidence: the only two source suppressions are rule-specific.
+  One covers Pyrefly's rejection of the intentional Pydantic field-to-class
+  identity override; tests prove mask names cannot become model fields or user
+  parameters. The other covers NumPy's stub treating string-keyed compressed
+  arrays as the unrelated `allow_pickle` parameter; the existing round-trip
+  test exercises the real supported call.
+- Baselines: explicit Pyrefly regeneration reduced the error baseline from 175
+  to 158 entries and left no entry for any module in the first group. Updating
+  full NumPy-style docs for the edited public contracts and explicitly
+  regenerating the line-sensitive pydoclint baseline removed ten stale
+  findings, from 1,823 to 1,813. Normal gate commands remain non-mutating.
+- Warning triage: Pyrefly reports 16 below-threshold diagnostics. In this group,
+  missing PyYAML stubs and deliberate integer normalisation at Pandas/MTH5 DTO
+  boundaries remain warnings rather than being hidden or converted into type
+  debt; dependency-level warning policy remains open for the final module
+  group.
+- Tests: extended the fixed mask-name regression to cover the abstract process
+  model and added a writer-contract test proving other `ResisticsData` values
+  fail before filesystem mutation. The focused `flow`, `job`, `project`, and
+  `mask` suite passed 47 tests; the full suite passed 385 tests in 21.23
+  seconds.
+- Files changed by this contract group: `resistics/flow.py`,
+  `resistics/project.py`, `resistics/mask.py`, `tests/test_mask.py`,
+  `pyrefly-baseline.json`, `pydoclint-baseline.txt`, and this implementation
+  record. Previously documented dirty paths were preserved.
+- Decisions added or superseded: D031 records the mixin and fixed mask identity
+  contracts, the evidence for both narrow suppressions, and the deferred
+  warning-level dependency/scalar-normalisation review.
+- Verification commands and results:
+  - `uv run --locked --no-sync ruff format --check resistics tests scripts`
+    checked 40 files; Ruff lint passed on the same supported paths.
+  - `uv run --locked --no-sync pydoclint resistics` reported no new
+    violations; `uv run --locked --no-sync pyrefly check` reported zero new
+    errors with two demonstrated suppressions.
+  - The focused suite passed 47 tests in 2.81 seconds and the full suite passed
+    385 tests in 21.23 seconds.
+  - The regenerated Pyrefly baseline contains 158 errors and no `flow`, `job`,
+    `project`, or `mask` path. `git diff --check` passed.
+- Checkpoint state at end: the first logical group of Checkpoint 3.3 is
+  `verified`; Checkpoint 3.3 remains `in_progress` until the remaining four
+  groups and the PEP 561 artifact check are complete.
+- Commit readiness or commit id: the first contract group and both reduced
+  baselines are verified and ready for an owner-selected commit; no commit was
+  requested or created.
+- Exact next action: inventory the Pyrefly findings at TUI state, DTO, and
+  service boundaries, add focused tests for the affected behavior, and correct
+  the second Checkpoint 3.3 module group.
+
+### S018 - 2026-07-20 - Harden TUI state, DTO, and service boundaries
+
+- Checkpoint state at start: `3.3` was `in_progress`; S017 had verified the
+  first logical module group and reduced the Pyrefly baseline from 175 to 158.
+- Starting branch, HEAD, and worktree: `mth5` at `312710b`; all documented
+  Checkpoint 2.4, 2.5, 3.2, and S017 worktree changes were preserved. No
+  unrelated path was modified or reverted.
+- Session objective: complete the second Checkpoint 3.3 group by inventorying
+  TUI state, DTO, and service-boundary findings, protecting affected runtime
+  behavior, and removing the complete `resistics/tui.py` error baseline.
+- Inventory: the TUI contained 22 baseline errors: 11 bad argument types,
+  eight missing attributes, one overload mismatch, one unsupported operation,
+  and one non-iterable payload. The concrete families were nine nullable-focus
+  list operations, six custom application-method calls through Textual's
+  generic `App`, one string-typed directory path, two untyped tree-node-map
+  operations, three broad plot payload operations, and an imprecise spectra
+  reader result.
+- Boundary corrections: introduced a discriminated `PlotTarget` union for
+  flow, job, project, time, spectra, and transfer-function requests. Plot
+  construction now validates external payload shapes before reading project
+  data and narrows the metadata-or-data spectra result before plotting.
+  Introduced a minimal structural tree-node protocol instead of importing a
+  private Textual implementation type, and typed the ancestor-node map with
+  its real `str | None` keys. Directory navigation now normalises Textual's
+  path value explicitly to `Path`.
+- State and application contracts: centralised relative focus traversal over
+  `Sequence[Widget]`, including safe handling for no focus, unrelated focus,
+  and an empty enabled-control set while preserving each dialog's previous
+  fallback policy. A runtime-checked application helper now proves project
+  screens are owned by `ResisticsTui` before calling launcher-specific methods;
+  generic Textual methods remain accessed through the normal `App` contract.
+- Regression coverage: added three malformed plot-payload cases covering time,
+  spectra, and transfer-function requests. Existing real Textual tests continue
+  to exercise dialog focus, launcher navigation, project creation/open/close,
+  typed plot construction, data-tree population, YAML state, and worker
+  progress. The focused TUI suite increased from 25 to 28 passing tests.
+- Baselines: explicit Pyrefly regeneration removed all 22 TUI entries and
+  reduced the repository error baseline from 158 to 136, with no new source
+  suppression. Explicit pydoclint regeneration after fully documenting the
+  edited contracts removed ten stale findings, from 1,813 to 1,803. The 16
+  below-threshold Pyrefly warnings are unchanged and none is in `tui.py`.
+- Files changed by this contract group: `resistics/tui.py`,
+  `tests/test_tui.py`, `pyrefly-baseline.json`, `pydoclint-baseline.txt`, and
+  this implementation record. Previously documented dirty paths were
+  preserved.
+- Decisions added or superseded: D032 records the discriminated plot DTO,
+  tree-node protocol, runtime application narrowing, and shared focus-state
+  contract. No cast, private Textual import, or checker suppression was added.
+- Verification commands and results:
+  - `uv run --locked --no-sync ruff format --check resistics tests scripts`
+    checked 40 files, and Ruff lint passed on the same supported paths.
+  - `uv run --locked --no-sync pydoclint resistics` reported no new
+    violations; `uv run --locked --no-sync pyrefly check` reported zero new
+    errors with only the two S017-demonstrated suppressions repository-wide.
+  - The focused TUI suite passed 28 tests in 22.77 seconds. The full suite
+    passed 388 tests in 22.09 seconds.
+  - The regenerated Pyrefly baseline contains 136 errors and no TUI path; the
+    pydoclint baseline contains 1,803 entries; `git diff --check` passed.
+- Checkpoint state at end: the first two logical groups of Checkpoint 3.3 are
+  `verified`; Checkpoint 3.3 remains `in_progress` until the final three groups
+  and PEP 561 artifact verification are complete.
+- Commit readiness or commit id: both verified contract groups and their
+  reduced baselines are ready for an owner-selected commit; no commit was
+  requested or created.
+- Exact next action: inventory the `gather` and `regression` Pyrefly findings,
+  add focused tests for their adapter boundaries, and correct the third
+  Checkpoint 3.3 logical group.
+
+### S019 - 2026-07-20 - Remove legacy gathering and harden regression adapters
+
+- Checkpoint state at start: `3.3` was `in_progress`; S017-S018 had verified
+  the first two logical groups and reduced the Pyrefly baseline from 175 to
+  136.
+- Starting branch, HEAD, and worktree: `mth5` at `312710b`; all previously
+  documented hardening changes were preserved. The owner explicitly preferred
+  removing legacy APIs and building for the MTH5-only future over retaining
+  compatibility structures.
+- Session objective: complete the third Checkpoint 3.3 group by resolving 30
+  `gather` and eight `regression` errors, deleting obsolete adapters when they
+  no longer represented a supported project model, and protecting the
+  replacement contracts with focused tests.
+- Inventory: the 38 errors comprised 19 missing attributes, 11 bad argument
+  types, three bad indices, three override parameter-name mismatches, one bad
+  return, and one overload mismatch. The dominant source was the
+  `Measurement = None`/`Site = None` compatibility boundary and directory
+  gather code expecting the pre-MTH5 project hierarchy. Remaining families
+  were validator-established channels and dimensions, an invalid preparer
+  inheritance relationship, an underspecified regressioninc base type, and a
+  flow executor parameter-name mismatch.
+- Legacy removal: deleted `get_site_evals_metadata`, `get_site_level_wins`,
+  `get_site_wins`, `Selection`, `Selector`, and `ProjectGather`, plus the two
+  `None` aliases in `project.py`. Retained the supported MTH5
+  `GatherCriteria`/`GatherSelection`/`EvaluationFrequencyGather`/`Gather`
+  pipeline, standalone `QuickGather`, and the shared `SiteCombinedMetadata`,
+  `SiteCombinedData`, `GatheredData`, and evaluation-locator containers. No
+  deprecated import shim or placeholder protocol was left behind.
+- Supported gather contracts: both MTH5 and quick gathering now resolve the
+  validated cross-channel invariant once and pass a concrete `list[str]`
+  through extraction and metadata construction. Updated the module narrative
+  and `QuickGather` cross-reference to describe only supported paths. Replaced
+  the removed legacy example with a current, executable `GatherCriteria`
+  remote-reference example so the API-local example inventory remains at or
+  above its protected threshold.
+- Regression contracts: `RegressionPreparerSpectra` is now a sibling
+  `ResisticsProcess` with explicit spectra flow inputs, rather than an invalid
+  subtype of `RegressionPreparerGathered`. Shared observation/predictor
+  transformations have one implementation. Transfer-function dimensions are
+  narrowed before NumPy allocation. The solver boundary is a minimal protocol
+  requiring `fit` and optional coefficients; a missing fitted coefficient now
+  raises a clear `ValueError`. `SolutionWriter.execute` now matches the parent
+  context parameter contract.
+- Regression coverage: added an explicit removed-API test for all six gather
+  symbols and both project placeholders, a spectra-preparer flow-contract test,
+  and a solver-adapter failure test for regressors that produce no
+  coefficients. Existing numerical tests continue to cover quick/MTH5 gather,
+  gathered and spectra preparation, random transfer-function shapes, and OLS
+  solutions.
+- Baselines: explicit Pyrefly regeneration removed all 38 group entries and
+  reduced the repository baseline from 136 to 98, with no new source
+  suppression. Explicit pydoclint regeneration removed 24 stale findings,
+  from 1,803 to 1,779. The 16 lower-severity warnings are unchanged; the
+  untyped `tqdm` import remains visible for final dependency-warning triage.
+- Files changed by this group: `resistics/gather.py`,
+  `resistics/project.py`, `resistics/regression.py`, `tests/test_gather.py`,
+  `tests/test_regression.py`, `pyrefly-baseline.json`,
+  `pydoclint-baseline.txt`, and this implementation record. Previously
+  documented dirty paths were preserved.
+- Decisions added or superseded: D033 records the owner-authorised legacy API
+  deletion and the supported gather/regression adapter contracts.
+- Verification commands and results:
+  - The focused gather/regression suite passed 36 tests in 3.54 seconds; the
+    documentation inventory and gather doctests passed three tests in 1.72
+    seconds.
+  - `uv run --locked --no-sync ruff format --check resistics tests scripts`
+    checked 40 files, and Ruff lint passed on the same supported paths.
+  - `uv run --locked --no-sync pydoclint resistics` reported no new
+    violations; `uv run --locked --no-sync pyrefly check` reported zero new
+    errors with only the two S017-demonstrated suppressions repository-wide.
+  - The full suite passed 391 tests in 21.55 seconds. The regenerated Pyrefly
+    baseline contains 98 errors and no `gather` or `regression` path; the
+    pydoclint baseline contains 1,779 entries; `git diff --check` passed.
+- Checkpoint state at end: the first three logical groups of Checkpoint 3.3 are
+  `verified`; Checkpoint 3.3 remains `in_progress` until the final two groups
+  and PEP 561 artifact verification are complete.
+- Commit readiness or commit id: the three verified contract groups, legacy
+  deletion, and reduced baselines are ready for an owner-selected commit; no
+  commit was requested or created.
+- Exact next action: inventory the `time`, `decimate`, `window`, and `spectra`
+  findings, add focused numerical and persistence-contract tests, and correct
+  the fourth Checkpoint 3.3 logical group.
+
+### S020 - 2026-07-20 - Adopt MTH5-only labelled time data and harden the numerical pipeline
+
+- Checkpoint state at start: `3.3` was `in_progress`; S017-S019 had verified
+  the first three logical groups and reduced the Pyrefly baseline from 175 to
+  98.
+- Starting branch, HEAD, and worktree: `mth5` at `312710b`; all previously
+  documented hardening changes were preserved. During inventory the owner
+  clarified that NumPy/ASCII time readers no longer require support and asked
+  for `TimeData` to align more closely with MTH5 data.
+- Session objective: complete the fourth Checkpoint 3.3 group, remove obsolete
+  time ingestion, make the MTH5 boundary explicit and labelled, harden shared
+  metadata and persistence invariants, and protect the entire numerical path
+  with focused tests.
+- Inventory: the group started with 59 baseline findings: 32 in `time`, 11 in
+  `spectra`, ten in `decimate`, and six in `window`. They comprised 19 bad
+  argument types, nine override parameter-name mismatches, eight unsupported
+  operations, six mutable-attribute overrides, four overload mismatches, three
+  invalid annotations, three bad assignments, three missing arguments, two
+  non-iterable values, one bad return, and one bad specialization. Shared
+  causes were validator-established channel counts and process names still
+  annotated as nullable, derived decimation lists annotated as optional,
+  inconsistent writer overrides, repeated NumPy archive calls, and legacy time
+  readers that no longer represented the MTH5-only product.
+- MTH5-only time boundary: removed `TimeReader`, `TimeReaderJSON`,
+  `TimeReaderAscii`, `TimeReaderNumpy`, `TimeWriterAscii`, and
+  `TimeWriterNumpy`. Deleted their three read examples, the obsolete project
+  configuration example, and two standalone notebooks that imported the
+  removed readers. No compatibility shim remains, and a repository-wide search
+  finds no reference to the removed symbols.
+- Labelled `TimeData`: production code now declares xarray directly and stores
+  samples as a `channel`/`time` labelled `DataArray`. `data` remains the mutable
+  NumPy view used by existing SciPy processors; `dataset` and `to_xarray`
+  expose MTH5-compatible labelled forms. Construction validates unique channel
+  names, channel presence, dimensions, and metadata shape. The MTH5 adapter
+  consumes a real `RunTS.dataset`, keeps its time coordinate, and preserves
+  serialisable survey, station, run, data-logger, location, channel, sensor,
+  and source-attribute metadata.
+- Numerical and persistence contracts: channel counts and process names are
+  concrete after validation; constrained integers use `Annotated`/`Field`;
+  derived decimation fields are concrete lists; spectral grouping and
+  single-channel colour bars are total; Fourier detrending uses SciPy's literal
+  contract; process errors always identify their process. Decimated, windowed,
+  spectra, and mask archives now use one compressed-array helper. All derived
+  writers match the base writer signature, narrow their runtime data type, and
+  produce an explicit `TypeError` for the wrong artifact.
+- Regression coverage: replaced the directory-reader tests with a real MTH5
+  `RunTS` ingestion test proving labels, source identifiers, station location,
+  and round-tripped channel variables. Added an end-to-end test from labelled
+  time data through decimation, windowing, Fourier transformation, and all
+  three derived persistence round trips, plus wrong-artifact tests for every
+  derived writer. Focused time/decimation/numerical tests passed 62 tests.
+- Baselines: explicit Pyrefly regeneration removed all group findings plus
+  shared contract findings, reducing the repository error baseline from 98 to
+  32 with no additional suppression; the two demonstrated S017 suppressions
+  remain repository-wide. The remaining findings are 13 in `testing`, 12 in
+  `transfunc`, three in `calibrate`, and one each in `templates`, `sampling`,
+  `plot`, and `common`. Converting the two touched metadata models to proper
+  class-level attribute documentation reduced the pydoclint baseline from
+  1,779 to 1,759.
+- Files changed by this group: `pyproject.toml`, `uv.lock`, `resistics/common.py`,
+  `resistics/time.py`, `resistics/decimate.py`, `resistics/window.py`,
+  `resistics/spectra.py`, the shared mask writer call, the gather criteria name
+  narrowing, `tests/test_time.py`, new `tests/test_numerical_pipeline.py`, both
+  baselines, deletion of four legacy examples and two standalone notebooks,
+  and this implementation record. Previously documented dirty paths were
+  preserved.
+- Decisions added or superseded: D034 records the owner-authorised MTH5-only
+  time-I/O deletion, xarray-labelled internal representation, direct dependency,
+  metadata-preservation boundary, and shared derived-persistence helper.
+- Verification commands and results:
+  - Focused time/decimation/numerical tests passed 62 tests in 2.95 seconds;
+    the real MTH5 `RunTS` smoke test passed independently.
+  - `uv run --locked --no-sync ruff check resistics tests scripts` passed and
+    Ruff format checked 41 files. Pydoclint reported no new violations;
+    Pyrefly reported zero new errors with two demonstrated suppressions and 14
+    below-threshold warnings.
+  - The full suite passed 381 tests in 20.75 seconds. The reduced total reflects
+    removal of obsolete directory-reader tests, partially offset by five new
+    MTH5/numerical contract tests.
+  - `PRE_COMMIT_HOME=/tmp/resistics-pre-commit uv run --locked --no-sync
+    pre-commit run --all-files` passed all seven hooks after the pinned hook
+    environment was fetched outside the network-restricted sandbox. `git diff
+    --check` passed.
+- Checkpoint state at end: the first four logical groups of Checkpoint 3.3 are
+  `verified`; Checkpoint 3.3 remains `in_progress` for the final 32 findings,
+  public typing-support decision, and built-artifact marker verification.
+- Commit readiness or commit id: the four verified contract groups, MTH5-only
+  time deletion, labelled data boundary, tests, and reduced baselines are ready
+  for an owner-selected commit; no commit was requested or created.
+- Exact next action: inventory and correct the final 32 findings across
+  `testing`, `transfunc`, `calibrate`, `templates`, `sampling`, `plot`, and
+  `common`, then verify the public typing level and built-artifact marker
+  decision to complete Checkpoint 3.3.
+
+### S021 - 2026-07-20 - Complete core contract hardening and advertise inline typing
+
+- Checkpoint state at start: `3.3` was `in_progress`; S017-S020 had verified
+  the first four groups and reduced the Pyrefly baseline from 175 to 32.
+- Starting branch, HEAD, and worktree: `mth5` at `312710b`; all documented
+  hardening and owner changes were preserved.
+- Session objective: resolve the final 32 findings in the remaining public
+  modules, decide the supported public typing level, verify PEP 561 artifacts,
+  and complete Checkpoint 3.3.
+- Contract changes: transfer-function fields are concrete after validation;
+  serialized dimensions must match channel lists; registered transfer-function
+  dictionaries restore models and unknown names fail instead of escaping as
+  untyped dictionaries. Gather and regression now rely on these invariants.
+  Calibration interpolation declares its actual complex-array result, process
+  execution validates its dynamic run adapter, timeline and high-resolution
+  datetime boundaries return concrete types, template dictionaries are
+  explicitly widened, and testing helpers no longer change annotated types.
+- Coverage: added five transfer-function tests for derived invariants,
+  registered dispatch, unknown types, inconsistent dimensions, and constrained
+  variations, plus a complex calibration interpolation test. Affected focused
+  tests passed 44 tests after the final invariant cleanup.
+- Typing support: removed all 32 remaining baseline entries and explicitly
+  regenerated `pyrefly-baseline.json` to an empty error list. Removed ten
+  redundant conversion warnings and added locked `types-PyYAML` and
+  `types-tqdm` development stubs, leaving zero diagnostics at warning severity.
+  The two demonstrated D031 suppressions remain the only suppressions. D035
+  records complete inline PEP 561 support; README documents the level and an
+  empty `resistics/py.typed` marker is included.
+- Artifact evidence: `uv build --no-sources` produced the 1.0.0a3 wheel and
+  sdist under `/tmp/resistics-checkpoint-3-3-dist-20260720`. Direct ZIP and tar
+  inspection found `resistics/py.typed` in both; wheel metadata reports
+  `Requires-Python: <3.15,>=3.11`.
+- Documentation baseline: documented all strengthened public attributes and
+  exceptions instead of baselining them. Explicit regeneration reduced the
+  pydoclint baseline from 1,759 to 1,723 and the normal command reports no new
+  violations.
+- Verification commands and results:
+  - The full suite passed 387 tests in 25.31 seconds. The post-cleanup focused
+    calibration, transfer-function, gather, and regression suite passed 44.
+  - Ruff format checked 42 files and Ruff lint passed. Pyrefly reported zero
+    diagnostics at warning severity; `git diff --check` passed.
+  - All seven pre-commit hooks passed using the existing isolated hook cache;
+    the file-hygiene pass required the established out-of-sandbox invocation
+    because tracked `.agents` guidance is read-only inside the sandbox.
+- Checkpoint state at end: all five groups of Checkpoint 3.3 are `verified`;
+  the Pyrefly baseline is empty and both PEP 561 artifacts are verified. The
+  Phase 3 review gate is next.
+- Commit readiness or commit id: the complete Checkpoint 3.3 hardening stack is
+  ready for an owner-selected commit; no commit was requested or created.
+- Exact next action: run the Phase 3 review gate, including the planned ty
+  reassessment, and verify the sole-checker, empty-baseline, performance,
+  suppression, public typing, and artifact criteria.

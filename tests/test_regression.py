@@ -29,7 +29,13 @@ import pytest
 from resistics.common import History
 from resistics.decimate import DecimationSetup
 from resistics.gather import GatheredData, SiteCombinedData, SiteCombinedMetadata
-from resistics.regression import RegressionPreparerGathered, Solution, Solver, SolverOLS
+from resistics.regression import (
+    RegressionPreparerGathered,
+    RegressionPreparerSpectra,
+    Solution,
+    Solver,
+    SolverOLS,
+)
 from resistics.testing import (
     solution_mt,
     solution_random_float,
@@ -43,6 +49,27 @@ from resistics.transfunc import ImpedanceTensor, TransferFunction
 TEST1_OUT_DATA = {0: np.array([[3 - 1j], [1 + 2j]])}
 TEST1_IN_DATA = {0: np.array([[-1 - 1j], [-2 - 3j]])}
 TEST1_CROSS_DATA = {0: np.array([[5 + 3j], [0 - 2j]])}
+
+
+def test_spectra_preparer_has_its_own_flow_contract():
+    assert not issubclass(RegressionPreparerSpectra, RegressionPreparerGathered)
+    assert RegressionPreparerSpectra.input_types == {
+        "tf": "transfer_function",
+        "spec_data": "spectra_data",
+    }
+
+
+def test_linear_solver_rejects_a_regressor_without_coefficients():
+    class MissingCoefficients:
+        coef = None
+
+        def fit(self, predictors, observations):
+            return self
+
+    with pytest.raises(ValueError, match="did not produce coefficients"):
+        SolverOLS()._get_coef(MissingCoefficients(), np.ones(2), np.ones((2, 1)))
+
+
 # expected output
 TEST1_FREQS = np.array([10])
 TEST1_OBS = {"Ex": np.array([12 - 14j, -4 + 2j])}
@@ -336,7 +363,6 @@ def test_regression_solution_spectra_input(
     n_wins: int,
 ):
     """Test regression using synthetic evaluation frequency data"""
-    from resistics.regression import RegressionPreparerSpectra
     from resistics.testing import assert_soln_equal, evaluation_data
 
     n_evals = len(expected_soln.freqs)

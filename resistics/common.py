@@ -95,6 +95,22 @@ def assert_file(file_path: Path) -> None:
         raise NotFileError(file_path)
 
 
+def save_compressed_arrays(file_path: Path, arrays: dict[str, np.ndarray]) -> None:
+    """Persist named NumPy arrays in one compressed archive.
+
+    Parameters
+    ----------
+    file_path : Path
+        Archive path, with or without the ``.npz`` suffix.
+    arrays : dict[str, np.ndarray]
+        Named arrays to persist.
+    """
+    np.savez_compressed(
+        file_path,
+        **arrays,  # pyrefly: ignore[bad-argument-type]
+    )
+
+
 def is_dir(dir_path: Path) -> bool:
     """
     Check if a path exists and points to a directory
@@ -248,7 +264,7 @@ def known_chan(chan: str) -> bool:
     >>> known_chan("cat")
     False
     """
-    return bool(chan in ELECTRIC_CHANS or chan in MAGNETIC_CHANS)
+    return chan in ELECTRIC_CHANS or chan in MAGNETIC_CHANS
 
 
 def is_electric(chan: str) -> bool:
@@ -498,8 +514,9 @@ class Metadata(ResisticsModel):
     @model_validator(mode="after")
     def validate_n_chans(self) -> "Metadata":
         """Initialise number of channels"""
-        if hasattr(self, "n_chans") and self.n_chans is None:
-            self.n_chans = len(self.chans)
+        values = self.__dict__
+        if values.get("n_chans") == 0:
+            values["n_chans"] = len(values["chans"])
         return self
 
 
@@ -784,12 +801,12 @@ class ResisticsProcess(ResisticsModel):
     output_type: ClassVar[str | None] = None
     runtime_requirements: ClassVar[list[str]] = []
     include_in_default_parameters: ClassVar[bool] = False
-    name: str | None = None
+    name: str = ""
 
     @model_validator(mode="after")
     def validate_name(self) -> "ResisticsProcess":
         """Inialise the name attribute of the resistics process"""
-        if self.name is None:
+        if not self.name:
             self.name = self.__class__.__name__
         return self
 
@@ -816,9 +833,29 @@ class ResisticsProcess(ResisticsModel):
         The default preserves existing numerical ``run`` methods. Readers,
         writers, and selectors that require project or batch context override
         this method in their owning modules.
+
+        Parameters
+        ----------
+        inputs : dict[str, Any]
+            Named arguments for the process ``run`` method.
+        context : Any
+            Flow execution context. The default adapter does not use it.
+
+        Returns
+        -------
+        Any
+            The value returned by the process ``run`` method.
+
+        Raises
+        ------
+        NotImplementedError
+            If the process implements neither ``run`` nor its own ``execute``.
         """
         del context
-        return self.run(**inputs)
+        run = getattr(self, "run", None)
+        if not callable(run):
+            raise NotImplementedError("Process must implement run() or execute()")
+        return run(**inputs)
 
     def _get_record(self, messages: str | list[str]) -> Record:
         """
@@ -903,6 +940,19 @@ class ResisticsWriter(ResisticsProcess):
             dir_path.mkdir(parents=True)
         return True
 
-    def _get_record(self, dir_path: Path, data_type: type):
-        """Get a process record for the writer"""
+    def _get_writer_record(self, dir_path: Path, data_type: type):
+        """Get a process record for the writer.
+
+        Parameters
+        ----------
+        dir_path : Path
+            Destination directory.
+        data_type : type
+            Concrete data type being written.
+
+        Returns
+        -------
+        Record
+            Writer process record.
+        """
         return super()._get_record([f"Writing out {data_type.__name__} to {dir_path}"])

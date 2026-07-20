@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from time import monotonic
+from typing import Literal, Protocol, TypeAlias
 
 import plotly.io as pio
 from loguru import logger
@@ -20,6 +21,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen, Screen
+from textual.widget import Widget
 from textual.widgets import (
     Button,
     DataTable,
@@ -66,7 +68,7 @@ from resistics.project import (
 )
 from resistics.regression import Solution
 from resistics.sampling import to_datetime
-from resistics.spectra import SpectraDataReader
+from resistics.spectra import SpectraDataReader, SpectraMetadata
 from resistics.templates import (
     install_builtin_criteria_templates,
     install_builtin_flow_templates,
@@ -75,6 +77,80 @@ from resistics.templates import (
 from resistics.transfunc import ImpedanceTensor, Tipper
 
 TIME_PLOT_MAX_POINTS = 5_000
+
+TimePlotSelection: TypeAlias = tuple[str, str, str, str | None]
+PlotTarget: TypeAlias = (
+    tuple[Literal["flow", "job", "spectra", "transfer_function"], Path]
+    | tuple[Literal["project"], None]
+    | tuple[Literal["time"], TimePlotSelection]
+)
+
+
+class _DataTreeNode(Protocol):
+    """Tree-node operations used while constructing the data catalogue."""
+
+    @property
+    def data(self) -> object:
+        return None
+
+    def add(self, label: str, data: tuple[str, str]) -> _DataTreeNode: ...
+
+    def add_leaf(self, label: str, data: tuple[str, str]) -> _DataTreeNode: ...
+
+
+def _focus_relative(
+    controls: Sequence[Widget],
+    focused: Widget | None,
+    increment: int,
+    *,
+    move_from_unfocused: bool = True,
+) -> None:
+    """Move focus within a bounded group of controls.
+
+    Parameters
+    ----------
+    controls : Sequence[Widget]
+        Ordered focusable widgets.
+    focused : Widget | None
+        Currently focused widget, if any.
+    increment : int
+        Relative movement through the group.
+    move_from_unfocused : bool
+        Whether to use the first control as the fallback position.
+    """
+    if not controls:
+        return
+    if focused is None or focused not in controls:
+        if not move_from_unfocused:
+            return
+        index = 0
+    else:
+        index = controls.index(focused)
+    controls[(index + increment) % len(controls)].focus()
+
+
+def _resistics_app(screen: Screen[None]) -> ResisticsTui:
+    """Return the application contract required by project screens.
+
+    Parameters
+    ----------
+    screen : Screen[None]
+        Project screen mounted by the application.
+
+    Returns
+    -------
+    ResisticsTui
+        Owning resistics application.
+
+    Raises
+    ------
+    RuntimeError
+        If the screen is mounted by an incompatible Textual application.
+    """
+    app = screen.app
+    if not isinstance(app, ResisticsTui):
+        raise RuntimeError("Project screens require ResisticsTui")
+    return app
 
 
 class TuiHeader(Static):
@@ -164,11 +240,7 @@ class ConfirmJobScreen(ModalScreen[bool]):
             self.query_one("#cancel", Button),
             self.query_one("#confirm", Button),
         ]
-        try:
-            index = actions.index(self.focused)
-        except ValueError:
-            index = 0
-        actions[(index + increment) % len(actions)].focus()
+        _focus_relative(actions, self.focused, increment)
 
 
 _NO_CRITERIA_VALUE = "__no_criteria__"
@@ -329,9 +401,7 @@ class CreateJobScreen(ModalScreen[JobDefinition | None]):
             self.query_one("#cancel-job-template", Button),
             self.query_one("#create-job-template", Button),
         ]
-        if self.focused not in actions:
-            return
-        actions[(actions.index(self.focused) + increment) % len(actions)].focus()
+        _focus_relative(actions, self.focused, increment, move_from_unfocused=False)
 
 
 class CopyYamlFileScreen(ModalScreen[str | None]):
@@ -408,11 +478,7 @@ class CopyYamlFileScreen(ModalScreen[str | None]):
             self.query_one("#cancel-copy-yaml", Button),
             self.query_one("#confirm-copy-yaml", Button),
         ]
-        try:
-            index = actions.index(self.focused)
-        except ValueError:
-            index = 0
-        actions[(index + increment) % len(actions)].focus()
+        _focus_relative(actions, self.focused, increment)
 
 
 class DeleteYamlFileScreen(ModalScreen[bool]):
@@ -481,11 +547,7 @@ class DeleteYamlFileScreen(ModalScreen[bool]):
             self.query_one("#cancel-delete-yaml", Button),
             self.query_one("#confirm-delete-yaml", Button),
         ]
-        try:
-            index = actions.index(self.focused)
-        except ValueError:
-            index = 0
-        actions[(index + increment) % len(actions)].focus()
+        _focus_relative(actions, self.focused, increment)
 
 
 @dataclass(frozen=True)
@@ -582,11 +644,7 @@ class DeleteProjectDataScreen(ModalScreen[ProjectDataDeletionRequest | None]):
     def _focus_action(self, increment: int) -> None:
         actions = list(self.query(".dialog-action"))
         enabled = [action for action in actions if not action.disabled]
-        try:
-            index = enabled.index(self.focused)
-        except ValueError:
-            index = 0
-        enabled[(index + increment) % len(enabled)].focus()
+        _focus_relative(enabled, self.focused, increment)
 
 
 class ConfirmProjectDataDeletionScreen(ModalScreen[bool]):
@@ -664,11 +722,7 @@ class ConfirmProjectDataDeletionScreen(ModalScreen[bool]):
             self.query_one("#cancel-confirm-delete-data", Button),
             self.query_one("#confirm-delete-data", Button),
         ]
-        try:
-            index = actions.index(self.focused)
-        except ValueError:
-            index = 0
-        actions[(index + increment) % len(actions)].focus()
+        _focus_relative(actions, self.focused, increment)
 
 
 def _validate_yaml_file_stem(value: str) -> str:
@@ -745,8 +799,9 @@ class DirectoryPickerScreen(ModalScreen[Path | None]):
     def action_parent_directory(self) -> None:
         """Move the browser root to its parent directory."""
         tree = self.query_one("#path-picker", DirectoryTree)
-        parent_path = tree.path.parent
-        if parent_path == tree.path:
+        tree_path = Path(tree.path)
+        parent_path = tree_path.parent
+        if parent_path == tree_path:
             self.notify("Already at the filesystem root")
             return
         tree.path = parent_path
@@ -810,11 +865,11 @@ class HomeScreen(Screen[None]):
 
     def _open_project(self, project_path: Path | None) -> None:
         if project_path is not None:
-            self.app.open_project_path(project_path)
+            _resistics_app(self).open_project_path(project_path)
 
     @on(Button.Pressed, "#create-project")
     def create_project(self) -> None:
-        self.app.show_create_project()
+        _resistics_app(self).show_create_project()
 
     @on(Button.Pressed, "#quit")
     def quit(self) -> None:
@@ -831,11 +886,7 @@ class HomeScreen(Screen[None]):
 
     def _focus_option(self, increment: int) -> None:
         buttons = list(self.query(Button))
-        try:
-            index = buttons.index(self.focused)
-        except ValueError:
-            index = 0
-        buttons[(index + increment) % len(buttons)].focus()
+        _focus_relative(buttons, self.focused, increment)
 
 
 class CreateProjectScreen(Screen[None]):
@@ -966,14 +1017,14 @@ class CreateProjectScreen(Screen[None]):
         except Exception as exc:
             self._set_status(f"[red]Unable to create project:[/] {exc}")
             return
-        self.app.open_project(project)
+        _resistics_app(self).open_project(project)
 
     @on(Button.Pressed, "#back")
     def back(self) -> None:
-        self.app.show_home()
+        _resistics_app(self).show_home()
 
     def action_home(self) -> None:
-        self.app.show_home()
+        _resistics_app(self).show_home()
 
     def action_next_option(self) -> None:
         self._focus_option(1)
@@ -996,22 +1047,14 @@ class CreateProjectScreen(Screen[None]):
             self.query_one("#back", Button),
             self.query_one("#create", Button),
         ]
-        try:
-            index = controls.index(self.focused)
-        except ValueError:
-            index = 0
-        controls[(index + increment) % len(controls)].focus()
+        _focus_relative(controls, self.focused, increment)
 
     def _focus_action(self, increment: int) -> None:
         actions = [
             self.query_one("#back", Button),
             self.query_one("#create", Button),
         ]
-        try:
-            index = actions.index(self.focused)
-        except ValueError:
-            return
-        actions[(index + increment) % len(actions)].focus()
+        _focus_relative(actions, self.focused, increment, move_from_unfocused=False)
 
     def _set_status(self, message: str) -> None:
         self.query_one("#create-status", Static).update(message)
@@ -1205,8 +1248,18 @@ class ProjectExplorerScreen(Screen[None]):
         mth5_node.expand()
         self.refresh_bindings()
 
-    def _add_data_catalog(self, root, items: list[ProjectDataItem]) -> None:
-        """Add each persistent data-type category below one source root."""
+    def _add_data_catalog(
+        self, root: _DataTreeNode, items: list[ProjectDataItem]
+    ) -> None:
+        """Add each persistent data-type category below one source root.
+
+        Parameters
+        ----------
+        root : _DataTreeNode
+            Source node receiving the category branches.
+        items : list[ProjectDataItem]
+            Persistent items belonging to the source.
+        """
         for label, data_type in self.DATA_CATEGORIES:
             matching = [item for item in items if item.data_type == data_type]
             category = root.add(
@@ -1249,11 +1302,24 @@ class ProjectExplorerScreen(Screen[None]):
             return None
 
     def _add_data_items(
-        self, root, items: list[ProjectDataItem], data_type: str
+        self,
+        root: _DataTreeNode,
+        items: list[ProjectDataItem],
+        data_type: str,
     ) -> None:
-        """Add one category's items, retaining their path ancestors."""
+        """Add one category's items, retaining their path ancestors.
+
+        Parameters
+        ----------
+        root : _DataTreeNode
+            Category node receiving visible items.
+        items : list[ProjectDataItem]
+            Persistent items available below the source.
+        data_type : str
+            Data type selected for this category.
+        """
         visible = self._visible_data_paths(items, data_type)
-        nodes = {None: root}
+        nodes: dict[str | None, _DataTreeNode] = {None: root}
         for item in sorted(
             (item for item in items if item.path in visible),
             key=lambda value: (value.path.count("/"), value.path),
@@ -1328,7 +1394,7 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _mth5_time_plot_target(
         self, item: ProjectDataItem
-    ) -> tuple[str, object] | None:
+    ) -> tuple[Literal["time"], TimePlotSelection] | None:
         """Turn a canonical MTH5 time path into a resistics run selection."""
         parts = [part for part in item.path.split("/") if part]
         lower_parts = [part.lower() for part in parts]
@@ -1388,7 +1454,7 @@ class ProjectExplorerScreen(Screen[None]):
             return None
         return tree.cursor_node
 
-    def _data_plot_target(self, node=None) -> tuple[str, object] | None:
+    def _data_plot_target(self, node=None) -> PlotTarget | None:
         """Return a plot target for the highlighted item, if it is supported."""
         item = self._data_item_for_node(node)
         if item is None:
@@ -1413,7 +1479,7 @@ class ProjectExplorerScreen(Screen[None]):
             return ("transfer_function", solution_path)
         return None
 
-    def _flow_plot_target(self) -> tuple[str, object] | None:
+    def _flow_plot_target(self) -> PlotTarget | None:
         """Return the focused or opened valid flow YAML as a plot target."""
         highlighted = self._highlighted_yaml_file()
         path: Path | None
@@ -1429,7 +1495,7 @@ class ProjectExplorerScreen(Screen[None]):
             return None
         return ("flow", path)
 
-    def _job_plot_target(self) -> tuple[str, object] | None:
+    def _job_plot_target(self) -> PlotTarget | None:
         """Return the focused or opened valid job YAML as a plot target."""
         path = self._highlighted_job_path() or self.selected_job_path
         if path is None:
@@ -1475,8 +1541,14 @@ class ProjectExplorerScreen(Screen[None]):
         self._open_plot(target)
 
     @work(thread=True, exclusive=True, group="plotting")
-    def _open_plot(self, target: tuple[str, object]) -> None:
-        """Open a selected Plotly figure in the browser."""
+    def _open_plot(self, target: PlotTarget) -> None:
+        """Open a selected Plotly figure in the browser.
+
+        Parameters
+        ----------
+        target : PlotTarget
+            Validated plot kind and its typed payload.
+        """
         plot_project = None
         target_type = target[0]
         plot_name = {
@@ -1507,9 +1579,17 @@ class ProjectExplorerScreen(Screen[None]):
 
     @staticmethod
     def _build_plot_figure(  # noqa: C901 - plotting branches move in Phase 5.4
-        project: Project, target: tuple[str, object]
+        project: Project, target: PlotTarget
     ):
-        """Build a selected Plotly figure through its existing plot API."""
+        """Build a selected Plotly figure through its existing plot API.
+
+        Parameters
+        ----------
+        project : Project
+            Open project used to resolve and load the requested data.
+        target : PlotTarget
+            Validated plot kind and its typed payload.
+        """
         target_type, payload = target
         if target_type == "flow":
             if not isinstance(payload, Path):
@@ -1526,7 +1606,13 @@ class ProjectExplorerScreen(Screen[None]):
         if target_type == "project":
             return project.plot()
         if target_type == "time":
+            if not isinstance(payload, tuple) or len(payload) != 4:
+                raise ValueError("A time plot requires survey, station, run, channel")
             survey, station, run, channel = payload
+            if not all(isinstance(value, str) for value in (survey, station, run)) or (
+                channel is not None and not isinstance(channel, str)
+            ):
+                raise ValueError("A time plot requires string run identifiers")
             time_data = project.read_run(
                 survey,
                 station,
@@ -1535,9 +1621,16 @@ class ProjectExplorerScreen(Screen[None]):
             )
             return time_data.plot(max_pts=TIME_PLOT_MAX_POINTS)
         if target_type == "spectra":
-            return SpectraDataReader().run(payload).plot()
+            if not isinstance(payload, Path):
+                raise ValueError("A spectra plot requires a data path")
+            spectra_data = SpectraDataReader().run(payload)
+            if isinstance(spectra_data, SpectraMetadata):
+                raise ValueError("A spectra plot requires array data")
+            return spectra_data.plot()
         if target_type == "transfer_function":
-            solution = Solution.model_validate_json(Path(payload).read_bytes())
+            if not isinstance(payload, Path):
+                raise ValueError("A transfer-function plot requires a solution path")
+            solution = Solution.model_validate_json(payload.read_bytes())
             if isinstance(solution.tf, (ImpedanceTensor, Tipper)):
                 return solution.tf.plot(solution.freqs, solution.components)
         raise ValueError("The selected data is not plottable")
@@ -2473,7 +2566,7 @@ class ProjectExplorerScreen(Screen[None]):
                 "Save or discard the current YAML edits first", severity="warning"
             )
             return
-        self.app.show_home()
+        _resistics_app(self).show_home()
 
     def action_quit(self) -> None:
         if self.job_state == JobState.running:

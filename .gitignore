@@ -119,11 +119,6 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
 # Pytype type checker
 .pytype/
 
@@ -140,4 +135,3 @@ modern-python-boilerplate/
 .artifacts/
 .codex
 docs/source/tutorial-*
-

@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 import pandas as pd
 import plotly.graph_objects as go
+import pytest
 from textual.widgets import (
     Button,
     DataTable,
@@ -674,6 +675,19 @@ def test_tui_builds_figures_with_existing_plotters(monkeypatch, tmp_path):
         project, ("transfer_function", solution_path)
     )
     assert isinstance(figure, go.Figure)
+
+
+@pytest.mark.parametrize(
+    "target,message",
+    [
+        (("time", ("survey", "station")), "survey, station, run, channel"),
+        (("spectra", "evaluation"), "data path"),
+        (("transfer_function", 3), "solution path"),
+    ],
+)
+def test_tui_rejects_mismatched_plot_payloads(target, message):
+    with pytest.raises(ValueError, match=message):
+        ProjectExplorerScreen._build_plot_figure(SimpleNamespace(), target)
 
 
 def test_tui_plots_a_valid_selected_flow(monkeypatch, tmp_path):

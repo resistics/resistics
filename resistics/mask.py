@@ -24,6 +24,7 @@ from resistics.common import (
     ResisticsProcess,
     ResisticsWriter,
     WriteableMetadata,
+    save_compressed_arrays,
     validate_output_label,
 )
 from resistics.decimate import DecimationParameters
@@ -166,19 +167,37 @@ def get_run_mask_path(
 class WindowMaskWriter(ResisticsWriter):
     """Write mask metadata and compressed boolean level arrays."""
 
-    def run(self, dir_path: Path, mask: WindowMask) -> None:
-        """Write mask metadata and boolean tables beneath ``dir_path``."""
+    def run(self, dir_path: Path, data: ResisticsData) -> None:
+        """Write mask metadata and boolean tables beneath ``dir_path``.
+
+        Parameters
+        ----------
+        dir_path : Path
+            Output directory for the mask metadata and arrays.
+        data : ResisticsData
+            Window mask to persist.
+
+        Raises
+        ------
+        TypeError
+            If ``data`` is not a window mask.
+        WriteError
+            If the output directory cannot be prepared.
+        """
         from resistics.errors import WriteError
 
+        if not isinstance(data, WindowMask):
+            raise TypeError("WindowMaskWriter requires WindowMask data")
+        mask = data
         if not self._check_dir(dir_path):
             raise WriteError(dir_path, "Unable to write mask directory")
         arrays = {
             str(level): table.to_numpy(dtype=bool)
             for level, table in mask.tables.items()
         }
-        np.savez_compressed(dir_path / "data", **arrays)
+        save_compressed_arrays(dir_path / "data", arrays)
         metadata = mask.metadata.model_copy(deep=True)
-        metadata.history.add_record(self._get_record(dir_path, type(mask)))
+        metadata.history.add_record(self._get_writer_record(dir_path, type(mask)))
         metadata.write(dir_path / "metadata.json")
 
 
@@ -214,8 +233,24 @@ class WindowMaskReader(ResisticsProcess):
 
 
 class WindowMaskProcess(ResisticsProcess):
-    """Base for pure window-mask calculations with a self-writing executor."""
+    """Base for pure window-mask calculations with a self-writing executor.
 
+    Attributes
+    ----------
+    name : ClassVar[str]
+        Stable artifact name supplied by each concrete mask.
+    input_types : ClassVar[dict[str, str]]
+        Flow input ports consumed by mask calculations.
+    output_type : ClassVar[str]
+        Flow output type produced by mask calculations.
+    runtime_requirements : ClassVar[list[str]]
+        Runtime values required to persist a calculated mask.
+    model_config :
+        Pydantic configuration rejecting unknown mask parameters.
+    """
+
+    # Concrete masks have stable artifact identities, not user parameters.
+    name: ClassVar[str]  # pyrefly: ignore[bad-override]
     input_types: ClassVar[dict[str, str]] = {
         "win_data": "windowed_data",
         "dec_params": "decimation_parameters",
@@ -223,6 +258,35 @@ class WindowMaskProcess(ResisticsProcess):
     output_type: ClassVar[str] = "mask_result"
     runtime_requirements: ClassVar[list[str]] = ["project_path", "run_batch"]
     model_config = ConfigDict(extra="forbid")
+
+    def run(
+        self,
+        win_data: WindowedData,
+        dec_params: DecimationParameters,
+        run_batch: dict[str, Any] | None = None,
+    ) -> WindowMask:
+        """Calculate a mask for one windowed run.
+
+        Parameters
+        ----------
+        win_data : WindowedData
+            Windowed samples to evaluate.
+        dec_params : DecimationParameters
+            Evaluation-frequency layout for each decimation level.
+        run_batch : dict[str, Any] | None
+            Optional survey, station, and run identifiers.
+
+        Returns
+        -------
+        WindowMask
+            Evaluation-index-aware decisions for each window level.
+
+        Raises
+        ------
+        NotImplementedError
+            If a concrete mask does not implement the calculation.
+        """
+        raise NotImplementedError
 
     def execute(self, inputs: dict[str, Any], context: Any) -> dict[str, str]:
         """Calculate, persist, and return the path of a named mask."""

@@ -43,6 +43,7 @@ dependencies = [
     "textual[syntax]>=1.0.0",
     "regressioninc",
     "mth5>=0.4.1",
+    "xarray",
     "obspy>=1.4.2",
 ]
 
@@ -62,6 +63,9 @@ dev = [
     "pre-commit",
     "ruff>=0.15.22,<0.16",
     "pydoclint>=0.9.1,<0.10",
+    "pyrefly==1.1.1",
+    "types-PyYAML",
+    "types-tqdm",
 ]
 docs = [
     "Sphinx",
@@ -76,7 +80,7 @@ docs = [
     "seedir",
     "emoji",
 ]
-tests = ["pytest", "pytest-cov", "pytest-html", "mypy"]
+tests = ["pytest", "pytest-cov", "pytest-html"]
 notebooks = ["ipykernel>=6.22.0,<7"]
 
 [tool.uv]
@@ -104,6 +108,13 @@ addopts = "--doctest-modules"
 doctest_optionflags = "NORMALIZE_WHITESPACE ELLIPSIS"
 minversion = "6.0"
 testpaths = ["resistics", "tests"]
+
+[tool.pyrefly]
+baseline = "pyrefly-baseline.json"
+output-format = "min-text"
+preset = "default"
+project-includes = ["resistics"]
+python-version = "3.11"
 
 [tool.coverage.paths]
 source = ["resistics"]

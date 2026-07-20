@@ -63,7 +63,12 @@ def builtin_processing_templates(
             }
         ),
     }
-    return {"flows": flows, "parameters": parameters, "criteria": criteria}
+    templates: dict[str, dict[str, FlowDefinition | ParameterSet | GatherCriteria]] = {
+        "flows": dict(flows),
+        "parameters": dict(parameters),
+        "criteria": dict(criteria),
+    }
+    return templates
 
 
 def _install_builtin_templates(project_path: Path, resource_type: str) -> list[Path]:

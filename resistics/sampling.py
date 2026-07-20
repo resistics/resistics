@@ -895,10 +895,11 @@ def datetime_array(
     Timestamp('2021-01-01 00:00:00.024169959')
     """
     if n_samples is not None:
-        return first_time + np.arange(n_samples) * to_timedelta(1 / fs)
-    if samples is None:
+        samples = np.arange(n_samples)
+    elif samples is None:
         raise ValueError("One of n_samples or samples must be provided")
-    return first_time + samples * to_timedelta(1 / fs)
+    datetimes = first_time + samples * to_timedelta(1 / fs)
+    return np.asarray(datetimes)
 
 
 def datetime_array_estimate(

@@ -189,8 +189,31 @@ def resolve_process_class(
 def process_descriptor(
     path: str, project_path: Path | None = None
 ) -> ProcessDescriptor:
-    """Build a UI-safe descriptor from a directly resolved process path."""
+    """Build a UI-safe descriptor from a directly resolved process path.
+
+    Parameters
+    ----------
+    path : str
+        Import path of the process class.
+    project_path : Path | None
+        Optional project whose trusted plugins may supply the process.
+
+    Returns
+    -------
+    ProcessDescriptor
+        Serializable process metadata for discovery and editing.
+
+    Raises
+    ------
+    ValueError
+        If the path does not identify a concrete flow process.
+    """
     process_class = resolve_process_class(path, project_path)
+    output_type = process_class.output_type
+    if output_type is None:
+        # ``resolve_process_class`` enforces this invariant. Keep the check local
+        # too so the descriptor contract remains explicit to static analyzers.
+        raise ValueError(f"Process {path!r} does not declare a flow output_type")
     try:
         parameter_schema = process_class.model_json_schema()
     except Exception:
@@ -203,7 +226,7 @@ def process_descriptor(
         display_name=process_class.__name__,
         description=inspect.getdoc(process_class) or "",
         input_types=dict(process_class.input_types),
-        output_type=process_class.output_type,
+        output_type=output_type,
         runtime_requirements=list(process_class.runtime_requirements),
         parameter_schema=parameter_schema,
     )

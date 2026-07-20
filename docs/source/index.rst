@@ -74,6 +74,7 @@ Next steps
    getting-started.rst
    lower-level.rst
    custom-process.rst
+   docstrings.rst
 
 .. toctree::
    :maxdepth: 3
