@@ -26,6 +26,48 @@ def test_package_facade_preserves_application_imports():
     assert Path(tui.__file__).name == "__init__.py"
 
 
+def test_package_facade_preserves_extracted_screen_imports():
+    import resistics.tui as tui
+    import resistics.tui.app as tui_app
+    from resistics.tui.screens.dialogs import (
+        ConfirmJobScreen,
+        ConfirmProjectDataDeletionScreen,
+        CopyYamlFileScreen,
+        CreateJobScreen,
+        DeleteProjectDataScreen,
+        DeleteYamlFileScreen,
+        DirectoryPickerScreen,
+        ProjectDataDeletionRequest,
+    )
+    from resistics.tui.screens.launcher import (
+        CreateProjectScreen,
+        HomeScreen,
+        ProjectLoadingScreen,
+        TuiHeader,
+    )
+
+    extracted = {
+        "ConfirmJobScreen": ConfirmJobScreen,
+        "ConfirmProjectDataDeletionScreen": ConfirmProjectDataDeletionScreen,
+        "CopyYamlFileScreen": CopyYamlFileScreen,
+        "CreateJobScreen": CreateJobScreen,
+        "DeleteProjectDataScreen": DeleteProjectDataScreen,
+        "DeleteYamlFileScreen": DeleteYamlFileScreen,
+        "DirectoryPickerScreen": DirectoryPickerScreen,
+        "ProjectDataDeletionRequest": ProjectDataDeletionRequest,
+        "CreateProjectScreen": CreateProjectScreen,
+        "HomeScreen": HomeScreen,
+        "ProjectLoadingScreen": ProjectLoadingScreen,
+        "TuiHeader": TuiHeader,
+    }
+    for name, screen_type in extracted.items():
+        assert getattr(tui, name) is screen_type
+        assert getattr(tui_app, name) is screen_type
+
+    assert ConfirmJobScreen.__module__ == "resistics.tui.screens.dialogs"
+    assert HomeScreen.__module__ == "resistics.tui.screens.launcher"
+
+
 def test_console_entry_point_loads_the_package_facade():
     launcher = next(
         entry

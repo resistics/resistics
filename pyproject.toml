@@ -194,6 +194,11 @@ ignore-decorators = ["pydantic.field_validator", "pydantic.model_validator"]
     "RUF012", # Textual requires mutable BINDINGS and related class attributes.
     "SIM117", # Nested Textual context managers mirror the composed widget tree.
 ]
+"resistics/tui/screens/*.py" = [
+    "D102", # Textual callbacks and actions are framework entry points, not public APIs.
+    "RUF012", # Textual requires mutable BINDINGS and related class attributes.
+    "SIM117", # Nested Textual context managers mirror the composed widget tree.
+]
 "scripts/*.py" = [
     "D100", # Maintenance scripts are documented by their CLI help and hardening plan.
     "D101",

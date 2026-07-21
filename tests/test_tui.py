@@ -27,6 +27,7 @@ from textual.widgets import (
 
 import resistics.flow as flow_module
 import resistics.tui.app as tui_module
+import resistics.tui.services as tui_services
 from resistics.common import ProcessingProgressEvent, ProcessingProgressState
 from resistics.explorer import ProjectExplorerState
 from resistics.flow import default_parameter_set, model_to_yaml, standard_mt_flow
@@ -153,11 +154,11 @@ def test_tui_import_defers_feature_specific_modules():
 def test_feature_errors_explain_missing_dependencies():
     missing = ModuleNotFoundError("No module named 'plotly'", name="plotly")
 
-    assert tui_module._feature_error("Plotting", missing) == (
+    assert tui_services._feature_error("Plotting", missing) == (
         "Plotting requires the missing dependency 'plotly'. "
         "Reinstall resistics with its required dependencies."
     )
-    assert tui_module._feature_error("Plotting", ValueError("invalid plot")) == (
+    assert tui_services._feature_error("Plotting", ValueError("invalid plot")) == (
         "invalid plot"
     )
 

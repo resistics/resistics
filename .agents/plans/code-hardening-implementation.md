@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 5.1 verified; Checkpoint 5.2 ready
+Status: in progress; Checkpoint 5.2 verified; Checkpoint 5.3 ready
 Created: 2026-07-19
 Last updated: 2026-07-21
 Working branch: `mth5`
@@ -27,20 +27,20 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 5 - Split large modules at stable boundaries
-- Active checkpoint: `5.2` (`resistics`) - Extract dialogs and launcher screens
+- Active checkpoint: `5.3` (`resistics`) - Extract project screen state and services
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `5.1` in `S030`
-- Last verified checkpoint: `5.1` in `S030`
-- Last session: `S030`
+- Last completed checkpoint: `5.2` in `S031`
+- Last verified checkpoint: `5.2` in `S031`
+- Last session: `S031`
 - Last verified commit: resistics `09d048b` plus the verified uncommitted
-  S029-S030 structured-progress and TUI package-facade implementations;
+  S029-S031 structured-progress and TUI package-boundary implementations;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: map dialog and launcher dependencies on app helpers and
-  types, then move the lowest-coupling screens into `screens/dialogs.py` and
-  `screens/launcher.py` while preserving widget ids, bindings, and facade
-  exports.
+- Next exact action: inventory `ProjectExplorerScreen` state, indexing,
+  validation, plot-target, deletion-preview, and execution responsibilities;
+  identify the first UI-neutral service contract and add unit tests before
+  extracting it in Checkpoint 5.3.
 
 Current worktree caveat:
 
@@ -48,8 +48,8 @@ Current worktree caveat:
   including deferred feature imports and their startup measurements.
   The empty `pyrefly-baseline.json` remains untracked and is a required Phase 3
   artifact. The verified structured-progress implementation, dependency
-  cleanup, TUI package facade and skeleton, tests, lock refresh, and pydoclint
-  baseline refresh are uncommitted.
+  cleanup, TUI package facade, dialog/launcher extraction, tests, lock refresh,
+  and pydoclint baseline refresh are uncommitted.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -68,7 +68,7 @@ Current worktree caveat:
 - Pre-commit uses maintained v6 file-hygiene hooks plus locked uv-backed local
   Ruff and pydoclint hooks. The local hook is installed in this checkout.
 - Pyrefly 1.1.1 is the sole mandatory type checker. Its locked project command
-  checks all 21 production modules without error- or warning-level findings;
+  checks all 29 production modules without error- or warning-level findings;
   the committed error baseline is empty, and new findings fail locally and in
   pre-commit. Two narrow demonstrated suppressions remain. The complete inline
   typing contract is advertised by `py.typed`, verified in wheel and sdist.
@@ -244,7 +244,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | 4.6 | both | `verified` | S029; structured lifecycle events; no raw terminal rendering |
 | Gate 4 | resistics | `verified` | S023-S029; responsive, zero-I/O, 92.29% import reduction |
 | 5.1 | resistics | `verified` | S030; facade/entry point preserved; 413 tests; artifacts verified |
-| 5.2 | resistics | `not_started` | Depends on 5.1 |
+| 5.2 | resistics | `verified` | S031; stable screen owners; 414 tests; artifacts verified |
 | 5.3 | resistics | `not_started` | Depends on 4.3-4.4 and 5.1 |
 | 5.4 | resistics | `not_started` | Shared plot rendering |
 | 5.5 | resistics | `not_started` | Gather boundaries |
@@ -389,25 +389,25 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 413 passed | S030 |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 414 passed | S031 |
 | Branch coverage | approximately 76% | 75.96% | 76.19% | S014; coverage XML |
-| Production Python | approximately 21,011 lines | 21,015 | 21,015 | S002 report |
-| Tests | approximately 5,941 lines | 6,051 | 6,051 | S002 report |
-| `resistics/tui.py` | 2,673 lines | 2,673 | moved to `tui/app.py`; 3,592 | S030 report |
+| Production Python | approximately 21,011 lines | 21,015 | 22,874 | S031 report |
+| Tests | approximately 5,941 lines | 6,051 | 7,531 | S031 report |
+| `resistics/tui.py` | 2,673 lines | 2,673 | `app.py` 2,565; extracted screens/helpers 1,096 | S031 report |
 | `resistics/plot.py` | 1,200 lines | 1,200 | 1,200 | S002 report |
 | Flake8 | approximately 40 findings | 43 findings | 43 findings | S001 |
 | Legacy complexity | not recorded | 17 CCR001; 5 C901; 4 ECE001 | same | S002 |
 | Black format | not recorded | 26 files differ | 26 files differ | S001 |
 | mypy | 210 errors across 17 files | 209 across 17 files | removed | S016 |
 | Pyrefly | not installed | 175 errors across 17 files | 0 new errors | S016 |
-| TUI cold import | approximately 2.18 seconds | 2.2659 s median | 0.1606 s median | S030 report |
+| TUI cold import | approximately 2.18 seconds | 2.2659 s median | 0.1377 s median | S031 report |
 | TUI first screen | not measured | 2.076730 s median | 0.235886 s median | S028 probe |
 | Cached TUI action checks | not measured | 5,200 in 0.002322 s; zero instrumented I/O | same | S023 XML |
 | TUI binding refresh ownership | not measured | calls 200/3/3/1 | calls 100/1/1/0; 13.007 ms maximum | S024 XML |
 | Explorer resource parsing | repeated by table, job, and selection | one parse per file identity | zero reads on cache hits | S025 tests |
 | TUI project/explorer loading | synchronous before first project screen | loading surface before blocked open/summary release | inactive tabs lazy; stale results rejected | S027 tests |
 | Terminal progress rendering | two unconditional `tqdm` loops | same | zero; serializable callbacks through TUI | S029 tests |
-| TUI module boundary | one module | one 2,673-line module | package facade plus app and extraction skeleton | S030 artifacts |
+| TUI module boundary | one module | one 2,673-line module | dialogs 693 lines; launcher 309; services 94; app 2,565 | S031 artifacts |
 | Public docstring coverage | not measured | 80.2%; 566/706 | same | S002 report |
 | Executable docstring examples | not measured | 778 prompts | same | S002 report |
 | Executable docstring plots | not measured | 16 directives | same | S002 report |
@@ -1740,6 +1740,19 @@ correct a factual error; note the correction explicitly.
   to Checkpoints 5.2-5.3 so the package conversion remains mechanical. Preserve
   `resistics.tui:main`, update only the path-sensitive Ruff ignore and
   pydoclint baseline, and verify both built distributions before extraction.
+- `D045` (2026-07-21): Give the eight modal dialogs and their immutable
+  deletion request to `screens.dialogs`, and give the header plus three
+  pre-project screens to `screens.launcher`. Preserve their source bodies,
+  widget ids, messages, bindings, callback wiring, facade identities, and the
+  transitional `resistics.tui.app` aliases. Move only the three helpers shared
+  across these screens into `services`; use a function-local application import
+  in the existing runtime type check so screen-module imports cannot create an
+  app/screens cycle. Extend the existing Textual-only Ruff exceptions to the
+  screen modules and regenerate the line/path-sensitive pydoclint baseline;
+  do not combine the move with DTO or behavior changes. Keep the 693-line
+  dialogs module as one cohesive modal-screen boundary for now: splitting its
+  repeated dialog CSS and focus behavior during a mechanical checkpoint would
+  obscure the movement, while it remains below the Phase 5 module ceiling.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -2666,3 +2679,62 @@ correct a factual error; note the correction explicitly.
   types, then move the lowest-coupling screens into `screens/dialogs.py` and
   `screens/launcher.py` while preserving widget ids, bindings, and facade
   exports.
+
+### S031 - 2026-07-21 - Extract dialogs and launcher screens
+
+- Checkpoint state at start: `5.2` was `not_started`; Checkpoint 5.1 had
+  introduced and verified the package facade and extraction skeleton in S030.
+- Starting branch, HEAD, and worktree: `mth5` at owner commit `09d048b` with
+  the verified S029-S030 structured-progress and TUI package work uncommitted.
+  The required empty `pyrefly-baseline.json` remained untracked and untouched.
+- Session objective: move the low-coupling dialogs and pre-project launcher
+  screens to their stable modules without changing Textual behavior or public
+  imports.
+- Work completed: moved eight modal dialogs, their filename validator, and the
+  immutable deletion request to `screens/dialogs.py`; moved `TuiHeader`,
+  `HomeScreen`, `CreateProjectScreen`, and `ProjectLoadingScreen` to
+  `screens/launcher.py`; and moved shared feature-error, focus, and app-contract
+  helpers to `services.py`. The app imports the new owners, the facade and
+  transitional app aliases retain object identity, and the app type check uses
+  a function-local import to avoid an app/screens import cycle. A failing-first
+  module-ownership test protects the new boundary. The Textual-specific Ruff
+  exceptions now cover screen modules, and the line/path-sensitive pydoclint
+  baseline was regenerated from 1,697 to 1,701 lines.
+- Files changed by this checkpoint: `resistics/tui/app.py`,
+  `resistics/tui/services.py`, `resistics/tui/screens/dialogs.py`,
+  `resistics/tui/screens/launcher.py`, `tests/test_cli.py`, `tests/test_tui.py`,
+  `pyproject.toml`, `pydoclint-baseline.txt`, and this implementation record.
+  Earlier verified dirty files and the Pyrefly baseline were preserved.
+- Decisions added or superseded: D045 records screen ownership, shared-helper
+  cycle avoidance, compatibility aliases, mechanical scope, and the cohesive
+  dialogs-module size exception.
+- Verification commands and results:
+  - The new ownership contract initially failed because the target modules were
+    placeholders. The focused CLI/TUI suites then passed 42 tests, and the
+    complete suite passed 414 tests in 25.73 seconds.
+  - Ruff format checked 51 maintained Python files and Ruff lint passed.
+    Pydoclint reported no unbaselined violations; Pyrefly reported zero errors
+    with the two established suppressions. `uv lock --check` resolved 174
+    packages, all seven pre-commit hooks passed, and `git diff --check` passed.
+  - `uv build` produced the wheel and source distribution. Both contain the
+    extracted modules; wheel metadata retains
+    `resistics = resistics.tui:main`, and a direct wheel import proved facade
+    identity plus the new dialog and launcher `__module__` ownership.
+- Measurements/artifacts: the app fell from 3,592 to 2,565 lines; dialogs are
+  693 lines, launcher 309, and shared services 94. Five independent CPython
+  3.13.5/WSL2 cold imports ranged from 0.1334 to 0.1675 seconds with a 0.1377
+  second median, improving on S030's 0.1606-second median. The ignored report
+  is `.artifacts/hardening/performance/tui-import-5.2-after.json`; build
+  artifacts are under `/tmp/resistics-checkpoint-5-2-dist-20260721/`.
+- Known failures or incomplete work: none within Checkpoint 5.2. The empty
+  legacy notebook and unrelated notebook lint debt remain assigned to later
+  hardening checkpoints and were not changed. Project-screen state/services
+  extraction remains Checkpoint 5.3.
+- Checkpoint state at end: `5.2` is `verified`; Checkpoint 5.3 is ready.
+- Commit readiness or commit id: the combined verified S029-S031 structured
+  progress, dependency cleanup, TUI package and screen-boundary work, tests,
+  artifacts, baselines, and records are ready for an owner-selected commit; no
+  commit was requested or created.
+- Exact next action: inventory `ProjectExplorerScreen` state, indexing,
+  validation, plotting-target, deletion-preview, and execution responsibilities
+  and select the first UI-neutral service contract for failing-first unit tests.
