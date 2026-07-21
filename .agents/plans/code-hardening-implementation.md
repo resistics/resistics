@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 5.4 verified; Checkpoint 5.5 ready
+Status: in progress; Checkpoint 5.5 verified; Checkpoint 5.6 ready
 Created: 2026-07-19
 Last updated: 2026-07-21
 Working branch: `mth5`
@@ -27,19 +27,20 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 5 - Split large modules at stable boundaries
-- Active checkpoint: `5.5` (`resistics`) - Split gather responsibilities
+- Active checkpoint: `5.6` (`resistics`) - Finish MTH5 boundary cleanup
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `5.4` in `S034`
-- Last verified checkpoint: `5.4` in `S034`
-- Last session: `S034`
-- Last verified commit: resistics `675cfde`, recording the S032-S033 project
-  explorer extraction and session-diagnostics follow-up;
+- Last completed checkpoint: `5.5` in `S035`
+- Last verified checkpoint: `5.5` in `S035`
+- Last session: `S035`
+- Last verified commit: resistics `c8b938f`, recording the Checkpoint 5.4
+  shared graph renderer and thin public plotting adapters;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: inventory criteria, validation, project discovery,
-  planning, and data-assembly responsibilities in `resistics/gather.py`, then
-  map their callers and focused tests before defining Checkpoint 5.5 boundaries.
+- Next exact action: inventory the remaining `Measurement = None` and
+  `Site = None` compatibility placeholders, file ownership/close behaviour,
+  and every legacy caller, test, documentation, and release-note reference
+  before defining the Checkpoint 5.6 removals.
 
 Current worktree caveat:
 
@@ -50,8 +51,9 @@ Current worktree caveat:
   cleanup, TUI package facade, dialog/launcher extraction, tests, lock refresh,
   and pydoclint baseline refresh are committed through `675cfde`, including
   the S032 project service/screen extraction and S033 session diagnostics
-  follow-up. The verified Checkpoint 5.4 graph-rendering split remains
-  uncommitted. The required empty `pyrefly-baseline.json` remains untracked.
+  follow-up. Checkpoint 5.4 is committed at `c8b938f`. The verified Checkpoint
+  5.5 gather split remains uncommitted. The required empty
+  `pyrefly-baseline.json` remains untracked.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -249,7 +251,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | 5.2 | resistics | `verified` | S031; stable screen owners; 414 tests; artifacts verified |
 | 5.3 | resistics | `verified` | S032-S033; UI-neutral service and session diagnostics; 421 tests |
 | 5.4 | resistics | `verified` | S034; thin adapters; shared renderer; 421 tests |
-| 5.5 | resistics | `not_started` | Gather boundaries |
+| 5.5 | resistics | `verified` | S035; responsibility split; 425 tests; artifacts verified |
 | 5.6 | resistics | `not_started` | MTH5-only cleanup |
 | 5.7 | resistics | `not_started` | Verified dead-code cleanup |
 | Gate 5 | resistics | `not_started` | Depends on 5.1-5.7 |
@@ -391,12 +393,13 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 421 passed | S033 |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 425 passed | S035 |
 | Branch coverage | approximately 76% | 75.96% | 76.19% | S014; coverage XML |
-| Production Python | approximately 21,011 lines | 21,015 | 23,841 | S034 report |
-| Tests | approximately 5,941 lines | 6,051 | 7,943 | S034 report |
+| Production Python | approximately 21,011 lines | 21,015 | 24,575 | S035 report |
+| Tests | approximately 5,941 lines | 6,051 | 8,101 | S035 report |
 | `resistics/tui.py` | 2,673 lines | 2,673 | `app.py` 436; project/logging modules 2,923 | S033 report |
 | `resistics/plot.py` | 1,200 lines | 1,200 | plot 700; flow graph 617 | S034 report |
+| `resistics/gather.py` | 1,235 lines | 1,235 | facade 183; criteria 247; data 582; plan 312; project 645 | S035 report |
 | Flake8 | approximately 40 findings | 43 findings | 43 findings | S001 |
 | Legacy complexity | not recorded | 17 CCR001; 5 C901; 4 ECE001 | same | S002 |
 | Black format | not recorded | 26 files differ | 26 files differ | S001 |
@@ -1803,6 +1806,19 @@ correct a factual error; note the correction explicitly.
   to the line/path-sensitive baseline while fully documenting the new render
   contract and materially changed functions. This leaves `plot.py` and the new
   renderer below 800 lines without changing the public plotting API.
+- `D049` (2026-07-21): Keep `resistics.gather` as the public facade and the
+  owner of `Gather` orchestration while separating criteria/validation,
+  project and MTH5 discovery, immutable planning, and data assembly into
+  `gather_criteria`, `gather_project`, `gather_plan`, and `gather_data`.
+  Preserve existing import, YAML, pickle, autodoc, and process-catalog paths by
+  explicitly retaining `resistics.gather` as the public models' canonical
+  module. Use frozen private dataclasses for locators and plans; public models
+  remain Pydantic processes/data contracts. Catch arbitrary failures only at
+  persisted evaluation and mask reader boundaries, where station, run, level,
+  and evaluation context can be added with exception chaining. Automatic
+  remote discovery may skip expected `ValueError` candidate rejection but must
+  propagate unexpected failures. Assemble only from the completed immutable
+  plan so discovery and array construction cannot mutate one another.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -2856,6 +2872,76 @@ correct a factual error; note the correction explicitly.
 - Exact next action: compare `plot_flow` and `plot_job` in `resistics/plot.py`,
   capture shared rendering invariants in focused tests, and define the smallest
   shared graph-rendering contract before extracting it.
+
+### S035 - 2026-07-21 - Split gather responsibilities
+
+- Checkpoint state at start: Checkpoint 5.4 was committed and verified;
+  Checkpoint 5.5 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `c8b938f` with only the
+  required empty `pyrefly-baseline.json` untracked. No unrelated tracked change
+  was present or modified.
+- Session objective: separate criteria/validation, MTH5/project discovery,
+  planning, and data assembly; replace the monolithic gather flow with named
+  domain operations; and narrow exception handling without changing its public
+  API or selection semantics.
+- Work completed: reduced `resistics.gather` to a public facade and 45-line
+  `Gather.run` orchestration. Moved public criteria and selection contracts to
+  `gather_criteria`, gathered-data models and assembly to `gather_data`,
+  project artifact discovery and validation to `gather_project`, and immutable
+  evaluation/window planning to `gather_plan`. Added `load_target`,
+  `discover_remotes`, `admit_windows`, planning, and assembly operations.
+  Reader failures now retain artifact role plus station/run/level/evaluation
+  context; automatic remote discovery skips only expected candidate
+  `ValueError`s and propagates unexpected failures. The facade explicitly
+  preserves every established `resistics.gather.*` public identity and process
+  descriptor path.
+- Files changed by this checkpoint: `resistics/gather.py`, the new
+  `resistics/gather_criteria.py`, `resistics/gather_data.py`,
+  `resistics/gather_plan.py`, and `resistics/gather_project.py`,
+  `tests/test_gather.py`, `pydoclint-baseline.txt`, and this implementation
+  record.
+- Decisions added or superseded: D049 records the stable public facade,
+  responsibility owners, frozen internal planning contract, and exception
+  boundary.
+- Verification commands and results:
+  - All 19 focused gather tests passed. The complete suite passed all 425 tests
+    in 26.96 seconds, including new coverage for canonical process paths,
+    contextual required-artifact failures, expected automatic-candidate
+    rejection, and propagation of unexpected candidate failures.
+  - Ruff formatting and lint passed for all changed modules. A dedicated C901
+    check reported no findings and the former `Gather.run` suppression is gone.
+    Pydoclint passed against a regenerated 1,728-line baseline, down from
+    1,745; the new planner, source, and assembler operations add no debt.
+    Pyrefly reported zero errors with the two established suppressions.
+  - `uv lock --check` resolved 174 packages, `git diff --check` passed, and all
+    pre-commit hooks passed: YAML, EOF, whitespace, Ruff lint/format,
+    pydoclint, and Pyrefly.
+  - The gather API HTML was generated and contains the canonical
+    `resistics.gather.*` names. The repository-wide Sphinx invocation still
+    exits on established gallery failures from removed legacy imports,
+    unavailable intersphinx inventories, and Chrome-dependent Plotly examples;
+    none originates in the gather API page or changed files.
+  - The initial sandboxed build could not resolve Hatchling without network
+    access. The approved retry built the wheel and sdist. Both contain all five
+    gather modules, and an import directly from the wheel verified its facade
+    exports and canonical process-catalog paths.
+- Measurements/artifacts: the former 1,235-line gather module is now a
+  183-line facade plus cohesive criteria (247), data/assembly (582), planning
+  (312), and project-discovery (645) modules, each below the preferred 800-line
+  ceiling. Production Python is 24,575 lines and tests are 8,101 lines. Build
+  artifacts are under `/tmp/resistics-checkpoint-5-5-dist-20260721/` only.
+- Known failures or incomplete work: none within Checkpoint 5.5. The full
+  documentation build retains the established unrelated gallery/environment
+  failures described above. The empty Pyrefly artifact remains intentionally
+  untracked. MTH5 compatibility placeholders, file ownership, and remaining
+  legacy paths remain Checkpoint 5.6.
+- Checkpoint state at end: `5.5` is `verified`; Checkpoint 5.6 is ready.
+- Commit readiness or commit id: the gather responsibility split, focused
+  protections, baseline refresh, artifacts, and record are verified and ready
+  for an owner-selected commit; no commit was requested or created.
+- Exact next action: inventory `Measurement = None`, `Site = None`, every file
+  ownership/close path, and all related callers, tests, docs, and release notes
+  before defining the Checkpoint 5.6 cleanup boundary.
 
 ### S034 - 2026-07-21 - Unify flow and job graph rendering
 

@@ -36,6 +36,32 @@ from resistics.testing import evaluation_data, solution_mt, time_metadata_genera
 from resistics.transfunc import ImpedanceTensor
 
 
+def test_gather_facade_preserves_public_names_across_responsibility_modules():
+    """Public imports remain stable while implementations have distinct owners."""
+    from resistics.flow import ProcessCatalog
+    from resistics.gather import Gather, GatheredData, SiteCombinedMetadata
+    from resistics.gather_criteria import GatherCriteria as CriteriaImplementation
+    from resistics.gather_data import GatheredData as DataImplementation
+
+    assert gather_module.GatherCriteria is GatherCriteria
+    assert GatherCriteria is CriteriaImplementation
+    assert GatheredData is DataImplementation
+    assert Gather.__module__ == "resistics.gather"
+    assert GatherCriteria.__module__ == "resistics.gather"
+    assert GatheredData.__module__ == "resistics.gather"
+    assert SiteCombinedMetadata.__module__ == "resistics.gather"
+    paths = {descriptor.path for descriptor in ProcessCatalog().discover()}
+    assert {
+        "resistics.gather.EvaluationFrequencyGather",
+        "resistics.gather.Gather",
+        "resistics.gather.GatherCriteria",
+    }.issubset(paths)
+    assert not any(
+        path.startswith(("resistics.gather_criteria.", "resistics.gather_data."))
+        for path in paths
+    )
+
+
 def test_obsolete_directory_gather_api_is_removed():
     for name in (
         "get_site_evals_metadata",
@@ -317,6 +343,138 @@ def test_gather_batches_selected_rows_without_full_level_channel_copies(
     gathered = Gather().run(project, tmp_path, selection, ImpedanceTensor())
 
     assert gathered.out_data.data[0].shape == (3, 2)
+
+
+def test_required_artifact_read_error_retains_role_run_and_cause(tmp_path, monkeypatch):
+    """Persisted-reader failures cross the source boundary with full context."""
+    from resistics.gather import Gather
+
+    run_path = "survey/target/missing"
+    project = ProjectStub(tmp_path, [])
+    selection = GatherCriteria().run(
+        {
+            "survey": "survey",
+            "station": "target",
+            "sample_rate": 128,
+            "run_paths": [run_path],
+        }
+    )
+
+    def fail_read(*args, **kwargs):
+        raise OSError("corrupt evaluation metadata")
+
+    monkeypatch.setattr(EvaluationFrequencyReader, "execute", fail_read)
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Missing or unreadable evaluation artifact for target: "
+            "survey/target/missing: corrupt evaluation metadata"
+        ),
+    ):
+        Gather().run(project, tmp_path, selection, ImpedanceTensor())
+
+
+def test_automatic_remote_discovery_does_not_hide_unexpected_failures(
+    tmp_path, monkeypatch
+):
+    """Only candidate validation failures are skippable during auto discovery."""
+    from resistics.gather import Gather
+    from resistics.gather_project import _GatherProjectSource
+
+    target_run = "survey/target/run"
+    write_evaluation(tmp_path, target_run, offset=0, value=1)
+    project = ProjectStub(
+        tmp_path,
+        [
+            {
+                "survey": "survey",
+                "station": "target",
+                "station_path": "survey/target",
+                "sample_rate": 128.0,
+                "run_path": target_run,
+            },
+            {
+                "survey": "survey",
+                "station": "remote",
+                "station_path": "survey/remote",
+                "sample_rate": 128.0,
+                "run_path": "survey/remote/run",
+            },
+        ],
+    )
+    criteria = GatherCriteria(
+        stations={
+            "survey/target": StationGatherCriteria(
+                sampling_frequencies={128: RateGatherCriteria(remote_references="auto")}
+            )
+        }
+    )
+    selection = criteria.run(
+        {
+            "survey": "survey",
+            "station": "target",
+            "sample_rate": 128,
+            "run_paths": [target_run],
+        }
+    )
+
+    def fail_candidate(*args, **kwargs):
+        raise RuntimeError("unexpected discovery defect")
+
+    monkeypatch.setattr(_GatherProjectSource, "_candidate_artifacts", fail_candidate)
+
+    with pytest.raises(RuntimeError, match="unexpected discovery defect"):
+        Gather().run(project, tmp_path, selection, ImpedanceTensor())
+
+
+def test_automatic_remote_rejection_preserves_candidate_diagnostics(tmp_path):
+    """Skippable candidate failures identify both station and rejection reason."""
+    from resistics.gather import Gather
+
+    target_run = "survey/target/run"
+    write_evaluation(tmp_path, target_run, offset=0, value=1)
+    project = ProjectStub(
+        tmp_path,
+        [
+            {
+                "survey": "survey",
+                "station": "target",
+                "station_path": "survey/target",
+                "sample_rate": 128.0,
+                "run_path": target_run,
+            },
+            {
+                "survey": "survey",
+                "station": "remote",
+                "station_path": "survey/remote",
+                "sample_rate": 128.0,
+                "run_path": "survey/remote/missing",
+            },
+        ],
+    )
+    selection = GatherCriteria(
+        stations={
+            "survey/target": StationGatherCriteria(
+                sampling_frequencies={128: RateGatherCriteria(remote_references="auto")}
+            )
+        }
+    ).run(
+        {
+            "survey": "survey",
+            "station": "target",
+            "sample_rate": 128,
+            "run_paths": [target_run],
+        }
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Candidate diagnostics: survey/remote: no readable evaluation artifacts"
+        ),
+    ):
+        Gather().run(project, tmp_path, selection, ImpedanceTensor())
 
 
 def test_gather_uses_realised_metadata_levels_and_allows_shorter_runs(tmp_path):
