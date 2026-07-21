@@ -115,7 +115,7 @@ class FakeProject:
         self.deleted_data_scopes.append(output_label)
         return self.preview_project_data_deletion(output_label)
 
-    def close_mth5(self):
+    def close(self):
         self.closed = True
 
 
@@ -2101,7 +2101,7 @@ def test_create_project_opens_the_new_project(monkeypatch, tmp_path):
         def file_summary(self):
             return SimpleNamespace(start_time="2020-01-01T00:00:00")
 
-        def close_mth5(self):
+        def close(self):
             self.closed = True
 
     source = FakeMTH5Source()

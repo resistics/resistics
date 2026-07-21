@@ -9,11 +9,9 @@ Submodules
 
    resistics.calibrate
    resistics.common
-   resistics.config
    resistics.decimate
    resistics.errors
    resistics.gather
-   resistics.letsgo
    resistics.plot
    resistics.project
    resistics.regression

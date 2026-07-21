@@ -2,12 +2,13 @@
 Tests for the MTH5-backed project API.
 """
 
+import subprocess
+import sys
 from pathlib import Path
 
 import h5py
 import pandas as pd
 import pytest
-from mth5.mth5 import MTH5
 
 from resistics.flow import FlowDefinition, ParameterSet, model_from_yaml_file
 from resistics.project import (
@@ -66,13 +67,14 @@ class FakeChannelSummary:
         )
 
 
-class FakeMTH5(MTH5):
+class FakeMTH5:
     """Small stand-in for mth5.mth5.MTH5."""
 
     def __init__(self, path):
         self.path = path
         self._channel_summary = FakeChannelSummary()
         self.closed = False
+        self.close_calls = 0
         self._file_version = "0.2.0"
 
     @property
@@ -86,11 +88,33 @@ class FakeMTH5(MTH5):
 
     def open_mth5(self, mode="r"):
         """Open no-op."""
+        self.closed = False
         return None
+
+    def h5_is_read(self):
+        """Return whether the fake handle is open."""
+        return not self.closed
 
     def close_mth5(self):
         """Mark closed."""
+        self.close_calls += 1
         self.closed = True
+
+    def get_survey(self, survey):
+        """Stand in for live survey access."""
+        raise NotImplementedError
+
+    def get_station(self, station, *, survey):
+        """Stand in for live station access."""
+        raise NotImplementedError
+
+    def get_run(self, station, run, *, survey):
+        """Stand in for live run access."""
+        raise NotImplementedError
+
+    def get_channel(self, station, run, channel, *, survey):
+        """Stand in for live channel access."""
+        raise NotImplementedError
 
 
 def test_mth5_project_paths():
@@ -112,6 +136,25 @@ def test_mth5_project_paths():
         project_path / "data" / "survey" / "station" / "results" / "proc1"
     )
     assert get_log_path(project_path, "proc1") == project_path / "logs" / "proc1.log"
+
+
+def test_project_import_defers_the_third_party_mth5_stack(tmp_path):
+    """Project metadata and path APIs do not eagerly import MTH5."""
+    code = (
+        "import sys; import resistics.project; "
+        "assert not any(name == 'mth5' or name.startswith('mth5.') "
+        "for name in sys.modules)"
+    )
+
+    result = subprocess.run(  # noqa: S603 - fixed interpreter and static code
+        [sys.executable, "-c", code],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_project_data_browser_lists_mth5_and_project_artifacts(tmp_path):
@@ -325,9 +368,7 @@ def test_template_restoration_is_scoped_to_its_resource_type(tmp_path):
 
 def test_load_builds_mth5_summary(monkeypatch, tmp_path):
     """Test loading project metadata and the MTH5 channel summary."""
-    import resistics.project as project_module
-
-    monkeypatch.setattr(project_module, "MTH5", FakeMTH5)
+    monkeypatch.setattr("resistics.project_mth5._new_mth5", FakeMTH5)
     project_path = tmp_path / "project"
     mth5_path = tmp_path / "data.h5"
     mth5_path.write_text("")
@@ -342,7 +383,7 @@ def test_load_builds_mth5_summary(monkeypatch, tmp_path):
     assert project.runs == ["survey/remote/run1", "survey/station/run1"]
     assert project.fs() == [128.0]
     assert project.get_concurrent("survey/station") == ["survey/remote"]
-    project.close_mth5()
+    project.close()
     assert project.mth5_data.closed
 
 
@@ -353,18 +394,107 @@ def test_missing_mth5_path_fails(tmp_path):
 
 
 def test_open_mth5_builds_serializable_read_only_summary(monkeypatch, tmp_path):
-    import resistics.project as project_module
-
-    monkeypatch.setattr(project_module, "MTH5", FakeMTH5)
+    monkeypatch.setattr("resistics.project_mth5._new_mth5", FakeMTH5)
     mth5_path = tmp_path / "data.h5"
     mth5_path.write_text("")
 
     source = open_mth5(mth5_path)
-    summary = source.file_summary()
+    with source as owned_source:
+        assert owned_source is source
+        summary = source.file_summary()
 
     assert summary.n_surveys == 1
     assert summary.n_stations == 2
     assert summary.n_runs == 2
     assert summary.model_validate_json(summary.model_dump_json()) == summary
-    source.close_mth5()
+    assert source.closed
+    assert source.fs() == [128.0]
+    source.close()
     assert source.mth5_data.closed
+    assert source.mth5_data.close_calls == 1
+    with pytest.raises(RuntimeError, match="MTH5 handle is closed"):
+        source.get_survey("survey")
+    with pytest.raises(RuntimeError, match="MTH5 handle is closed"):
+        source.__enter__()
+
+
+def test_load_closes_mth5_when_summary_construction_fails(monkeypatch, tmp_path):
+    """Project loading retains ownership until model construction succeeds."""
+    instances = []
+
+    class BrokenChannelSummary:
+        def to_dataframe(self):
+            raise RuntimeError("broken channel summary")
+
+    class BrokenSummaryMTH5(FakeMTH5):
+        def __init__(self, path):
+            super().__init__(path)
+            self._channel_summary = BrokenChannelSummary()
+            instances.append(self)
+
+    monkeypatch.setattr("resistics.project_mth5._new_mth5", BrokenSummaryMTH5)
+    project_path = tmp_path / "project"
+    mth5_path = tmp_path / "data.h5"
+    mth5_path.write_text("")
+    init(project_path, mth5_path, "2020-01-01 00:00:00")
+
+    with pytest.raises(RuntimeError, match="broken channel summary"):
+        load(project_path)
+
+    assert len(instances) == 1
+    assert instances[0].closed
+    assert instances[0].close_calls == 1
+
+
+def test_open_mth5_closes_a_partially_opened_handle(monkeypatch, tmp_path):
+    """A failed MTH5 open cannot leak the constructor-owned handle."""
+    instances = []
+
+    class BrokenOpenMTH5(FakeMTH5):
+        def __init__(self, path):
+            super().__init__(path)
+            instances.append(self)
+
+        def open_mth5(self, mode="r"):
+            self.closed = False
+            raise RuntimeError("broken open")
+
+    monkeypatch.setattr("resistics.project_mth5._new_mth5", BrokenOpenMTH5)
+    mth5_path = tmp_path / "data.h5"
+    mth5_path.write_text("")
+
+    with pytest.raises(RuntimeError, match="broken open"):
+        open_mth5(mth5_path)
+
+    assert len(instances) == 1
+    assert instances[0].closed
+    assert instances[0].close_calls == 1
+
+
+def test_legacy_project_compatibility_surface_is_removed():
+    """Only canonical MTH5 project paths and lifecycle names remain public."""
+    from inspect import Parameter, signature
+
+    import resistics.project as project_module
+
+    removed = {
+        "Measurement",
+        "Site",
+        "get_calibration_path",
+        "get_mask_name",
+        "get_mask_path",
+        "get_meas_evals_path",
+        "get_meas_features_path",
+        "get_meas_spectra_path",
+        "get_meas_time_path",
+        "get_solution_name",
+    }
+    assert not any(hasattr(project_module, name) for name in removed)
+    assert "force" not in signature(init).parameters
+    assert (
+        signature(get_results_path).parameters["output_label"].default
+        is Parameter.empty
+    )
+    assert not hasattr(Project, "close_mth5")
+    assert not hasattr(Project, "dir_path")
+    assert not hasattr(Project, "metadata")

@@ -221,7 +221,7 @@ class ProjectExplorerService:
                     self._project_closed = True
                     close_project = True
             if close_project:
-                self.project.close_mth5()
+                self.project.close()
 
     def close(self) -> None:
         """Close the project now or after already-running discovery exits."""
@@ -232,7 +232,7 @@ class ProjectExplorerService:
                 self._project_closed = True
                 close_project = True
         if close_project:
-            self.project.close_mth5()
+            self.project.close()
 
     def project_state(self) -> ProjectExplorerState:
         """Return cached project discovery as a frozen Pydantic DTO."""
@@ -631,7 +631,7 @@ class ProjectExplorerService:
         finally:
             self._job_runner = None
             if processing_project is not None:
-                processing_project.close_mth5()
+                processing_project.close()
 
     def cancel_job(self) -> bool:
         """Request cancellation from the active runner, if one exists."""

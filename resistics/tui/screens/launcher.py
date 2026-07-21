@@ -157,7 +157,7 @@ class CreateProjectScreen(Screen[None]):
             try:
                 summary = source.file_summary()
             finally:
-                source.close_mth5()
+                source.close()
         except Exception as exc:
             self._set_status(
                 f"[red]Unable to read MTH5 file:[/] "

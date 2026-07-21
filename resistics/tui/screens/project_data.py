@@ -277,7 +277,7 @@ class _ProjectDataMixin(_ProjectExplorerBase):
             )
         finally:
             if plot_project is not None and plot_project is not self.project:
-                plot_project.close_mth5()
+                plot_project.close()
 
     @on(Tree.NodeSelected, "#data-tree")
     def show_data_metadata(self, event: Tree.NodeSelected) -> None:

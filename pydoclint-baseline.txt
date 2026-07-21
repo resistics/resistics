@@ -261,14 +261,6 @@ resistics/errors.py
     DOC103: Method `ReadError.__init__`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [message: str, path: Path].
     DOC101: Method `MetadataReadError.__init__`: Docstring contains fewer arguments than in function signature.
     DOC103: Method `MetadataReadError.__init__`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [message: str | None, path: Path].
-    DOC101: Method `ProjectPathError.__init__`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectPathError.__init__`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [message: str, project_dir: Path].
-    DOC101: Method `MeasurementNotFoundError.__init__`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `MeasurementNotFoundError.__init__`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [meas_name: str, site_name: str].
-    DOC101: Method `SiteNotFoundError.__init__`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `SiteNotFoundError.__init__`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [site_name: str].
-    DOC101: Method `TimeDataReadError.__init__`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `TimeDataReadError.__init__`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [dir_path: Path, message: str].
     DOC101: Method `ChannelNotFoundError.__init__`: Docstring contains fewer arguments than in function signature.
     DOC103: Method `ChannelNotFoundError.__init__`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [chan: str, chans: Collection[str]].
     DOC101: Method `CalibrationFileNotFound.__init__`: Docstring contains fewer arguments than in function signature.
@@ -773,46 +765,10 @@ resistics/project.py
     DOC103: Function `get_run_data_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [project_path: Path, run: str, station: str, survey: str].
     DOC201: Function `get_run_data_path` does not have a return section in docstring
     DOC203: Function `get_run_data_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `get_results_path`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `get_results_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [output_label: str | None, project_path: Path, station: str, survey: str].
-    DOC201: Function `get_results_path` does not have a return section in docstring
-    DOC203: Function `get_results_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `get_calibration_path`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `get_calibration_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [project_path: Path].
-    DOC201: Function `get_calibration_path` does not have a return section in docstring
-    DOC203: Function `get_calibration_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `get_meas_time_path`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `get_meas_time_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [meas_name: str, project_path: Path, site_name: str].
-    DOC201: Function `get_meas_time_path` does not have a return section in docstring
-    DOC203: Function `get_meas_time_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `get_meas_spectra_path`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `get_meas_spectra_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [config_name: str, meas_name: str, project_path: Path, site_name: str].
-    DOC201: Function `get_meas_spectra_path` does not have a return section in docstring
-    DOC203: Function `get_meas_spectra_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `get_meas_evals_path`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `get_meas_evals_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [config_name: str, meas_name: str, project_path: Path, site_name: str].
-    DOC201: Function `get_meas_evals_path` does not have a return section in docstring
-    DOC203: Function `get_meas_evals_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `get_meas_features_path`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `get_meas_features_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [config_name: str, meas_name: str, project_path: Path, site_name: str].
-    DOC201: Function `get_meas_features_path` does not have a return section in docstring
-    DOC203: Function `get_meas_features_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `get_mask_path`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `get_mask_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [config_name: str, project_path: Path, site_name: str].
-    DOC201: Function `get_mask_path` does not have a return section in docstring
-    DOC203: Function `get_mask_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `get_mask_name`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `get_mask_name`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [fs: float, mask_name: str].
-    DOC201: Function `get_mask_name` does not have a return section in docstring
-    DOC203: Function `get_mask_name` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC101: Function `get_log_path`: Docstring contains fewer arguments than in function signature.
     DOC103: Function `get_log_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [job_name: str, project_path: Path].
     DOC201: Function `get_log_path` does not have a return section in docstring
     DOC203: Function `get_log_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `get_solution_name`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `get_solution_name`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [fs: float, postfix: str | None, tf_name: str, tf_var: str].
-    DOC201: Function `get_solution_name` does not have a return section in docstring
-    DOC203: Function `get_solution_name` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC601: Class `ProjectMetadata`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC603: Class `ProjectMetadata`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [mth5_path: Path, plugin_paths: list[Path], ref_time: HighResDateTime]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC601: Class `MTH5FileSummary`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
@@ -847,9 +803,9 @@ resistics/project.py
     DOC201: Function `_project_data_type` does not have a return section in docstring
     DOC203: Function `_project_data_type` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC601: Class `_MTH5InspectionMixin`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
-    DOC603: Class `_MTH5InspectionMixin`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [mth5_data: MTH5, mth5_path: Path, table: pd.DataFrame]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `_MTH5InspectionMixin`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [mth5_data: _MTH5Handle, mth5_path: Path, table: pd.DataFrame]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC601: Class `MTH5File`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
-    DOC603: Class `MTH5File`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [mth5_data: MTH5, mth5_path: Path, table: pd.DataFrame]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `MTH5File`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [mth5_data: _MTH5Handle, mth5_path: Path, table: pd.DataFrame]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC201: Method `MTH5File.fs` does not have a return section in docstring
     DOC203: Method `MTH5File.fs` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC101: Method `MTH5File.get_survey`: Docstring contains fewer arguments than in function signature.
@@ -869,7 +825,7 @@ resistics/project.py
     DOC201: Method `MTH5File.read_run` does not have a return section in docstring
     DOC203: Method `MTH5File.read_run` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC601: Class `Project`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
-    DOC603: Class `Project`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [mth5_data: MTH5, mth5_path: Path, plugin_paths: list[Path], project_path: Path, ref_time: HighResDateTime, runs: list[str], stations: list[str], surveys: list[str], table: pd.DataFrame]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `Project`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [mth5_data: _MTH5Handle, mth5_path: Path, plugin_paths: list[Path], project_path: Path, ref_time: HighResDateTime, runs: list[str], stations: list[str], surveys: list[str], table: pd.DataFrame]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC201: Method `Project.list_mth5_data_items` does not have a return section in docstring
     DOC203: Method `Project.list_mth5_data_items` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC101: Method `Project.get_mth5_data_metadata`: Docstring contains fewer arguments than in function signature.
@@ -984,21 +940,9 @@ resistics/project.py
     DOC103: Method `Project._filter_table`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [fs: float | None, station: str | None, survey: str | None].
     DOC201: Method `Project._filter_table` does not have a return section in docstring
     DOC203: Method `Project._filter_table` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC105: Function `init`: Argument names match, but type hints in these args do not match: overwrite, force, plugin_paths
+    DOC105: Function `init`: Argument names match, but type hints in these args do not match: overwrite, plugin_paths
     DOC501: Function `init` has raise statements, but the docstring does not have a "Raises" section
     DOC503: Function `init` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
-    DOC101: Function `load`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `load`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [project_path: Path | str].
-    DOC201: Function `load` does not have a return section in docstring
-    DOC203: Function `load` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC501: Function `load` has raise statements, but the docstring does not have a "Raises" section
-    DOC503: Function `load` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
-    DOC101: Function `open_mth5`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `open_mth5`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [mth5_path: Path | str].
-    DOC201: Function `open_mth5` does not have a return section in docstring
-    DOC203: Function `open_mth5` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC501: Function `open_mth5` has raise statements, but the docstring does not have a "Raises" section
-    DOC503: Function `open_mth5` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['Exception', 'ValueError'].
     DOC101: Function `check_project`: Docstring contains fewer arguments than in function signature.
     DOC103: Function `check_project`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [mth5_path: Path | str, project_path: Path | str].
     DOC201: Function `check_project` does not have a return section in docstring

@@ -58,7 +58,7 @@ class ServiceProject:
         self.deleted_labels.append(output_label)
         return self.preview_project_data_deletion(output_label)
 
-    def close_mth5(self):
+    def close(self):
         self.closed = True
 
 

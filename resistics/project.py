@@ -1,9 +1,8 @@
 """
-MTH5-backed resistics project model and path helpers.
+MTH5-backed resistics project model and canonical artifact-path helpers.
 
-The public project API is MTH5-only. Legacy directory readers may still exist as
-internal conversion helpers, but project discovery and processing workflows use
-surveys, stations, and runs from an MTH5 file.
+The project API uses MTH5 surveys, stations, and runs as its sole source-data
+hierarchy. Derived processing artifacts remain in the project's ``data`` tree.
 """
 
 from __future__ import annotations
@@ -12,23 +11,30 @@ import json
 from collections.abc import Iterable
 from pathlib import Path
 from shutil import rmtree
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import h5py
 import pandas as pd
 import plotly.graph_objects as go
 from loguru import logger
-from mth5.groups.run import RunGroup
-from mth5.groups.station import StationGroup
-from mth5.groups.survey import SurveyGroup
-from mth5.mth5 import MTH5
 from pydantic import Field, JsonValue
 
 from resistics.common import ResisticsModel, validate_output_label
 from resistics.plot import plot_timeline
+from resistics.project_mth5 import (
+    _close_failed_mth5,
+    _MTH5Handle,
+    _MTH5HandleOwner,
+    _open_read_only_mth5,
+)
 from resistics.sampling import DateTimeLike, HighResDateTime, to_datetime, to_timestamp
 from resistics.templates import install_builtin_processing_templates
 from resistics.time import MTH5TimeReader, TimeData
+
+if TYPE_CHECKING:
+    from mth5.groups.run import RunGroup
+    from mth5.groups.station import StationGroup
+    from mth5.groups.survey import SurveyGroup
 
 PROJ_FILE = "resistics.json"
 CANONICAL_PROJ_DIRS = (
@@ -69,77 +75,32 @@ def get_run_data_path(project_path: Path, survey: str, station: str, run: str) -
 
 
 def get_results_path(
-    project_path: Path,
-    survey: str,
-    station: str,
-    output_label: str | None = None,
+    project_path: Path, survey: str, station: str, output_label: str
 ) -> Path:
-    """Get path to final outputs for a processing job."""
-    if output_label is None:
-        return project_path / "results" / survey / station
+    """Get the canonical output-label path for a processing job.
+
+    Parameters
+    ----------
+    project_path : Path
+        Resistics project root.
+    survey : str
+        MTH5 survey identifier.
+    station : str
+        MTH5 station identifier.
+    output_label : str
+        Processing output namespace.
+
+    Returns
+    -------
+    Path
+        Station result directory beneath the canonical project data tree.
+    """
     return project_path / "data" / survey / station / "results" / output_label
-
-
-def get_calibration_path(project_path: Path) -> Path:
-    """Get the project calibration-data directory."""
-    return project_path / "calibrate"
-
-
-def get_meas_time_path(project_path: Path, site_name: str, meas_name: str) -> Path:
-    """Get the legacy time-data directory for a measurement."""
-    return project_path / "time" / site_name / meas_name
-
-
-def get_meas_spectra_path(
-    project_path: Path, site_name: str, meas_name: str, config_name: str
-) -> Path:
-    """Get the legacy spectra-data directory for a measurement."""
-    return project_path / "spectra" / site_name / config_name / meas_name
-
-
-def get_meas_evals_path(
-    project_path: Path, site_name: str, meas_name: str, config_name: str
-) -> Path:
-    """Get the legacy evaluation-spectra directory for a measurement."""
-    return project_path / "evals" / site_name / config_name / meas_name
-
-
-def get_meas_features_path(
-    project_path: Path, site_name: str, meas_name: str, config_name: str
-) -> Path:
-    """Get the legacy feature-data directory for a measurement."""
-    return project_path / "features" / site_name / config_name / meas_name
-
-
-def get_mask_path(project_path: Path, site_name: str, config_name: str) -> Path:
-    """Get the legacy mask-data directory for a site configuration."""
-    return project_path / "masks" / site_name / config_name
-
-
-def get_mask_name(fs: float, mask_name: str) -> str:
-    """Get a sampling-rate-specific mask file name."""
-    from resistics.common import fs_to_string
-
-    return f"{fs_to_string(fs)}_{mask_name}.dat"
 
 
 def get_log_path(project_path: Path, job_name: str) -> Path:
     """Get path to a processing-job log file."""
     return project_path / "logs" / f"{job_name}.log"
-
-
-def get_solution_name(
-    fs: float, tf_name: str, tf_var: str, postfix: str | None = None
-) -> str:
-    """Get the name of a solution file."""
-    from resistics.common import fs_to_string
-
-    solution_name = f"{fs_to_string(fs)}_{tf_name.lower()}"
-    if tf_var != "":
-        solution_name = solution_name + f"_{tf_var.replace(' ', '_')}"
-    if postfix is not None:
-        solution_name = solution_name + f"_{postfix}"
-    return solution_name + ".json"
 
 
 class ProjectMetadata(ResisticsModel):
@@ -315,11 +276,11 @@ def _project_data_type(path: Path) -> DataType:
     return "other"
 
 
-class _MTH5InspectionMixin:
-    """Shared app-safe inspection behavior for files and projects."""
+class _MTH5InspectionMixin(_MTH5HandleOwner):
+    """Shared inspection and owned-handle lifecycle for files and projects."""
 
     mth5_path: Path
-    mth5_data: MTH5
+    mth5_data: _MTH5Handle
     table: pd.DataFrame
 
     def fs(self) -> list[float]:
@@ -412,6 +373,7 @@ class _MTH5InspectionMixin:
         raise NotImplementedError
 
     def file_summary(self) -> MTH5FileSummary:
+        self._require_open()
         table = self.table
         return MTH5FileSummary(
             mth5_path=self.mth5_path,
@@ -506,6 +468,7 @@ class _MTH5InspectionMixin:
         ]
 
     def get_metadata(self, object_path: str) -> MetadataDetail:
+        self._require_open()
         parts = object_path.split("/")
         if len(parts) == 1:
             obj, kind = self.get_survey(parts[0]), "survey"
@@ -525,10 +488,10 @@ class _MTH5InspectionMixin:
 
 
 class MTH5File(_MTH5InspectionMixin, ResisticsModel):
-    """Explicitly opened, read-only MTH5 inspection source."""
+    """Owned, read-only MTH5 inspection source supporting ``with`` and close."""
 
     mth5_path: Path
-    mth5_data: MTH5 = Field(repr=False, exclude=True)
+    mth5_data: _MTH5Handle = Field(repr=False, exclude=True)
     table: pd.DataFrame = Field(repr=False, exclude=True)
 
     def fs(self) -> list[float]:
@@ -537,23 +500,22 @@ class MTH5File(_MTH5InspectionMixin, ResisticsModel):
 
     def get_survey(self, survey: str) -> SurveyGroup:
         """Return a survey group by identifier."""
+        self._require_open()
         return self.mth5_data.get_survey(survey)
 
     def get_station(self, survey: str, station: str) -> StationGroup:
         """Return a station group within a survey."""
+        self._require_open()
         return self.mth5_data.get_station(station, survey=survey)
 
     def get_run(self, survey: str, station: str, run: str) -> RunGroup:
         """Return a run group within a survey and station."""
+        self._require_open()
         return self.mth5_data.get_run(station, run, survey=survey)
 
     def read_run(self, survey: str, station: str, run: str, **kwargs: Any) -> TimeData:
         """Read one run as resistics time data."""
         return _read_run(self, survey, station, run, **kwargs)
-
-    def close_mth5(self) -> None:
-        """Close the underlying MTH5 file handle."""
-        self.mth5_data.close_mth5()
 
     def _filter_table(
         self,
@@ -565,31 +527,17 @@ class MTH5File(_MTH5InspectionMixin, ResisticsModel):
 
 
 class Project(_MTH5InspectionMixin, ResisticsModel):
-    """An MTH5-backed resistics project."""
+    """An MTH5-backed project owning one read-only handle until closed."""
 
     project_path: Path
     mth5_path: Path
     ref_time: HighResDateTime
     plugin_paths: list[Path] = Field(default_factory=list)
-    mth5_data: MTH5 = Field(repr=False, exclude=True)
+    mth5_data: _MTH5Handle = Field(repr=False, exclude=True)
     table: pd.DataFrame = Field(repr=False, exclude=True)
     surveys: list[str] = Field(default_factory=list)
     stations: list[str] = Field(default_factory=list)
     runs: list[str] = Field(default_factory=list)
-
-    @property
-    def dir_path(self) -> Path:
-        """Alias for the project root used by the gathering implementation."""
-        return self.project_path
-
-    @property
-    def metadata(self) -> ProjectMetadata:
-        """Project metadata view used by existing processing helpers."""
-        return ProjectMetadata(
-            mth5_path=self.mth5_path,
-            ref_time=self.ref_time,
-            plugin_paths=self.plugin_paths,
-        )
 
     def list_mth5_data_items(self) -> list[ProjectDataItem]:
         """List the MTH5 group and dataset hierarchy without reading data values."""
@@ -906,12 +854,14 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
 
     def get_survey(self, survey: str) -> SurveyGroup:
         """Get an MTH5 survey group."""
+        self._require_open()
         if survey not in self.surveys:
             raise ValueError(f"Survey {survey!r} not found in MTH5 data")
         return self.mth5_data.get_survey(survey)
 
     def get_station(self, survey: str, station: str) -> StationGroup:
         """Get an MTH5 station group."""
+        self._require_open()
         station_path = f"{survey}/{station}"
         if station_path not in self.stations:
             raise ValueError(f"Station {station_path!r} not found in MTH5 data")
@@ -930,6 +880,7 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
 
     def get_run(self, survey: str, station: str, run: str) -> RunGroup:
         """Get an MTH5 run group."""
+        self._require_open()
         run_path = f"{survey}/{station}/{run}"
         if run_path not in self.runs:
             raise ValueError(f"Run {run_path!r} not found in MTH5 data")
@@ -1001,10 +952,6 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         ref_time = to_timestamp(self.ref_time)
         return plot_timeline(runs_table, y_col="station_path", ref_time=ref_time)
 
-    def close_mth5(self) -> None:
-        """Close the underlying MTH5 file."""
-        self.mth5_data.close_mth5()
-
     def _filter_table(
         self,
         survey: str | None = None,
@@ -1027,7 +974,6 @@ def init(
     mth5_path: Path | str,
     ref_time: DateTimeLike,
     overwrite: bool = False,
-    force: bool | None = None,
     plugin_paths: list[Path | str] | None = None,
 ) -> bool:
     """Initialise an MTH5-backed resistics project.
@@ -1042,8 +988,6 @@ def init(
         Reference time used for sample and window calculations.
     overwrite : bool, optional
         Replace existing project metadata when ``True``.
-    force : bool | None, optional
-        Deprecated alias for ``overwrite``.
     plugin_paths : list[Path | str] | None, optional
         Trusted directories containing project process plugins.
 
@@ -1061,8 +1005,6 @@ def init(
     True
     >>> project = load("example-project")  # doctest: +SKIP
     """
-    if force is not None:
-        overwrite = force
     project_path = _as_path(project_path)
     mth5_path = _as_path(mth5_path)
     if not mth5_path.exists():
@@ -1087,7 +1029,26 @@ def init(
 
 
 def load(project_path: Path | str) -> Project:
-    """Load an MTH5-backed resistics project."""
+    """Load an MTH5-backed project that owns its handle until ``close()``.
+
+    Parameters
+    ----------
+    project_path : Path | str
+        Existing canonical resistics project directory.
+
+    Returns
+    -------
+    Project
+        Open project supporting deterministic ``close()`` and ``with``.
+
+    Raises
+    ------
+    ValueError
+        If project metadata, structure, or the configured MTH5 path is absent.
+    Exception
+        If metadata validation, MTH5 opening, channel-summary preparation, or
+        project construction fails. An acquired handle is closed first.
+    """
     project_path = _as_path(project_path)
     metadata_path = project_path / PROJ_FILE
     if not metadata_path.exists():
@@ -1095,34 +1056,58 @@ def load(project_path: Path | str) -> Project:
     metadata = ProjectMetadata.model_validate_json(metadata_path.read_bytes())
     check_project(project_path, metadata.mth5_path)
 
-    mth5_data = MTH5(metadata.mth5_path)
-    mth5_data.open_mth5(mode="r")
-    table = _prepare_channel_summary(mth5_data.channel_summary.to_dataframe())
-    return Project(
-        project_path=project_path,
-        mth5_path=metadata.mth5_path,
-        ref_time=metadata.ref_time,
-        plugin_paths=metadata.plugin_paths,
-        mth5_data=mth5_data,
-        table=table,
-        surveys=sorted(table["survey"].dropna().unique().tolist()),
-        stations=sorted(table["station_path"].dropna().unique().tolist()),
-        runs=sorted(table["run_path"].dropna().unique().tolist()),
-    )
+    mth5_data = _open_read_only_mth5(metadata.mth5_path)
+    try:
+        table = _prepare_channel_summary(mth5_data.channel_summary.to_dataframe())
+        return Project(
+            project_path=project_path,
+            mth5_path=metadata.mth5_path,
+            ref_time=metadata.ref_time,
+            plugin_paths=metadata.plugin_paths,
+            mth5_data=mth5_data,
+            table=table,
+            surveys=sorted(table["survey"].dropna().unique().tolist()),
+            stations=sorted(table["station_path"].dropna().unique().tolist()),
+            runs=sorted(table["run_path"].dropna().unique().tolist()),
+        )
+    # This is the ownership-transfer boundary: until Project construction
+    # succeeds, this function remains responsible for releasing the handle.
+    except Exception:
+        _close_failed_mth5(mth5_data, metadata.mth5_path)
+        raise
 
 
 def open_mth5(mth5_path: Path | str) -> MTH5File:
-    """Open an existing MTH5 file as a read-only inspection source."""
+    """Open a read-only inspection source that owns its handle until closed.
+
+    Parameters
+    ----------
+    mth5_path : Path | str
+        Existing MTH5 file to inspect.
+
+    Returns
+    -------
+    MTH5File
+        Open inspection source supporting deterministic ``close()`` and
+        ``with``.
+
+    Raises
+    ------
+    ValueError
+        If the MTH5 path does not exist.
+    Exception
+        If MTH5 opening, channel-summary preparation, or source construction
+        fails. An acquired handle is closed first.
+    """
     mth5_path = _as_path(mth5_path)
     if not mth5_path.exists():
         raise ValueError(f"MTH5 data file not found: {mth5_path}")
-    mth5_data = MTH5(mth5_path)
-    mth5_data.open_mth5(mode="r")
+    mth5_data = _open_read_only_mth5(mth5_path)
     try:
         table = _prepare_channel_summary(mth5_data.channel_summary.to_dataframe())
         return MTH5File(mth5_path=mth5_path, mth5_data=mth5_data, table=table)
     except Exception:
-        mth5_data.close_mth5()
+        _close_failed_mth5(mth5_data, mth5_path)
         raise
 
 

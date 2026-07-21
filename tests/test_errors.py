@@ -10,19 +10,13 @@ from resistics.errors import (
     CalibrationFileNotFound,
     CalibrationFileReadError,
     ChannelNotFoundError,
-    MeasurementNotFoundError,
     MetadataReadError,
     NotDirectoryError,
     NotFileError,
     PathError,
     PathNotFoundError,
     ProcessRunError,
-    ProjectCreateError,
-    ProjectLoadError,
-    ProjectPathError,
     ReadError,
-    SiteNotFoundError,
-    TimeDataReadError,
     WriteError,
 )
 
@@ -89,39 +83,6 @@ from resistics.errors import (
             MetadataReadError,
             [Path("/", "test", "file"), "example message"],
             "Failed to read metadata from file '/test/file'. example message.",
-        ),
-        (
-            ProjectPathError,
-            [Path("test", "project"), "dataset not found"],
-            "'test/project', dataset not found.",
-        ),
-        (
-            ProjectCreateError,
-            [Path("test", "project"), "The project already exists."],
-            "Error creating project in 'test/project'. The project already exists.",
-        ),
-        (
-            ProjectLoadError,
-            [Path("test", "project"), "Path does not exist"],
-            "Error loading project 'test/project'. Path does not exist.",
-        ),
-        (
-            MeasurementNotFoundError,
-            ["siteA", "meas1"],
-            "Measurement 'meas1' not found in Site 'siteA'.",
-        ),
-        (
-            SiteNotFoundError,
-            ["siteA"],
-            "Site 'siteA' not found in project.",
-        ),
-        (
-            TimeDataReadError,
-            [
-                Path("test", "project", "time", "siteA", "meas1"),
-                "directory does not exist",
-            ],
-            "Failed to read time series data from 'test/project/time/siteA/meas1'\ndirectory does not exist.",
         ),
         (
             ChannelNotFoundError,

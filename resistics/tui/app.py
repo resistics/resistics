@@ -329,7 +329,7 @@ class ResisticsTui(App[None]):
             )
         if generation != self._project_open_generation:
             try:
-                project.close_mth5()
+                project.close()
             except Exception:
                 logger.exception(f"Unable to close superseded project {project_path}")
             return _ProjectOpenResult(
@@ -359,7 +359,7 @@ class ResisticsTui(App[None]):
             return
         if result.generation != self._project_open_generation:
             if result.project is not None:
-                result.project.close_mth5()
+                result.project.close()
             return
         self.diagnostic_buffer.extend(result.diagnostics)
         if result.error is not None or result.project is None:

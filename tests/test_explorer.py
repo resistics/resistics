@@ -78,7 +78,7 @@ class CountingProject:
         self._read("preview_project_data_deletion")
         return ProjectDataDeletion(paths=["data/survey/station/results/default"])
 
-    def close_mth5(self):
+    def close(self):
         self.closed = True
 
 
@@ -120,7 +120,7 @@ def test_project_index_reuses_cached_project_state_and_survives_closed_handle(
         "list_mth5_data_items": 1,
         "preview_project_data_deletion": 1,
     }
-    project.close_mth5()
+    project.close()
     assert index.project_state() is first
     assert index.runs() is runs
     assert first.project_path == project.project_path

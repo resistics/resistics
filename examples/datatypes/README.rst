@@ -11,7 +11,7 @@ Examples of data objects include
 - Windowed data
 - Spectra data
 - Evaluation frequency data
-- Site Combined data
+- Station-combined data
 - Gathered data
 - Regression prepared data
 - Solutions

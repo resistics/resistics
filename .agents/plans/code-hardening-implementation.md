@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 5.5 verified; Checkpoint 5.6 ready
+Status: in progress; Checkpoint 5.6 verified; Checkpoint 5.7 ready
 Created: 2026-07-19
 Last updated: 2026-07-21
 Working branch: `mth5`
@@ -27,20 +27,20 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 5 - Split large modules at stable boundaries
-- Active checkpoint: `5.6` (`resistics`) - Finish MTH5 boundary cleanup
+- Active checkpoint: `5.7` (`resistics`) - Remove or relocate dead and test-only code
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `5.5` in `S035`
-- Last verified checkpoint: `5.5` in `S035`
-- Last session: `S035`
-- Last verified commit: resistics `c8b938f`, recording the Checkpoint 5.4
-  shared graph renderer and thin public plotting adapters;
+- Last completed checkpoint: `5.6` in `S036`
+- Last verified checkpoint: `5.6` in `S036`
+- Last session: `S036`
+- Last verified commit: resistics `34707a8`, recording the Checkpoint 5.5
+  gather responsibility split;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: inventory the remaining `Measurement = None` and
-  `Site = None` compatibility placeholders, file ownership/close behaviour,
-  and every legacy caller, test, documentation, and release-note reference
-  before defining the Checkpoint 5.6 removals.
+- Next exact action: inventory the empty `resq.py`, zero-byte notebook,
+  commented time-processing blocks, unused helpers, and every public-doctest
+  versus assertion-factory caller in `resistics/testing.py` before defining
+  the Checkpoint 5.7 deletion and relocation boundary.
 
 Current worktree caveat:
 
@@ -51,9 +51,10 @@ Current worktree caveat:
   cleanup, TUI package facade, dialog/launcher extraction, tests, lock refresh,
   and pydoclint baseline refresh are committed through `675cfde`, including
   the S032 project service/screen extraction and S033 session diagnostics
-  follow-up. Checkpoint 5.4 is committed at `c8b938f`. The verified Checkpoint
-  5.5 gather split remains uncommitted. The required empty
-  `pyrefly-baseline.json` remains untracked.
+  follow-up. Checkpoint 5.4 is committed at `c8b938f`, and Checkpoint 5.5 is
+  committed at `34707a8`. The verified Checkpoint 5.6 MTH5 boundary cleanup
+  remains uncommitted. The required empty `pyrefly-baseline.json` remains
+  untracked.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -252,7 +253,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | 5.3 | resistics | `verified` | S032-S033; UI-neutral service and session diagnostics; 421 tests |
 | 5.4 | resistics | `verified` | S034; thin adapters; shared renderer; 421 tests |
 | 5.5 | resistics | `verified` | S035; responsibility split; 425 tests; artifacts verified |
-| 5.6 | resistics | `not_started` | MTH5-only cleanup |
+| 5.6 | resistics | `verified` | S036; explicit handle ownership; 423 tests; artifacts verified |
 | 5.7 | resistics | `not_started` | Verified dead-code cleanup |
 | Gate 5 | resistics | `not_started` | Depends on 5.1-5.7 |
 | 6.1 | resistics | `not_started` | Direct dependency map |
@@ -393,13 +394,14 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 425 passed | S035 |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 423 passed | S036 |
 | Branch coverage | approximately 76% | 75.96% | 76.19% | S014; coverage XML |
-| Production Python | approximately 21,011 lines | 21,015 | 24,575 | S035 report |
-| Tests | approximately 5,941 lines | 6,051 | 8,101 | S035 report |
+| Production Python | approximately 21,011 lines | 21,015 | 24,784 | S036 report |
+| Tests | approximately 5,941 lines | 6,051 | 8,192 | S036 report |
 | `resistics/tui.py` | 2,673 lines | 2,673 | `app.py` 436; project/logging modules 2,923 | S033 report |
 | `resistics/plot.py` | 1,200 lines | 1,200 | plot 700; flow graph 617 | S034 report |
 | `resistics/gather.py` | 1,235 lines | 1,235 | facade 183; criteria 247; data 582; plan 312; project 645 | S035 report |
+| `resistics/project.py` | 1,224 lines | 1,224 | project 1,209; private MTH5 boundary 291 | S036 report |
 | Flake8 | approximately 40 findings | 43 findings | 43 findings | S001 |
 | Legacy complexity | not recorded | 17 CCR001; 5 C901; 4 ECE001 | same | S002 |
 | Black format | not recorded | 26 files differ | 26 files differ | S001 |
@@ -1819,6 +1821,21 @@ correct a factual error; note the correction explicitly.
   remote discovery may skip expected `ValueError` candidate rejection but must
   propagate unexpected failures. Assemble only from the completed immutable
   plan so discovery and array construction cannot mutate one another.
+- `D050` (2026-07-21): Treat MTH5 as the sole source hierarchy for projects
+  and make each public `Project` or `MTH5File` object the explicit owner of its
+  live handle. Keep third-party construction behind a private, lazily imported
+  structural protocol so importing `resistics.project` does not initialize the
+  MTH5 stack. Expose idempotent `close()`, `closed`, and context-manager
+  semantics; cached summaries remain readable after closure, while live group
+  and sample operations raise a clear `RuntimeError`. Close handles at every
+  failed-open or failed-model-construction ownership boundary without masking
+  the originating exception. Remove the obsolete public `close_mth5`,
+  `dir_path`, `metadata`, `init(force=...)`, measurement/site path and naming
+  helpers, legacy project exceptions, and stale gallery paths after repository
+  searches confirm no maintained caller. Require `output_label` for the sole
+  canonical results tree and document these intentional removals in the next
+  release notes. Defer tracked notebook modernization to Checkpoint 5.7, whose
+  governing scope explicitly owns notebook review.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -3068,3 +3085,74 @@ correct a factual error; note the correction explicitly.
 - Exact next action: compare `plot_flow` and `plot_job` in `resistics/plot.py`,
   capture shared rendering invariants in focused tests, and define the smallest
   shared graph-rendering contract before extracting it.
+
+### S036 - 2026-07-21 - Complete the MTH5-only project boundary
+
+- Checkpoint state at start: Checkpoint 5.5 was committed and verified;
+  Checkpoint 5.6 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `34707a8` with only the
+  required empty `pyrefly-baseline.json` untracked. No unrelated tracked change
+  was present or modified.
+- Session objective: remove verified legacy project compatibility surfaces,
+  make MTH5 handle ownership deterministic, and ensure importing project
+  metadata does not eagerly initialize the third-party MTH5 stack.
+- Work completed: extracted the private `_MTH5Handle` protocol, lazy handle
+  construction, failed-open cleanup, and shared ownership lifecycle into
+  `project_mth5.py`. `Project` and `MTH5File` now expose `closed`, idempotent
+  `close()`, and context-manager semantics. Cached summaries remain available
+  after closure; every live group or sample operation requires an open handle.
+  Both partial file-open and model-construction failures close acquired handles
+  while preserving their original exception. Migrated all maintained TUI and
+  service callers to `close()`. Removed the old `close_mth5`, `dir_path`,
+  `metadata`, `init(force=...)`, measurement/site path helpers, mask/solution
+  naming helpers, unused project exceptions, and the noncanonical results-path
+  branch; `output_label` is now required. Removed stale gallery and API pages
+  for already-retired quick/config/ASCII/legacy-project flows, updated the
+  retained MTH5 examples and project documentation, and added migration notes
+  to the changelog. Tracked legacy notebooks remain deliberately owned by
+  Checkpoint 5.7.
+- Files changed by this checkpoint: `resistics/project.py`, the new private
+  `resistics/project_mth5.py`, `resistics/errors.py`, four TUI project owners,
+  five focused test modules, `pydoclint-baseline.txt`, `CHANGELOG.rst`, project
+  and read examples, Sphinx configuration/API pages, stale gallery deletions,
+  and this implementation record.
+- Decisions added or superseded: D050 records the sole MTH5 hierarchy, lazy
+  structural boundary, public ownership contract, failure cleanup, deliberate
+  removals, and Checkpoint 5.7 notebook deferral.
+- Verification commands and results:
+  - The focused project/error/explorer/TUI set passed all 81 tests. The complete
+    suite passed all 423 tests in 43.07 seconds.
+  - Ruff formatting and lint passed for the maintained package, tests, and
+    gallery sources. Pydoclint passed with its production baseline reduced from
+    1,728 to 1,672 lines; the new boundary adds no debt. Pyrefly reported zero
+    errors with the two established suppressions. `uv lock --check` resolved
+    174 packages and `git diff --check` passed.
+  - The repository-wide pre-commit gate passed YAML, EOF, whitespace, Ruff
+    lint/format, pydoclint, and Pyrefly.
+  - The standard gallery-disabled Sphinx build exited zero. A full gallery run
+    during the checkpoint eliminated the old removed-import failures and was
+    limited to the two established Chrome/Kaleido-dependent calibration
+    examples; offline intersphinx and duplicate-object warnings remain outside
+    this checkpoint.
+  - `uv build` produced the wheel and source distribution under
+    `/tmp/resistics-checkpoint-5-6-dist-20260721/`. Both contain `project.py`,
+    `project_mth5.py`, and `py.typed`. A direct wheel import proved the MTH5
+    stack remains deferred, new lifecycle API is present, removed compatibility
+    APIs are absent, and `output_label` is required.
+- Measurements/artifacts: production Python is 24,784 lines and tests are
+  8,192 lines. The former 1,224-line project module is now a 1,209-line public
+  project module plus a cohesive 291-line private MTH5 boundary. Build and docs
+  artifacts exist only under `/tmp`.
+- Known failures or incomplete work: none within Checkpoint 5.6. Repository-root
+  Ruff continues to expose pre-existing tracked notebook formatting, legacy
+  import, and zero-byte JSON findings; those notebooks, empty `resq.py`, and
+  test-helper cleanup are explicitly Checkpoint 5.7. The required empty
+  `pyrefly-baseline.json` remains intentionally untracked.
+- Checkpoint state at end: `5.6` is `verified`; Checkpoint 5.7 is ready.
+- Commit readiness or commit id: the MTH5 ownership boundary, removals, tests,
+  examples, documentation, baseline, artifacts, and record are verified and
+  ready for an owner-selected commit; no commit was requested or created.
+- Exact next action: inventory the empty `resq.py`, zero-byte notebook,
+  commented time-processing blocks, unused helpers, and every public-doctest
+  versus assertion-factory caller in `resistics/testing.py` before defining
+  the Checkpoint 5.7 deletion and relocation boundary.

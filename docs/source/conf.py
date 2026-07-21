@@ -90,14 +90,12 @@ sphinx_gallery_conf = {
     "thumbnail_size": (300, 300),
     "examples_dirs": [
         "../../examples/read",
-        "../../examples/quick",
         "../../examples/project",
         "../../examples/config",
         "../../examples/datatypes",
     ],
     "gallery_dirs": [
         "tutorial-read",
-        "tutorial-quick",
         "tutorial-project",
         "tutorial-config",
         "tutorial-datatypes",
