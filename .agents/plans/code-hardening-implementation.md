@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 5.3 verified; Checkpoint 5.4 ready
+Status: in progress; Checkpoint 5.4 verified; Checkpoint 5.5 ready
 Created: 2026-07-19
 Last updated: 2026-07-21
 Working branch: `mth5`
@@ -27,19 +27,19 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 5 - Split large modules at stable boundaries
-- Active checkpoint: `5.4` (`resistics`) - Unify flow and job plot rendering
+- Active checkpoint: `5.5` (`resistics`) - Split gather responsibilities
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `5.3` follow-up in `S033`
-- Last verified checkpoint: `5.3` follow-up in `S033`
-- Last session: `S033`
-- Last verified commit: resistics `8b84d31`, recording the S029-S031
-  structured-progress and TUI package-boundary implementations;
+- Last completed checkpoint: `5.4` in `S034`
+- Last verified checkpoint: `5.4` in `S034`
+- Last session: `S034`
+- Last verified commit: resistics `675cfde`, recording the S032-S033 project
+  explorer extraction and session-diagnostics follow-up;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: compare `plot_flow` and `plot_job` in `resistics/plot.py`,
-  capture their shared graph-rendering invariants in focused tests, and define
-  the smallest UI-neutral renderer contract for Checkpoint 5.4.
+- Next exact action: inventory criteria, validation, project discovery,
+  planning, and data-assembly responsibilities in `resistics/gather.py`, then
+  map their callers and focused tests before defining Checkpoint 5.5 boundaries.
 
 Current worktree caveat:
 
@@ -48,9 +48,10 @@ Current worktree caveat:
   The empty `pyrefly-baseline.json` remains untracked and is a required Phase 3
   artifact. The verified structured-progress implementation, dependency
   cleanup, TUI package facade, dialog/launcher extraction, tests, lock refresh,
-  and pydoclint baseline refresh are committed through `8b84d31`. The verified
-  S032 project service/screen extraction and S033 session diagnostics follow-up
-  remain uncommitted in the current worktree.
+  and pydoclint baseline refresh are committed through `675cfde`, including
+  the S032 project service/screen extraction and S033 session diagnostics
+  follow-up. The verified Checkpoint 5.4 graph-rendering split remains
+  uncommitted. The required empty `pyrefly-baseline.json` remains untracked.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -247,7 +248,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | 5.1 | resistics | `verified` | S030; facade/entry point preserved; 413 tests; artifacts verified |
 | 5.2 | resistics | `verified` | S031; stable screen owners; 414 tests; artifacts verified |
 | 5.3 | resistics | `verified` | S032-S033; UI-neutral service and session diagnostics; 421 tests |
-| 5.4 | resistics | `not_started` | Shared plot rendering |
+| 5.4 | resistics | `verified` | S034; thin adapters; shared renderer; 421 tests |
 | 5.5 | resistics | `not_started` | Gather boundaries |
 | 5.6 | resistics | `not_started` | MTH5-only cleanup |
 | 5.7 | resistics | `not_started` | Verified dead-code cleanup |
@@ -392,10 +393,10 @@ and must be re-measured in Phase 0 before they are treated as verified.
 | --- | --- | --- | --- | --- |
 | Tests | 372 collected; 371 passed; 1 failed | 373 passed | 421 passed | S033 |
 | Branch coverage | approximately 76% | 75.96% | 76.19% | S014; coverage XML |
-| Production Python | approximately 21,011 lines | 21,015 | 23,725 | S033 report |
-| Tests | approximately 5,941 lines | 6,051 | 7,878 | S033 report |
+| Production Python | approximately 21,011 lines | 21,015 | 23,841 | S034 report |
+| Tests | approximately 5,941 lines | 6,051 | 7,943 | S034 report |
 | `resistics/tui.py` | 2,673 lines | 2,673 | `app.py` 436; project/logging modules 2,923 | S033 report |
-| `resistics/plot.py` | 1,200 lines | 1,200 | 1,200 | S002 report |
+| `resistics/plot.py` | 1,200 lines | 1,200 | plot 700; flow graph 617 | S034 report |
 | Flake8 | approximately 40 findings | 43 findings | 43 findings | S001 |
 | Legacy complexity | not recorded | 17 CCR001; 5 C901; 4 ECE001 | same | S002 |
 | Black format | not recorded | 26 files differ | 26 files differ | S001 |
@@ -1790,6 +1791,18 @@ correct a factual error; note the correction explicitly.
   durable processing record, and direct callers using string
   `startup_warnings` remain compatible through normalization at the app/screen
   boundary.
+- `D048` (2026-07-21): Keep `plot_flow` and `plot_job` as public model adapters
+  in `resistics.plot`, and move their shared ranked layout and Plotly rendering
+  into the private `resistics.flow_graph` boundary. Use a frozen private
+  dataclass for the immutable labels, hover text, dimensions, title, layout,
+  and trace-metadata contract; do not expose a new Pydantic or public graph
+  model. Both adapters validate and adapt their own flow/job models before the
+  renderer sees them. Preserve trace kinds, grouping, ordering, colours,
+  arrow/card geometry, axis ranges, title spacing, parameter-summary wording,
+  and clean hover templates. Transfer unchanged private-helper docstring debt
+  to the line/path-sensitive baseline while fully documenting the new render
+  contract and materially changed functions. This leaves `plot.py` and the new
+  renderer below 800 lines without changing the public plotting API.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -2843,6 +2856,64 @@ correct a factual error; note the correction explicitly.
 - Exact next action: compare `plot_flow` and `plot_job` in `resistics/plot.py`,
   capture shared rendering invariants in focused tests, and define the smallest
   shared graph-rendering contract before extracting it.
+
+### S034 - 2026-07-21 - Unify flow and job graph rendering
+
+- Checkpoint state at start: Checkpoint 5.3 and its diagnostics follow-up were
+  committed and verified; Checkpoint 5.4 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `675cfde` with only the
+  required empty `pyrefly-baseline.json` untracked. No unrelated tracked change
+  was present or modified.
+- Session objective: remove the parallel `plot_flow` and `plot_job` Plotly
+  construction paths while preserving their public APIs, model-specific
+  adaptation, graph geometry, interaction, and presentation details.
+- Work completed: added focused shared-renderer assertions for title spacing,
+  node-text-over-edge layering, the 13-point data-type labels, parameter and
+  work-plan wording, and hover templates without Plotly's extra trace label.
+  Added the private frozen `_FlowGraphRenderSpec`; moved the ranked layout,
+  routed edges, arrow/card geometry, trace metadata, graph construction, axes,
+  legend, and figure layout into the new `resistics.flow_graph` module.
+  `plot_flow` and `plot_job` now validate and adapt their own models into that
+  immutable presentation contract and delegate rendering. The resolved-job
+  adapter continues to own selected stages, expanded parameter/criteria card
+  content, scope/work summaries, title wording, and job-specific dimensions.
+- Files changed by this checkpoint: `resistics/plot.py`, the new
+  `resistics/flow_graph.py`, `tests/test_plot.py`,
+  `pydoclint-baseline.txt`, and this implementation record.
+- Decisions added or superseded: D048 records the private-dataclass rendering
+  boundary, model-adapter ownership, preserved output contract, and transferred
+  line/path-sensitive helper docstring debt.
+- Verification commands and results:
+  - Focused plotting coverage passed all 13 tests; the complete suite passed
+    all 421 tests in 27.13 seconds.
+  - Ruff format and lint passed. Pydoclint passed against a regenerated
+    1,745-line baseline, down from 1,757 before the checkpoint; unchanged moved
+    helpers account for the new module entries while the render contract,
+    materially changed layout, and both public adapters add no debt. Pyrefly
+    passed all production modules with zero errors and the two established
+    suppressions.
+  - `uv lock --check` resolved 174 packages, `git diff --check` passed, and all
+    pre-commit hooks passed: YAML, EOF, whitespace, Ruff lint/format,
+    pydoclint, and Pyrefly.
+  - The initial sandboxed build could not resolve cached Hatchling because
+    network access was unavailable. The approved network-enabled retry built
+    both distributions successfully. The wheel and sdist contain
+    `resistics/{plot,flow_graph}.py`; direct imports proved both public adapters
+    and the private dataclass contract.
+- Measurements/artifacts: `plot.py` fell from 1,216 to 700 lines; the cohesive
+  private renderer is 617 lines, so both are below the Phase 5 preferred
+  ceiling. Production Python is 23,841 lines and tests are 7,943 lines. Build
+  artifacts are under `/tmp/resistics-checkpoint-5-4-dist-20260721/` only.
+- Known failures or incomplete work: none within Checkpoint 5.4. The empty
+  Pyrefly artifact remains intentionally untracked. Gather responsibility
+  boundaries remain Checkpoint 5.5.
+- Checkpoint state at end: `5.4` is `verified`; Checkpoint 5.5 is ready.
+- Commit readiness or commit id: the shared renderer, thin adapters, focused
+  protection, baseline refresh, and record are verified and ready for an
+  owner-selected commit; no commit was requested or created.
+- Exact next action: inventory criteria, validation, MTH5/project discovery,
+  planning, and data-assembly responsibilities in `resistics/gather.py`, then
+  map their callers and focused tests before defining Checkpoint 5.5 boundaries.
 
 ### S033 - 2026-07-21 - Add session diagnostic logs to the TUI
 

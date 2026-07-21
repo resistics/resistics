@@ -401,6 +401,63 @@ resistics/flow.py
     DOC201: Function `model_from_yaml_file` does not have a return section in docstring
     DOC203: Function `model_from_yaml_file` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
 --------------------
+resistics/flow_graph.py
+    DOC101: Function `_flow_node_key`: Docstring contains fewer arguments than in function signature.
+    DOC106: Function `_flow_node_key`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
+    DOC107: Function `_flow_node_key`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Function `_flow_node_key`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [node: , stage: ].
+    DOC201: Function `_flow_node_key` does not have a return section in docstring
+    DOC203: Function `_flow_node_key` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Function `_flow_edge_hover`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `_flow_edge_hover`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [port: str, value_type: str].
+    DOC201: Function `_flow_edge_hover` does not have a return section in docstring
+    DOC203: Function `_flow_edge_hover` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Function `_routed_adjacency`: Docstring contains fewer arguments than in function signature.
+    DOC106: Function `_routed_adjacency`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
+    DOC107: Function `_routed_adjacency`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Function `_routed_adjacency`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [routed_edges: ].
+    DOC201: Function `_routed_adjacency` does not have a return section in docstring
+    DOC101: Function `_routed_path`: Docstring contains fewer arguments than in function signature.
+    DOC106: Function `_routed_path`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
+    DOC107: Function `_routed_path`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Function `_routed_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [adjacency: , original_numbers: , source: , target: ].
+    DOC201: Function `_routed_path` does not have a return section in docstring
+    DOC101: Function `_flow_edge_path`: Docstring contains fewer arguments than in function signature.
+    DOC106: Function `_flow_edge_path`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
+    DOC107: Function `_flow_edge_path`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Function `_flow_edge_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [original_numbers: , positions: , routed_edges: , source: , target: ].
+    DOC201: Function `_flow_edge_path` does not have a return section in docstring
+    DOC101: Function `_flow_arrow_position`: Docstring contains fewer arguments than in function signature.
+    DOC107: Function `_flow_arrow_position`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Function `_flow_arrow_position`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [card_height: float, card_width: float, path: ].
+    DOC201: Function `_flow_arrow_position` does not have a return section in docstring
+    DOC203: Function `_flow_arrow_position` return type(s) in docstring not consistent with the return annotation. Return annotation has 2 type(s); docstring return section has 0 type(s).
+    DOC101: Function `_flow_arrow_annotation`: Docstring contains fewer arguments than in function signature.
+    DOC107: Function `_flow_arrow_annotation`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Function `_flow_arrow_annotation`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [card_height: float, card_width: float, colour: str, path: ].
+    DOC201: Function `_flow_arrow_annotation` does not have a return section in docstring
+    DOC203: Function `_flow_arrow_annotation` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Function `_flow_arrow_trace`: Docstring contains fewer arguments than in function signature.
+    DOC107: Function `_flow_arrow_trace`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Function `_flow_arrow_trace`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [card_height: float, card_width: float, colour: str, legendgroup: str | None, meta: dict | None, path: ].
+    DOC201: Function `_flow_arrow_trace` does not have a return section in docstring
+    DOC203: Function `_flow_arrow_trace` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Function `_flow_edge_label_position`: Docstring contains fewer arguments than in function signature.
+    DOC106: Function `_flow_edge_label_position`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
+    DOC107: Function `_flow_edge_label_position`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Function `_flow_edge_label_position`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [path: ].
+    DOC201: Function `_flow_edge_label_position` does not have a return section in docstring
+    DOC203: Function `_flow_edge_label_position` return type(s) in docstring not consistent with the return annotation. Return annotation has 2 type(s); docstring return section has 0 type(s).
+    DOC101: Function `_flow_edge_label_trace`: Docstring contains fewer arguments than in function signature.
+    DOC107: Function `_flow_edge_label_trace`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Function `_flow_edge_label_trace`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [legendgroup: str | None, meta: dict | None, path: , value_type: str].
+    DOC201: Function `_flow_edge_label_trace` does not have a return section in docstring
+    DOC203: Function `_flow_edge_label_trace` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Function `_flow_card_polygon`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `_flow_card_polygon`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [card_height: float, card_width: float, x: float, y: float].
+    DOC201: Function `_flow_card_polygon` does not have a return section in docstring
+    DOC203: Function `_flow_card_polygon` return type(s) in docstring not consistent with the return annotation. Return annotation has 2 type(s); docstring return section has 0 type(s).
+--------------------
 resistics/gather.py
     DOC601: Class `MaskCriteria`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC603: Class `MaskCriteria`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [combine: Literal['and', 'or'], model_config: , names: list[str]]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
@@ -651,22 +708,12 @@ resistics/plot.py
     DOC103: Function `_validate_flow_stage`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [descriptors: , stage: ].
     DOC501: Function `_validate_flow_stage` has raise statements, but the docstring does not have a "Raises" section
     DOC503: Function `_validate_flow_stage` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
-    DOC101: Function `_flow_node_key`: Docstring contains fewer arguments than in function signature.
-    DOC106: Function `_flow_node_key`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
-    DOC107: Function `_flow_node_key`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Function `_flow_node_key`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [node: , stage: ].
-    DOC201: Function `_flow_node_key` does not have a return section in docstring
-    DOC203: Function `_flow_node_key` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC101: Function `_flow_node_hover`: Docstring contains fewer arguments than in function signature.
     DOC106: Function `_flow_node_hover`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
     DOC107: Function `_flow_node_hover`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
     DOC103: Function `_flow_node_hover`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [descriptor: , node: , stage: ].
     DOC201: Function `_flow_node_hover` does not have a return section in docstring
     DOC203: Function `_flow_node_hover` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `_flow_edge_hover`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `_flow_edge_hover`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [port: str, value_type: str].
-    DOC201: Function `_flow_edge_hover` does not have a return section in docstring
-    DOC203: Function `_flow_edge_hover` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC101: Function `_flow_label_lines`: Docstring contains fewer arguments than in function signature.
     DOC103: Function `_flow_label_lines`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [value: str].
     DOC201: Function `_flow_label_lines` does not have a return section in docstring
@@ -682,60 +729,6 @@ resistics/plot.py
     DOC107: Function `_flow_graph`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
     DOC103: Function `_flow_graph`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [descriptors: , flow: ].
     DOC201: Function `_flow_graph` does not have a return section in docstring
-    DOC101: Function `_flow_layout`: Docstring contains fewer arguments than in function signature.
-    DOC107: Function `_flow_layout`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Function `_flow_layout`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [descriptors: , flow: , vertex_spacing: int].
-    DOC201: Function `_flow_layout` does not have a return section in docstring
-    DOC101: Function `_routed_adjacency`: Docstring contains fewer arguments than in function signature.
-    DOC106: Function `_routed_adjacency`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
-    DOC107: Function `_routed_adjacency`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Function `_routed_adjacency`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [routed_edges: ].
-    DOC201: Function `_routed_adjacency` does not have a return section in docstring
-    DOC101: Function `_routed_path`: Docstring contains fewer arguments than in function signature.
-    DOC106: Function `_routed_path`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
-    DOC107: Function `_routed_path`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Function `_routed_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [adjacency: , original_numbers: , source: , target: ].
-    DOC201: Function `_routed_path` does not have a return section in docstring
-    DOC101: Function `_flow_edge_path`: Docstring contains fewer arguments than in function signature.
-    DOC106: Function `_flow_edge_path`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
-    DOC107: Function `_flow_edge_path`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Function `_flow_edge_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [original_numbers: , positions: , routed_edges: , source: , target: ].
-    DOC201: Function `_flow_edge_path` does not have a return section in docstring
-    DOC101: Function `_flow_arrow_position`: Docstring contains fewer arguments than in function signature.
-    DOC107: Function `_flow_arrow_position`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Function `_flow_arrow_position`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [card_height: float, card_width: float, path: ].
-    DOC201: Function `_flow_arrow_position` does not have a return section in docstring
-    DOC203: Function `_flow_arrow_position` return type(s) in docstring not consistent with the return annotation. Return annotation has 2 type(s); docstring return section has 0 type(s).
-    DOC101: Function `_flow_arrow_annotation`: Docstring contains fewer arguments than in function signature.
-    DOC107: Function `_flow_arrow_annotation`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Function `_flow_arrow_annotation`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [card_height: float, card_width: float, colour: str, path: ].
-    DOC201: Function `_flow_arrow_annotation` does not have a return section in docstring
-    DOC203: Function `_flow_arrow_annotation` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `_flow_arrow_trace`: Docstring contains fewer arguments than in function signature.
-    DOC107: Function `_flow_arrow_trace`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Function `_flow_arrow_trace`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [card_height: float, card_width: float, colour: str, legendgroup: str | None, meta: dict | None, path: ].
-    DOC201: Function `_flow_arrow_trace` does not have a return section in docstring
-    DOC203: Function `_flow_arrow_trace` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `_flow_edge_label_position`: Docstring contains fewer arguments than in function signature.
-    DOC106: Function `_flow_edge_label_position`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
-    DOC107: Function `_flow_edge_label_position`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Function `_flow_edge_label_position`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [path: ].
-    DOC201: Function `_flow_edge_label_position` does not have a return section in docstring
-    DOC203: Function `_flow_edge_label_position` return type(s) in docstring not consistent with the return annotation. Return annotation has 2 type(s); docstring return section has 0 type(s).
-    DOC101: Function `_flow_edge_label_trace`: Docstring contains fewer arguments than in function signature.
-    DOC107: Function `_flow_edge_label_trace`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Function `_flow_edge_label_trace`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [legendgroup: str | None, meta: dict | None, path: , value_type: str].
-    DOC201: Function `_flow_edge_label_trace` does not have a return section in docstring
-    DOC203: Function `_flow_edge_label_trace` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `_flow_card_polygon`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `_flow_card_polygon`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [card_height: float, card_width: float, x: float, y: float].
-    DOC201: Function `_flow_card_polygon` does not have a return section in docstring
-    DOC203: Function `_flow_card_polygon` return type(s) in docstring not consistent with the return annotation. Return annotation has 2 type(s); docstring return section has 0 type(s).
-    DOC101: Function `plot_flow`: Docstring contains fewer arguments than in function signature.
-    DOC107: Function `plot_flow`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Function `plot_flow`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [flow: , project_path: Path | None].
-    DOC201: Function `plot_flow` does not have a return section in docstring
-    DOC203: Function `plot_flow` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC101: Function `_job_compact_value`: Docstring contains fewer arguments than in function signature.
     DOC103: Function `_job_compact_value`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [value: Any].
     DOC201: Function `_job_compact_value` does not have a return section in docstring
@@ -767,11 +760,6 @@ resistics/plot.py
     DOC103: Function `_job_scope_summary`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [scope: ].
     DOC201: Function `_job_scope_summary` does not have a return section in docstring
     DOC203: Function `_job_scope_summary` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Function `plot_job`: Docstring contains fewer arguments than in function signature.
-    DOC107: Function `plot_job`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Function `plot_job`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [project_path: Path | None, resolved_job: ].
-    DOC201: Function `plot_job` does not have a return section in docstring
-    DOC203: Function `plot_job` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC105: Function `lttb_downsample`: Argument names match, but type hints in these args do not match: max_pts
     DOC203: Function `lttb_downsample` return type(s) in docstring not consistent with the return annotation. Return annotation has 2 type(s); docstring return section has 1 type(s).
     DOC105: Function `apply_lttb`: Argument names match, but type hints in these args do not match: max_pts

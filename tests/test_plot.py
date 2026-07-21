@@ -31,6 +31,36 @@ class FlowPlotMerge(ResisticsProcess):
     output_type = "number"
 
 
+def _assert_shared_graph_rendering(figure: go.Figure) -> None:
+    """Assert invariants owned by the common flow-graph renderer."""
+    edge_traces = [
+        trace for trace in figure.data if trace.meta and trace.meta["kind"] == "edge"
+    ]
+    edge_labels = [
+        trace
+        for trace in figure.data
+        if trace.meta and trace.meta["kind"] == "edge_label"
+    ]
+    node_labels = [
+        trace for trace in figure.data if trace.meta and trace.meta["kind"] == "labels"
+    ]
+    node_targets = [
+        trace for trace in figure.data if trace.meta and trace.meta["kind"] == "nodes"
+    ]
+
+    assert edge_traces
+    assert edge_labels
+    assert node_labels
+    assert max(figure.data.index(trace) for trace in edge_traces + edge_labels) < min(
+        figure.data.index(trace) for trace in node_labels
+    )
+    assert all(trace.textfont.size == 13 for trace in edge_labels)
+    assert all(trace.hovertemplate == "%{text}<extra></extra>" for trace in edge_traces)
+    assert all(
+        trace.hovertemplate == "%{customdata}<extra></extra>" for trace in node_targets
+    )
+
+
 @pytest.mark.parametrize(
     "y, max_pts, x_expected, y_expected",
     [
@@ -254,6 +284,7 @@ def test_plot_flow_builds_an_interactive_ranked_figure():
         for trace in edge_labels
     )
     assert not figure.layout.annotations
+    _assert_shared_graph_rendering(figure)
 
 
 def test_plot_flow_routes_long_edges_around_intermediate_nodes():
@@ -311,7 +342,7 @@ def test_plot_flow_routes_long_edges_around_intermediate_nodes():
 
 def test_flow_arrowheads_stop_outside_card_boundaries():
     """Arrowheads remain visible immediately before vertical and diagonal cards."""
-    from resistics.plot import (
+    from resistics.flow_graph import (
         FLOW_ARROW_CLEARANCE,
         FLOW_CARD_HEIGHT,
         FLOW_CARD_WIDTH,
@@ -328,7 +359,7 @@ def test_flow_arrowheads_stop_outside_card_boundaries():
 
 def test_flow_edge_labels_use_the_midpoint_of_routed_connectors():
     """Type labels stay centered even when a connector has a bend."""
-    from resistics.plot import _flow_edge_label_position
+    from resistics.flow_graph import _flow_edge_label_position
 
     assert _flow_edge_label_position([(0.0, 0.0), (0.0, 3.0), (4.0, 3.0)]) == (
         0.5,
@@ -471,9 +502,13 @@ def test_plot_job_shows_selected_stages_and_parameter_file_values(tmp_path):
     figure = plot_job(resolved)
 
     assert isinstance(figure, go.Figure)
-    assert "Job: field" in figure.layout.title.text
-    assert "Parameters: Field settings (field.yaml)" in figure.layout.title.text
-    assert "1 target batch(es), 2 target run(s)" in figure.layout.title.text
+    assert figure.layout.title.text == (
+        "Job: field<br><br><sup>Flow: Job flow (job_flow.yaml)"
+        " · Parameters: Field settings (field.yaml) · Criteria: criteria.yaml</sup>"
+        "<br><sup>Output: field_result · Overwrite: no"
+        " · Scope: all surveys, stations, and rates"
+        " · Work: 1 stage(s), 1 target batch(es), 2 target run(s)</sup>"
+    )
     node_trace = next(
         trace for trace in figure.data if trace.meta and trace.meta["kind"] == "nodes"
     )
@@ -519,3 +554,4 @@ def test_plot_job_shows_selected_stages_and_parameter_file_values(tmp_path):
     )
     assert not figure.layout.annotations
     assert figure.layout.margin.t == 160
+    _assert_shared_graph_rendering(figure)
