@@ -4,6 +4,8 @@ import asyncio
 import json
 import subprocess
 import sys
+import warnings
+from datetime import UTC, datetime
 from pathlib import Path
 from threading import Event, Thread
 from time import perf_counter
@@ -44,10 +46,12 @@ from resistics.tui import (
     CreateProjectScreen,
     DeleteProjectDataScreen,
     DeleteYamlFileScreen,
+    DiagnosticLogEntry,
     DirectoryPickerScreen,
     ProjectExplorerScreen,
     ResisticsTui,
 )
+from resistics.tui.services import ProjectExplorerService
 
 
 class FakeProject:
@@ -411,7 +415,7 @@ def test_explorer_rejects_stale_worker_results(monkeypatch, tmp_path):
                     return state(1)
                 return state(2)
 
-            monkeypatch.setattr(screen.explorer_index, "project_state", delayed_state)
+            monkeypatch.setattr(screen.service.index, "project_state", delayed_state)
             try:
                 screen.action_refresh()
                 await _wait_for(first_started.is_set)
@@ -526,6 +530,113 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
 
     asyncio.run(run_test())
     assert project.closed
+
+
+def test_tui_keeps_session_diagnostics_separate_from_job_activity(
+    monkeypatch, tmp_path
+):
+    first = FakeProject(tmp_path / "first")
+    second = FakeProject(tmp_path / "second")
+    projects = {first.project_path: first, second.project_path: second}
+
+    def load(project_path):
+        warnings.warn(
+            f"MTH5 warning for {project_path.name}", UserWarning, stacklevel=1
+        )
+        return projects[project_path]
+
+    monkeypatch.setattr("resistics.project.load", load)
+    app = ResisticsTui(first.project_path)
+    startup_message = (
+        "filter.applied and filter.name are deprecated, use filters as a list of "
+        "AppliedFilter objects instead"
+    )
+    app.diagnostic_buffer.append(
+        DiagnosticLogEntry(
+            timestamp=datetime.now(UTC),
+            level="WARNING",
+            source="mt_metadata.timeseries.channel",
+            message=startup_message,
+            location=(
+                "/home/example/.venv/lib/python3.13/site-packages/"
+                "mt_metadata/timeseries/channel.py:754"
+            ),
+        )
+    )
+
+    def log_text(screen):
+        log = screen.query_one("#logs-log", RichLog)
+        return "\n".join(line.text for line in log.lines)
+
+    async def run_test():
+        async with app.run_test(size=(200, 40)) as pilot:
+            await _wait_for(lambda: isinstance(app.screen, ProjectExplorerScreen))
+            explorer = app.screen
+            explorer.query_one(TabbedContent).active = "logs"
+            await pilot.pause()
+            await _wait_for(lambda: "MTH5 warning for first" in log_text(explorer))
+            assert any(
+                startup_message in line.text
+                for line in explorer.query_one("#logs-log", RichLog).lines
+            )
+
+            assert explorer.query_one("#logs", TabPane)
+            assert explorer.query_one("#activity", TabPane)
+            assert "UserWarning" in log_text(explorer)
+            assert "test_tui.py" in log_text(explorer)
+            assert explorer.query_one("#logs-log", RichLog).can_focus
+            assert not explorer.query_one("#activity-log", RichLog).lines
+
+            explorer.query_one("#activity-log", RichLog).write("old activity")
+            explorer._set_running()
+            await pilot.pause()
+            assert not explorer.query_one("#activity-log", RichLog).lines
+            assert "MTH5 warning for first" in log_text(explorer)
+
+            app.show_home()
+            await pilot.pause()
+            app.open_project_path(second.project_path)
+            await _wait_for(
+                lambda: (
+                    isinstance(app.screen, ProjectExplorerScreen)
+                    and app.screen.project is second
+                )
+            )
+            await pilot.pause()
+            explorer = app.screen
+            explorer.query_one(TabbedContent).active = "logs"
+            await pilot.pause()
+            await _wait_for(lambda: "MTH5 warning for second" in log_text(explorer))
+            assert "MTH5 warning for first" in log_text(explorer)
+
+            logs = explorer.query_one("#logs-log", RichLog)
+            previous_line_count = len(logs.lines)
+            thread = Thread(
+                target=app.diagnostic_buffer.write_warning,
+                args=(
+                    UserWarning("worker warning uses the remaining screen width"),
+                    UserWarning,
+                    "worker.py",
+                    9,
+                ),
+            )
+            thread.start()
+            thread.join()
+            await _wait_for(
+                lambda: (
+                    "worker warning uses the remaining screen width"
+                    in log_text(explorer)
+                )
+            )
+            assert len(logs.lines) == previous_line_count + 1
+            explorer.query_one(TabbedContent).active = "logs"
+            logs.focus()
+            await pilot.pause()
+            assert app.focused is logs
+
+    asyncio.run(run_test())
+    assert first.closed
+    assert second.closed
 
 
 def test_cached_action_checks_are_fast_and_do_not_repeat_io(
@@ -661,10 +772,12 @@ def test_cached_action_checks_are_fast_and_do_not_repeat_io(
                 ),
             )
             monkeypatch.setattr(
-                screen.project_jobs,
+                screen.service.project_jobs,
                 "validate",
                 _record_call(
-                    io_calls, "project_jobs.validate", screen.project_jobs.validate
+                    io_calls,
+                    "project_jobs.validate",
+                    screen.service.project_jobs.validate,
                 ),
             )
 
@@ -826,8 +939,8 @@ def test_tui_invalidates_explorer_index_after_owned_mutations(monkeypatch, tmp_p
         async with app.run_test(size=(100, 40)):
             screen = app.screen
             invalidations = []
-            invalidate = screen.explorer_index.invalidate
-            invalidate_all = screen.explorer_index.invalidate_all
+            invalidate = screen.service.index.invalidate
+            invalidate_all = screen.service.index.invalidate_all
 
             def tracked_invalidate(*sections):
                 invalidations.append(sections)
@@ -837,9 +950,9 @@ def test_tui_invalidates_explorer_index_after_owned_mutations(monkeypatch, tmp_p
                 invalidations.append(("all",))
                 invalidate_all()
 
-            monkeypatch.setattr(screen.explorer_index, "invalidate", tracked_invalidate)
+            monkeypatch.setattr(screen.service.index, "invalidate", tracked_invalidate)
             monkeypatch.setattr(
-                screen.explorer_index, "invalidate_all", tracked_invalidate_all
+                screen.service.index, "invalidate_all", tracked_invalidate_all
             )
 
             screen.action_refresh()
@@ -1042,7 +1155,7 @@ def test_tui_counts_mth5_time_data_by_run():
         ),
     ]
 
-    assert ProjectExplorerScreen._data_category_count(("mth5", "/"), items, "time") == 2
+    assert ProjectExplorerService.data_category_count(("mth5", "/"), items, "time") == 2
 
 
 def test_tui_views_project_json_and_confirms_project_data_deletion(
@@ -1216,11 +1329,11 @@ def test_tui_builds_figures_with_existing_plotters(monkeypatch, tmp_path):
             return FakeTimeData()
 
     project = FakeProjectForPlot()
-    assert ProjectExplorerScreen._build_plot_figure(project, ("project", None)) == (
+    assert ProjectExplorerService.build_plot_figure(project, ("project", None)) == (
         "timeline figure"
     )
     assert (
-        ProjectExplorerScreen._build_plot_figure(
+        ProjectExplorerService.build_plot_figure(
             project, ("time", ("survey", "station", "run", "ex"))
         )
         == "time figure"
@@ -1247,14 +1360,14 @@ def test_tui_builds_figures_with_existing_plotters(monkeypatch, tmp_path):
     reader = FakeSpectraReader()
     monkeypatch.setattr("resistics.spectra.SpectraDataReader", lambda: reader)
     assert (
-        ProjectExplorerScreen._build_plot_figure(project, ("spectra", spectra_path))
+        ProjectExplorerService.build_plot_figure(project, ("spectra", spectra_path))
         is spectra_figure
     )
     assert reader.paths == [spectra_path]
 
     solution_path = tmp_path / "solution.json"
     solution_mt().write(solution_path)
-    figure = ProjectExplorerScreen._build_plot_figure(
+    figure = ProjectExplorerService.build_plot_figure(
         project, ("transfer_function", solution_path)
     )
     assert isinstance(figure, go.Figure)
@@ -1270,7 +1383,7 @@ def test_tui_builds_figures_with_existing_plotters(monkeypatch, tmp_path):
 )
 def test_tui_rejects_mismatched_plot_payloads(target, message):
     with pytest.raises(ValueError, match=message):
-        ProjectExplorerScreen._build_plot_figure(SimpleNamespace(), target)
+        ProjectExplorerService.build_plot_figure(SimpleNamespace(), target)
 
 
 def test_tui_plots_a_valid_selected_flow(monkeypatch, tmp_path):
@@ -1324,7 +1437,7 @@ def test_tui_builds_flow_figures_without_preview_files(tmp_path):
     flow_path.parent.mkdir(parents=True)
     flow_path.write_text(model_to_yaml(standard_mt_flow()))
 
-    figure = ProjectExplorerScreen._build_plot_figure(project, ("flow", flow_path))
+    figure = ProjectExplorerService.build_plot_figure(project, ("flow", flow_path))
 
     assert isinstance(figure, go.Figure)
     assert figure.layout.title.text == "Flow: Single-Site MT (Standard Windowing)"
@@ -1386,7 +1499,7 @@ def test_tui_builds_and_enables_valid_job_plots(monkeypatch, tmp_path):
             table.move_cursor(row=valid_row)
             await pilot.pause()
             assert screen.check_action("plot", ())
-            figure = screen._build_plot_figure(project, ("job", job_path))
+            figure = screen.service.build_plot_figure(project, ("job", job_path))
             assert isinstance(figure, go.Figure)
             assert "Job: field" in figure.layout.title.text
 

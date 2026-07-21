@@ -1471,110 +1471,8 @@ resistics/transfunc.py
     DOC105: Method `Tipper.plot`: Argument names match, but type hints in these args do not match: freqs, components, x_lim, len_lim, ang_lim
 --------------------
 resistics/tui/app.py
-    DOC601: Class `ProjectExplorerScreen`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
-    DOC603: Class `ProjectExplorerScreen`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [BINDINGS: , DATA_CATEGORIES: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
-    DOC101: Method `ProjectExplorerScreen.__init__`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen.__init__`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [project: Project, startup_warnings: list[str] | None].
-    DOC101: Method `ProjectExplorerScreen._data_category_count`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._data_category_count`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [data_type: str, items: list[ProjectDataItem], source_data: object].
-    DOC201: Method `ProjectExplorerScreen._data_category_count` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._data_category_count` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Method `ProjectExplorerScreen._mth5_time_run_path`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._mth5_time_run_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [item: ProjectDataItem].
-    DOC201: Method `ProjectExplorerScreen._mth5_time_run_path` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._mth5_time_run_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Method `ProjectExplorerScreen._visible_data_paths`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._visible_data_paths`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [data_type: str, items: list[ProjectDataItem]].
-    DOC201: Method `ProjectExplorerScreen._visible_data_paths` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._visible_data_paths` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Method `ProjectExplorerScreen._add_data_ancestors`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._add_data_ancestors`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [by_path: dict[str, ProjectDataItem], item: ProjectDataItem, visible: set[str]].
-    DOC101: Method `ProjectExplorerScreen._project_data_path`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._project_data_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [path: str].
-    DOC201: Method `ProjectExplorerScreen._project_data_path` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._project_data_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Method `ProjectExplorerScreen._find_project_artifact`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._find_project_artifact`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [item: ProjectDataItem, required_files: tuple[str, ...]].
-    DOC201: Method `ProjectExplorerScreen._find_project_artifact` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._find_project_artifact` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Method `ProjectExplorerScreen._load_solution`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._load_solution`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [solution_path: Path].
-    DOC201: Method `ProjectExplorerScreen._load_solution` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._load_solution` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Method `ProjectExplorerScreen._mth5_time_plot_target`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._mth5_time_plot_target`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [item: ProjectDataItem].
-    DOC201: Method `ProjectExplorerScreen._mth5_time_plot_target` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._mth5_time_plot_target` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Method `ProjectExplorerScreen._data_item_for_node`: Docstring contains fewer arguments than in function signature.
-    DOC106: Method `ProjectExplorerScreen._data_item_for_node`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
-    DOC107: Method `ProjectExplorerScreen._data_item_for_node`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Method `ProjectExplorerScreen._data_item_for_node`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [node: ].
-    DOC201: Method `ProjectExplorerScreen._data_item_for_node` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._data_item_for_node` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Method `ProjectExplorerScreen._data_tree_cursor` does not have a return section in docstring
-    DOC101: Method `ProjectExplorerScreen._data_plot_target`: Docstring contains fewer arguments than in function signature.
-    DOC106: Method `ProjectExplorerScreen._data_plot_target`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
-    DOC107: Method `ProjectExplorerScreen._data_plot_target`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Method `ProjectExplorerScreen._data_plot_target`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [node: ].
-    DOC201: Method `ProjectExplorerScreen._data_plot_target` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._data_plot_target` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Method `ProjectExplorerScreen._flow_plot_target` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._flow_plot_target` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Method `ProjectExplorerScreen._job_plot_target` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._job_plot_target` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Method `ProjectExplorerScreen._has_project_timeline` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._has_project_timeline` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Method `ProjectExplorerScreen._build_plot_figure` does not have a return section in docstring
-    DOC501: Method `ProjectExplorerScreen._build_plot_figure` has raise statements, but the docstring does not have a "Raises" section
-    DOC503: Method `ProjectExplorerScreen._build_plot_figure` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
-    DOC101: Method `ProjectExplorerScreen._job_template_created`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._job_template_created`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [definition: JobDefinition | None].
-    DOC101: Method `ProjectExplorerScreen.update_data_plot_selection`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen.update_data_plot_selection`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [event: Tree.NodeHighlighted].
-    DOC101: Method `ProjectExplorerScreen.refresh_yaml_highlight_bindings`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen.refresh_yaml_highlight_bindings`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [event: DataTable.RowHighlighted].
-    DOC101: Method `ProjectExplorerScreen.show_flow`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen.show_flow`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [event: DataTable.RowSelected].
-    DOC101: Method `ProjectExplorerScreen.show_parameters`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen.show_parameters`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [event: DataTable.RowSelected].
-    DOC101: Method `ProjectExplorerScreen.show_criteria`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen.show_criteria`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [event: DataTable.RowSelected].
-    DOC101: Method `ProjectExplorerScreen._yaml_source`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._yaml_source`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [path: Path].
-    DOC201: Method `ProjectExplorerScreen._yaml_source` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._yaml_source` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Method `ProjectExplorerScreen._show_yaml`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._show_yaml`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [editor_id: str, path: Path].
-    DOC201: Method `ProjectExplorerScreen._yaml_edit_target` does not have a return section in docstring
-    DOC201: Method `ProjectExplorerScreen._selected_yaml_file` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._selected_yaml_file` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Method `ProjectExplorerScreen._highlighted_yaml_file` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._highlighted_yaml_file` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Method `ProjectExplorerScreen._highlighted_job_path` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._highlighted_job_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Method `ProjectExplorerScreen._copy_yaml_file`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._copy_yaml_file`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [name: str, source: Path].
-    DOC201: Method `ProjectExplorerScreen._copy_yaml_file` does not have a return section in docstring
-    DOC203: Method `ProjectExplorerScreen._copy_yaml_file` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC501: Method `ProjectExplorerScreen._copy_yaml_file` has raise statements, but the docstring does not have a "Raises" section
-    DOC503: Method `ProjectExplorerScreen._copy_yaml_file` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
-    DOC101: Method `ProjectExplorerScreen._select_yaml_file`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._select_yaml_file`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [editor_id: str, path: Path].
-    DOC101: Method `ProjectExplorerScreen._clear_selected_yaml_file`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._clear_selected_yaml_file`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [editor_id: str].
-    DOC101: Method `ProjectExplorerScreen._write_yaml`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._write_yaml`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [content: str, path: Path].
-    DOC501: Method `ProjectExplorerScreen._write_yaml` has raise statements, but the docstring does not have a "Raises" section
-    DOC503: Method `ProjectExplorerScreen._write_yaml` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['Exception'].
-    DOC101: Method `ProjectExplorerScreen._refresh_yaml_resource`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen._refresh_yaml_resource`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [editor_id: str].
-    DOC101: Method `ProjectExplorerScreen.check_action`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ProjectExplorerScreen.check_action`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [action: str, parameters: tuple[object, ...]].
-    DOC201: Method `ProjectExplorerScreen.check_action` does not have a return section in docstring
     DOC601: Class `ResisticsTui`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC603: Class `ResisticsTui`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [CSS: , NOTIFICATION_TIMEOUT: , SUB_TITLE: , TITLE: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
-    DOC101: Method `ResisticsTui.__init__`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `ResisticsTui.__init__`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [project_path: Path | None].
     DOC101: Method `ResisticsTui._show_screen`: Docstring contains fewer arguments than in function signature.
     DOC103: Method `ResisticsTui._show_screen`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [screen: Screen[None]].
     DOC101: Function `run_tui`: Docstring contains fewer arguments than in function signature.
@@ -1601,8 +1499,6 @@ resistics/tui/screens/dialogs.py
     DOC603: Class `DeleteYamlFileScreen`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [BINDINGS: , CSS: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC101: Method `DeleteYamlFileScreen.__init__`: Docstring contains fewer arguments than in function signature.
     DOC103: Method `DeleteYamlFileScreen.__init__`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [source: Path].
-    DOC601: Class `ProjectDataDeletionRequest`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
-    DOC603: Class `ProjectDataDeletionRequest`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [output_label: str | None]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC601: Class `DeleteProjectDataScreen`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC603: Class `DeleteProjectDataScreen`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [BINDINGS: , CSS: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC101: Method `DeleteProjectDataScreen.__init__`: Docstring contains fewer arguments than in function signature.
@@ -1629,6 +1525,166 @@ resistics/tui/screens/launcher.py
     DOC103: Method `HomeScreen.__init__`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [message: str | None].
     DOC601: Class `CreateProjectScreen`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC603: Class `CreateProjectScreen`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [BINDINGS: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+--------------------
+resistics/tui/screens/project.py
+    DOC601: Class `ProjectExplorerScreen`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `ProjectExplorerScreen`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [BINDINGS: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC101: Method `ProjectExplorerScreen.check_action`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerScreen.check_action`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [action: str, parameters: tuple[object, ...]].
+    DOC201: Method `ProjectExplorerScreen.check_action` does not have a return section in docstring
+--------------------
+resistics/tui/screens/project_base.py
+    DOC601: Class `_ProjectExplorerBase`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `_ProjectExplorerBase`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [DATA_CATEGORIES: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+--------------------
+resistics/tui/screens/project_data.py
+    DOC101: Method `_ProjectDataMixin._data_item_for_node`: Docstring contains fewer arguments than in function signature.
+    DOC106: Method `_ProjectDataMixin._data_item_for_node`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
+    DOC107: Method `_ProjectDataMixin._data_item_for_node`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Method `_ProjectDataMixin._data_item_for_node`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [node: ].
+    DOC201: Method `_ProjectDataMixin._data_item_for_node` does not have a return section in docstring
+    DOC203: Method `_ProjectDataMixin._data_item_for_node` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC201: Method `_ProjectDataMixin._data_tree_cursor` does not have a return section in docstring
+    DOC101: Method `_ProjectDataMixin._data_plot_target`: Docstring contains fewer arguments than in function signature.
+    DOC106: Method `_ProjectDataMixin._data_plot_target`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
+    DOC107: Method `_ProjectDataMixin._data_plot_target`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Method `_ProjectDataMixin._data_plot_target`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [node: ].
+    DOC201: Method `_ProjectDataMixin._data_plot_target` does not have a return section in docstring
+    DOC203: Method `_ProjectDataMixin._data_plot_target` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC201: Method `_ProjectDataMixin._flow_plot_target` does not have a return section in docstring
+    DOC203: Method `_ProjectDataMixin._flow_plot_target` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC201: Method `_ProjectDataMixin._job_plot_target` does not have a return section in docstring
+    DOC203: Method `_ProjectDataMixin._job_plot_target` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC201: Method `_ProjectDataMixin._has_project_timeline` does not have a return section in docstring
+    DOC203: Method `_ProjectDataMixin._has_project_timeline` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `_ProjectDataMixin.update_data_plot_selection`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `_ProjectDataMixin.update_data_plot_selection`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [event: Tree.NodeHighlighted].
+--------------------
+resistics/tui/screens/project_resources.py
+    DOC101: Method `_ProjectResourcesMixin._job_template_created`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `_ProjectResourcesMixin._job_template_created`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [definition: JobDefinition | None].
+    DOC101: Method `_ProjectResourcesMixin.refresh_yaml_highlight_bindings`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `_ProjectResourcesMixin.refresh_yaml_highlight_bindings`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [event: DataTable.RowHighlighted].
+    DOC101: Method `_ProjectResourcesMixin.show_flow`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `_ProjectResourcesMixin.show_flow`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [event: DataTable.RowSelected].
+    DOC101: Method `_ProjectResourcesMixin.show_parameters`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `_ProjectResourcesMixin.show_parameters`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [event: DataTable.RowSelected].
+    DOC101: Method `_ProjectResourcesMixin.show_criteria`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `_ProjectResourcesMixin.show_criteria`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [event: DataTable.RowSelected].
+    DOC101: Method `_ProjectResourcesMixin._show_yaml`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `_ProjectResourcesMixin._show_yaml`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [editor_id: str, path: Path].
+    DOC201: Method `_ProjectResourcesMixin._yaml_edit_target` does not have a return section in docstring
+    DOC201: Method `_ProjectResourcesMixin._selected_yaml_file` does not have a return section in docstring
+    DOC203: Method `_ProjectResourcesMixin._selected_yaml_file` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC201: Method `_ProjectResourcesMixin._highlighted_yaml_file` does not have a return section in docstring
+    DOC203: Method `_ProjectResourcesMixin._highlighted_yaml_file` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC201: Method `_ProjectResourcesMixin._highlighted_job_path` does not have a return section in docstring
+    DOC203: Method `_ProjectResourcesMixin._highlighted_job_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `_ProjectResourcesMixin._select_yaml_file`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `_ProjectResourcesMixin._select_yaml_file`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [editor_id: str, path: Path].
+    DOC101: Method `_ProjectResourcesMixin._clear_selected_yaml_file`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `_ProjectResourcesMixin._clear_selected_yaml_file`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [editor_id: str].
+    DOC101: Method `_ProjectResourcesMixin._resource_kind`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `_ProjectResourcesMixin._resource_kind`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [editor_id: str].
+    DOC201: Method `_ProjectResourcesMixin._resource_kind` does not have a return section in docstring
+    DOC203: Method `_ProjectResourcesMixin._resource_kind` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `_ProjectResourcesMixin._refresh_yaml_resource`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `_ProjectResourcesMixin._refresh_yaml_resource`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [editor_id: str].
+--------------------
+resistics/tui/services.py
+    DOC201: Method `ProjectExplorerService.project_state` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.project_state` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC201: Method `ProjectExplorerService.runs` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.runs` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.resources`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.resources`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [kind: ResourceKind].
+    DOC201: Method `ProjectExplorerService.resources` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.resources` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC201: Method `ProjectExplorerService.jobs` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.jobs` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.job_validation`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.job_validation`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [path: Path].
+    DOC201: Method `ProjectExplorerService.job_validation` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.job_validation` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.resource_for_path`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.resource_for_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [kind: ResourceKind, path: Path].
+    DOC201: Method `ProjectExplorerService.resource_for_path` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.resource_for_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.invalidate`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.invalidate`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [*sections: IndexSection].
+    DOC101: Method `ProjectExplorerService.job_resource_options`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.job_resource_options`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [resource_type: ResourceKind].
+    DOC201: Method `ProjectExplorerService.job_resource_options` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.job_resource_options` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC201: Method `ProjectExplorerService.job_template_names` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.job_template_names` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.create_job_template`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.create_job_template`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [definition: JobDefinition].
+    DOC201: Method `ProjectExplorerService.create_job_template` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.create_job_template` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.yaml_source`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.yaml_source`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [path: Path].
+    DOC201: Method `ProjectExplorerService.yaml_source` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.yaml_source` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.copy_yaml`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.copy_yaml`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [kind: ResourceKind, name: str, source: Path].
+    DOC201: Method `ProjectExplorerService.copy_yaml` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.copy_yaml` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC501: Method `ProjectExplorerService.copy_yaml` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Method `ProjectExplorerService.copy_yaml` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC101: Method `ProjectExplorerService.delete_yaml`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.delete_yaml`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [kind: ResourceKind, source: Path].
+    DOC101: Method `ProjectExplorerService.save_yaml`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.save_yaml`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [content: str, kind: ResourceKind, model_type: type[BaseModel], path: Path].
+    DOC101: Method `ProjectExplorerService.validate_yaml`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.validate_yaml`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [content: str, model_type: type[BaseModel]].
+    DOC101: Method `ProjectExplorerService.write_yaml`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.write_yaml`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [content: str, kind: ResourceKind, path: Path].
+    DOC501: Method `ProjectExplorerService.write_yaml` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Method `ProjectExplorerService.write_yaml` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['Exception'].
+    DOC101: Method `ProjectExplorerService.restore_templates`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.restore_templates`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [kind: ResourceKind].
+    DOC201: Method `ProjectExplorerService.restore_templates` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.restore_templates` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC501: Method `ProjectExplorerService.restore_templates` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Method `ProjectExplorerService.restore_templates` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC201: Method `ProjectExplorerService.deletion_options` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.deletion_options` return type(s) in docstring not consistent with the return annotation. Return annotation has 2 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.preview_project_data_deletion`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.preview_project_data_deletion`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [output_label: str | None].
+    DOC201: Method `ProjectExplorerService.preview_project_data_deletion` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.preview_project_data_deletion` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.delete_project_data`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.delete_project_data`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [output_label: str | None].
+    DOC201: Method `ProjectExplorerService.delete_project_data` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.delete_project_data` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.mth5_time_run_path`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.mth5_time_run_path`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [item: ProjectDataItem].
+    DOC201: Method `ProjectExplorerService.mth5_time_run_path` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.mth5_time_run_path` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.data_category_count`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.data_category_count`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [data_type: str, items: list[ProjectDataItem], source_data: object].
+    DOC201: Method `ProjectExplorerService.data_category_count` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.data_category_count` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.visible_data_paths`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.visible_data_paths`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [data_type: str, items: list[ProjectDataItem]].
+    DOC201: Method `ProjectExplorerService.visible_data_paths` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.visible_data_paths` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.data_plot_target`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.data_plot_target`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [item: ProjectDataItem | None].
+    DOC201: Method `ProjectExplorerService.data_plot_target` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.data_plot_target` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
+    DOC101: Method `ProjectExplorerService.build_plot_figure`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.build_plot_figure`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [project: Project, target: PlotTarget].
+    DOC201: Method `ProjectExplorerService.build_plot_figure` does not have a return section in docstring
+    DOC501: Method `ProjectExplorerService.build_plot_figure` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Method `ProjectExplorerService.build_plot_figure` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC101: Method `ProjectExplorerService.run_job`: Docstring contains fewer arguments than in function signature.
+    DOC103: Method `ProjectExplorerService.run_job`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [progress_callback: Callable[[JobProgressEvent], None], validation: JobValidation].
+    DOC501: Method `ProjectExplorerService.run_job` has raise statements, but the docstring does not have a "Raises" section
+    DOC503: Method `ProjectExplorerService.run_job` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
+    DOC201: Method `ProjectExplorerService.cancel_job` does not have a return section in docstring
+    DOC203: Method `ProjectExplorerService.cancel_job` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
 --------------------
 resistics/window.py
     DOC105: Function `datetime_to_win`: Argument names match, but type hints in these args do not match: method

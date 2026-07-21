@@ -37,7 +37,6 @@ def test_package_facade_preserves_extracted_screen_imports():
         DeleteProjectDataScreen,
         DeleteYamlFileScreen,
         DirectoryPickerScreen,
-        ProjectDataDeletionRequest,
     )
     from resistics.tui.screens.launcher import (
         CreateProjectScreen,
@@ -45,6 +44,8 @@ def test_package_facade_preserves_extracted_screen_imports():
         ProjectLoadingScreen,
         TuiHeader,
     )
+    from resistics.tui.screens.project import ProjectExplorerScreen
+    from resistics.tui.state import DiagnosticLogEntry, ProjectDataDeletionRequest
 
     extracted = {
         "ConfirmJobScreen": ConfirmJobScreen,
@@ -54,11 +55,13 @@ def test_package_facade_preserves_extracted_screen_imports():
         "DeleteProjectDataScreen": DeleteProjectDataScreen,
         "DeleteYamlFileScreen": DeleteYamlFileScreen,
         "DirectoryPickerScreen": DirectoryPickerScreen,
+        "DiagnosticLogEntry": DiagnosticLogEntry,
         "ProjectDataDeletionRequest": ProjectDataDeletionRequest,
         "CreateProjectScreen": CreateProjectScreen,
         "HomeScreen": HomeScreen,
         "ProjectLoadingScreen": ProjectLoadingScreen,
         "TuiHeader": TuiHeader,
+        "ProjectExplorerScreen": ProjectExplorerScreen,
     }
     for name, screen_type in extracted.items():
         assert getattr(tui, name) is screen_type
@@ -66,6 +69,9 @@ def test_package_facade_preserves_extracted_screen_imports():
 
     assert ConfirmJobScreen.__module__ == "resistics.tui.screens.dialogs"
     assert HomeScreen.__module__ == "resistics.tui.screens.launcher"
+    assert ProjectExplorerScreen.__module__ == "resistics.tui.screens.project"
+    assert DiagnosticLogEntry.__module__ == "resistics.tui.state"
+    assert ProjectDataDeletionRequest.__module__ == "resistics.tui.state"
 
 
 def test_console_entry_point_loads_the_package_facade():

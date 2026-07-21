@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 5.2 verified; Checkpoint 5.3 ready
+Status: in progress; Checkpoint 5.3 verified; Checkpoint 5.4 ready
 Created: 2026-07-19
 Last updated: 2026-07-21
 Working branch: `mth5`
@@ -27,20 +27,19 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 5 - Split large modules at stable boundaries
-- Active checkpoint: `5.3` (`resistics`) - Extract project screen state and services
+- Active checkpoint: `5.4` (`resistics`) - Unify flow and job plot rendering
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `5.2` in `S031`
-- Last verified checkpoint: `5.2` in `S031`
-- Last session: `S031`
-- Last verified commit: resistics `09d048b` plus the verified uncommitted
-  S029-S031 structured-progress and TUI package-boundary implementations;
+- Last completed checkpoint: `5.3` follow-up in `S033`
+- Last verified checkpoint: `5.3` follow-up in `S033`
+- Last session: `S033`
+- Last verified commit: resistics `8b84d31`, recording the S029-S031
+  structured-progress and TUI package-boundary implementations;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: inventory `ProjectExplorerScreen` state, indexing,
-  validation, plot-target, deletion-preview, and execution responsibilities;
-  identify the first UI-neutral service contract and add unit tests before
-  extracting it in Checkpoint 5.3.
+- Next exact action: compare `plot_flow` and `plot_job` in `resistics/plot.py`,
+  capture their shared graph-rendering invariants in focused tests, and define
+  the smallest UI-neutral renderer contract for Checkpoint 5.4.
 
 Current worktree caveat:
 
@@ -49,7 +48,9 @@ Current worktree caveat:
   The empty `pyrefly-baseline.json` remains untracked and is a required Phase 3
   artifact. The verified structured-progress implementation, dependency
   cleanup, TUI package facade, dialog/launcher extraction, tests, lock refresh,
-  and pydoclint baseline refresh are uncommitted.
+  and pydoclint baseline refresh are committed through `8b84d31`. The verified
+  S032 project service/screen extraction and S033 session diagnostics follow-up
+  remain uncommitted in the current worktree.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -68,7 +69,7 @@ Current worktree caveat:
 - Pre-commit uses maintained v6 file-hygiene hooks plus locked uv-backed local
   Ruff and pydoclint hooks. The local hook is installed in this checkout.
 - Pyrefly 1.1.1 is the sole mandatory type checker. Its locked project command
-  checks all 29 production modules without error- or warning-level findings;
+  checks all 35 production modules without error-level findings;
   the committed error baseline is empty, and new findings fail locally and in
   pre-commit. Two narrow demonstrated suppressions remain. The complete inline
   typing contract is advertised by `py.typed`, verified in wheel and sdist.
@@ -245,7 +246,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | Gate 4 | resistics | `verified` | S023-S029; responsive, zero-I/O, 92.29% import reduction |
 | 5.1 | resistics | `verified` | S030; facade/entry point preserved; 413 tests; artifacts verified |
 | 5.2 | resistics | `verified` | S031; stable screen owners; 414 tests; artifacts verified |
-| 5.3 | resistics | `not_started` | Depends on 4.3-4.4 and 5.1 |
+| 5.3 | resistics | `verified` | S032-S033; UI-neutral service and session diagnostics; 421 tests |
 | 5.4 | resistics | `not_started` | Shared plot rendering |
 | 5.5 | resistics | `not_started` | Gather boundaries |
 | 5.6 | resistics | `not_started` | MTH5-only cleanup |
@@ -389,27 +390,27 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 414 passed | S031 |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 421 passed | S033 |
 | Branch coverage | approximately 76% | 75.96% | 76.19% | S014; coverage XML |
-| Production Python | approximately 21,011 lines | 21,015 | 22,874 | S031 report |
-| Tests | approximately 5,941 lines | 6,051 | 7,531 | S031 report |
-| `resistics/tui.py` | 2,673 lines | 2,673 | `app.py` 2,565; extracted screens/helpers 1,096 | S031 report |
+| Production Python | approximately 21,011 lines | 21,015 | 23,725 | S033 report |
+| Tests | approximately 5,941 lines | 6,051 | 7,878 | S033 report |
+| `resistics/tui.py` | 2,673 lines | 2,673 | `app.py` 436; project/logging modules 2,923 | S033 report |
 | `resistics/plot.py` | 1,200 lines | 1,200 | 1,200 | S002 report |
 | Flake8 | approximately 40 findings | 43 findings | 43 findings | S001 |
 | Legacy complexity | not recorded | 17 CCR001; 5 C901; 4 ECE001 | same | S002 |
 | Black format | not recorded | 26 files differ | 26 files differ | S001 |
 | mypy | 210 errors across 17 files | 209 across 17 files | removed | S016 |
 | Pyrefly | not installed | 175 errors across 17 files | 0 new errors | S016 |
-| TUI cold import | approximately 2.18 seconds | 2.2659 s median | 0.1377 s median | S031 report |
+| TUI cold import | approximately 2.18 seconds | 2.2659 s median | 0.2715 s median | S033 report |
 | TUI first screen | not measured | 2.076730 s median | 0.235886 s median | S028 probe |
 | Cached TUI action checks | not measured | 5,200 in 0.002322 s; zero instrumented I/O | same | S023 XML |
 | TUI binding refresh ownership | not measured | calls 200/3/3/1 | calls 100/1/1/0; 13.007 ms maximum | S024 XML |
 | Explorer resource parsing | repeated by table, job, and selection | one parse per file identity | zero reads on cache hits | S025 tests |
 | TUI project/explorer loading | synchronous before first project screen | loading surface before blocked open/summary release | inactive tabs lazy; stale results rejected | S027 tests |
 | Terminal progress rendering | two unconditional `tqdm` loops | same | zero; serializable callbacks through TUI | S029 tests |
-| TUI module boundary | one module | one 2,673-line module | dialogs 693 lines; launcher 309; services 94; app 2,565 | S031 artifacts |
-| Public docstring coverage | not measured | 80.2%; 566/706 | same | S002 report |
-| Executable docstring examples | not measured | 778 prompts | same | S002 report |
+| TUI module boundary | one module | one 2,673-line module | app 436; project 499; project mixins 63-756; logging 322; services 642; state 156 | S033 artifacts |
+| Public docstring coverage | not measured | 80.2%; 566/706 | 86.8%; 638/735 | S033 report |
+| Executable docstring examples | not measured | 778 prompts | 803 prompts | S032 report |
 | Executable docstring plots | not measured | 16 directives | same | S002 report |
 | Local `.venv` size | approximately 897 MB | 910 MB | 910 MB | S002 |
 
@@ -1753,6 +1754,42 @@ correct a factual error; note the correction explicitly.
   dialogs module as one cohesive modal-screen boundary for now: splitting its
   repeated dialog CSS and focus behavior during a mechanical checkpoint would
   obscure the movement, while it remains below the Phase 5 module ceiling.
+- `D046` (2026-07-21): Make `ProjectExplorerService` the UI-neutral owner of
+  project indexing, validation, YAML mutations, deletion previews, plot-target
+  resolution, job execution, and project-close coordination. The service may
+  be constructed and tested without a Textual application; existing frozen
+  Pydantic explorer DTOs cross its public boundary. Move the public
+  `ProjectDataDeletionRequest` to `state.py` and convert it to a frozen
+  Pydantic v2 model, while retaining dataclasses for private worker and mutable
+  action records. This deliberately narrows D042's lightweight-import rule:
+  the public TUI facade may now import Pydantic for its public DTO contract,
+  but project, MTH5, plotting, processing, and other feature-heavy modules
+  remain deferred. Keep the concrete `ProjectExplorerScreen` in
+  `screens.project`; private data, job, and resource presentation mixins own
+  cohesive UI behaviour only. Preserve public facade and transitional app
+  aliases, but remove the unsupported internal screen aliases for the index
+  and job repository rather than carrying legacy internals forward. Every new
+  production module remains below 800 lines and the concrete screen remains
+  below 500 lines.
+- `D047` (2026-07-21): Add a separate session Logs tab without weakening the
+  structured, per-job Activity surface. Represent each UI/app-facing diagnostic
+  as a frozen Pydantic `DiagnosticLogEntry`; keep sequence numbers, cursor
+  reads, rollover accounting, and the 2,000-entry thread-safe buffer private.
+  The official `run_tui` lifecycle captures Python warnings and the shared
+  Loguru logger at `INFO` and above without writing to Textual from worker
+  threads. Reinstall that sink immediately after lazy project/MTH5 imports,
+  because MTH5 calls `logger.configure()` and replaces process-global handlers.
+  Drain the buffer on the UI thread every 250 ms and render Rich `Text`, not
+  markup supplied by log messages. Keep startup records buffered until the Logs
+  tab is visible, then write them at the pane's explicit content width and
+  rerender from the bounded buffer after a terminal resize; wrapping therefore
+  follows the screen width rather than RichLog's 78-column default. Retain
+  diagnostics across project switches for one
+  application session only; do not add general persistence, filtering,
+  clearing, exporting, or debug capture. Existing per-job files remain the
+  durable processing record, and direct callers using string
+  `startup_warnings` remain compatible through normalization at the app/screen
+  boundary.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -2738,3 +2775,139 @@ correct a factual error; note the correction explicitly.
 - Exact next action: inventory `ProjectExplorerScreen` state, indexing,
   validation, plotting-target, deletion-preview, and execution responsibilities
   and select the first UI-neutral service contract for failing-first unit tests.
+
+### S032 - 2026-07-21 - Extract project screen state and services
+
+- Checkpoint state at start: `5.3` was `in_progress`; Checkpoint 5.2 had been
+  committed by the owner at `8b84d31` after its verified extraction work.
+- Starting branch, HEAD, and worktree: `mth5` at `8b84d31` with only the
+  required empty `pyrefly-baseline.json` untracked and untouched.
+- Session objective: separate project discovery and mutations from Textual
+  presentation, keep service APIs usable without constructing an application,
+  and retain the project-screen pilot coverage.
+- Work completed: introduced `ProjectExplorerService` as the owner of explorer
+  indexing, project state, resource and job validation, YAML copy/write/delete,
+  template restoration, deletion options and previews, plot-target resolution,
+  plot construction, job execution, cancellation, and project lifecycle. Moved
+  shared typed state to `state.py`; the public deletion request is now a frozen
+  Pydantic model and private worker/action records remain dataclasses. Reduced
+  `app.py` to application and project-open orchestration; made
+  `screens.project` the concrete screen owner; and separated private data, job,
+  and resource presentation mixins without changing widget ids, bindings,
+  focus, lazy-worker, or generation-rejection behaviour. Removed unsupported
+  internal screen index/job aliases while preserving the public facade and
+  transitional app identities. Added service-only tests plus explicit DTO and
+  module-ownership contracts, and retained the Textual pilot tests.
+- Files changed by this checkpoint: `resistics/tui/app.py`,
+  `resistics/tui/state.py`, `resistics/tui/services.py`,
+  `resistics/tui/screens/dialogs.py`, `resistics/tui/screens/project.py`, the
+  new `project_base.py`, `project_data.py`, `project_jobs.py`, and
+  `project_resources.py` screen modules, `tests/test_cli.py`,
+  `tests/test_tui.py`, the new `tests/test_tui_services.py`,
+  `pydoclint-baseline.txt`, and this implementation record.
+- Decisions added or superseded: D046 records the UI-neutral service contract,
+  public-Pydantic/private-dataclass boundary, narrowed D042 import rule,
+  presentation ownership, compatibility surface, legacy internal-alias
+  removal, and module-size limits.
+- Verification commands and results:
+  - Three direct service tests passed without constructing a Textual app; the
+    combined service/CLI/TUI selection passed 45 tests, and the final complete
+    suite passed 417 tests in 26.49 seconds.
+  - Ruff format checked 56 maintained Python files and Ruff lint passed.
+    Pydoclint passed against its regenerated 1,761-line baseline; Pyrefly
+    reported zero errors with the two established suppressions. `uv lock
+    --check` resolved 174 packages, all seven pre-commit hooks passed, and
+    `git diff --check` passed.
+  - `uv build` produced the wheel and source distribution. Both contain every
+    new TUI module; wheel metadata retains
+    `resistics = resistics.tui:main`, and a direct wheel import proved facade
+    identity, concrete screen/service ownership, and the frozen Pydantic DTO
+    schema contract.
+- Measurements/artifacts: `app.py` fell from 2,565 to 388 lines; the concrete
+  project screen is 492 lines, its private presentation modules range from 88
+  to 756 lines, services are 642, and state is 118. All remain below the Phase
+  5 ceiling. Five independent CPython 3.13.5/WSL2 cold imports ranged from
+  0.2526 to 0.2908 seconds with a 0.2553-second median. The intentional eager
+  public Pydantic DTO raises the S031 timing while remaining 88.7% faster than
+  the 2.2659-second verified baseline and retaining deferred feature imports.
+  The ignored report is
+  `.artifacts/hardening/performance/tui-import-5.3-after.json`; build artifacts
+  are under `/tmp/resistics-checkpoint-5-3-dist-20260721/`.
+- Known failures or incomplete work: none within Checkpoint 5.3. The empty
+  Pyrefly artifact remains intentionally untracked. Shared flow/job graph
+  rendering remains Checkpoint 5.4.
+- Checkpoint state at end: `5.3` is `verified`; Checkpoint 5.4 is ready.
+- Commit readiness or commit id: the verified Checkpoint 5.3 service/screen
+  extraction, tests, artifacts, baseline, and record are ready for an
+  owner-selected commit; no commit was requested or created.
+- Exact next action: compare `plot_flow` and `plot_job` in `resistics/plot.py`,
+  capture shared rendering invariants in focused tests, and define the smallest
+  shared graph-rendering contract before extracting it.
+
+### S033 - 2026-07-21 - Add session diagnostic logs to the TUI
+
+- Checkpoint state at start: Checkpoint 5.3 was verified in S032 and its
+  service/screen extraction remained uncommitted; Checkpoint 5.4 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `8b84d31` with the verified
+  S032 changes plus the required empty `pyrefly-baseline.json` untracked. The
+  existing work was preserved and this feature was implemented as a focused
+  5.3 follow-up.
+- Session objective: retain MTH5/project-open warnings and the Loguru output
+  suppressed while Textual owns the terminal, without mixing diagnostics into
+  structured job progress or requiring filesystem persistence.
+- Work completed: added the frozen public `DiagnosticLogEntry` contract and a
+  private thread-safe 2,000-entry session buffer with incremental cursor reads
+  and rollover accounting. The official launcher now redirects Python warnings
+  and Loguru `INFO+` records into that buffer, restores the established stderr
+  behavior on exit, and reinstalls capture after lazy project/MTH5 imports that
+  reconfigure global Loguru handlers. Project-open workers preserve warning
+  category and source location in immutable results; accepted results alone add
+  their Python warnings to the app session, and direct string-warning callers
+  remain compatible. Added a separate focusable Logs tab, safely rendered on
+  the UI thread by a 250 ms drain. Startup records remain buffered until the
+  Logs tab has a real layout width; writes use that explicit width, and a
+  terminal resize triggers a bounded-buffer rerender. Activity remains
+  job-specific and can be cleared independently. Diagnostics survive project
+  switches but are not persisted; existing per-job files remain unchanged.
+- Files changed by this follow-up: `resistics/tui/__init__.py`,
+  `resistics/tui/app.py`, `resistics/tui/state.py`, the new
+  `resistics/tui/logging.py`, `resistics/tui/screens/launcher.py`,
+  `resistics/tui/screens/project.py`, `project_base.py`, the new
+  `project_logs.py`, `tests/test_cli.py`, `tests/test_tui.py`, the new
+  `tests/test_tui_logging.py`, `pydoclint-baseline.txt`, and this record.
+- Decisions added or superseded: D047 records the separate Logs/Activity
+  surfaces, public-Pydantic/private-buffer boundary, process-global capture and
+  MTH5 reinstall rule, UI-thread rendering, bounded session lifetime, retained
+  compatibility, and explicitly deferred persistence/filtering/export scope.
+- Verification commands and results:
+  - Focused logging, CLI, and TUI coverage passed 46 tests. The complete suite
+    passed all 421 tests in 27.30 seconds. The Logs pilot additionally proves a
+    diagnostic between 78 columns and the available content width remains on
+    one rendered line.
+  - Ruff formatting checked 59 maintained Python files and Ruff lint passed.
+    Pydoclint passed against a regenerated baseline reduced from 1,761 to 1,757
+    lines; Pyrefly reported zero errors with the two established suppressions.
+    `uv lock --check` resolved 174 packages and `git diff --check` passed.
+  - `uv build` produced the wheel and source distribution. Both contain the
+    diagnostic capture and Logs presentation modules; wheel metadata retains
+    `resistics = resistics.tui:main`, and a direct wheel import proved the
+    frozen DTO schema, facade identity, and usable empty buffer.
+- Measurements/artifacts: the concrete project screen is 499 lines, its Logs
+  mixin is 63, logging is 322, app is 436, state is 156, and every new module
+  remains below the Phase 5 ceiling. Five final CPython 3.13.5/WSL2 cold imports
+  ranged from 0.2494 to 0.2856 seconds with a 0.2715-second median, 88.0% faster
+  than the 2.2659-second verified baseline. The ignored report is
+  `.artifacts/hardening/performance/tui-import-5.3-logs-after.json`; artifacts
+  are under `/tmp/resistics-checkpoint-5-3-logs-dist-20260721/`.
+- Known failures or incomplete work: none within the diagnostic-logging
+  follow-up. General session persistence, filtering, clearing, exporting,
+  debug records, and unrelated standard-library logging remain intentionally
+  out of scope. Shared flow/job graph rendering remains Checkpoint 5.4.
+- Checkpoint state at end: the `5.3` follow-up is `verified`; Checkpoint 5.4
+  remains ready.
+- Commit readiness or commit id: the combined verified Checkpoint 5.3 service,
+  screen, and diagnostics work is ready for an owner-selected commit; no commit
+  was requested or created.
+- Exact next action: compare `plot_flow` and `plot_job` in `resistics/plot.py`,
+  capture shared rendering invariants in focused tests, and define the smallest
+  shared graph-rendering contract before extracting it.

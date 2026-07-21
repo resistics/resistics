@@ -151,6 +151,7 @@ class CreateProjectScreen(Screen[None]):
             return
         from resistics.project import open_mth5
 
+        _resistics_app(self)._reinstall_diagnostic_capture()
         try:
             source = open_mth5(mth5_path)
             try:
@@ -178,6 +179,7 @@ class CreateProjectScreen(Screen[None]):
         from resistics.project import init as init_project
         from resistics.sampling import to_datetime
 
+        _resistics_app(self)._reinstall_diagnostic_capture()
         project_name = self.query_one("#project-name", Input).value.strip()
         reference_time = self.query_one("#reference-time", Input).value.strip()
         if self.parent_path is None:

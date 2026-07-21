@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,6 +15,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, DirectoryTree, Input, Select, Static
 
 from resistics.tui.services import _focus_relative
+from resistics.tui.state import ProjectDataDeletionRequest
 
 if TYPE_CHECKING:
     from resistics.job import JobDefinition, JobValidation  # noqa: F401
@@ -412,13 +412,6 @@ class DeleteYamlFileScreen(ModalScreen[bool]):
             self.query_one("#confirm-delete-yaml", Button),
         ]
         _focus_relative(actions, self.focused, increment)
-
-
-@dataclass(frozen=True)
-class ProjectDataDeletionRequest:
-    """The user-selected scope for one destructive Data-tab action."""
-
-    output_label: str | None = None
 
 
 class DeleteProjectDataScreen(ModalScreen[ProjectDataDeletionRequest | None]):

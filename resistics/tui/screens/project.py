@@ -1,1 +1,501 @@
-"""Project-screen boundary reserved for the Checkpoint 5.3 extraction."""
+"""Project explorer screen and Textual presentation wiring."""
+
+from __future__ import annotations
+
+from functools import partial
+
+from textual import on, work
+from textual.app import ComposeResult
+from textual.binding import Binding
+from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.widgets import (
+    DataTable,
+    Footer,
+    RichLog,
+    Static,
+    TabbedContent,
+    TabPane,
+    TextArea,
+    Tree,
+)
+from textual.worker import Worker, WorkerState
+
+from resistics.tui.screens.launcher import TuiHeader
+from resistics.tui.screens.project_data import _ProjectDataMixin
+from resistics.tui.screens.project_jobs import _ProjectJobsMixin
+from resistics.tui.screens.project_logs import _ProjectLogsMixin
+from resistics.tui.screens.project_resources import _ProjectResourcesMixin
+from resistics.tui.services import (
+    _resistics_app,
+    _run_in_worker_thread,
+)
+from resistics.tui.state import (
+    ExplorerView,
+    _ExplorerLoadResult,
+)
+
+
+class ProjectExplorerScreen(
+    _ProjectDataMixin,
+    _ProjectJobsMixin,
+    _ProjectLogsMixin,
+    _ProjectResourcesMixin,
+):
+    """Project browser and YAML editor with managed processing-job execution."""
+
+    BINDINGS = [
+        ("r", "refresh", "Refresh"),
+        ("d", "restore_defaults", "Restore defaults"),
+        ("n", "create_job", "New job"),
+        ("e", "edit_yaml", "Edit YAML"),
+        ("y", "copy_yaml", "Copy YAML"),
+        ("delete", "delete_yaml", "Delete"),
+        ("ctrl+s", "save_yaml", "Save YAML"),
+        Binding("escape", "discard_yaml", "Discard YAML", priority=True),
+        ("j", "run_selected_job", "Run job"),
+        ("p", "plot", "Plot"),
+        ("right_square_bracket", "expand_data_node", "Expand"),
+        ("left_square_bracket", "collapse_data_node", "Collapse"),
+        ("c", "cancel_job", "Cancel job"),
+        ("x", "close_project", "Close project"),
+        ("q", "quit", "Quit"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        yield TuiHeader(id="app-header")
+        with TabbedContent(initial="project"):
+            with TabPane("Project", id="project"):
+                with VerticalScroll(classes="pane"):
+                    yield Static(id="project-content")
+            with TabPane("Data", id="data"):
+                with Horizontal(classes="pane split"):
+                    with Vertical(classes="left"):
+                        data_tree = Tree("Data", id="data-tree")
+                        data_tree.show_root = False
+                        yield data_tree
+                    with Vertical(classes="right"):
+                        yield TextArea.code_editor(
+                            '{\n  "message": "Select Project or MTH5 data"\n}',
+                            language="json",
+                            theme="vscode_dark",
+                            read_only=True,
+                            id="data-metadata",
+                        )
+            with TabPane("Flows", id="flows"), Vertical(classes="pane"):
+                with Horizontal(classes="split"):
+                    with Vertical(classes="left"):
+                        yield DataTable(id="flow-table", cursor_type="row")
+                    with Vertical(classes="right"):
+                        yield TextArea.code_editor(
+                            "Select a flow",
+                            language="yaml",
+                            theme="vscode_dark",
+                            read_only=True,
+                            id="flow-content",
+                        )
+            with TabPane("Parameters", id="parameters"):
+                with Vertical(classes="pane"):
+                    with Horizontal(classes="split"):
+                        with Vertical(classes="left"):
+                            yield DataTable(id="parameter-table", cursor_type="row")
+                        with Vertical(classes="right"):
+                            yield TextArea.code_editor(
+                                "Select a parameter set",
+                                language="yaml",
+                                theme="vscode_dark",
+                                read_only=True,
+                                id="parameter-content",
+                            )
+            with TabPane("Criteria", id="criteria"):
+                with Vertical(classes="pane"):
+                    with Horizontal(classes="split"):
+                        with Vertical(classes="left"):
+                            yield DataTable(id="criteria-table", cursor_type="row")
+                        with Vertical(classes="right"):
+                            yield TextArea.code_editor(
+                                "Select a criteria file",
+                                language="yaml",
+                                theme="vscode_dark",
+                                read_only=True,
+                                id="criteria-content",
+                            )
+            with TabPane("Jobs", id="jobs"), Vertical(classes="pane"):
+                with Horizontal(classes="split"):
+                    with Vertical(classes="left"):
+                        yield DataTable(id="job-table", cursor_type="row")
+                    with Vertical(classes="right"):
+                        yield TextArea.code_editor(
+                            "Select a job",
+                            language="yaml",
+                            theme="vscode_dark",
+                            read_only=True,
+                            id="job-content",
+                        )
+            with TabPane("Activity", id="activity"):
+                with Vertical(classes="pane"):
+                    yield Static("No active job", id="activity-status")
+                    yield RichLog(id="activity-log", markup=True, wrap=True)
+            with TabPane("Logs", id="logs"):
+                with Vertical(classes="pane"):
+                    yield Static("Session logs · INFO+", id="logs-status")
+                    yield RichLog(
+                        id="logs-log",
+                        max_lines=4_000,
+                        wrap=True,
+                        auto_scroll=True,
+                    )
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self.query_one("#project-content", Static).update(
+            "[bold]Loading project overview…[/bold]"
+        )
+        self._start_log_updates()
+        self._request_explorer_section("project")
+
+    def on_unmount(self) -> None:
+        self._load_generation += 1
+        self.workers.cancel_group(self, "explorer-load")
+        self.service.close()
+
+    @work(group="explorer-load", exit_on_error=False)
+    async def _load_explorer_section(
+        self, generation: int, section: ExplorerView
+    ) -> _ExplorerLoadResult:
+        """Load one explorer section without touching Textual widgets.
+
+        Parameters
+        ----------
+        generation : int
+            Screen generation requesting the load.
+        section : ExplorerView
+            Explorer section to discover.
+
+        Returns
+        -------
+        _ExplorerLoadResult
+            Immutable result consumed on the Textual UI thread.
+        """
+        return await _run_in_worker_thread(
+            partial(self._discover_explorer_section, generation, section)
+        )
+
+    def _discover_explorer_section(
+        self, generation: int, section: ExplorerView
+    ) -> _ExplorerLoadResult:
+        """Perform one synchronous discovery operation in a worker thread.
+
+        Parameters
+        ----------
+        generation : int
+            Screen generation requesting the load.
+        section : ExplorerView
+            Explorer section to discover.
+
+        Returns
+        -------
+        _ExplorerLoadResult
+            Immutable success or failure result containing no widgets.
+        """
+        try:
+            with self.service.discovery():
+                if section in {"project", "data"}:
+                    state = self.service.project_state()
+                    runs = self.service.runs() if section == "data" else ()
+                    return _ExplorerLoadResult(
+                        generation=generation,
+                        section=section,
+                        state=state,
+                        runs=runs,
+                    )
+                if section == "jobs":
+                    return _ExplorerLoadResult(
+                        generation=generation,
+                        section=section,
+                        jobs=self.service.jobs(),
+                    )
+                return _ExplorerLoadResult(
+                    generation=generation,
+                    section=section,
+                    resources=self.service.resources(section),
+                )
+        except Exception as exc:
+            return _ExplorerLoadResult(
+                generation=generation,
+                section=section,
+                error=str(exc),
+            )
+
+    def _request_explorer_section(
+        self, section: ExplorerView, *, force: bool = False
+    ) -> None:
+        """Start one lazy section load unless its current generation is ready.
+
+        Parameters
+        ----------
+        section : ExplorerView
+            Explorer view whose cached data is required.
+        force : bool
+            Reload a section even when it is already marked ready.
+        """
+        if not force and (
+            section in self._loaded_sections or section in self._loading_sections
+        ):
+            return
+        self._loaded_sections.discard(section)
+        self._loading_sections.add(section)
+        self._show_section_loading(section)
+        self._load_explorer_section(self._load_generation, section)
+
+    def _show_section_loading(self, section: ExplorerView) -> None:
+        """Render a lightweight loading placeholder without performing I/O.
+
+        Parameters
+        ----------
+        section : ExplorerView
+            Explorer section whose content is loading.
+        """
+        if section == "project":
+            self.query_one("#project-content", Static).update(
+                "[bold]Loading project overview…[/bold]"
+            )
+        elif section == "data":
+            tree = self.query_one("#data-tree", Tree)
+            tree.clear()
+            tree.root.add_leaf("Loading project data…")
+        else:
+            editor_ids = {
+                "flows": "#flow-content",
+                "parameters": "#parameter-content",
+                "criteria": "#criteria-content",
+                "jobs": "#job-content",
+            }
+            self.query_one(editor_ids[section], TextArea).text = "Loading…"
+
+    @on(Worker.StateChanged)
+    def _apply_explorer_worker_result(self, event: Worker.StateChanged) -> None:
+        """Apply successful current-generation discovery on the UI thread.
+
+        Parameters
+        ----------
+        event : Worker.StateChanged
+            Textual lifecycle event for a discovery worker.
+        """
+        if event.state != WorkerState.SUCCESS or event.worker.group != "explorer-load":
+            return
+        result = event.worker.result
+        if not isinstance(result, _ExplorerLoadResult):
+            return
+        if result.generation != self._load_generation:
+            return
+        self._loading_sections.discard(result.section)
+        if result.error is not None:
+            self._show_section_error(result.section, result.error)
+            self.refresh_bindings()
+            return
+        with self.app.batch_update():
+            self._render_explorer_result(result)
+        self._loaded_sections.add(result.section)
+        self.refresh_bindings()
+
+    def _render_explorer_result(self, result: _ExplorerLoadResult) -> None:
+        """Mutate widgets from one current worker result on the UI thread.
+
+        Parameters
+        ----------
+        result : _ExplorerLoadResult
+            Successful current-generation discovery result.
+        """
+        if result.section == "project" and result.state is not None:
+            self._populate_overview(result.state)
+        elif result.section == "data" and result.state is not None:
+            self._populate_data_tree(result.state)
+        elif result.section == "flows":
+            self._populate_flows(result.resources)
+        elif result.section == "parameters":
+            self._populate_parameters(result.resources)
+        elif result.section == "criteria":
+            self._populate_criteria(result.resources)
+        elif result.section == "jobs":
+            self._populate_jobs(result.jobs)
+            self._restore_pending_job_selection(result.jobs)
+
+    def _show_section_error(self, section: ExplorerView, error: str) -> None:
+        """Replace one loading placeholder with a user-facing failure.
+
+        Parameters
+        ----------
+        section : ExplorerView
+            Explorer section whose load failed.
+        error : str
+            Failure detail returned by the worker.
+        """
+        message = f"Unable to load {section}: {error}"
+        if section == "project":
+            self.query_one("#project-content", Static).update(f"[red]{message}[/red]")
+        elif section == "data":
+            tree = self.query_one("#data-tree", Tree)
+            tree.clear()
+            tree.root.add_leaf(message)
+        else:
+            editor_ids = {
+                "flows": "#flow-content",
+                "parameters": "#parameter-content",
+                "criteria": "#criteria-content",
+                "jobs": "#job-content",
+            }
+            self.query_one(editor_ids[section], TextArea).text = message
+        self.notify(message, severity="error")
+
+    def _start_new_load_generation(self) -> None:
+        """Reject outstanding results before a cache invalidation transition."""
+        self._load_generation += 1
+        self._loading_sections.clear()
+        self.workers.cancel_group(self, "explorer-load")
+
+    @on(TabbedContent.TabActivated)
+    def refresh_tab_bindings(self) -> None:
+        """Lazily load the active explorer tab and refresh its Footer."""
+        active = self.query_one(TabbedContent).active
+        if active in {"project", "data", "flows", "parameters", "criteria", "jobs"}:
+            self._request_explorer_section(active)
+        elif active == "logs":
+            self._activate_log_view()
+        self.refresh_bindings()
+
+    def _check_resource_action(self, action: str, active: str) -> bool:
+        """Check one YAML-resource action using only in-memory state.
+
+        Parameters
+        ----------
+        action : str
+            Action name to check.
+        active : str
+            Identifier of the active tab.
+
+        Returns
+        -------
+        bool
+            Whether the action is currently available.
+        """
+        if active in {"flows", "parameters", "criteria", "jobs"} and (
+            active not in self._loaded_sections
+        ):
+            return False
+        if action == "edit_yaml":
+            return (
+                not self.editing_yaml
+                and self.job_state != self._job_state_type.running
+                and self._yaml_edit_target() is not None
+            )
+        if action == "create_job":
+            return (
+                active == "jobs"
+                and not self.editing_yaml
+                and self.job_state != self._job_state_type.running
+            )
+        if action == "delete_yaml" and active == "data":
+            return (
+                not self.editing_yaml
+                and self.job_state != self._job_state_type.running
+                and self.action_state.has_project_data_to_delete
+            )
+        if action in {"copy_yaml", "delete_yaml"}:
+            return (
+                not self.editing_yaml
+                and self.job_state != self._job_state_type.running
+                and (
+                    self._highlighted_yaml_file() is not None
+                    or self._selected_yaml_file() is not None
+                )
+            )
+        if action in {"save_yaml", "discard_yaml"}:
+            return self.editing_yaml
+        return not self.editing_yaml and active in {
+            "flows",
+            "parameters",
+            "criteria",
+        }
+
+    def check_action(self, action: str, parameters: tuple[object, ...]):
+        """Expose only Footer actions relevant to cached screen state."""
+        tabbed_content = self.query(TabbedContent)
+        if not tabbed_content.nodes:
+            return False
+        active = tabbed_content.first(TabbedContent).active
+        resource_actions = {
+            "edit_yaml",
+            "create_job",
+            "copy_yaml",
+            "delete_yaml",
+            "save_yaml",
+            "discard_yaml",
+            "restore_defaults",
+        }
+        if action in resource_actions:
+            return self._check_resource_action(action, active)
+        if action == "close_project":
+            return (
+                self.job_state != self._job_state_type.running and not self.editing_yaml
+            )
+        if action == "run_selected_job":
+            return self._check_selected_job_action(active)
+        if action == "cancel_job":
+            return (
+                active == "activity" and self.job_state == self._job_state_type.running
+            )
+        if action in {"expand_data_node", "collapse_data_node"}:
+            return self._check_data_tree_action(action)
+        if action == "plot":
+            return self._check_plot_action(active)
+        return super().check_action(action, parameters)
+
+    def action_refresh(self) -> None:
+        if self.job_state == self._job_state_type.running:
+            self.notify("Refresh is unavailable while a job is running")
+            return
+        if self.editing_yaml:
+            self.notify(
+                "Save or discard the current YAML edits first", severity="warning"
+            )
+            return
+        active = self.query_one(TabbedContent).active
+        section: ExplorerView = (
+            active
+            if active in {"project", "data", "flows", "parameters", "criteria", "jobs"}
+            else "project"
+        )
+        self._start_new_load_generation()
+        self.service.invalidate_all()
+        self._loaded_sections.clear()
+        self._request_explorer_section(section, force=True)
+        self.refresh_bindings()
+        self.notify("Project refreshed")
+
+    def action_close_project(self) -> None:
+        if self.job_state == self._job_state_type.running:
+            self.notify(
+                "Close project is unavailable while a job is running",
+                severity="warning",
+            )
+            return
+        if self.editing_yaml:
+            self.notify(
+                "Save or discard the current YAML edits first", severity="warning"
+            )
+            return
+        _resistics_app(self).show_home()
+
+    def action_quit(self) -> None:
+        if self.job_state == self._job_state_type.running:
+            self.notify(
+                "A job is running. Press C to request cancellation before quitting.",
+                severity="warning",
+            )
+            return
+        if self.editing_yaml:
+            self.notify(
+                "Save or discard the current YAML edits first", severity="warning"
+            )
+            return
+        self.app.exit()
