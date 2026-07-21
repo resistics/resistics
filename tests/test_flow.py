@@ -2,6 +2,7 @@
 
 import pytest
 
+import resistics.flow as flow_module
 from resistics.common import (
     CancellationCallback,
     ProcessingProgressCallback,
@@ -19,18 +20,14 @@ from resistics.flow import (
     ProcessCatalog,
     ProcessingJob,
     default_parameter_set,
-    evals_to_tf_flow,
-    mask_calculation_example_flow,
-    mask_calculation_example_parameter_set,
     mask_calculation_flow,
     mask_calculation_parameter_set,
     model_from_yaml,
     model_to_yaml,
     remote_reference_mt_flow,
     resolve_process_class,
+    single_site_mt_flow,
     single_site_mt_target_flow,
-    standard_mt_flow,
-    time_to_evals_flow,
     topological_order,
 )
 
@@ -43,6 +40,16 @@ RUNTIME = {
     "staging_output_path",
     "criteria",
 }
+
+
+def test_unused_legacy_flow_builders_are_removed():
+    for name in (
+        "evals_to_tf_flow",
+        "mask_calculation_example_flow",
+        "mask_calculation_example_parameter_set",
+        "time_to_evals_flow",
+    ):
+        assert not hasattr(flow_module, name)
 
 
 class Source(ResisticsProcess):
@@ -94,7 +101,7 @@ class ProgressSource(ResisticsProcess):
 def get_processing_job(flow=None, params=None):
     return ProcessingJob(
         name="test-job",
-        flow=flow or standard_mt_flow(),
+        flow=flow or single_site_mt_flow(),
         parameters=params or default_parameter_set(),
         runtime={"project_path": "/tmp/project"},
         output_label="test",
@@ -104,11 +111,9 @@ def get_processing_job(flow=None, params=None):
 @pytest.mark.parametrize(
     "flow",
     [
-        standard_mt_flow(),
+        single_site_mt_flow(),
         single_site_mt_target_flow(),
         remote_reference_mt_flow(),
-        time_to_evals_flow(),
-        evals_to_tf_flow(),
     ],
 )
 def test_default_flows_validate_with_shared_defaults(flow):
@@ -143,7 +148,7 @@ def test_executor_makes_the_job_output_label_authoritative():
 
 
 def test_standard_flow_has_durable_run_and_station_rate_stages():
-    stages = standard_mt_flow().flow_stages()
+    stages = single_site_mt_flow().flow_stages()
 
     assert [(stage.stage_id, stage.scope) for stage in stages] == [
         ("time_to_evals", "run"),
@@ -185,18 +190,13 @@ def test_mask_process_name_is_not_user_configurable():
     assert "Extra inputs are not permitted" in result.errors[0]
 
 
-def test_mask_example_names_remain_compatibility_aliases():
-    assert mask_calculation_example_flow() == mask_calculation_flow()
-    assert mask_calculation_example_parameter_set() == mask_calculation_parameter_set()
-
-
 def test_flow_serialization_has_no_ui_or_process_parameters():
-    yaml_text = model_to_yaml(standard_mt_flow())
+    yaml_text = model_to_yaml(single_site_mt_flow())
 
     assert "position:" not in yaml_text
     assert "parameters:" not in yaml_text
     assert "process: resistics." in yaml_text
-    assert model_from_yaml(FlowDefinition, yaml_text) == standard_mt_flow()
+    assert model_from_yaml(FlowDefinition, yaml_text) == single_site_mt_flow()
 
 
 def test_flow_requires_explicit_stages():

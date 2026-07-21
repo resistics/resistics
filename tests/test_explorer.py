@@ -15,7 +15,7 @@ from resistics.explorer import (
     ProjectExplorerIndex,
     ProjectExplorerState,
 )
-from resistics.flow import default_parameter_set, model_to_yaml, standard_mt_flow
+from resistics.flow import default_parameter_set, model_to_yaml, single_site_mt_flow
 from resistics.job import JobDefinition
 from resistics.project import (
     MTH5FileSummary,
@@ -131,7 +131,7 @@ def test_project_index_invalidates_only_requested_sections(tmp_path):
     project = CountingProject(tmp_path / "project")
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    flow_path.write_text(model_to_yaml(single_site_mt_flow()))
     index = ProjectExplorerIndex(project)
 
     project_state = index.project_state()
@@ -194,7 +194,7 @@ def test_project_index_reparses_stale_files_after_invalidation(tmp_path):
     project = CountingProject(tmp_path / "project")
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    flow_path.write_text(model_to_yaml(single_site_mt_flow()))
     index = ProjectExplorerIndex(project)
 
     valid = index.resources("flows")[0]
@@ -239,7 +239,7 @@ def test_project_index_detects_deleted_resources_on_explicit_refresh(tmp_path):
     project = CountingProject(tmp_path / "project")
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    flow_path.write_text(model_to_yaml(single_site_mt_flow()))
     index = ProjectExplorerIndex(project)
 
     assert [record.path for record in index.resources("flows")] == [flow_path]
@@ -256,7 +256,7 @@ def test_project_index_lists_jobs_without_reparsing_referenced_resources(
     project = CountingProject(tmp_path / "project")
     processing_path = project.project_path / "processing"
     resources = {
-        processing_path / "flows/standard.yaml": standard_mt_flow(),
+        processing_path / "flows/standard.yaml": single_site_mt_flow(),
         processing_path / "parameters/default.yaml": default_parameter_set(),
         processing_path / "jobs/field.yaml": JobDefinition(
             name="field", flow="standard.yaml", parameters="default.yaml"
@@ -292,7 +292,7 @@ def test_project_index_invalidates_jobs_when_a_referenced_flow_changes(tmp_path)
     processing_path = project.project_path / "processing"
     flow_path = processing_path / "flows/standard.yaml"
     resources = {
-        flow_path: standard_mt_flow(),
+        flow_path: single_site_mt_flow(),
         processing_path / "parameters/default.yaml": default_parameter_set(),
         processing_path / "jobs/field.yaml": JobDefinition(
             name="field", flow="standard.yaml", parameters="default.yaml"

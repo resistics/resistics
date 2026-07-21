@@ -722,16 +722,6 @@ def mask_calculation_parameter_set() -> ParameterSet:
     )
 
 
-def mask_calculation_example_flow() -> FlowDefinition:
-    """Backward-compatible alias for :func:`mask_calculation_flow`."""
-    return mask_calculation_flow()
-
-
-def mask_calculation_example_parameter_set() -> ParameterSet:
-    """Backward-compatible alias for :func:`mask_calculation_parameter_set`."""
-    return mask_calculation_parameter_set()
-
-
 def single_site_mt_flow() -> FlowDefinition:
     """Run all time-to-evaluations work before station/rate regression."""
     return FlowDefinition(
@@ -799,47 +789,6 @@ def remote_reference_mt_flow() -> FlowDefinition:
             ),
         ],
     )
-
-
-def time_to_evals_flow() -> FlowDefinition:
-    """Return the legacy standalone first-stage flow.
-
-    Kept for library compatibility; it is not a built-in project template now
-    that the supported defaults are complete two-stage flows.
-    """
-    return FlowDefinition(
-        id="time_to_evals",
-        name="Time to Evaluation Frequencies",
-        description="Create aligned evaluation-frequency data for later processing.",
-        stages=[
-            FlowStage(
-                stage_id="time_to_evals",
-                scope="run",
-                nodes=_time_to_evals_nodes("resistics.window.Windower"),
-            )
-        ],
-    )
-
-
-def evals_to_tf_flow() -> FlowDefinition:
-    """Return the legacy standalone second-stage flow."""
-    return FlowDefinition(
-        id="evals_to_tf",
-        name="Evaluation Frequencies to Transfer Function",
-        description="Estimate a single-site impedance transfer function.",
-        stages=[
-            FlowStage(
-                stage_id="evals_to_tf",
-                scope="station_rate",
-                nodes=_evals_to_tf_nodes(),
-            )
-        ],
-    )
-
-
-def standard_mt_flow() -> FlowDefinition:
-    """Backward-compatible name for the standard single-site flow."""
-    return single_site_mt_flow()
 
 
 def default_parameter_set(project_path: Path | None = None) -> ParameterSet:

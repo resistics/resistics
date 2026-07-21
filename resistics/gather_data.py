@@ -18,7 +18,7 @@ from resistics.common import (
     validate_output_label,
 )
 from resistics.decimate import DecimationParameters
-from resistics.gather_criteria import GatherCriteria, GatherSelection
+from resistics.gather_criteria import GatherSelection
 from resistics.gather_plan import _EvaluationLocator, _GatherPlan
 from resistics.spectra import SpectraData, SpectraMetadata
 from resistics.transfunc import TransferFunction
@@ -80,7 +80,6 @@ class EvaluationFrequencyGather(ResisticsProcess):
                     "run_batch": {"survey": survey, "station": station, "run": run},
                 },
             )
-            artifact = self._apply_criteria(artifact, selection.criteria)
             gathered.append(
                 QuickGather().run(
                     Path(run_path),
@@ -92,27 +91,6 @@ class EvaluationFrequencyGather(ResisticsProcess):
         if not gathered:
             raise ValueError("No evaluation-frequency artifacts selected for gather")
         return self._combine(gathered)
-
-    @staticmethod
-    def _apply_criteria(artifact: Any, criteria: GatherCriteria) -> Any:
-        """Drop persisted evaluation windows excluded by the reusable criteria."""
-        data = artifact.spectra_data
-        metadata = data.metadata.model_copy(deep=True)
-        selected = {}
-        for level in range(metadata.n_levels):
-            timestamps = data.get_timestamps(level)
-            mask = np.array(
-                [
-                    criteria.includes(timestamp.to_pydatetime())
-                    for timestamp in timestamps
-                ]
-            )
-            selected[level] = data.get_level(level)[mask]
-            metadata.levels_metadata[level].n_wins = int(mask.sum())
-        if not any(level_data.shape[0] for level_data in selected.values()):
-            raise ValueError("Gather criteria excludes every evaluation window")
-        artifact.spectra_data = SpectraData(metadata, selected)
-        return artifact
 
     @staticmethod
     def _combine(values: list[GatheredData]) -> GatheredData:

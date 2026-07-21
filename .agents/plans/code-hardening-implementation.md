@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 5.6 verified; Checkpoint 5.7 ready
+Status: in progress; Checkpoint 5.7 and Gate 5 verified; Checkpoint 6.1 ready
 Created: 2026-07-19
 Last updated: 2026-07-21
 Working branch: `mth5`
@@ -26,21 +26,20 @@ the two documents do not drift independently.
 ## Current State
 
 - Programme state: `in_progress`
-- Active phase: Phase 5 - Split large modules at stable boundaries
-- Active checkpoint: `5.7` (`resistics`) - Remove or relocate dead and test-only code
+- Active phase: Phase 6 - Dependencies, security, and compatibility
+- Active checkpoint: `6.1` (`resistics`) - Audit direct dependencies
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `5.6` in `S036`
-- Last verified checkpoint: `5.6` in `S036`
-- Last session: `S036`
-- Last verified commit: resistics `34707a8`, recording the Checkpoint 5.5
-  gather responsibility split;
+- Last completed checkpoint: `5.7` in `S037`
+- Last verified checkpoint: `5.7` and Gate 5 in `S037`
+- Last session: `S037`
+- Last verified commit: resistics `155d53b`, recording the Checkpoint 5.6
+  MTH5 ownership boundary and legacy cleanup;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: inventory the empty `resq.py`, zero-byte notebook,
-  commented time-processing blocks, unused helpers, and every public-doctest
-  versus assertion-factory caller in `resistics/testing.py` before defining
-  the Checkpoint 5.7 deletion and relocation boundary.
+- Next exact action: map every direct runtime dependency to production imports
+  and every optional/development dependency to its docs, test, notebook, or
+  tooling owner before proposing Checkpoint 6.1 metadata changes.
 
 Current worktree caveat:
 
@@ -51,10 +50,10 @@ Current worktree caveat:
   cleanup, TUI package facade, dialog/launcher extraction, tests, lock refresh,
   and pydoclint baseline refresh are committed through `675cfde`, including
   the S032 project service/screen extraction and S033 session diagnostics
-  follow-up. Checkpoint 5.4 is committed at `c8b938f`, and Checkpoint 5.5 is
-  committed at `34707a8`. The verified Checkpoint 5.6 MTH5 boundary cleanup
-  remains uncommitted. The required empty `pyrefly-baseline.json` remains
-  untracked.
+  follow-up. Checkpoint 5.4 is committed at `c8b938f`, Checkpoint 5.5 at
+  `34707a8`, and Checkpoint 5.6 at `155d53b`. The verified Checkpoint 5.7 dead
+  and test-only cleanup remains uncommitted. The required empty
+  `pyrefly-baseline.json` remains untracked.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -254,8 +253,8 @@ or short command/result reference. Detailed output belongs in the session log or
 | 5.4 | resistics | `verified` | S034; thin adapters; shared renderer; 421 tests |
 | 5.5 | resistics | `verified` | S035; responsibility split; 425 tests; artifacts verified |
 | 5.6 | resistics | `verified` | S036; explicit handle ownership; 423 tests; artifacts verified |
-| 5.7 | resistics | `not_started` | Verified dead-code cleanup |
-| Gate 5 | resistics | `not_started` | Depends on 5.1-5.7 |
+| 5.7 | resistics | `verified` | S037; 422 tests; root Ruff and artifacts verified |
+| Gate 5 | resistics | `verified` | S030-S037; public removals documented; graph behavior protected |
 | 6.1 | resistics | `not_started` | Direct dependency map |
 | 6.2 | resistics | `not_started` | Credible lower-bound matrix |
 | 6.3 | resistics | `not_started` | Audit and workflow monitoring |
@@ -394,14 +393,15 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 423 passed | S036 |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 422 passed | S037 |
 | Branch coverage | approximately 76% | 75.96% | 76.19% | S014; coverage XML |
-| Production Python | approximately 21,011 lines | 21,015 | 24,784 | S036 report |
-| Tests | approximately 5,941 lines | 6,051 | 8,192 | S036 report |
+| Production Python | approximately 21,011 lines | 21,015 | 24,071 | S037 report |
+| Tests | approximately 5,941 lines | 6,051 | 7,757 | S037 report |
 | `resistics/tui.py` | 2,673 lines | 2,673 | `app.py` 436; project/logging modules 2,923 | S033 report |
 | `resistics/plot.py` | 1,200 lines | 1,200 | plot 700; flow graph 617 | S034 report |
 | `resistics/gather.py` | 1,235 lines | 1,235 | facade 183; criteria 247; data 582; plan 312; project 645 | S035 report |
 | `resistics/project.py` | 1,224 lines | 1,224 | project 1,209; private MTH5 boundary 291 | S036 report |
+| `resistics/testing.py` | 1,296 lines | 1,296 | 816; suite-only factories 195 under tests | S037 report |
 | Flake8 | approximately 40 findings | 43 findings | 43 findings | S001 |
 | Legacy complexity | not recorded | 17 CCR001; 5 C901; 4 ECE001 | same | S002 |
 | Black format | not recorded | 26 files differ | 26 files differ | S001 |
@@ -1836,6 +1836,19 @@ correct a factual error; note the correction explicitly.
   canonical results tree and document these intentional removals in the next
   release notes. Defer tracked notebook modernization to Checkpoint 5.7, whose
   governing scope explicitly owns notebook review.
+- `D051` (2026-07-21): Keep `resistics.testing` as installed support for the
+  small builders imported by executable API documentation, not as a home for
+  the repository's regression factories or comparison assertions. Move the
+  still-used linear-time, evaluation-data, random-solution, and solution
+  comparison machinery to `tests.synthetic_data`; delete unused history,
+  spectra-metadata, time comparison, and bulk evaluation fixtures. Remove the
+  empty `resq` placeholder, fully commented `Join` prototype, unreferenced
+  exploratory notebooks and request data, always-true timestamp gather hook,
+  and legacy flow builders after call-site and documentation searches. Use
+  `single_site_mt_flow` as the canonical maintained flow builder; document the
+  deliberate public removals rather than retaining more aliases. Defer removal
+  of the now-suspect notebook dependency group to Checkpoint 6.1, where all
+  direct and optional dependencies are reviewed together.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -3156,3 +3169,75 @@ correct a factual error; note the correction explicitly.
   commented time-processing blocks, unused helpers, and every public-doctest
   versus assertion-factory caller in `resistics/testing.py` before defining
   the Checkpoint 5.7 deletion and relocation boundary.
+
+### S037 - 2026-07-21 - Remove verified dead and test-only code
+
+- Checkpoint state at start: Checkpoint 5.6 was committed and verified;
+  Checkpoint 5.7 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `155d53b` with only the
+  required empty `pyrefly-baseline.json` untracked. No unrelated tracked change
+  was present or modified.
+- Session objective: remove or relocate every governing Checkpoint 5.7
+  candidate only after repository-wide code, test, documentation, notebook,
+  history, and release-note searches established its owner or absence.
+- Work completed: deleted the empty `resq` namespace, all eight unreferenced
+  exploratory/empty/obsolete notebooks, their unused FDSN request CSV, the
+  unreferenced 673-line evaluation fixture module, and the 153-line commented
+  `Join` prototype. Reduced installed `resistics.testing` to the stable builders
+  imported by executable documentation. Moved still-used linear time data,
+  evaluation data, random transfer-function/solution factories, and solution
+  comparison into the new test-owned `tests.synthetic_data`; removed unused
+  history, multilevel-spectra, and time-comparison helpers. Removed four unused
+  flow builders plus `standard_mt_flow`, migrated maintained tests and fixtures
+  to canonical `single_site_mt_flow`, and removed the always-true criteria hook
+  and its allocation/copy pass from persisted evaluation gathering. Added
+  explicit boundary tests, testing-module documentation, and next-release
+  removal notes. The obsolete package-specific Ruff exception disappeared with
+  its assertion/random machinery.
+- Files changed by this checkpoint: production flow, gather criteria/data,
+  testing, and time modules; deleted `resq.py`, all tracked notebook assets, and
+  `tests/testing_data_evals.py`; the new `tests/synthetic_data.py`; seven test
+  modules plus migrated explorer/TUI fixture callers; Ruff configuration,
+  pydoclint baseline, changelog, testing API page, and this implementation
+  record.
+- Decisions added or superseded: D051 records the installed-doctest versus
+  suite-only testing boundary, canonical flow builder, verified deletions, and
+  dependency-group deferral to Checkpoint 6.1.
+- Verification commands and results:
+  - Focused testing/numerical/gather/regression/flow coverage passed 71 tests;
+    the flow/explorer/TUI migration set passed 66 tests. The complete suite
+    passed all 422 tests in 27.28 seconds.
+  - Repository-root Ruff formatting and lint passed all 64 maintained Python
+    files with no notebook exclusions or failures. Pydoclint passed with its
+    production baseline reduced from 1,672 to 1,637 lines. Pyrefly reported
+    zero errors with the two established suppressions; `uv lock --check`
+    resolved 174 packages and `git diff --check` passed.
+  - The standard gallery-disabled Sphinx build exited zero and generated the
+    reduced testing API. Established offline intersphinx, duplicate-object, and
+    ignored stale-gallery warnings remain unrelated to this checkpoint.
+  - The sandboxed build initially failed while resolving isolated Hatchling;
+    the approved network-enabled retry produced wheel and sdist under
+    `/tmp/resistics-checkpoint-5-7-dist-20260721/`. The sdist contains the
+    test-owned synthetic factory; neither artifact contains `resq`, notebooks,
+    or obsolete assets. A direct wheel import proved retained doctest builders
+    work and every removed flow/testing API is absent.
+- Measurements/artifacts: production Python is 24,071 lines and tests are
+  7,757 lines. `resistics.testing` fell from 1,296 to 816 lines, its cohesive
+  suite-only replacement is 195 lines, and `time.py` fell from 2,718 to 2,565
+  lines. The checkpoint removes 3,336 tracked lines overall before its focused
+  tests and release documentation. Build and docs artifacts exist only under
+  `/tmp`.
+- Known failures or incomplete work: none within Checkpoint 5.7 or the Phase 5
+  review gate. With no tracked notebooks remaining, the `notebooks` dependency
+  group is a deliberate Checkpoint 6.1 audit candidate rather than a metadata
+  change hidden in this cleanup. The required empty `pyrefly-baseline.json`
+  remains intentionally untracked.
+- Checkpoint state at end: `5.7` and the Phase 5 review gate are `verified`;
+  Checkpoint 6.1 is ready.
+- Commit readiness or commit id: the dead/test-only cleanup, canonical caller
+  migrations, focused protections, documentation, baseline, artifacts, and
+  record are verified and ready for an owner-selected commit; no commit was
+  requested or created.
+- Exact next action: map every direct runtime dependency to production imports
+  and every optional/development dependency to its docs, test, notebook, or
+  tooling owner before proposing Checkpoint 6.1 metadata changes.

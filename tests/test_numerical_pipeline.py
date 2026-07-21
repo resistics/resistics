@@ -18,7 +18,6 @@ from resistics.spectra import (
     SpectraDataReader,
     SpectraDataWriter,
 )
-from resistics.testing import time_data_linear
 from resistics.time import TimeData
 from resistics.window import (
     WindowedData,
@@ -27,6 +26,7 @@ from resistics.window import (
     Windower,
     WindowParameters,
 )
+from tests.synthetic_data import time_data_linear
 
 
 def test_labelled_time_data_survives_numerical_pipeline(tmp_path: Path) -> None:

@@ -334,22 +334,12 @@ resistics/flow.py
     DOC203: Function `mask_calculation_flow` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC201: Function `mask_calculation_parameter_set` does not have a return section in docstring
     DOC203: Function `mask_calculation_parameter_set` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Function `mask_calculation_example_flow` does not have a return section in docstring
-    DOC203: Function `mask_calculation_example_flow` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Function `mask_calculation_example_parameter_set` does not have a return section in docstring
-    DOC203: Function `mask_calculation_example_parameter_set` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC201: Function `single_site_mt_flow` does not have a return section in docstring
     DOC203: Function `single_site_mt_flow` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC201: Function `single_site_mt_target_flow` does not have a return section in docstring
     DOC203: Function `single_site_mt_target_flow` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC201: Function `remote_reference_mt_flow` does not have a return section in docstring
     DOC203: Function `remote_reference_mt_flow` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Function `time_to_evals_flow` does not have a return section in docstring
-    DOC203: Function `time_to_evals_flow` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Function `evals_to_tf_flow` does not have a return section in docstring
-    DOC203: Function `evals_to_tf_flow` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Function `standard_mt_flow` does not have a return section in docstring
-    DOC203: Function `standard_mt_flow` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC101: Function `default_parameter_set`: Docstring contains fewer arguments than in function signature.
     DOC103: Function `default_parameter_set`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [project_path: Path | None].
     DOC201: Function `default_parameter_set` does not have a return section in docstring
@@ -493,10 +483,6 @@ resistics/gather_criteria.py
     DOC103: Method `GatherCriteria.execute`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [context: Any, inputs: dict[str, Any]].
     DOC201: Method `GatherCriteria.execute` does not have a return section in docstring
     DOC203: Method `GatherCriteria.execute` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC101: Method `GatherCriteria.includes`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `GatherCriteria.includes`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [timestamp: datetime].
-    DOC201: Method `GatherCriteria.includes` does not have a return section in docstring
-    DOC203: Method `GatherCriteria.includes` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
 --------------------
 resistics/gather_data.py
     DOC601: Class `EvaluationFrequencyGather`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
@@ -507,12 +493,6 @@ resistics/gather_data.py
     DOC203: Method `EvaluationFrequencyGather.execute` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC501: Method `EvaluationFrequencyGather.execute` has raise statements, but the docstring does not have a "Raises" section
     DOC503: Method `EvaluationFrequencyGather.execute` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['NotImplementedError', 'ValueError'].
-    DOC101: Method `EvaluationFrequencyGather._apply_criteria`: Docstring contains fewer arguments than in function signature.
-    DOC103: Method `EvaluationFrequencyGather._apply_criteria`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [artifact: Any, criteria: GatherCriteria].
-    DOC201: Method `EvaluationFrequencyGather._apply_criteria` does not have a return section in docstring
-    DOC203: Method `EvaluationFrequencyGather._apply_criteria` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC501: Method `EvaluationFrequencyGather._apply_criteria` has raise statements, but the docstring does not have a "Raises" section
-    DOC503: Method `EvaluationFrequencyGather._apply_criteria` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
     DOC606: Class `SiteCombinedMetadata`, Attribute `site_name`: This attribute is documented inline, but it should be documented in the class docstring instead.
     DOC606: Class `SiteCombinedMetadata`, Attribute `site_names`: This attribute is documented inline, but it should be documented in the class docstring instead.
     DOC606: Class `SiteCombinedMetadata`, Attribute `fs`: This attribute is documented inline, but it should be documented in the class docstring instead.
@@ -1176,8 +1156,6 @@ resistics/testing.py
     DOC203: Function `record_example1` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC201: Function `record_example2` does not have a return section in docstring
     DOC203: Function `record_example2` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
-    DOC201: Function `history_example` does not have a return section in docstring
-    DOC203: Function `history_example` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC105: Function `time_metadata_1chan`: Argument names match, but type hints in these args do not match: fs, first_time, n_samples
     DOC105: Function `time_metadata_2chan`: Argument names match, but type hints in these args do not match: fs, first_time, n_samples
     DOC105: Function `time_metadata_general`: Argument names match, but type hints in these args do not match: chans, fs, first_time, n_samples
@@ -1185,7 +1163,6 @@ resistics/testing.py
     DOC105: Function `time_data_ones`: Argument names match, but type hints in these args do not match: fs, first_time, n_samples, dtype
     DOC105: Function `time_data_simple`: Argument names match, but type hints in these args do not match: fs, first_time, dtype
     DOC105: Function `time_data_with_nans`: Argument names match, but type hints in these args do not match: fs, first_time, dtype
-    DOC105: Function `time_data_linear`: Argument names match, but type hints in these args do not match: fs, first_time, n_samples, dtype
     DOC105: Function `time_data_random`: Argument names match, but type hints in these args do not match: fs, first_time, n_samples, dtype
     DOC105: Function `time_data_periodic`: Argument names match, but type hints in these args do not match: frequencies, fs, first_time, n_samples, dtype
     DOC107: Function `time_data_with_offset`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
@@ -1196,20 +1173,8 @@ resistics/testing.py
     DOC203: Function `decimated_data_linear` return type(s) in docstring not consistent with the return annotation. Return annotation has 0 type(s); docstring return section has 1 type(s).
     DOC105: Function `decimated_data_periodic`: Argument names match, but type hints in these args do not match: frequencies, fs, first_time, n_samples, n_levels, factor
     DOC203: Function `decimated_data_periodic` return type(s) in docstring not consistent with the return annotation. Return annotation has 0 type(s); docstring return section has 1 type(s).
-    DOC105: Function `spectra_metadata_multilevel`: Argument names match, but type hints in these args do not match: fs, n_levels, n_wins, index_offset, chans
-    DOC105: Function `generate_evaluation_data`: Argument names match, but type hints in these args do not match: chans
-    DOC502: Function `evaluation_data` has a "Raises" section in the docstring, but there are not "raise" statements in the body
-    DOC105: Function `transfer_function_random`: Argument names match, but type hints in these args do not match: n_cross
-    DOC105: Function `regression_input_metadata_single_site`: Argument names match, but type hints in these args do not match: freqs
-    DOC203: Function `components_mt` return type(s) in docstring not consistent with the return annotation. Return annotation types: ['dict[str, Component]']; docstring return section types: ['Dict[str, Component]']
-    DOC105: Function `solution_general`: Argument names match, but type hints in these args do not match: components
-    DOC107: Function `solution_random_int`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC105: Function `solution_random_int`: Argument names match, but type hints in these args do not match: n_evals, low, high
-    DOC107: Function `solution_random_float`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC105: Function `solution_random_float`: Argument names match, but type hints in these args do not match: n_evals
-    DOC105: Function `remove_record_times`: Argument names match, but type hints in these args do not match: records
-    DOC203: Function `remove_record_times` return type(s) in docstring not consistent with the return annotation. Return annotation types: ['dict']; docstring return section types: ['Dict']
-    DOC105: Function `assert_time_data_equal`: Argument names match, but type hints in these args do not match: history_times
+    DOC105: Function `_regression_input_metadata_single_site`: Argument names match, but type hints in these args do not match: freqs
+    DOC203: Function `_components_mt` return type(s) in docstring not consistent with the return annotation. Return annotation types: ['dict[str, Component]']; docstring return section types: ['Dict[str, Component]']
 --------------------
 resistics/time.py
     DOC605: Class `ChanMetadata`: Attribute names match, but type hints in these attributes do not match: model_config  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)

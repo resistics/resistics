@@ -185,10 +185,6 @@ ignore-decorators = ["pydantic.field_validator", "pydantic.model_validator"]
 "resistics/transfunc.py" = [
     "RUF012", # Pydantic copies and validates these model-field list defaults.
 ]
-"resistics/testing.py" = [
-    "S101", # Assertions validate internal synthetic-data invariants.
-    "S311", # Non-cryptographic randomness generates synthetic test data.
-]
 "resistics/tui/app.py" = [
     "D102", # Textual callbacks and actions are framework entry points, not public APIs.
     "RUF012", # Textual requires mutable BINDINGS and related class attributes.

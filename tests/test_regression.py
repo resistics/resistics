@@ -41,13 +41,15 @@ from resistics.regression import (
     Solver,
     SolverOLS,
 )
-from resistics.testing import (
-    solution_mt,
+from resistics.testing import solution_mt
+from resistics.transfunc import ImpedanceTensor, TransferFunction
+from tests.synthetic_data import (
+    assert_solution_equal,
+    evaluation_data,
     solution_random_float,
     solution_random_int,
     transfer_function_random,
 )
-from resistics.transfunc import ImpedanceTensor, TransferFunction
 
 # this first example has 2 windows, 1chan
 # recall that the cross data will be conjugated, 5+3j will become 5-3j
@@ -351,7 +353,6 @@ def test_regression_solution_single_site(
 
     from resistics.gather import QuickGather
     from resistics.regression import RegressionPreparerGathered
-    from resistics.testing import assert_soln_equal, evaluation_data
 
     n_evals = len(expected_soln.freqs)
     if n_evals % n_levels != 0:
@@ -367,7 +368,7 @@ def test_regression_solution_single_site(
     gathered_data = QuickGather().run(Path(), dec_params, tf, eval_data)
     reg_data = RegressionPreparerGathered().run(tf, gathered_data)
     soln = solver.run(reg_data)
-    assert_soln_equal(soln, expected_soln)
+    assert_solution_equal(soln, expected_soln)
 
 
 @pytest.mark.parametrize(
@@ -458,8 +459,6 @@ def test_regression_solution_spectra_input(
     n_wins: int,
 ):
     """Test regression using synthetic evaluation frequency data"""
-    from resistics.testing import assert_soln_equal, evaluation_data
-
     n_evals = len(expected_soln.freqs)
     if n_evals % n_levels != 0:
         raise ValueError(f"{n_evals=} not divisible by {n_levels=}")
@@ -473,4 +472,4 @@ def test_regression_solution_spectra_input(
     # solve
     reg_data = RegressionPreparerSpectra().run(tf, eval_data)
     soln = solver.run(reg_data)
-    assert_soln_equal(soln, expected_soln)
+    assert_solution_equal(soln, expected_soln)

@@ -1,6 +1,5 @@
 """
-Module for producing testing data for resistics and helper functions to compare
-instances of the same object.
+Small, stable data builders used by Resistics' executable documentation.
 
 This includes testing data for:
 
@@ -10,9 +9,7 @@ This includes testing data for:
 - TimeData
 - DecimatedData
 - SpectraData
-- Evaluation frequency SpectraData
-- RegressionInputMetadata
-- Solution
+- Regression examples
 """
 
 import numpy as np
@@ -22,8 +19,6 @@ from resistics.common import History, Record, get_record, known_chan
 from resistics.decimate import (
     DecimatedData,
     DecimatedMetadata,
-    DecimationParameters,
-    get_eval_freqs_size,
 )
 from resistics.gather import SiteCombinedMetadata
 from resistics.regression import RegressionInputMetadata, Solution
@@ -52,13 +47,6 @@ def record_example2() -> Record:
         creator={"name": "example2", "a": "parzen", "b": -21},
         messages=["Message 5", "Message 6"],
     )
-
-
-def history_example() -> History:
-    """Get a History example"""
-    from resistics.common import History
-
-    return History(records=[record_example1(), record_example2()])
 
 
 def time_metadata_1chan(
@@ -333,49 +321,6 @@ def time_data_with_nans(
     metadata = time_metadata_mt(fs, first_time, n_samples)
     creator = {"name": "time_data_with_nans", "fs": fs, "first_time": first_time}
     messages = ["Generated time data with some nan values"]
-    record = get_record(creator, messages)
-    metadata.history.add_record(record)
-    return TimeData(metadata, data)
-
-
-def time_data_linear(
-    fs: float = 10,
-    first_time: str = "2020-01-01 00:00:00",
-    n_samples: int = 10,
-    dtype: type | None = None,
-) -> TimeData:
-    """
-    Get TimeData with linear data
-
-    Parameters
-    ----------
-    fs : float, optional
-        The sampling frequency, by default 10
-    first_time : str, optional
-        Time of first sample, by default "2020-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 10
-    dtype : Optional[Type], optional
-        The data type for the values, by default None
-
-    Returns
-    -------
-    TimeData
-        TimeData with linear values
-    """
-    if dtype is None:
-        dtype = DEFAULT_TIME_DATA_DTYPE
-    metadata = time_metadata_mt(fs, first_time, n_samples)
-    data = np.empty(shape=(metadata.n_chans, n_samples), dtype=dtype)
-    for idx in range(metadata.n_chans):
-        data[idx, :] = np.arange(n_samples)
-    creator = {
-        "name": "time_data_linear",
-        "fs": fs,
-        "first_time": first_time,
-        "n_samples": n_samples,
-    }
-    messages = ["Generated time data with linear values"]
     record = get_record(creator, messages)
     metadata.history.add_record(record)
     return TimeData(metadata, data)
@@ -733,74 +678,6 @@ def decimated_data_periodic(
     return DecimatedData(metadata, data)
 
 
-def spectra_metadata_multilevel(
-    fs: float = 128,
-    n_levels: int = 3,
-    n_wins: list[int] | int = 2,
-    index_offset: list[int] | int = 0,
-    chans: list[str] | None = None,
-) -> SpectraMetadata:
-    """
-    Get spectra metadata with multiple levels and two channels
-
-    Parameters
-    ----------
-    fs : float, optional
-        The original sampling frequency, by default 128
-    n_levels : int, optional
-        The number of levels, by default 3
-    n_wins: Union[List[int], int]
-        The number of windows for each level
-    index_offset : Union[List[int], int], optional
-        The index offset vs. the reference time, by default 0
-    chans : Optional[List[str]]
-        The channels in the data, by default None. If None, the channels will be
-        chan1 and chan2
-
-    Returns
-    -------
-    SpectraMetadata
-        SpectraMetadata with n_levels
-
-    Raises
-    ------
-    ValueError
-        If the number of user input channels does not equal two
-    """
-    level_n_wins = [n_wins] * n_levels if isinstance(n_wins, int) else n_wins
-    level_offsets = (
-        [index_offset] * n_levels if isinstance(index_offset, int) else index_offset
-    )
-
-    levels_metadata = []
-    levels_fs = []
-    for ilevel, offset in zip(range(n_levels), level_offsets, strict=False):
-        factor = np.power(2, ilevel)
-        fs = fs / factor
-        levels_metadata.append(
-            SpectraLevelMetadata(
-                fs=fs,
-                n_wins=level_n_wins[ilevel],
-                win_size=20,
-                olap_size=5,
-                index_offset=offset,
-                n_freqs=2,
-                freqs=[fs / 4, fs / 8],
-            )
-        )
-        levels_fs.append(fs)
-    metadata_dict = time_metadata_2chan().dict()
-    if chans is not None:
-        if len(chans) != 2:
-            raise ValueError(f"More than two channels {chans}")
-        metadata_dict["chans"] = chans
-    metadata_dict["fs"] = levels_fs
-    metadata_dict["n_levels"] = len(levels_metadata)
-    metadata_dict["levels_metadata"] = levels_metadata
-    metadata_dict["ref_time"] = metadata_dict["first_time"]
-    return SpectraMetadata(**metadata_dict)
-
-
 def spectra_data_basic() -> SpectraData:
     """
     Spectra data with a single decimation level
@@ -844,189 +721,7 @@ def spectra_data_basic() -> SpectraData:
     return SpectraData(metadata, data)
 
 
-def generate_evaluation_data(
-    chans: list[str], soln: Solution, n_wins: int
-) -> np.ndarray:
-    """
-    Generate evaluation frequency data that satisfies a provided solution
-
-    The returned array has the shape:
-
-    [n_wins, n_chans, n_evals]
-
-    Which is close to the shape required for spectra data
-
-    The generation works as follows
-
-    - input channels
-    - output channels excluding any that also appear in input channels
-    - cross channels excluding any that also appear in intput or output channels
-
-    The data is produced randomly using np.random.randn, meaning that it is
-    sampled from a standard normal distribution
-
-    Parameters
-    ----------
-    chans : List[str]
-        The channels in the data
-    soln : Solution
-        The Solution that needs to be satisfied
-    n_wins : int
-        The number of windows to generate
-
-    Returns
-    -------
-    np.ndarray
-        The evaluation frequency data array
-    """
-    n_evals = len(soln.freqs)
-    n_chans = len(chans)
-    in_chans = soln.tf.in_chans
-    out_chans = soln.tf.out_chans
-    cross_generate = set(soln.tf.cross_chans) - set(in_chans + out_chans)
-    independent_chans = in_chans + list(cross_generate)
-
-    # create the data array to hold the data and generate the data
-    data_array = np.empty((n_evals, n_chans, n_wins), dtype=np.complex128)
-    for eval_idx in range(n_evals):
-        freq_tensor = soln.get_tensor(eval_idx)
-        # generate input channels
-        freq_data = {chan: np.random.randn(n_wins) for chan in independent_chans}
-
-        # calculate output channels from input and solution
-        # ignore output channels that are also input channels
-        for out_idx, out_chan in enumerate(out_chans):
-            if out_chan in in_chans:
-                continue
-            products = [
-                freq_tensor[out_idx, in_idx] * freq_data[in_chan]
-                for in_idx, in_chan in enumerate(in_chans)
-            ]
-            freq_data[out_chan] = np.sum(products, axis=0)
-
-        # add the data to the data array
-        for chan_idx, chan in enumerate(chans):
-            data_array[eval_idx, chan_idx, ...] = freq_data[chan]
-
-    return data_array.transpose()
-
-
-def evaluation_data(
-    dec_params: DecimationParameters, n_wins: int, soln: Solution
-) -> SpectraData:
-    """
-    Generate evaluation frequency data that will satisfy a given solution. This
-    will generate random data between the low and high values
-
-    Parameters
-    ----------
-    dec_params : DecimationParameters
-        The data decimation information
-    n_wins : int
-        The number of windows to generate
-    soln : Solution
-        The solution that the generated data should satisfy
-
-    Returns
-    -------
-    SpectraData
-        The evaluation frequency data
-
-    Raises
-    ------
-    ValueError
-        If the number of evaluation frequencies is not exactly divisible by the
-        number of levels
-    """
-    # get information about the decimation levels
-    n_levels = dec_params.n_levels
-    per_level = dec_params.per_level
-    levels_fs = dec_params.dec_fs
-    eval_freqs_for_levels = {
-        ilevel: dec_params.get_eval_freqs(ilevel) for ilevel in range(n_levels)
-    }
-
-    # create the data
-    chans = list(set(soln.tf.in_chans + soln.tf.out_chans + soln.tf.cross_chans))
-    data_array = generate_evaluation_data(chans, soln, n_wins)
-    data = {}
-    for ilevel in range(n_levels):
-        istart = ilevel * per_level
-        iend = istart + per_level
-        data[ilevel] = data_array[..., istart:iend]
-
-    # create the metadata
-    levels_metadata = []
-    for ilevel, level_fs in enumerate(levels_fs):
-        levels_metadata.append(
-            SpectraLevelMetadata(
-                fs=level_fs,
-                n_wins=n_wins,
-                win_size=20,
-                olap_size=5,
-                index_offset=0,
-                n_freqs=per_level,
-                freqs=eval_freqs_for_levels[ilevel],
-            )
-        )
-    metadata_dict = time_metadata_general(chans).dict()
-    metadata_dict["chans"] = chans
-    metadata_dict["fs"] = levels_fs
-    metadata_dict["n_levels"] = len(levels_metadata)
-    metadata_dict["levels_metadata"] = levels_metadata
-    metadata_dict["ref_time"] = metadata_dict["first_time"]
-    spec_metadata = SpectraMetadata(**metadata_dict)
-    return SpectraData(spec_metadata, data)
-
-
-def transfer_function_random(
-    n_in: int, n_out: int, n_cross: int = -1
-) -> TransferFunction:
-    """
-    Generate a random transfer function
-
-    n_in and n_out must be less than or equal to 26 as the random samples are
-    taken from the alphabet
-
-    Parameters
-    ----------
-    n_in : int
-        Number of input channels
-    n_out : int
-        Number of output channels
-    n_cross : int, optional
-        The number of cross channels, by default -1. If a number greather than 0
-        is provided, this will use n_cross distinct cross channels. Otherwise,
-        the input channels will be used as the cross channels.
-
-    Returns
-    -------
-    TransferFunction
-        A randomly generated transfer function
-    """
-    import random
-    import string
-
-    ins = string.ascii_lowercase
-    outs = string.ascii_uppercase
-    in_chans = random.sample(ins, n_in)
-    out_chans = random.sample(outs, n_out)
-
-    if n_cross > 0:
-        crosses = [f"X{x:02d}" for x in range(0, 26)]
-        cross_chans = random.sample(crosses, n_cross)
-    else:
-        cross_chans = in_chans
-
-    return TransferFunction(
-        variation="random",
-        in_chans=in_chans,
-        out_chans=out_chans,
-        cross_chans=cross_chans,
-    )
-
-
-def regression_input_metadata_single_site(
+def _regression_input_metadata_single_site(
     fs: float, freqs: list[float], tf: TransferFunction
 ) -> RegressionInputMetadata:
     """
@@ -1081,7 +776,7 @@ def regression_input_metadata_single_site(
     )
 
 
-def components_mt() -> dict[str, Component]:
+def _components_mt() -> dict[str, Component]:
     """
     Get example components for the Impedance Tensor
 
@@ -1110,8 +805,8 @@ def solution_mt() -> Solution:
     tf = ImpedanceTensor()
     fs = 256
     freqs = [100.0, 80.0, 60.0, 40.0, 20.0, 10.0]
-    components = components_mt()
-    metadata = regression_input_metadata_single_site(fs, freqs, tf)
+    components = _components_mt()
+    metadata = _regression_input_metadata_single_site(fs, freqs, tf)
     return Solution(
         tf=tf,
         freqs=freqs,
@@ -1119,178 +814,3 @@ def solution_mt() -> Solution:
         history=History(),
         contributors=metadata.contributors,
     )
-
-
-def solution_general(
-    fs: float, tf: TransferFunction, n_evals: int, components: dict[str, Component]
-) -> Solution:
-    """
-    Create a Solution instance from the specified components
-
-    Parameters
-    ----------
-    fs : float
-        The sampling frequency of the original data
-    tf : TransferFunction
-        The transfer function to be solved
-    n_evals : int
-        The number of evaluation frequencies
-    components : Dict[str, Component]
-        The components of the solution
-
-    Returns
-    -------
-    Solution
-        The Solution instance
-    """
-    freqs = get_eval_freqs_size(fs, n_evals).tolist()
-    metadata = regression_input_metadata_single_site(fs, freqs, tf)
-    return Solution(
-        tf=tf,
-        freqs=freqs,
-        components=components,
-        history=History(),
-        contributors=metadata.contributors,
-    )
-
-
-def solution_random_int(
-    fs: float, tf: TransferFunction, n_evals=10, low: int = -10, high: int = 10
-) -> Solution:
-    """
-    Generate a set of random integer components for a solution
-
-    Parameters
-    ----------
-    fs : float
-        The original sampling frequency of the data
-    tf : TransferFunction
-        The transfer function
-    n_evals : int, optional
-        The number of evaluation frequencies, by default 10
-    low : int, optional
-        A low value for the integers, by default -10
-    high : int, optional
-        A high value for the integers, by default 10
-
-    Returns
-    -------
-    Solution
-        A randomly generated solution for the transfer function
-    """
-    soln_components = tf.solution_components()
-    # generate the components with values for each evaluation frequency
-    components = {
-        comp: Component(
-            real=np.random.randint(low, high, size=n_evals).tolist(),
-            imag=np.random.randint(low, high, size=n_evals).tolist(),
-        )
-        for comp in soln_components
-    }
-    return solution_general(fs, tf, n_evals, components)
-
-
-def solution_random_float(fs: float, tf: TransferFunction, n_evals=10) -> Solution:
-    """
-    Generate a set of random float components for a solution
-
-    This uses the numpy np.random.randn which generates numbers on a standard
-    distribution and then multiplies that with a random integer between 0 and
-    10.
-
-    Parameters
-    ----------
-    fs : float
-        The original sampling frequency of the data
-    tf : TransferFunction
-        The transfer function
-    n_evals : int, optional
-        The number of evaluation frequencies, by default 10
-
-    Returns
-    -------
-    Solution
-        A randomly generated solution for the transfer function
-    """
-    soln_components = tf.solution_components()
-    # generate the components with values for each evaluation frequency
-    components = {
-        comp: Component(
-            real=(np.random.randn(n_evals) * np.random.randint(0, 10)).tolist(),
-            imag=(np.random.randn(n_evals) * np.random.randint(0, 10)).tolist(),
-        )
-        for comp in soln_components
-    }
-    return solution_general(fs, tf, n_evals, components)
-
-
-def remove_record_times(records: dict) -> dict:
-    """
-    Remove timestamps from records
-
-    Timestamps can make comparision of two data objects harder as processes need
-    to have been run at exactly the same time for equality, which is unlikely to
-    be the case in tests
-
-    Parameters
-    ----------
-    records : Dict
-        The history records
-
-    Returns
-    -------
-    Dict
-        The history records with timestamps removed
-    """
-    for rec in records:
-        rec.pop("time_local")
-        rec.pop("time_utc")
-    return records
-
-
-def assert_time_data_equal(
-    time_data1: TimeData, time_data2: TimeData, history_times: bool = True
-):
-    """
-    Assert that two time data instances are equal
-
-    Parameters
-    ----------
-    time_data1 : TimeData
-        Time data 1
-    time_data2 : TimeData
-        Time data 2
-    history_times : bool, optional
-        Flag to include history timestamps in the comparison, by default True.
-        Including timestamps will cause a failure if processes were not run at
-        exactly the same time.
-    """
-    metadata1 = time_data1.metadata.dict()
-    history1 = metadata1.pop("history")
-    metadata2 = time_data2.metadata.dict()
-    history2 = metadata2.pop("history")
-    # compare core metadata
-    assert metadata1 == metadata2
-    # compare histories
-    if not history_times:
-        history1["records"] = remove_record_times(history1["records"])
-        history2["records"] = remove_record_times(history2["records"])
-    assert history1 == history2
-    # compare data
-    np.testing.assert_array_equal(time_data1.data, time_data2.data)
-
-
-def assert_soln_equal(soln1: Solution, soln2: Solution):
-    """
-    Check that two solutions are nearly the same
-
-    Parameters
-    ----------
-    soln1 : Solution
-        The first solution
-    soln2 : Solution
-        The second solution
-    """
-    df1 = soln1.to_dataframe()
-    df2 = soln2.to_dataframe()
-    pd.testing.assert_frame_equal(df1, df2, check_exact=False, rtol=1e-10, atol=1e-10)

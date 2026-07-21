@@ -32,8 +32,9 @@ from resistics.spectra import (
     SpectraLevelMetadata,
     SpectraMetadata,
 )
-from resistics.testing import evaluation_data, solution_mt, time_metadata_general
+from resistics.testing import solution_mt, time_metadata_general
 from resistics.transfunc import ImpedanceTensor
+from tests.synthetic_data import evaluation_data
 
 
 def test_gather_facade_preserves_public_names_across_responsibility_modules():
@@ -74,6 +75,7 @@ def test_obsolete_directory_gather_api_is_removed():
         assert not hasattr(gather_module, name)
     assert not hasattr(project_module, "Measurement")
     assert not hasattr(project_module, "Site")
+    assert not hasattr(GatherCriteria, "includes")
 
 
 def test_quick_gather_run():

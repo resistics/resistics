@@ -5,8 +5,8 @@ Test decimation
 import numpy as np
 import pytest
 
-from resistics.testing import time_data_linear
 from resistics.time import TimeData
+from tests.synthetic_data import time_data_linear
 
 
 @pytest.mark.parametrize(

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any, ClassVar, Literal
 
 import numpy as np
@@ -240,8 +239,3 @@ class GatherCriteria(ResisticsProcess):
         """Resolve criteria from the station-rate batch supplied by the executor."""
         del inputs
         return self.run(context["station_rate_batch"])
-
-    def includes(self, timestamp: datetime) -> bool:
-        """Compatibility hook: time rules now live in named mask artifacts."""
-        del timestamp
-        return True

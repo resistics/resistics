@@ -32,7 +32,7 @@ import resistics.tui.app as tui_module
 import resistics.tui.services as tui_services
 from resistics.common import ProcessingProgressEvent, ProcessingProgressState
 from resistics.explorer import ProjectExplorerState
-from resistics.flow import default_parameter_set, model_to_yaml, standard_mt_flow
+from resistics.flow import default_parameter_set, model_to_yaml, single_site_mt_flow
 from resistics.gather import GatherCriteria
 from resistics.job import JobDefinition, JobProgressEvent, JobScope, JobState
 from resistics.project import MTH5FileSummary, ProjectDataDeletion, ProjectDataItem
@@ -337,7 +337,7 @@ def test_explorer_loads_inactive_tabs_lazily(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    flow_path.write_text(model_to_yaml(single_site_mt_flow()))
     parse_calls = []
 
     from resistics import explorer as explorer_module
@@ -441,7 +441,7 @@ def test_explorer_rejects_stale_worker_results(monkeypatch, tmp_path):
 
 def test_tui_mounts_project_views(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
-    flow = standard_mt_flow()
+    flow = single_site_mt_flow()
     flow_path = project.project_path / "processing/flows/standard_mt.yaml"
     flow_path.parent.mkdir(parents=True)
     flow_path.write_text(model_to_yaml(flow))
@@ -670,7 +670,7 @@ def test_cached_action_checks_are_fast_and_do_not_repeat_io(
     ]
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    flow_path.write_text(model_to_yaml(single_site_mt_flow()))
     parameters_path = project.project_path / "processing/parameters/default.yaml"
     parameters_path.parent.mkdir(parents=True)
     parameters_path.write_text(model_to_yaml(default_parameter_set()))
@@ -928,7 +928,7 @@ def test_tui_invalidates_explorer_index_after_owned_mutations(monkeypatch, tmp_p
     project = FakeProject(tmp_path / "project")
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    flow_path.write_text(model_to_yaml(single_site_mt_flow()))
     parameters_path = project.project_path / "processing/parameters/default.yaml"
     parameters_path.parent.mkdir(parents=True)
     parameters_path.write_text(model_to_yaml(default_parameter_set()))
@@ -1390,7 +1390,7 @@ def test_tui_plots_a_valid_selected_flow(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    flow_path.write_text(model_to_yaml(single_site_mt_flow()))
     invalid_path = project.project_path / "processing/flows/invalid.yaml"
     invalid_path.write_text("not: [valid")
     monkeypatch.setattr("resistics.project.load", lambda project_path: project)
@@ -1435,7 +1435,7 @@ def test_tui_builds_flow_figures_without_preview_files(tmp_path):
     project = FakeProject(tmp_path / "project")
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    flow_path.write_text(model_to_yaml(single_site_mt_flow()))
 
     figure = ProjectExplorerService.build_plot_figure(project, ("flow", flow_path))
 
@@ -1458,7 +1458,7 @@ def test_tui_builds_and_enables_valid_job_plots(monkeypatch, tmp_path):
     )
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    flow_path.write_text(model_to_yaml(single_site_mt_flow()))
     parameters_path = project.project_path / "processing/parameters/default.yaml"
     parameters_path.parent.mkdir(parents=True)
     parameters_path.write_text(model_to_yaml(default_parameter_set()))
@@ -1539,7 +1539,7 @@ def test_tui_creates_a_job_template_from_dropdowns(monkeypatch, tmp_path):
     )
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    flow_path.write_text(model_to_yaml(single_site_mt_flow()))
     parameters_path = project.project_path / "processing/parameters/default.yaml"
     parameters_path.parent.mkdir(parents=True)
     parameters_path.write_text(model_to_yaml(default_parameter_set()))
@@ -1592,7 +1592,7 @@ def test_tui_copies_and_deletes_selected_yaml_files(monkeypatch, tmp_path):
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
     flow_path.write_text(
-        "# Retain this comment when copied\n" + model_to_yaml(standard_mt_flow())
+        "# Retain this comment when copied\n" + model_to_yaml(single_site_mt_flow())
     )
     monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
@@ -1747,7 +1747,7 @@ def test_tui_copies_and_runs_highlighted_job_without_opening_it(monkeypatch, tmp
     )
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    flow_path.write_text(model_to_yaml(single_site_mt_flow()))
     parameters_path = project.project_path / "processing/parameters/default.yaml"
     parameters_path.parent.mkdir(parents=True)
     parameters_path.write_text(model_to_yaml(default_parameter_set()))
@@ -1814,7 +1814,7 @@ def test_tui_copies_highlighted_flow_parameters_and_criteria_without_opening(
             "#flow-table",
             "#flow-content",
             project.project_path / "processing/flows/standard.yaml",
-            model_to_yaml(standard_mt_flow()),
+            model_to_yaml(single_site_mt_flow()),
             "Select a flow",
         ),
         (

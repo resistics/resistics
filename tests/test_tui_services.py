@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from resistics.flow import model_to_yaml, standard_mt_flow
+from resistics.flow import model_to_yaml, single_site_mt_flow
 from resistics.job import JobDefinition
 from resistics.project import MTH5FileSummary, ProjectDataDeletion
 from resistics.tui import ProjectDataDeletionRequest
@@ -68,7 +68,7 @@ def test_project_explorer_service_returns_pydantic_discovery_without_textual(
     project = ServiceProject(tmp_path / "project")
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    flow_path.write_text(model_to_yaml(standard_mt_flow()), encoding="utf-8")
+    flow_path.write_text(model_to_yaml(single_site_mt_flow()), encoding="utf-8")
     service = ProjectExplorerService(project)
 
     state = service.project_state()
@@ -95,7 +95,7 @@ def test_project_explorer_service_owns_yaml_mutations_and_invalidation(tmp_path)
     project = ServiceProject(tmp_path / "project")
     flow_path = project.project_path / "processing/flows/standard.yaml"
     flow_path.parent.mkdir(parents=True)
-    original = model_to_yaml(standard_mt_flow())
+    original = model_to_yaml(single_site_mt_flow())
     flow_path.write_text(original, encoding="utf-8")
     service = ProjectExplorerService(project)
     first_resources = service.resources("flows")
@@ -109,12 +109,12 @@ def test_project_explorer_service_owns_yaml_mutations_and_invalidation(tmp_path)
 
     with pytest.raises(ValidationError):
         service.save_yaml(
-            flow_path, type(standard_mt_flow()), "id: incomplete\n", "flows"
+            flow_path, type(single_site_mt_flow()), "id: incomplete\n", "flows"
         )
     assert flow_path.read_text(encoding="utf-8") == original
 
     updated = "# retained comment\n" + original
-    service.save_yaml(flow_path, type(standard_mt_flow()), updated, "flows")
+    service.save_yaml(flow_path, type(single_site_mt_flow()), updated, "flows")
     assert service.yaml_source(flow_path) == updated
 
     service.delete_yaml(copy_path, "flows")

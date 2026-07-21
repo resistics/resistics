@@ -5,12 +5,20 @@ Next release
   and context-manager ownership of their read-only MTH5 handles.
 - **Changed:** Project loading closes partially opened MTH5 files when opening,
   channel-summary preparation, or model construction fails.
+- **Changed:** ``resistics.testing`` now contains only the small data builders
+  used by executable documentation; regression-only factories and comparisons
+  are owned by the test suite.
 - **Removed:** The pre-MTH5 ``Site``/``Measurement`` directory path and file-name
   helpers, the ``Project.dir_path`` and ``Project.metadata`` compatibility
   aliases, their unused exception classes, ``init(force=...)``, and
   ``close_mth5()``. Use canonical survey/station/run paths, ``overwrite=...``,
   and ``close()`` or ``with``. Gallery examples for the already-removed
   ``config`` and ``letsgo`` modules were also removed.
+- **Removed:** The empty ``resistics.resq`` placeholder, obsolete commented
+  ``Join`` implementation, unmaintained exploratory notebooks and their unused
+  FDSN request file, unreferenced evaluation-data fixture module, no-op
+  timestamp gather hook, and the unused ``standard_mt_flow``,
+  ``time_to_evals_flow``, ``evals_to_tf_flow``, and mask-example flow aliases.
 
 Resistics 0.0.6
 ^^^^^^^^^^^^^^^^^^^^
