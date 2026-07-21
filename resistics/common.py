@@ -25,6 +25,55 @@ def json_fallback(value: Any) -> Any:
     return str(value)
 
 
+def _summary_lines(value: Any, level: int = 0) -> list[str]:
+    """Render JSON-compatible model data with stable four-space nesting.
+
+    Parameters
+    ----------
+    value : Any
+        Value decoded from a model's JSON representation.
+    level : int
+        Current nesting level.
+
+    Returns
+    -------
+    list[str]
+        Rendered output lines without a trailing newline.
+    """
+    indentation = " " * (4 * level)
+    if isinstance(value, dict):
+        if not value:
+            return ["{}"]
+        if level == 1 and len(indentation) + len(repr(value)) <= 88:
+            return [repr(value)]
+        output = ["{"]
+        items = list(value.items())
+        for index, (key, item) in enumerate(items):
+            rendered = _summary_lines(item, level + 1)
+            child_indent = " " * (4 * (level + 1))
+            output.append(f"{child_indent}{key!r}: {rendered[0]}")
+            output.extend(rendered[1:])
+            if index < len(items) - 1:
+                output[-1] += ","
+        output.append(f"{indentation}}}")
+        return output
+    if isinstance(value, list):
+        is_simple = all(not isinstance(item, (dict, list)) for item in value)
+        if not value or (is_simple and len(indentation) + len(repr(value)) <= 88):
+            return [repr(value)]
+        output = ["["]
+        for index, item in enumerate(value):
+            rendered = _summary_lines(item, level + 1)
+            child_indent = " " * (4 * (level + 1))
+            output.append(f"{child_indent}{rendered[0]}")
+            output.extend(rendered[1:])
+            if index < len(value) - 1:
+                output[-1] += ","
+        output.append(f"{indentation}]")
+        return output
+    return [repr(value)]
+
+
 ELECTRIC_CHANS = ["Ex", "Ey", "E1", "E2", "E3", "E4"]
 MAGNETIC_CHANS = ["Hx", "Hy", "Hz", "Bx", "By", "Bz"]
 
@@ -587,9 +636,7 @@ class ResisticsModel(BaseModel):
         """Print a summary of the class"""
         import json
 
-        from prettyprinter import cpprint
-
-        cpprint(json.loads(self.model_dump_json()))
+        print("\n".join(_summary_lines(json.loads(self.model_dump_json()))))
 
 
 class ResisticsFile(ResisticsModel):

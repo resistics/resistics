@@ -27,23 +27,20 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 dependencies = [
-    "numpy>=1.20.2",
-    "scipy>=1.6.2",
-    "pandas>=1.2.3",
+    "numpy>=1.23.5",
+    "scipy>=1.9.3",
+    "pandas>=1.5.3",
     "tsdownsample>=0.1.5.1,<0.2",
-    "attotime==0.2.3",
+    "attotime>=0.2.3",
     "plotly>=5.11.0",
-    "fast-sugiyama==0.5.3",
-    "loguru>=0.5.3",
-    "scikit-learn>=1.1.1",
+    "fast-sugiyama>=0.5.3",
+    "loguru>=0.6.0",
     "pydantic>=2.0",
-    "prettyprinter>=0.18.0",
-    "PyYAML>=5.4.1",
+    "PyYAML>=6.0",
     "textual[syntax]>=1.0.0",
-    "regressioninc",
-    "mth5>=0.4.1",
-    "xarray",
-    "obspy>=1.4.2",
+    "regressioninc>=0.1.0a0",
+    "mth5>=0.6.8",
+    "xarray>=2023.1.0",
 ]
 
 [project.scripts]
@@ -57,7 +54,8 @@ Source = "https://github.com/resistics/resistics"
 "Bug Tracker" = "https://github.com/resistics/resistics/issues"
 
 [dependency-groups]
-shared = ["matplotlib"]
+# Matplotlib executes API plots under pytest and renders them under Sphinx.
+shared = ["matplotlib>=3.6.3"]
 dev = [
     "pre-commit",
     "ruff>=0.15.22,<0.16",
@@ -73,16 +71,11 @@ docs = [
     "autodoc-pydantic",
     "sphinx-copybutton",
     "kaleido",
-    "ipython",
-    "nbformat",
-    "seedir",
-    "emoji",
 ]
-tests = ["pytest", "pytest-cov", "pytest-html"]
-notebooks = ["ipykernel>=6.22.0,<7"]
+tests = ["pytest", "pytest-cov"]
 
 [tool.uv]
-default-groups = ["shared", "dev", "docs", "tests", "notebooks"]
+default-groups = ["shared", "dev", "docs", "tests"]
 
 [tool.uv.sources]
 regressioninc = { path = "../regressioninc", editable = true }

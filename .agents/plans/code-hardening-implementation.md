@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 5.7 and Gate 5 verified; Checkpoint 6.1 ready
+Status: in progress; Checkpoint 6.1 verified; Checkpoint 6.2 ready
 Created: 2026-07-19
 Last updated: 2026-07-21
 Working branch: `mth5`
@@ -27,33 +27,25 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 6 - Dependencies, security, and compatibility
-- Active checkpoint: `6.1` (`resistics`) - Audit direct dependencies
+- Active checkpoint: `6.2` (`resistics`) - Test lowest supported dependencies
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `5.7` in `S037`
-- Last verified checkpoint: `5.7` and Gate 5 in `S037`
-- Last session: `S037`
-- Last verified commit: resistics `155d53b`, recording the Checkpoint 5.6
-  MTH5 ownership boundary and legacy cleanup;
+- Last completed checkpoint: `6.1` in `S038`
+- Last verified checkpoint: `6.1` in `S038`
+- Last session: `S038`
+- Last verified commit: resistics `d86c59a`, recording Checkpoint 5.7 and the
+  MTH5-only hardening boundary;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: map every direct runtime dependency to production imports
-  and every optional/development dependency to its docs, test, notebook, or
-  tooling owner before proposing Checkpoint 6.1 metadata changes.
+- Next exact action: design the repeatable Checkpoint 6.2 lowest-direct-version
+  resolution command against paired built distributions and Python 3.11.
 
 Current worktree caveat:
 
-- Resistics `09d048b` records the tracked hardening work through Checkpoint 4.5,
-  including deferred feature imports and their startup measurements.
-  The empty `pyrefly-baseline.json` remains untracked and is a required Phase 3
-  artifact. The verified structured-progress implementation, dependency
-  cleanup, TUI package facade, dialog/launcher extraction, tests, lock refresh,
-  and pydoclint baseline refresh are committed through `675cfde`, including
-  the S032 project service/screen extraction and S033 session diagnostics
-  follow-up. Checkpoint 5.4 is committed at `c8b938f`, Checkpoint 5.5 at
-  `34707a8`, and Checkpoint 5.6 at `155d53b`. The verified Checkpoint 5.7 dead
-  and test-only cleanup remains uncommitted. The required empty
-  `pyrefly-baseline.json` remains untracked.
+- Resistics `d86c59a` records the hardening work through Checkpoint 5.7. The
+  verified Checkpoint 6.1 dependency metadata, dependency-free summary
+  rendering, lock reduction, changelog, and execution record are uncommitted.
+  The required empty `pyrefly-baseline.json` remains intentionally untracked.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -255,7 +247,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | 5.6 | resistics | `verified` | S036; explicit handle ownership; 423 tests; artifacts verified |
 | 5.7 | resistics | `verified` | S037; 422 tests; root Ruff and artifacts verified |
 | Gate 5 | resistics | `verified` | S030-S037; public removals documented; graph behavior protected |
-| 6.1 | resistics | `not_started` | Direct dependency map |
+| 6.1 | resistics | `verified` | S038; 128-package lock; ownership map; artifacts verified |
 | 6.2 | resistics | `not_started` | Credible lower-bound matrix |
 | 6.3 | resistics | `not_started` | Audit and workflow monitoring |
 | 6.4 | resistics | `not_started` | uv/Pixi evidence decision |
@@ -347,6 +339,38 @@ contains the full requirements.
 - Exit evidence: credible dependency metadata, clean supported installs,
   visible vulnerability ownership, and a recorded environment-manager decision.
 
+#### Checkpoint 6.1 dependency ownership map
+
+| Runtime dependency | Resistics owner |
+| --- | --- |
+| NumPy | Array-backed processing and data models throughout production |
+| SciPy | Filtering, resampling, decimation, and spectral operations |
+| Pandas | Project/run summaries, jobs, masks, gathers, and tabular metadata |
+| tsdownsample | Public Plotly time-series downsampling with NaN preservation |
+| attotime | High-precision sampling and timestamp conversion |
+| Plotly | Public plotting APIs, flow/job figures, and TUI plot presentation |
+| fast-sugiyama | Ranked flow/job graph layout |
+| Loguru | Package diagnostics, processing logs, and TUI log capture |
+| Pydantic | Public process, data, configuration, job, and TUI DTO contracts |
+| PyYAML | Configuration, process, flow, and job serialization |
+| Textual with syntax support | Installed ``resistics`` TUI entry point and YAML editors |
+| regressioninc | Numerical regression implementations used by Resistics adapters |
+| MTH5 | Sole public project/time-series input boundary |
+| Xarray | Labelled ``TimeData`` channel/sample storage |
+
+| Dependency group | Owner |
+| --- | --- |
+| shared: Matplotlib | Pytest-executed API plots and Sphinx plot directives |
+| dev: pre-commit, Ruff, pydoclint, Pyrefly, types-PyYAML | Local repository quality gates |
+| docs: Sphinx, Furo, Sphinx-Gallery, OpenGraph, autodoc-pydantic, copybutton, Kaleido | Transitional documentation build and Plotly static rendering |
+| tests: pytest, pytest-cov | Executable examples, tests, and branch coverage |
+
+The separate notebook group has no owner after Checkpoint 5.7 removed every
+tracked notebook. Plotly and Textual remain runtime requirements because they
+back supported public behavior; Matplotlib remains outside runtime metadata.
+The transitional ``docs/requirements.txt`` file remains until Checkpoint 7.5,
+but its now-unused IPython, nbformat, and seedir entries were removed here.
+
 ### Phase 7 - MyST documentation
 
 - Session work: prove the parser/API-generator path, migrate narrative pages,
@@ -394,7 +418,7 @@ and must be re-measured in Phase 0 before they are treated as verified.
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
 | Tests | 372 collected; 371 passed; 1 failed | 373 passed | 422 passed | S037 |
-| Branch coverage | approximately 76% | 75.96% | 76.19% | S014; coverage XML |
+| Branch coverage | approximately 76% | 75.96% | 80.59%; threshold met, two coverage-instrumented TUI failures | S038 coverage XML |
 | Production Python | approximately 21,011 lines | 21,015 | 24,071 | S037 report |
 | Tests | approximately 5,941 lines | 6,051 | 7,757 | S037 report |
 | `resistics/tui.py` | 2,673 lines | 2,673 | `app.py` 436; project/logging modules 2,923 | S033 report |
@@ -418,7 +442,8 @@ and must be re-measured in Phase 0 before they are treated as verified.
 | Public docstring coverage | not measured | 80.2%; 566/706 | 86.8%; 638/735 | S033 report |
 | Executable docstring examples | not measured | 778 prompts | 803 prompts | S032 report |
 | Executable docstring plots | not measured | 16 directives | same | S002 report |
-| Local `.venv` size | approximately 897 MB | 910 MB | 910 MB | S002 |
+| Locked packages | not recorded | 174 | 128 | S038 lock |
+| Local `.venv` size | approximately 897 MB | 910 MB | 744 MB | S038 |
 
 For timing measurements, record the machine/runtime context and multiple runs.
 Do not compare one cold run with one warm run or turn machine-specific timings
@@ -1849,6 +1874,21 @@ correct a factual error; note the correction explicitly.
   deliberate public removals rather than retaining more aliases. Defer removal
   of the now-suspect notebook dependency group to Checkpoint 6.1, where all
   direct and optional dependencies are reviewed together.
+- `D052` (2026-07-21): Treat a direct dependency as an owned compatibility
+  promise, not a record of everything present in the environment. Remove
+  Resistics declarations for ObsPy and scikit-learn because production imports
+  neither; regressioninc continues to own scikit-learn transitively. Replace
+  the sole prettyprinter use with a small JSON-compatible formatter that
+  preserves the executable ``summary()`` layout. Remove the ownerless notebook
+  group, pytest-html, IPython, nbformat, seedir, and emoji declarations. Keep
+  Plotly and Textual in runtime metadata because public plotting and the
+  installed CLI require them; keep Matplotlib in the shared docs/tests group.
+  Rebase legacy runtime lower bounds on Python 3.11-era/current APIs, require
+  the locally verified MTH5 0.6.8 boundary, and give the editable regressioninc
+  source its actual alpha version constraint. Relax exact attotime and
+  fast-sugiyama pins because no incompatibility justifies upper bounds. Retain
+  only the reproduced ``tsdownsample<0.2`` cap from D022. Checkpoint 6.2 owns
+  installation and execution of the complete declared minimum set.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -3241,3 +3281,72 @@ correct a factual error; note the correction explicitly.
 - Exact next action: map every direct runtime dependency to production imports
   and every optional/development dependency to its docs, test, notebook, or
   tooling owner before proposing Checkpoint 6.1 metadata changes.
+
+### S038 - 2026-07-21 - Audit and reduce direct dependencies
+
+- Checkpoint state at start: Checkpoint 5.7 and Gate 5 were committed and
+  verified; Checkpoint 6.1 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `d86c59a` with only the
+  required empty `pyrefly-baseline.json` untracked. No unrelated tracked change
+  was present or modified.
+- Session objective: map every direct and grouped dependency to a maintained
+  owner, remove declarations without one, make runtime lower bounds credible
+  for Python 3.11 and current APIs, and verify the smaller built distributions.
+- Work completed: mapped all 14 retained runtime dependencies and all four uv
+  groups. Removed direct ObsPy, prettyprinter, and scikit-learn declarations;
+  scikit-learn remains correctly owned by regressioninc. Replaced the sole
+  prettyprinter call with a small internal JSON-compatible renderer that
+  preserves every established `summary()` doctest. Removed the now-ownerless
+  notebook group plus pytest-html, IPython, nbformat, seedir, and emoji tooling
+  declarations, including the corresponding unused entries in the transitional
+  documentation requirements file. Kept Plotly/Textual as public runtime
+  behavior and Matplotlib as shared docs/test support. Rebased legacy NumPy,
+  SciPy, Pandas, Loguru, PyYAML, MTH5, Xarray, regressioninc, and Matplotlib
+  lower bounds; relaxed unsupported exact pins for attotime and fast-sugiyama;
+  retained only the reproduced tsdownsample cap. Refreshed the lock and release
+  notes and recorded the permanent ownership map above.
+- Files changed: `pyproject.toml`, `uv.lock`, `resistics/common.py`,
+  `docs/requirements.txt`, `CHANGELOG.rst`, and this implementation record.
+- Decisions added or superseded: D052 records direct-dependency ownership,
+  runtime versus group boundaries, lower-bound scope, the preserved summary
+  output, and the sole retained evidence-backed upper constraint.
+- Verification commands and results:
+  - `uv lock` and `uv sync --locked --all-groups` succeeded; the lock resolves
+    128 packages. `uv tree --locked --depth 2 --no-dev` confirms all retained
+    runtime/group owners and scikit-learn only below regressioninc.
+  - The six summary-heavy doctest modules passed all 59 tests. The normal full
+    suite passed all 422 tests in 33.61 seconds.
+  - Ruff format/lint, pydoclint, and Pyrefly passed; Pyrefly reported zero
+    errors with the two established suppressions. The package-legacy checker
+    and `git diff --check` passed. The repository-wide pre-commit gate passed
+    after the approved retry allowed its EOF hook to open read-only `.agents`
+    records; the initial managed-sandbox run had already passed every
+    substantive Python and whitespace hook.
+  - The gallery-disabled Sphinx build succeeded with the established 85
+    offline-intersphinx, duplicate-object, and stale-gallery warnings.
+  - The OSV-backed `uv audit --locked` found no known vulnerabilities or
+    adverse project statuses in 127 audited packages.
+  - `uv build --no-sources` produced the wheel and sdist. Artifact inspection
+    proved all 14 intended `Requires-Dist` entries, absence of the three removed
+    direct dependencies, presence of `py.typed`, and preserved wheel-loaded
+    model-summary behavior.
+- Measurements/artifacts: the lock fell from 174 to 128 packages (26.4%); the
+  synced `.venv` fell from 910 MB to 744 MB (18.2%). Build artifacts are under
+  `/tmp/resistics-checkpoint-6-1-dist-20260721/`; generated documentation and
+  coverage reports remain ignored under `.artifacts/hardening/`.
+- Known failures or incomplete work: the exact coverage command exceeded its
+  75.95% threshold at 80.59%, but two existing TUI tests fail only under full
+  coverage instrumentation: the 5,200-check synthetic timing assertion takes
+  about 3 seconds against a 2-second non-instrumented limit, and one async
+  teardown assertion observes project closure too early. Both pass in the
+  normal suite and are unrelated to dependency behavior; this instrumentation
+  sensitivity remains visible for the final local-gate review. Exact declared
+  minimum-version execution is deliberately Checkpoint 6.2, not claimed here.
+- Checkpoint state at end: `6.1` is `verified`; Checkpoint 6.2 is ready.
+- Commit readiness or commit id: the dependency map, metadata cleanup, lock,
+  compatibility-preserving summary renderer, release notes, artifacts, and
+  record are verified and ready for an owner-selected commit; no commit was
+  requested or created.
+- Exact next action: design the repeatable Checkpoint 6.2 command that resolves
+  the lowest practical direct versions on Python 3.11 and tests paired built
+  resistics/regressioninc distributions rather than editable source checkouts.

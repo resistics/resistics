@@ -8,6 +8,9 @@ Next release
 - **Changed:** ``resistics.testing`` now contains only the small data builders
   used by executable documentation; regression-only factories and comparisons
   are owned by the test suite.
+- **Changed:** Direct dependency lower bounds now describe the supported Python
+  3.11-era package APIs. Exact pins were relaxed unless an incompatibility is
+  documented; the evidence-backed ``tsdownsample<0.2`` constraint remains.
 - **Removed:** The pre-MTH5 ``Site``/``Measurement`` directory path and file-name
   helpers, the ``Project.dir_path`` and ``Project.metadata`` compatibility
   aliases, their unused exception classes, ``init(force=...)``, and
@@ -19,6 +22,11 @@ Next release
   FDSN request file, unreferenced evaluation-data fixture module, no-op
   timestamp gather hook, and the unused ``standard_mt_flow``,
   ``time_to_evals_flow``, ``evals_to_tf_flow``, and mask-example flow aliases.
+- **Removed:** Unused direct declarations for ``obspy``, ``prettyprinter``, and
+  ``scikit-learn``; the standard library now renders model summaries and
+  ``regressioninc`` owns its scikit-learn requirement. Unused notebook,
+  pytest-HTML, IPython, nbformat, seedir, and emoji development dependencies
+  were also removed.
 
 Resistics 0.0.6
 ^^^^^^^^^^^^^^^^^^^^
