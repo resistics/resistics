@@ -6,19 +6,21 @@ import json
 import re
 import sys
 import warnings
-from collections.abc import Sequence
+from asyncio import get_running_loop
+from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from threading import Lock
 from time import monotonic
-from typing import Literal, Protocol, TypeAlias
+from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, TypeAlias, TypeVar
 
-import plotly.io as pio
 from loguru import logger
-from mth5.helpers import validate_name as validate_mth5_name
 from textual import on, work
 from textual.app import App, ComposeResult
-from textual.binding import Binding
+from textual.binding import Binding, BindingType
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen, Screen
 from textual.widget import Widget
@@ -36,48 +38,33 @@ from textual.widgets import (
     TextArea,
     Tree,
 )
+from textual.worker import Worker, WorkerState
 
-from resistics.common import validate_output_label
-from resistics.explorer import ProjectExplorerIndex, ResourceKind
-from resistics.flow import (
-    FlowDefinition,
-    ParameterSet,
-    model_from_yaml,
-    model_from_yaml_file,
-)
-from resistics.gather import GatherCriteria
-from resistics.job import (
-    JobDefinition,
-    JobProgressEvent,
-    JobRunner,
-    JobState,
-    JobSummary,
-    JobValidation,
-    ProjectJobs,
-    validate_job_template_name,
-)
-from resistics.plot import plot_flow, plot_job
-from resistics.project import (
-    Project,
-    ProjectDataDeletion,
-    ProjectDataItem,
-    load,
-    open_mth5,
-)
-from resistics.project import (
-    init as init_project,
-)
-from resistics.regression import Solution
-from resistics.sampling import to_datetime
-from resistics.spectra import SpectraDataReader, SpectraMetadata
-from resistics.templates import (
-    install_builtin_criteria_templates,
-    install_builtin_flow_templates,
-    install_builtin_parameter_templates,
-)
-from resistics.transfunc import ImpedanceTensor, Tipper
+if TYPE_CHECKING:
+    from resistics.explorer import (
+        IndexedJob,
+        IndexedResource,
+        ProjectExplorerState,
+        ResourceKind,
+    )
+    from resistics.job import (
+        JobDefinition,
+        JobProgressEvent,
+        JobRunner,
+        JobState,
+        JobSummary,
+        JobValidation,
+    )
+    from resistics.project import (
+        Project,
+        ProjectDataDeletion,
+        ProjectDataItem,
+        RunSummary,
+    )
+    from resistics.regression import Solution
 
 TIME_PLOT_MAX_POINTS = 5_000
+_WorkerValue = TypeVar("_WorkerValue")
 
 TimePlotSelection: TypeAlias = tuple[str, str, str, str | None]
 PlotTarget: TypeAlias = (
@@ -85,6 +72,115 @@ PlotTarget: TypeAlias = (
     | tuple[Literal["project"], None]
     | tuple[Literal["time"], TimePlotSelection]
 )
+ExplorerView: TypeAlias = Literal[
+    "project", "data", "flows", "parameters", "criteria", "jobs"
+]
+
+
+def _feature_error(feature: str, error: Exception) -> str:
+    """Return actionable detail for a lazily imported feature failure.
+
+    Parameters
+    ----------
+    feature : str
+        User-facing feature name.
+    error : Exception
+        Import or runtime failure raised at the feature boundary.
+
+    Returns
+    -------
+    str
+        Error detail that preserves ordinary failures and explains how to
+        recover from a missing required dependency.
+    """
+    if isinstance(error, ModuleNotFoundError):
+        dependency = error.name or "unknown"
+        return (
+            f"{feature} requires the missing dependency {dependency!r}. "
+            "Reinstall resistics with its required dependencies."
+        )
+    return str(error)
+
+
+async def _run_in_worker_thread(
+    operation: Callable[[], _WorkerValue],
+) -> _WorkerValue:
+    """Run blocking work in a dedicated thread owned by one Textual worker.
+
+    The executor is not shared with the asyncio event loop, so cancelling a
+    Textual worker never blocks the UI while a synchronous API finishes.
+
+    Parameters
+    ----------
+    operation : Callable[[], _WorkerValue]
+        Blocking callable that does not mutate Textual widgets.
+
+    Returns
+    -------
+    _WorkerValue
+        Value returned by the blocking callable.
+    """
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="resistics-tui")
+    try:
+        return await get_running_loop().run_in_executor(executor, operation)
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+
+@dataclass(frozen=True)
+class _ProjectOpenResult:
+    """Immutable outcome returned by a project-opening thread worker.
+
+    Attributes
+    ----------
+    generation : int
+        App generation that requested the project.
+    project_path : Path
+        Project directory requested by the user.
+    project : Project | None
+        Open project on success.
+    startup_warnings : tuple[str, ...]
+        Warnings captured while opening the project.
+    error : str | None
+        User-facing opening error on failure.
+    """
+
+    generation: int
+    project_path: Path
+    project: Project | None = None
+    startup_warnings: tuple[str, ...] = ()
+    error: str | None = None
+
+
+@dataclass(frozen=True)
+class _ExplorerLoadResult:
+    """Immutable discovery result passed from a worker to the UI thread.
+
+    Attributes
+    ----------
+    generation : int
+        Screen generation that requested the discovery operation.
+    section : ExplorerView
+        Explorer view owning the result.
+    state : ProjectExplorerState | None
+        Project catalogue result for Project and Data views.
+    resources : tuple[IndexedResource, ...]
+        Parsed YAML resources for a resource view.
+    jobs : tuple[IndexedJob, ...]
+        Validated jobs for the Jobs view.
+    runs : tuple[RunSummary, ...]
+        MTH5 run summaries preloaded for Data plot selection.
+    error : str | None
+        User-facing discovery error on failure.
+    """
+
+    generation: int
+    section: ExplorerView
+    state: ProjectExplorerState | None = None
+    resources: tuple[IndexedResource, ...] = ()
+    jobs: tuple[IndexedJob, ...] = ()
+    runs: tuple[RunSummary, ...] = ()
+    error: str | None = None
 
 
 @dataclass
@@ -269,7 +365,7 @@ _NO_CRITERIA_VALUE = "__no_criteria__"
 _YAML_FILE_STEM = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
-class CreateJobScreen(ModalScreen[JobDefinition | None]):
+class CreateJobScreen(ModalScreen["JobDefinition | None"]):
     """Create a minimal job template from project YAML resources."""
 
     BINDINGS = [
@@ -380,6 +476,9 @@ class CreateJobScreen(ModalScreen[JobDefinition | None]):
 
     @on(Button.Pressed, "#create-job-template")
     def create(self) -> None:
+        from resistics.common import validate_output_label
+        from resistics.job import JobDefinition, validate_job_template_name
+
         name = self.query_one("#job-name", Input).value
         output_label = self.query_one("#job-output-label", Input).value
         try:
@@ -974,6 +1073,8 @@ class CreateProjectScreen(Screen[None]):
     def _mth5_selected(self, mth5_path: Path | None) -> None:
         if mth5_path is None:
             return
+        from resistics.project import open_mth5
+
         try:
             source = open_mth5(mth5_path)
             try:
@@ -981,7 +1082,10 @@ class CreateProjectScreen(Screen[None]):
             finally:
                 source.close_mth5()
         except Exception as exc:
-            self._set_status(f"[red]Unable to read MTH5 file:[/] {exc}")
+            self._set_status(
+                f"[red]Unable to read MTH5 file:[/] "
+                f"{_feature_error('MTH5 inspection', exc)}"
+            )
             return
         self.mth5_path = mth5_path
         self.query_one("#mth5-path", Static).update(str(mth5_path))
@@ -995,6 +1099,9 @@ class CreateProjectScreen(Screen[None]):
 
     @on(Button.Pressed, "#create")
     def create(self) -> None:
+        from resistics.project import init as init_project
+        from resistics.sampling import to_datetime
+
         project_name = self.query_one("#project-name", Input).value.strip()
         reference_time = self.query_one("#reference-time", Input).value.strip()
         if self.parent_path is None:
@@ -1035,11 +1142,13 @@ class CreateProjectScreen(Screen[None]):
             return
         try:
             init_project(project_path, self.mth5_path, reference_time)
-            project = load(project_path)
         except Exception as exc:
-            self._set_status(f"[red]Unable to create project:[/] {exc}")
+            self._set_status(
+                f"[red]Unable to create project:[/] "
+                f"{_feature_error('Project creation', exc)}"
+            )
             return
-        _resistics_app(self).open_project(project)
+        _resistics_app(self).open_project_path(project_path)
 
     @on(Button.Pressed, "#back")
     def back(self) -> None:
@@ -1082,6 +1191,48 @@ class CreateProjectScreen(Screen[None]):
         self.query_one("#create-status", Static).update(message)
 
 
+class ProjectLoadingScreen(Screen[None]):
+    """Immediate, cancellable surface shown while a project opens.
+
+    Parameters
+    ----------
+    project_path : Path
+        Project directory being opened.
+
+    Attributes
+    ----------
+    BINDINGS : ClassVar[list[BindingType]]
+        Keyboard actions available while the project is opening.
+    """
+
+    BINDINGS: ClassVar[list[BindingType]] = [
+        ("escape", "cancel", "Cancel"),
+        ("x", "cancel", "Cancel"),
+        ("q", "quit", "Quit"),
+    ]
+
+    def __init__(self, project_path: Path):
+        super().__init__()
+        self.project_path = project_path
+
+    def compose(self) -> ComposeResult:
+        yield TuiHeader(id="app-header")
+        with VerticalScroll(classes="pane"):
+            yield Static(
+                f"[bold]Opening project[/bold]\n\n{self.project_path}\n\n"
+                "Loading MTH5 metadata…",
+                id="project-loading",
+            )
+        yield Footer()
+
+    def action_cancel(self) -> None:
+        """Reject the pending worker result and return to the launcher."""
+        _resistics_app(self).cancel_project_open()
+
+    def action_quit(self) -> None:
+        self.app.exit()
+
+
 class ProjectExplorerScreen(Screen[None]):
     """Project browser and YAML editor with managed processing-job execution."""
 
@@ -1113,6 +1264,9 @@ class ProjectExplorerScreen(Screen[None]):
 
     def __init__(self, project: Project, startup_warnings: list[str] | None = None):
         super().__init__()
+        from resistics.explorer import ProjectExplorerIndex
+        from resistics.job import JobProgressEvent, JobRunner, JobState
+
         self.project = project
         self.explorer_index = ProjectExplorerIndex(project)
         self.project_jobs = self.explorer_index.project_jobs
@@ -1125,8 +1279,12 @@ class ProjectExplorerScreen(Screen[None]):
         self.job_summaries: dict[str, JobSummary] = {}
         self.selected_job_path: Path | None = None
         self.selected_validation: JobValidation | None = None
+        self._pending_job_path: Path | None = None
         self.job_runner: JobRunner | None = None
         self.job_state: JobState | None = None
+        self._job_progress_type = JobProgressEvent
+        self._job_runner_type = JobRunner
+        self._job_state_type = JobState
         self.data_items: dict[str, ProjectDataItem] = {}
         self.action_state = _ProjectActionState()
         self.editing_yaml = False
@@ -1134,6 +1292,13 @@ class ProjectExplorerScreen(Screen[None]):
         self.editing_model = None
         self.editing_editor_id: str | None = None
         self.startup_warnings = startup_warnings or []
+        self._load_generation = 0
+        self._loaded_sections: set[ExplorerView] = set()
+        self._loading_sections: set[ExplorerView] = set()
+        self._load_state_lock = Lock()
+        self._active_discoveries = 0
+        self._close_requested = False
+        self._project_closed = False
 
     def compose(self) -> ComposeResult:
         yield TuiHeader(id="app-header")
@@ -1212,7 +1377,10 @@ class ProjectExplorerScreen(Screen[None]):
         yield Footer()
 
     def on_mount(self) -> None:
-        self._populate_project_views()
+        self.query_one("#project-content", Static).update(
+            "[bold]Loading project overview…[/bold]"
+        )
+        self._request_explorer_section("project")
         if self.startup_warnings:
             self.query_one("#activity-log", RichLog).write(
                 f"[yellow]Suppressed {len(self.startup_warnings)} warning(s) "
@@ -1220,21 +1388,265 @@ class ProjectExplorerScreen(Screen[None]):
             )
 
     def on_unmount(self) -> None:
-        self.project.close_mth5()
+        self._load_generation += 1
+        self.workers.cancel_group(self, "explorer-load")
+        close_project = False
+        with self._load_state_lock:
+            self._close_requested = True
+            if self._active_discoveries == 0 and not self._project_closed:
+                self._project_closed = True
+                close_project = True
+        if close_project:
+            self.project.close_mth5()
 
-    def _populate_project_views(self) -> None:
-        """Rebuild every project view and refresh bindings after the batch."""
+    @work(group="explorer-load", exit_on_error=False)
+    async def _load_explorer_section(
+        self, generation: int, section: ExplorerView
+    ) -> _ExplorerLoadResult:
+        """Load one explorer section without touching Textual widgets.
+
+        Parameters
+        ----------
+        generation : int
+            Screen generation requesting the load.
+        section : ExplorerView
+            Explorer section to discover.
+
+        Returns
+        -------
+        _ExplorerLoadResult
+            Immutable result consumed on the Textual UI thread.
+        """
+        return await _run_in_worker_thread(
+            partial(self._discover_explorer_section, generation, section)
+        )
+
+    def _discover_explorer_section(
+        self, generation: int, section: ExplorerView
+    ) -> _ExplorerLoadResult:
+        """Perform one synchronous discovery operation in a worker thread.
+
+        Parameters
+        ----------
+        generation : int
+            Screen generation requesting the load.
+        section : ExplorerView
+            Explorer section to discover.
+
+        Returns
+        -------
+        _ExplorerLoadResult
+            Immutable success or failure result containing no widgets.
+        """
+        with self._load_state_lock:
+            if self._close_requested:
+                return _ExplorerLoadResult(
+                    generation=generation,
+                    section=section,
+                    error="Project screen closed",
+                )
+            self._active_discoveries += 1
+        try:
+            if section in {"project", "data"}:
+                state = self.explorer_index.project_state()
+                runs = self.explorer_index.runs() if section == "data" else ()
+                return _ExplorerLoadResult(
+                    generation=generation,
+                    section=section,
+                    state=state,
+                    runs=runs,
+                )
+            if section == "jobs":
+                return _ExplorerLoadResult(
+                    generation=generation,
+                    section=section,
+                    jobs=self.explorer_index.jobs(),
+                )
+            return _ExplorerLoadResult(
+                generation=generation,
+                section=section,
+                resources=self.explorer_index.resources(section),
+            )
+        except Exception as exc:
+            return _ExplorerLoadResult(
+                generation=generation,
+                section=section,
+                error=str(exc),
+            )
+        finally:
+            close_project = False
+            with self._load_state_lock:
+                self._active_discoveries -= 1
+                if (
+                    self._close_requested
+                    and self._active_discoveries == 0
+                    and not self._project_closed
+                ):
+                    self._project_closed = True
+                    close_project = True
+            if close_project:
+                self.project.close_mth5()
+
+    def _request_explorer_section(
+        self, section: ExplorerView, *, force: bool = False
+    ) -> None:
+        """Start one lazy section load unless its current generation is ready.
+
+        Parameters
+        ----------
+        section : ExplorerView
+            Explorer view whose cached data is required.
+        force : bool
+            Reload a section even when it is already marked ready.
+        """
+        if not force and (
+            section in self._loaded_sections or section in self._loading_sections
+        ):
+            return
+        self._loaded_sections.discard(section)
+        self._loading_sections.add(section)
+        self._show_section_loading(section)
+        self._load_explorer_section(self._load_generation, section)
+
+    def _show_section_loading(self, section: ExplorerView) -> None:
+        """Render a lightweight loading placeholder without performing I/O.
+
+        Parameters
+        ----------
+        section : ExplorerView
+            Explorer section whose content is loading.
+        """
+        if section == "project":
+            self.query_one("#project-content", Static).update(
+                "[bold]Loading project overview…[/bold]"
+            )
+        elif section == "data":
+            tree = self.query_one("#data-tree", Tree)
+            tree.clear()
+            tree.root.add_leaf("Loading project data…")
+        else:
+            editor_ids = {
+                "flows": "#flow-content",
+                "parameters": "#parameter-content",
+                "criteria": "#criteria-content",
+                "jobs": "#job-content",
+            }
+            self.query_one(editor_ids[section], TextArea).text = "Loading…"
+
+    @on(Worker.StateChanged)
+    def _apply_explorer_worker_result(self, event: Worker.StateChanged) -> None:
+        """Apply successful current-generation discovery on the UI thread.
+
+        Parameters
+        ----------
+        event : Worker.StateChanged
+            Textual lifecycle event for a discovery worker.
+        """
+        if event.state != WorkerState.SUCCESS or event.worker.group != "explorer-load":
+            return
+        result = event.worker.result
+        if not isinstance(result, _ExplorerLoadResult):
+            return
+        if result.generation != self._load_generation:
+            return
+        self._loading_sections.discard(result.section)
+        if result.error is not None:
+            self._show_section_error(result.section, result.error)
+            self.refresh_bindings()
+            return
         with self.app.batch_update():
-            self._populate_overview()
-            self._populate_data_tree()
-            self._populate_flows()
-            self._populate_parameters()
-            self._populate_criteria()
-            self._populate_jobs()
+            self._render_explorer_result(result)
+        self._loaded_sections.add(result.section)
         self.refresh_bindings()
 
-    def _populate_overview(self) -> None:
-        summary = self.explorer_index.project_state().summary
+    def _render_explorer_result(self, result: _ExplorerLoadResult) -> None:
+        """Mutate widgets from one current worker result on the UI thread.
+
+        Parameters
+        ----------
+        result : _ExplorerLoadResult
+            Successful current-generation discovery result.
+        """
+        if result.section == "project" and result.state is not None:
+            self._populate_overview(result.state)
+        elif result.section == "data" and result.state is not None:
+            self._populate_data_tree(result.state)
+        elif result.section == "flows":
+            self._populate_flows(result.resources)
+        elif result.section == "parameters":
+            self._populate_parameters(result.resources)
+        elif result.section == "criteria":
+            self._populate_criteria(result.resources)
+        elif result.section == "jobs":
+            self._populate_jobs(result.jobs)
+            self._restore_pending_job_selection(result.jobs)
+
+    def _restore_pending_job_selection(
+        self, indexed_jobs: tuple[IndexedJob, ...]
+    ) -> None:
+        """Restore a job created or saved before its worker refresh completed.
+
+        Parameters
+        ----------
+        indexed_jobs : tuple[IndexedJob, ...]
+            Current job results returned by the discovery worker.
+        """
+        path = self._pending_job_path
+        if path is None:
+            return
+        self._pending_job_path = None
+        match = next(
+            (job for job in indexed_jobs if job.resource.path == path),
+            None,
+        )
+        if match is None:
+            return
+        self.selected_job_path = path
+        self.selected_validation = match.validation
+        self._show_yaml("#job-content", path)
+
+    def _show_section_error(self, section: ExplorerView, error: str) -> None:
+        """Replace one loading placeholder with a user-facing failure.
+
+        Parameters
+        ----------
+        section : ExplorerView
+            Explorer section whose load failed.
+        error : str
+            Failure detail returned by the worker.
+        """
+        message = f"Unable to load {section}: {error}"
+        if section == "project":
+            self.query_one("#project-content", Static).update(f"[red]{message}[/red]")
+        elif section == "data":
+            tree = self.query_one("#data-tree", Tree)
+            tree.clear()
+            tree.root.add_leaf(message)
+        else:
+            editor_ids = {
+                "flows": "#flow-content",
+                "parameters": "#parameter-content",
+                "criteria": "#criteria-content",
+                "jobs": "#job-content",
+            }
+            self.query_one(editor_ids[section], TextArea).text = message
+        self.notify(message, severity="error")
+
+    def _start_new_load_generation(self) -> None:
+        """Reject outstanding results before a cache invalidation transition."""
+        self._load_generation += 1
+        self._loading_sections.clear()
+        self.workers.cancel_group(self, "explorer-load")
+
+    def _populate_overview(self, state: ProjectExplorerState) -> None:
+        """Render one worker-loaded project summary.
+
+        Parameters
+        ----------
+        state : ProjectExplorerState
+            Handle-free project discovery result.
+        """
+        summary = state.summary
         self.action_state.plot_targets["project"] = (
             ("project", None) if summary.n_runs > 0 else None
         )
@@ -1254,9 +1666,14 @@ class ProjectExplorerScreen(Screen[None]):
         )
         self.query_one("#project-content", Static).update(content)
 
-    def _populate_data_tree(self) -> None:
-        """Populate the filtered Project and MTH5 data hierarchy."""
-        state = self.explorer_index.project_state()
+    def _populate_data_tree(self, state: ProjectExplorerState) -> None:
+        """Populate the filtered Project and MTH5 data hierarchy.
+
+        Parameters
+        ----------
+        state : ProjectExplorerState
+            Handle-free project and MTH5 catalogue returned by a worker.
+        """
         tree = self.query_one("#data-tree", Tree)
         tree.clear()
         tree.root.label = "Data"
@@ -1417,6 +1834,8 @@ class ProjectExplorerScreen(Screen[None]):
     def _load_solution(solution_path: Path) -> Solution | None:
         """Read a saved solution for a lightweight plot eligibility check."""
         try:
+            from resistics.regression import Solution
+
             return Solution.model_validate_json(solution_path.read_bytes())
         except Exception:
             return None
@@ -1425,6 +1844,8 @@ class ProjectExplorerScreen(Screen[None]):
         self, item: ProjectDataItem
     ) -> tuple[Literal["time"], TimePlotSelection] | None:
         """Turn a canonical MTH5 time path into a resistics run selection."""
+        from mth5.helpers import validate_name as validate_mth5_name
+
         parts = [part for part in item.path.split("/") if part]
         lower_parts = [part.lower() for part in parts]
         try:
@@ -1501,6 +1922,8 @@ class ProjectExplorerScreen(Screen[None]):
                 return None
             solution_path = artifact / "solution.json"
             solution = self._load_solution(solution_path)
+            from resistics.transfunc import ImpedanceTensor, Tipper
+
             if solution is None or not isinstance(
                 solution.tf, (ImpedanceTensor, Tipper)
             ):
@@ -1595,6 +2018,10 @@ class ProjectExplorerScreen(Screen[None]):
         }.get(target_type, "plot")
         started = monotonic()
         try:
+            import plotly.io as pio
+
+            from resistics.project import load
+
             self.app.call_from_thread(self.notify, f"Building {plot_name}")
             plot_project = load(self.project.project_path)
             figure = self._build_plot_figure(plot_project, target)
@@ -1608,7 +2035,9 @@ class ProjectExplorerScreen(Screen[None]):
             self.app.call_from_thread(self.notify, f"{plot_name.capitalize()} opened")
         except Exception as exc:
             self.app.call_from_thread(
-                self.notify, f"Unable to open {plot_name}: {exc}", severity="error"
+                self.notify,
+                f"Unable to open {plot_name}: {_feature_error('Plotting', exc)}",
+                severity="error",
             )
         finally:
             if plot_project is not None and plot_project is not self.project:
@@ -1629,11 +2058,17 @@ class ProjectExplorerScreen(Screen[None]):
         """
         target_type, payload = target
         if target_type == "flow":
+            from resistics.flow import FlowDefinition, model_from_yaml_file
+            from resistics.plot import plot_flow
+
             if not isinstance(payload, Path):
                 raise ValueError("A flow plot requires a YAML path")
             flow = model_from_yaml_file(FlowDefinition, payload)
             return plot_flow(flow, project.project_path)
         if target_type == "job":
+            from resistics.job import ProjectJobs
+            from resistics.plot import plot_job
+
             if not isinstance(payload, Path):
                 raise ValueError("A job plot requires a YAML path")
             validation = ProjectJobs(project).validate(payload)
@@ -1658,6 +2093,8 @@ class ProjectExplorerScreen(Screen[None]):
             )
             return time_data.plot(max_pts=TIME_PLOT_MAX_POINTS)
         if target_type == "spectra":
+            from resistics.spectra import SpectraDataReader, SpectraMetadata
+
             if not isinstance(payload, Path):
                 raise ValueError("A spectra plot requires a data path")
             spectra_data = SpectraDataReader().run(payload)
@@ -1665,6 +2102,9 @@ class ProjectExplorerScreen(Screen[None]):
                 raise ValueError("A spectra plot requires array data")
             return spectra_data.plot()
         if target_type == "transfer_function":
+            from resistics.regression import Solution
+            from resistics.transfunc import ImpedanceTensor, Tipper
+
             if not isinstance(payload, Path):
                 raise ValueError("A transfer-function plot requires a solution path")
             solution = Solution.model_validate_json(payload.read_bytes())
@@ -1672,14 +2112,21 @@ class ProjectExplorerScreen(Screen[None]):
                 return solution.tf.plot(solution.freqs, solution.components)
         raise ValueError("The selected data is not plottable")
 
-    def _populate_jobs(self) -> None:
+    def _populate_jobs(self, indexed_jobs: tuple[IndexedJob, ...]) -> None:
+        """Populate the Jobs table from worker-loaded validation results.
+
+        Parameters
+        ----------
+        indexed_jobs : tuple[IndexedJob, ...]
+            Current job summaries and validations.
+        """
         table = self.query_one("#job-table", DataTable)
         table.clear(columns=True)
         table.add_columns("Job", "Flow", "Parameters", "Output", "Status")
         self.job_summaries.clear()
         self.selected_job_path = None
         self.selected_validation = None
-        for indexed_job in self.explorer_index.jobs():
+        for indexed_job in indexed_jobs:
             summary = indexed_job.summary
             key = str(summary.path)
             self.job_summaries[key] = summary
@@ -1694,7 +2141,9 @@ class ProjectExplorerScreen(Screen[None]):
                 status,
                 key=key,
             )
-        if not self.job_summaries:
+        if self.job_summaries:
+            self.query_one("#job-content", TextArea).text = "Select a job"
+        else:
             self.query_one(
                 "#job-content", TextArea
             ).text = "No YAML jobs found in processing/jobs"
@@ -1733,7 +2182,7 @@ class ProjectExplorerScreen(Screen[None]):
 
     def action_create_job(self) -> None:
         """Open the Jobs-tab form for a new editable job template."""
-        if self.job_state == JobState.running:
+        if self.job_state == self._job_state_type.running:
             self.notify(
                 "Job creation is unavailable while a job is running", severity="warning"
             )
@@ -1760,23 +2209,29 @@ class ProjectExplorerScreen(Screen[None]):
         except Exception as exc:
             self.notify(f"Unable to create job: {exc}", severity="error")
             return
+        self._start_new_load_generation()
         self.explorer_index.invalidate("jobs")
-        with self.app.batch_update():
-            self._populate_jobs()
-            self.selected_job_path = path
-            self.selected_validation = self.explorer_index.job_validation(path)
-            self._show_yaml("#job-content", path)
-        self.refresh_bindings()
+        self._loaded_sections.discard("jobs")
+        self._pending_job_path = path
+        self._request_explorer_section("jobs", force=True)
         self.notify(f"Created {path.name}")
 
-    def _populate_flows(self) -> None:
-        """Populate the read-only flow browser."""
+    def _populate_flows(self, resources: tuple[IndexedResource, ...]) -> None:
+        """Populate the read-only flow browser.
+
+        Parameters
+        ----------
+        resources : tuple[IndexedResource, ...]
+            Current parsed flow resources.
+        """
+        from resistics.flow import FlowDefinition
+
         table = self.query_one("#flow-table", DataTable)
         table.clear(columns=True)
         table.add_columns("Flow", "ID", "Version", "Nodes", "Status")
         self.flow_paths.clear()
         self.action_state.valid_flow_paths.clear()
-        for resource in self.explorer_index.resources("flows"):
+        for resource in resources:
             path = resource.path
             key = str(path)
             self.flow_paths[key] = path
@@ -1802,18 +2257,28 @@ class ProjectExplorerScreen(Screen[None]):
                     key=key,
                 )
                 logger.debug(f"Unable to read flow {path}: {resource.error}")
-        if not self.flow_paths:
+        if self.flow_paths and self.selected_flow_path is None:
+            self.query_one("#flow-content", TextArea).text = "Select a flow"
+        elif not self.flow_paths:
             self.query_one(
                 "#flow-content", TextArea
             ).text = "No YAML flows found in processing/flows"
 
-    def _populate_parameters(self) -> None:
-        """Populate the read-only parameter-set browser."""
+    def _populate_parameters(self, resources: tuple[IndexedResource, ...]) -> None:
+        """Populate the read-only parameter-set browser.
+
+        Parameters
+        ----------
+        resources : tuple[IndexedResource, ...]
+            Current parsed parameter-set resources.
+        """
+        from resistics.flow import ParameterSet
+
         table = self.query_one("#parameter-table", DataTable)
         table.clear(columns=True)
         table.add_columns("Parameters", "Processes", "Status")
         self.parameter_paths.clear()
-        for resource in self.explorer_index.resources("parameters"):
+        for resource in resources:
             path = resource.path
             key = str(path)
             self.parameter_paths[key] = path
@@ -1833,18 +2298,30 @@ class ProjectExplorerScreen(Screen[None]):
                     key=key,
                 )
                 logger.debug(f"Unable to read parameter set {path}: {resource.error}")
-        if not self.parameter_paths:
+        if self.parameter_paths and self.selected_parameter_path is None:
+            self.query_one(
+                "#parameter-content", TextArea
+            ).text = "Select a parameter set"
+        elif not self.parameter_paths:
             self.query_one(
                 "#parameter-content", TextArea
             ).text = "No YAML parameter sets found in processing/parameters"
 
-    def _populate_criteria(self) -> None:
-        """Populate the read-only criteria browser."""
+    def _populate_criteria(self, resources: tuple[IndexedResource, ...]) -> None:
+        """Populate the read-only criteria browser.
+
+        Parameters
+        ----------
+        resources : tuple[IndexedResource, ...]
+            Current parsed gather-criteria resources.
+        """
+        from resistics.gather import GatherCriteria
+
         table = self.query_one("#criteria-table", DataTable)
         table.clear(columns=True)
         table.add_columns("Criteria", "Remote references", "Status")
         self.criteria_paths.clear()
-        for resource in self.explorer_index.resources("criteria"):
+        for resource in resources:
             path = resource.path
             key = str(path)
             self.criteria_paths[key] = path
@@ -1859,7 +2336,11 @@ class ProjectExplorerScreen(Screen[None]):
             else:
                 table.add_row(path.stem, "-", "[red]invalid[/red]", key=key)
                 logger.debug(f"Unable to read criteria {path}: {resource.error}")
-        if not self.criteria_paths:
+        if self.criteria_paths and self.selected_criteria_path is None:
+            self.query_one(
+                "#criteria-content", TextArea
+            ).text = "Select a criteria file"
+        elif not self.criteria_paths:
             self.query_one(
                 "#criteria-content", TextArea
             ).text = "No YAML criteria files found in processing/criteria"
@@ -2018,6 +2499,10 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _yaml_edit_target(self):
         """Return the selected YAML source and model for the active resource tab."""
+        from resistics.flow import FlowDefinition, ParameterSet
+        from resistics.gather import GatherCriteria
+        from resistics.job import JobDefinition
+
         active = self.query_one(TabbedContent).active
         if active == "flows" and self.selected_flow_path is not None:
             return self.selected_flow_path, FlowDefinition, "#flow-content"
@@ -2144,7 +2629,7 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _start_project_data_deletion(self) -> None:
         """Choose the namespace of derived project data to remove."""
-        if self.job_state == JobState.running:
+        if self.job_state == self._job_state_type.running:
             self.notify("Data deletion is unavailable while a job is running")
             return
         try:
@@ -2198,13 +2683,13 @@ class ProjectExplorerScreen(Screen[None]):
         except Exception as exc:
             self.notify(f"Unable to delete Project data: {exc}", severity="error")
             return
+        self._start_new_load_generation()
         self.explorer_index.invalidate("project")
-        with self.app.batch_update():
-            self._populate_data_tree()
-            self.query_one("#data-metadata", TextArea).text = json.dumps(
-                {"message": "Select Project or MTH5 data"}, indent=2
-            )
-        self.refresh_bindings()
+        self._loaded_sections.discard("data")
+        self.query_one("#data-metadata", TextArea).text = json.dumps(
+            {"message": "Select Project or MTH5 data"}, indent=2
+        )
+        self._request_explorer_section("data", force=True)
         self.notify(f"Deleted {deleted.count} Project data path(s)")
 
     def _select_yaml_file(self, editor_id: str, path: Path) -> None:
@@ -2245,7 +2730,7 @@ class ProjectExplorerScreen(Screen[None]):
 
     def action_edit_yaml(self) -> None:
         """Make the selected YAML source editable."""
-        if self.job_state == JobState.running:
+        if self.job_state == self._job_state_type.running:
             self.notify(
                 "Editing is unavailable while a job is running", severity="warning"
             )
@@ -2264,6 +2749,8 @@ class ProjectExplorerScreen(Screen[None]):
 
     def action_save_yaml(self) -> None:
         """Validate and atomically save the active YAML editor."""
+        from resistics.flow import model_from_yaml
+
         if (
             not self.editing_yaml
             or self.editing_path is None
@@ -2286,11 +2773,10 @@ class ProjectExplorerScreen(Screen[None]):
         saved_path = self.editing_path
         editor_id = self.editing_editor_id
         self._clear_yaml_editing()
+        if editor_id == "#job-content":
+            self._pending_job_path = saved_path
         self._refresh_yaml_resource(editor_id)
         self._show_yaml(editor_id, saved_path)
-        if editor_id == "#job-content":
-            self.selected_job_path = saved_path
-            self.selected_validation = self.explorer_index.job_validation(saved_path)
         self.refresh_bindings()
         self.notify(f"Saved {saved_path.name}")
 
@@ -2346,18 +2832,14 @@ class ProjectExplorerScreen(Screen[None]):
         resource_type = resource_types.get(editor_id)
         if resource_type is None:
             return
+        reload_jobs = resource_type != "jobs" and "jobs" in self._loaded_sections
+        self._start_new_load_generation()
         self.explorer_index.invalidate(resource_type)
-        with self.app.batch_update():
-            if editor_id == "#flow-content":
-                self._populate_flows()
-            elif editor_id == "#parameter-content":
-                self._populate_parameters()
-            elif editor_id == "#criteria-content":
-                self._populate_criteria()
-            elif editor_id == "#job-content":
-                self._populate_jobs()
-            if resource_type != "jobs":
-                self._populate_jobs()
+        self._loaded_sections.discard(resource_type)
+        self._loaded_sections.discard("jobs")
+        self._request_explorer_section(resource_type, force=True)
+        if reload_jobs:
+            self._request_explorer_section("jobs", force=True)
 
     def action_run_selected_job(self) -> None:
         """Confirm and run the opened or focused highlighted job."""
@@ -2375,11 +2857,17 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _restore_flows(self) -> None:
         """Restore only missing built-in flow templates."""
+        from resistics.templates import install_builtin_flow_templates
+
         installed = install_builtin_flow_templates(self.project.project_path)
+        reload_jobs = "jobs" in self._loaded_sections
+        self._start_new_load_generation()
         self.explorer_index.invalidate("flows")
-        with self.app.batch_update():
-            self._populate_flows()
-            self._populate_jobs()
+        self._loaded_sections.discard("flows")
+        self._loaded_sections.discard("jobs")
+        self._request_explorer_section("flows", force=True)
+        if reload_jobs:
+            self._request_explorer_section("jobs", force=True)
         if installed:
             self.notify(f"Restored {len(installed)} flow template(s)")
         else:
@@ -2387,11 +2875,17 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _restore_parameters(self) -> None:
         """Restore only missing built-in parameter-set templates."""
+        from resistics.templates import install_builtin_parameter_templates
+
         installed = install_builtin_parameter_templates(self.project.project_path)
+        reload_jobs = "jobs" in self._loaded_sections
+        self._start_new_load_generation()
         self.explorer_index.invalidate("parameters")
-        with self.app.batch_update():
-            self._populate_parameters()
-            self._populate_jobs()
+        self._loaded_sections.discard("parameters")
+        self._loaded_sections.discard("jobs")
+        self._request_explorer_section("parameters", force=True)
+        if reload_jobs:
+            self._request_explorer_section("jobs", force=True)
         if installed:
             self.notify(f"Restored {len(installed)} parameter-set template(s)")
         else:
@@ -2399,11 +2893,17 @@ class ProjectExplorerScreen(Screen[None]):
 
     def _restore_criteria(self) -> None:
         """Restore only missing criteria examples."""
+        from resistics.templates import install_builtin_criteria_templates
+
         installed = install_builtin_criteria_templates(self.project.project_path)
+        reload_jobs = "jobs" in self._loaded_sections
+        self._start_new_load_generation()
         self.explorer_index.invalidate("criteria")
-        with self.app.batch_update():
-            self._populate_criteria()
-            self._populate_jobs()
+        self._loaded_sections.discard("criteria")
+        self._loaded_sections.discard("jobs")
+        self._request_explorer_section("criteria", force=True)
+        if reload_jobs:
+            self._request_explorer_section("jobs", force=True)
         if installed:
             self.notify(f"Restored {len(installed)} criteria example(s)")
         else:
@@ -2434,8 +2934,10 @@ class ProjectExplorerScreen(Screen[None]):
         self.app.call_from_thread(self._set_running)
         processing_project = None
         try:
+            from resistics.project import load
+
             processing_project = load(self.project.project_path)
-            self.job_runner = JobRunner(
+            self.job_runner = self._job_runner_type(
                 processing_project,
                 progress_callback=lambda event: self.app.call_from_thread(
                     self._show_progress, event
@@ -2445,11 +2947,11 @@ class ProjectExplorerScreen(Screen[None]):
         except Exception as exc:
             self.app.call_from_thread(
                 self._show_progress,
-                JobProgressEvent(
-                    state=JobState.failed,
+                self._job_progress_type(
+                    state=self._job_state_type.failed,
                     message="Unable to start job",
                     job_name=validation.resolved_job.definition.name,
-                    error=str(exc),
+                    error=_feature_error("Job processing", exc),
                 ),
             )
         finally:
@@ -2457,7 +2959,7 @@ class ProjectExplorerScreen(Screen[None]):
                 processing_project.close_mth5()
 
     def _set_running(self) -> None:
-        self.job_state = JobState.running
+        self.job_state = self._job_state_type.running
         self.query_one("#activity-status", Static).update("Job running")
         self.query_one("#activity-log", RichLog).clear()
         tabs = self.query_one(TabbedContent)
@@ -2491,17 +2993,30 @@ class ProjectExplorerScreen(Screen[None]):
         self.query_one("#activity-status", Static).update(
             f"{event.job_name}: {event.state.value}"
         )
-        if event.state in {JobState.completed, JobState.failed, JobState.cancelled}:
+        if event.state in {
+            self._job_state_type.completed,
+            self._job_state_type.failed,
+            self._job_state_type.cancelled,
+        }:
             self.job_runner = None
+            reload_jobs = "jobs" in self._loaded_sections
+            reload_data = "data" in self._loaded_sections
+            self._start_new_load_generation()
             self.explorer_index.invalidate("project", "jobs")
-            with self.app.batch_update():
-                self._populate_jobs()
-                self._populate_data_tree()
+            self._loaded_sections.discard("jobs")
+            self._loaded_sections.discard("data")
+            if reload_jobs:
+                self._request_explorer_section("jobs", force=True)
+            if reload_data:
+                self._request_explorer_section("data", force=True)
         self.refresh_bindings()
 
     @on(TabbedContent.TabActivated)
     def refresh_tab_bindings(self) -> None:
-        """Refresh the Footer when the active tab changes."""
+        """Lazily load the active explorer tab and refresh its Footer."""
+        active = self.query_one(TabbedContent).active
+        if active in {"project", "data", "flows", "parameters", "criteria", "jobs"}:
+            self._request_explorer_section(active)
         self.refresh_bindings()
 
     def _check_resource_action(self, action: str, active: str) -> bool:
@@ -2519,28 +3034,32 @@ class ProjectExplorerScreen(Screen[None]):
         bool
             Whether the action is currently available.
         """
+        if active in {"flows", "parameters", "criteria", "jobs"} and (
+            active not in self._loaded_sections
+        ):
+            return False
         if action == "edit_yaml":
             return (
                 not self.editing_yaml
-                and self.job_state != JobState.running
+                and self.job_state != self._job_state_type.running
                 and self._yaml_edit_target() is not None
             )
         if action == "create_job":
             return (
                 active == "jobs"
                 and not self.editing_yaml
-                and self.job_state != JobState.running
+                and self.job_state != self._job_state_type.running
             )
         if action == "delete_yaml" and active == "data":
             return (
                 not self.editing_yaml
-                and self.job_state != JobState.running
+                and self.job_state != self._job_state_type.running
                 and self.action_state.has_project_data_to_delete
             )
         if action in {"copy_yaml", "delete_yaml"}:
             return (
                 not self.editing_yaml
-                and self.job_state != JobState.running
+                and self.job_state != self._job_state_type.running
                 and (
                     self._highlighted_yaml_file() is not None
                     or self._selected_yaml_file() is not None
@@ -2629,7 +3148,10 @@ class ProjectExplorerScreen(Screen[None]):
 
     def check_action(self, action: str, parameters: tuple[object, ...]):
         """Expose only Footer actions relevant to cached screen state."""
-        active = self.query_one(TabbedContent).active
+        tabbed_content = self.query(TabbedContent)
+        if not tabbed_content.nodes:
+            return False
+        active = tabbed_content.first(TabbedContent).active
         resource_actions = {
             "edit_yaml",
             "create_job",
@@ -2642,11 +3164,15 @@ class ProjectExplorerScreen(Screen[None]):
         if action in resource_actions:
             return self._check_resource_action(action, active)
         if action == "close_project":
-            return self.job_state != JobState.running and not self.editing_yaml
+            return (
+                self.job_state != self._job_state_type.running and not self.editing_yaml
+            )
         if action == "run_selected_job":
             return self._check_selected_job_action(active)
         if action == "cancel_job":
-            return active == "activity" and self.job_state == JobState.running
+            return (
+                active == "activity" and self.job_state == self._job_state_type.running
+            )
         if action in {"expand_data_node", "collapse_data_node"}:
             return self._check_data_tree_action(action)
         if action == "plot":
@@ -2680,7 +3206,7 @@ class ProjectExplorerScreen(Screen[None]):
             self.refresh_bindings()
 
     def action_refresh(self) -> None:
-        if self.job_state == JobState.running:
+        if self.job_state == self._job_state_type.running:
             self.notify("Refresh is unavailable while a job is running")
             return
         if self.editing_yaml:
@@ -2688,19 +3214,28 @@ class ProjectExplorerScreen(Screen[None]):
                 "Save or discard the current YAML edits first", severity="warning"
             )
             return
+        active = self.query_one(TabbedContent).active
+        section: ExplorerView = (
+            active
+            if active in {"project", "data", "flows", "parameters", "criteria", "jobs"}
+            else "project"
+        )
+        self._start_new_load_generation()
         self.explorer_index.invalidate_all()
-        self._populate_project_views()
+        self._loaded_sections.clear()
+        self._request_explorer_section(section, force=True)
+        self.refresh_bindings()
         self.notify("Project refreshed")
 
     def action_cancel_job(self) -> None:
-        if self.job_runner is None or self.job_state != JobState.running:
+        if self.job_runner is None or self.job_state != self._job_state_type.running:
             self.notify("No active job")
             return
         self.job_runner.cancel()
         self.notify("Cancellation requested; the current step will finish first")
 
     def action_close_project(self) -> None:
-        if self.job_state == JobState.running:
+        if self.job_state == self._job_state_type.running:
             self.notify(
                 "Close project is unavailable while a job is running",
                 severity="warning",
@@ -2714,7 +3249,7 @@ class ProjectExplorerScreen(Screen[None]):
         _resistics_app(self).show_home()
 
     def action_quit(self) -> None:
-        if self.job_state == JobState.running:
+        if self.job_state == self._job_state_type.running:
             self.notify(
                 "A job is running. Press C to request cancellation before quitting.",
                 severity="warning",
@@ -2842,6 +3377,7 @@ class ResisticsTui(App[None]):
         super().__init__()
         self.initial_project_path = project_path
         self._has_started_screen = False
+        self._project_open_generation = 0
 
     def on_mount(self) -> None:
         if self.initial_project_path is None:
@@ -2849,31 +3385,158 @@ class ResisticsTui(App[None]):
         else:
             self.open_project_path(self.initial_project_path)
 
+    def on_unmount(self) -> None:
+        """Reject any project-open result completed after app shutdown."""
+        self._project_open_generation += 1
+
     def show_home(self, message: str | None = None) -> None:
+        self._reject_pending_project_open()
+        self._mount_home(message)
+
+    def _mount_home(self, message: str | None = None) -> None:
+        """Replace the current screen with the project launcher.
+
+        Parameters
+        ----------
+        message : str | None
+            Optional status or failure detail shown on the launcher.
+        """
         self.title = "resistics"
         self.sub_title = "project launcher"
         self._show_screen(HomeScreen(message))
 
     def show_create_project(self) -> None:
+        self._reject_pending_project_open()
         self.title = "resistics"
         self.sub_title = "create project"
         self._show_screen(CreateProjectScreen())
 
     def open_project_path(self, project_path: Path) -> None:
+        self._reject_pending_project_open()
+        generation = self._project_open_generation
+        self.title = "resistics"
+        self.sub_title = str(project_path)
+        self._show_screen(ProjectLoadingScreen(project_path))
+        self._load_project_path(generation, project_path)
+
+    @work(group="project-open", exit_on_error=False)
+    async def _load_project_path(
+        self, generation: int, project_path: Path
+    ) -> _ProjectOpenResult:
+        """Open one project without blocking the Textual event loop.
+
+        Parameters
+        ----------
+        generation : int
+            App generation requesting the project.
+        project_path : Path
+            Project directory to open.
+
+        Returns
+        -------
+        _ProjectOpenResult
+            Immutable success or failure passed back to the UI thread.
+        """
+        return await _run_in_worker_thread(
+            partial(self._open_project_path, generation, project_path)
+        )
+
+    def _open_project_path(
+        self, generation: int, project_path: Path
+    ) -> _ProjectOpenResult:
+        """Perform synchronous project opening inside a worker thread.
+
+        Parameters
+        ----------
+        generation : int
+            App generation requesting the project.
+        project_path : Path
+            Project directory to open.
+
+        Returns
+        -------
+        _ProjectOpenResult
+            Immutable project-open outcome containing no widgets.
+        """
         try:
+            from resistics.project import load
+
             with warnings.catch_warnings(record=True) as caught_warnings:
                 warnings.simplefilter("always")
                 project = load(project_path)
         except Exception as exc:
-            self.show_home(f"[red]Unable to open project:[/] {exc}")
-            return
-        self.open_project(
-            project, [str(warning.message) for warning in caught_warnings]
+            return _ProjectOpenResult(
+                generation=generation,
+                project_path=project_path,
+                error=_feature_error("Project loading", exc),
+            )
+        if generation != self._project_open_generation:
+            try:
+                project.close_mth5()
+            except Exception:
+                logger.exception(f"Unable to close superseded project {project_path}")
+            return _ProjectOpenResult(
+                generation=generation,
+                project_path=project_path,
+            )
+        return _ProjectOpenResult(
+            generation=generation,
+            project_path=project_path,
+            project=project,
+            startup_warnings=tuple(str(warning.message) for warning in caught_warnings),
         )
+
+    @on(Worker.StateChanged)
+    def _apply_project_open_result(self, event: Worker.StateChanged) -> None:
+        """Open only the latest project returned to the Textual UI thread.
+
+        Parameters
+        ----------
+        event : Worker.StateChanged
+            Textual lifecycle event for a project-open worker.
+        """
+        if event.state != WorkerState.SUCCESS or event.worker.group != "project-open":
+            return
+        result = event.worker.result
+        if not isinstance(result, _ProjectOpenResult):
+            return
+        if result.generation != self._project_open_generation:
+            if result.project is not None:
+                result.project.close_mth5()
+            return
+        if result.error is not None or result.project is None:
+            self._mount_home(
+                f"[red]Unable to open project:[/] {result.error or 'Unknown error'}"
+            )
+            return
+        self._mount_project(result.project, list(result.startup_warnings))
+
+    def _reject_pending_project_open(self) -> None:
+        """Logically cancel pending opens so their late results are rejected."""
+        self._project_open_generation += 1
+
+    def cancel_project_open(self) -> None:
+        """Cancel the visible project-open operation and show the launcher."""
+        self.show_home("Project opening cancelled")
 
     def open_project(
         self, project: Project, startup_warnings: list[str] | None = None
     ) -> None:
+        self._reject_pending_project_open()
+        self._mount_project(project, startup_warnings)
+
+    def _mount_project(
+        self, project: Project, startup_warnings: list[str] | None = None
+    ) -> None:
+        """Replace the current screen with one already opened project.
+
+        Parameters
+        ----------
+        project : Project
+            Open project returned by a completed worker or direct caller.
+        startup_warnings : list[str] | None
+            Warnings captured while opening the project.
+        """
         self.title = "resistics"
         self.sub_title = str(project.project_path)
         self._show_screen(ProjectExplorerScreen(project, startup_warnings))

@@ -2,10 +2,19 @@
 
 from collections import Counter
 from pathlib import Path
+from threading import Event, Thread
 
 import pandas as pd
+from pydantic import BaseModel
 
-from resistics.explorer import ProjectExplorerIndex
+from resistics.explorer import (
+    ExplorerFileIdentity,
+    ExplorerIssue,
+    IndexedJob,
+    IndexedResource,
+    ProjectExplorerIndex,
+    ProjectExplorerState,
+)
 from resistics.flow import default_parameter_set, model_to_yaml, standard_mt_flow
 from resistics.job import JobDefinition
 from resistics.project import (
@@ -73,6 +82,26 @@ class CountingProject:
         self.closed = True
 
 
+def test_public_explorer_results_are_frozen_serializable_pydantic_models(tmp_path):
+    public_models = (
+        ExplorerFileIdentity,
+        ExplorerIssue,
+        IndexedResource,
+        IndexedJob,
+        ProjectExplorerState,
+    )
+
+    assert all(issubclass(model, BaseModel) for model in public_models)
+    assert all(model.model_config.get("frozen") for model in public_models)
+    assert all(model.model_json_schema()["type"] == "object" for model in public_models)
+
+    project = CountingProject(tmp_path / "project")
+    state = ProjectExplorerIndex(project).project_state()
+    restored = ProjectExplorerState.model_validate_json(state.model_dump_json())
+
+    assert restored == state
+
+
 def test_project_index_reuses_cached_project_state_and_survives_closed_handle(
     tmp_path,
 ):
@@ -107,12 +136,58 @@ def test_project_index_invalidates_only_requested_sections(tmp_path):
 
     project_state = index.project_state()
     flow_records = index.resources("flows")
+    restored_flow = IndexedResource.model_validate_json(
+        flow_records[0].model_dump_json()
+    )
     index.invalidate("flows")
 
+    assert restored_flow == flow_records[0]
     assert index.project_state() is project_state
     assert index.resources("flows") is not flow_records
     assert index.resources("flows")[0].model is flow_records[0].model
+    assert index.resources("flows")[0] is flow_records[0]
     assert project.calls["file_summary"] == 1
+
+
+def test_project_index_does_not_recapture_a_stale_concurrent_result(tmp_path):
+    class BlockingProject(CountingProject):
+        def __init__(self, project_path):
+            super().__init__(project_path)
+            self.first_summary_started = Event()
+            self.release_first_summary = Event()
+
+        def file_summary(self):
+            self._read("file_summary")
+            read_number = self.calls["file_summary"]
+            if read_number == 1:
+                self.first_summary_started.set()
+                self.release_first_summary.wait(timeout=2)
+            return MTH5FileSummary(
+                mth5_path=self.mth5_path,
+                file_version=f"0.{read_number}.0",
+                n_surveys=0,
+                n_stations=0,
+                n_runs=0,
+                n_channels=0,
+                sample_rates=[],
+            )
+
+    project = BlockingProject(tmp_path / "project")
+    index = ProjectExplorerIndex(project)
+    stale_results = []
+    stale_thread = Thread(target=lambda: stale_results.append(index.project_state()))
+
+    stale_thread.start()
+    assert project.first_summary_started.wait(timeout=2)
+    index.invalidate("project")
+    current = index.project_state()
+    project.release_first_summary.set()
+    stale_thread.join(timeout=2)
+
+    assert not stale_thread.is_alive()
+    assert stale_results[0].summary.file_version == "0.1.0"
+    assert current.summary.file_version == "0.2.0"
+    assert index.project_state() is current
 
 
 def test_project_index_reparses_stale_files_after_invalidation(tmp_path):

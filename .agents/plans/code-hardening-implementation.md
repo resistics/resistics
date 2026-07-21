@@ -1,8 +1,8 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 4.3 verified with cached explorer indexing
+Status: in progress; Checkpoint 4.5 verified; Checkpoint 4.6 ready
 Created: 2026-07-19
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 Working branch: `mth5`
 Starting HEAD: `c345ae6`
 Governing plan: [codebase-hardening.md](codebase-hardening.md)
@@ -27,27 +27,29 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 4 - Make the TUI responsive
-- Active checkpoint: `4.4` (`resistics`) - Move blocking loads to workers
+- Active checkpoint: `4.6` (`both`) - Replace terminal progress output
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `4.3` in `S025`
-- Last verified checkpoint: `4.3` in `S025`
-- Last session: `S025`
-- Last verified commit: resistics `148a877` plus the verified uncommitted
-  Checkpoint 4.3 worktree; regressioninc `9eb11a4` is the base of uncommitted
-  Checkpoints 1.1 and 1.2 work
+- Last completed checkpoint: `4.5` in `S028`
+- Last verified checkpoint: `4.5` in `S028`
+- Last session: `S028`
+- Last verified commit: resistics `ff155bb` plus the verified uncommitted
+  S026 Pydantic explorer DTO refinement, S027 worker-loading implementation,
+  and S028 deferred-import implementation; regressioninc `9eb11a4` is the
+  base of uncommitted Checkpoints 1.1 and 1.2 work
 - Current blocker: none
-- Next exact action: inventory synchronous project-opening and explorer loads,
-  define immutable worker results and generation-based stale-result rejection,
-  then add a responsiveness test proving the screen mounts before discovery
-  completes.
+- Next exact action: inventory unconditional `tqdm` rendering in Resistics and
+  regressioninc processing paths, map existing `JobProgressEvent` ordering and
+  cancellation semantics, then add failing structured-progress tests at the
+  lowest shared processing boundary.
 
 Current worktree caveat:
 
-- Resistics `148a877` records the tracked hardening work through Checkpoint 4.2,
-  including owned binding refreshes and handler timing coverage.
+- Resistics `ff155bb` records the tracked hardening work through Checkpoint 4.3,
+  including the cached explorer index and its invalidation integration.
   The empty `pyrefly-baseline.json` remains untracked and is a required Phase 3
-  artifact. The verified Checkpoint 4.3 explorer, TUI, and test edits are
-  uncommitted.
+  artifact. The verified public-Pydantic/private-dataclass explorer boundary
+  refinement, worker-backed loading implementation, deferred feature imports,
+  and tests are uncommitted.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -236,9 +238,9 @@ or short command/result reference. Detailed output belongs in the session log or
 | Gate 3 | resistics | `verified` | S022; Pyrefly retained, 0 diagnostics, PEP 561 artifacts verified |
 | 4.1 | resistics | `verified` | S023; 5,200 checks; zero instrumented I/O |
 | 4.2 | resistics | `verified` | S024; owned refreshes; handlers below 50 ms |
-| 4.3 | resistics | `verified` | S025; identity cache and owned invalidation |
-| 4.4 | resistics | `not_started` | Worker/cancellation boundaries |
-| 4.5 | resistics | `not_started` | Cold-import measurements |
+| 4.3 | resistics | `verified` | S025-S026; identity cache, Pydantic DTOs, owned invalidation |
+| 4.4 | resistics | `verified` | S027; 403 tests; responsive/lazy/stale-result coverage |
+| 4.5 | resistics | `verified` | S028; 0.1748 s import; 0.235886 s first screen; 405 tests |
 | 4.6 | both | `not_started` | Structured progress boundary |
 | Gate 4 | resistics | `not_started` | Depends on 4.1-4.6 |
 | 5.1 | resistics | `not_started` | TUI package facade |
@@ -387,7 +389,7 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 396 passed | S025 |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 405 passed | S028 |
 | Branch coverage | approximately 76% | 75.96% | 76.19% | S014; coverage XML |
 | Production Python | approximately 21,011 lines | 21,015 | 21,015 | S002 report |
 | Tests | approximately 5,941 lines | 6,051 | 6,051 | S002 report |
@@ -398,10 +400,12 @@ and must be re-measured in Phase 0 before they are treated as verified.
 | Black format | not recorded | 26 files differ | 26 files differ | S001 |
 | mypy | 210 errors across 17 files | 209 across 17 files | removed | S016 |
 | Pyrefly | not installed | 175 errors across 17 files | 0 new errors | S016 |
-| TUI cold import | approximately 2.18 seconds | 2.2659 s median | same | S002 report |
+| TUI cold import | approximately 2.18 seconds | 2.2659 s median | 0.1748 s median | S028 report |
+| TUI first screen | not measured | 2.076730 s median | 0.235886 s median | S028 probe |
 | Cached TUI action checks | not measured | 5,200 in 0.002322 s; zero instrumented I/O | same | S023 XML |
 | TUI binding refresh ownership | not measured | calls 200/3/3/1 | calls 100/1/1/0; 13.007 ms maximum | S024 XML |
 | Explorer resource parsing | repeated by table, job, and selection | one parse per file identity | zero reads on cache hits | S025 tests |
+| TUI project/explorer loading | synchronous before first project screen | loading surface before blocked open/summary release | inactive tabs lazy; stale results rejected | S027 tests |
 | Public docstring coverage | not measured | 80.2%; 566/706 | same | S002 report |
 | Executable docstring examples | not measured | 778 prompts | same | S002 report |
 | Executable docstring plots | not measured | 16 directives | same | S002 report |
@@ -1677,6 +1681,40 @@ correct a factual error; note the correction explicitly.
   namespace and dependent jobs; data deletion and processing invalidate
   project state; explicit external refresh invalidates all sections. Unchanged
   file identities may reuse parsed models across invalidation.
+- `D040` (2026-07-20): Use frozen Pydantic v2 models for every public explorer
+  result, including file identities, issues, indexed resources, indexed jobs,
+  and project state. These objects cross the service/UI boundary and must offer
+  validation, serialization, and JSON schema. Reserve frozen dataclasses for
+  private implementation records; the parsed-resource cache uses one private
+  dataclass key containing only its namespace and filesystem identity. Inherit
+  the public results directly from Pydantic `BaseModel`, because the existing
+  `ResisticsModel.summary()` method conflicts with the established `summary`
+  fields on explorer job and project results.
+- `D041` (2026-07-20): Present project-opening and explorer loading surfaces
+  immediately, then run their synchronous project, MTH5, filesystem, YAML, and
+  job discovery through Textual-managed async workers backed by short-lived
+  dedicated thread executors. Do not use the event loop's default executor:
+  Textual 8.2.8 under Python 3.13 waits for those threads during test-loop
+  shutdown, which can freeze cancellation of an uninterruptible synchronous
+  call. Workers return private frozen dataclass messages containing public
+  frozen Pydantic explorer DTOs; only UI-thread worker lifecycle handlers
+  mutate widgets. Load only the active explorer tab. Treat cancellation as
+  generation rejection because Python cannot terminate an active synchronous
+  thread safely; close superseded project handles deterministically. Protect
+  the shared explorer cache with section epochs so a late invalidated thread
+  cannot repopulate current state. Defer MTH5 closure after explorer unmount
+  until every already-running discovery exits, and reject discovery that
+  starts after closure was requested.
+- `D042` (2026-07-21): Keep the `resistics.tui` module import limited to the
+  standard library, Loguru, and Textual. Import project, MTH5, explorer, job,
+  flow, spectra, regression, transfer-function, and plotting services only
+  when their screen or action begins; retain their annotations behind
+  `TYPE_CHECKING`. Feature boundaries convert a missing required dependency
+  into an actionable reinstall message while preserving ordinary runtime
+  errors. Tests patch dependencies in their owning modules rather than relying
+  on eager aliases in `resistics.tui`. Protect the boundary with a fresh-
+  process module-inventory test instead of a brittle timing threshold; keep
+  repeatable multi-sample timings as checkpoint evidence.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -2294,3 +2332,176 @@ correct a factual error; note the correction explicitly.
   define immutable worker results and generation-based stale-result rejection,
   and add a responsiveness test proving the screen mounts before discovery
   completes.
+
+### S026 - 2026-07-20 - Refine the explorer model boundary
+
+- Checkpoint state at start: `4.3` was verified and committed by the owner;
+  Checkpoint 4.4 remained `not_started`.
+- Starting branch, HEAD, and worktree: `mth5` at owner commit `ff155bb`. Only
+  the required empty `pyrefly-baseline.json` was untracked; it was preserved.
+- Session objective: apply the agreed boundary in which explorer results shared
+  with callers are Pydantic v2 models and dataclasses remain private
+  implementation records, then reverify Checkpoint 4.3 before beginning 4.4.
+- Work completed: converted `ExplorerFileIdentity`, `ExplorerIssue`,
+  `IndexedResource`, `IndexedJob`, and `ProjectExplorerState` to frozen
+  Pydantic v2 models. Added the private frozen `_ResourceCacheKey` dataclass so
+  cache mechanics are not exposed in the public schema. The DTOs inherit
+  directly from `BaseModel` because `ResisticsModel.summary()` conflicts with
+  the existing explorer `summary` fields.
+- Test coverage: added schema and JSON round-trip coverage for every public
+  explorer result class, project state, and a parsed flow resource. Strengthened
+  cache reuse coverage to prove an unchanged private key returns the exact same
+  indexed record. Updated the TUI fake project to return the declared
+  `MTH5FileSummary` contract; Pydantic validation exposed its earlier
+  `SimpleNamespace` substitute.
+- Files changed: `resistics/explorer.py`, `tests/test_explorer.py`,
+  `tests/test_tui.py`, and this implementation record. The pre-existing
+  untracked Pyrefly baseline was not changed.
+- Decisions added or superseded: D040 records the public-Pydantic and
+  private-dataclass boundary and the direct `BaseModel` choice.
+- Verification commands and results:
+  - The focused explorer suite passed 8 tests with warnings treated as errors;
+    the combined explorer, job, and TUI suites passed 54 tests.
+  - The full suite passed 397 tests in 22.12 seconds.
+  - Ruff format checked 44 maintained Python files and Ruff lint passed.
+    Pydoclint reported no unbaselined violations; Pyrefly reported zero
+    warning-level diagnostics with the two established suppressions.
+- Known failures or incomplete work: none within the Checkpoint 4.3 model
+  refinement.
+- Checkpoint state at end: `4.3` remains `verified`; Checkpoint 4.4 remains
+  `not_started`.
+- Commit readiness or commit id: the explorer model-boundary refinement,
+  serialization tests, fixture correction, and S026 record are verified and
+  ready for an owner-selected commit; no commit was requested or created.
+- Exact next action: inventory synchronous project-opening and explorer loads,
+  define immutable worker results and generation-based stale-result rejection,
+  and add a responsiveness test proving the screen mounts before discovery
+  completes.
+
+### S027 - 2026-07-20 - Move project and explorer loads to workers
+
+- Checkpoint state at start: `4.4` was `not_started`; Checkpoint 4.3 was
+  verified in S025 and its public model boundary was refined in S026.
+- Starting branch, HEAD, and worktree: `mth5` at owner commit `ff155bb`. The
+  verified S026 explorer model refinement was uncommitted, and the required
+  empty `pyrefly-baseline.json` remained untracked; both were preserved.
+- Session objective: display a responsive project surface before synchronous
+  discovery completes, move project/explorer loads off the UI thread, load
+  inactive tabs lazily, and reject cancelled or stale results safely.
+- Work completed: added an immediate `ProjectLoadingScreen`; Textual worker
+  boundaries for project opening and each explorer section; private immutable
+  project-open and explorer result messages; and UI-thread-only result
+  handlers. Project overview loads first, while Data, Flows, Parameters,
+  Criteria, and Jobs load only when activated. Data discovery preloads stable
+  run summaries so later plot-target selection remains cache-only. Generation
+  tokens reject stale refreshes and superseded projects, whose MTH5 handles are
+  closed. A dedicated executor per Textual async worker avoids blocking event-
+  loop shutdown on active synchronous work. Successful resource loads now
+  replace their loading text with the correct selected/empty placeholder.
+- Cache concurrency: made `ProjectExplorerIndex` safe for overlapping worker
+  reads with a private lock and section/job epochs. An invalidation can proceed
+  without waiting for an old filesystem or MTH5 call, and that old result can
+  no longer repopulate current cache state. Parsed file-identity records remain
+  reusable across invalidation as established in Checkpoint 4.3.
+- Test coverage: added deterministic blocked-load tests proving that the
+  project loading screen and overview loading state render before project and
+  MTH5 discovery are released; inactive Flow YAML is not parsed before its tab
+  activates; late explorer refreshes cannot replace newer UI state; an
+  invalidated concurrent cache load cannot recapture stale project state; and
+  a superseded project result is closed without replacing the current project.
+  A held-open discovery also proves that explorer navigation defers MTH5
+  closure until the worker exits rather than closing a handle in active use.
+  Existing TUI tests were updated to await explicit lazy-load completion and to
+  assert final empty-resource messages after asynchronous deletion refreshes.
+- Files changed: `resistics/explorer.py`, `resistics/tui.py`,
+  `tests/test_explorer.py`, `tests/test_tui.py`, and this implementation record.
+  The first four also contain the verified uncommitted S026 refinement where
+  applicable; the untracked Pyrefly baseline was not changed.
+- Decisions added or superseded: D041 records the Textual worker, dedicated
+  executor, immutable-message, lazy-loading, generation-rejection, project
+  cleanup, and cache-epoch boundaries.
+- Verification commands and results:
+  - The explorer suite passed 9 tests; the TUI suite passed 35 tests.
+  - The complete suite passed 403 tests in 24.82 seconds.
+  - Ruff format checked 42 maintained Python files and Ruff lint passed.
+    Pydoclint reported no unbaselined violations; Pyrefly reported zero
+    error-level diagnostics with the two established suppressions.
+  - All seven configured pre-commit hooks passed, and `git diff --check`
+    passed.
+- Measurements/artifacts: before implementation, project opening and overview
+  discovery completed synchronously before their screens could respond. The
+  deterministic S027 workload holds each call in a thread: the loading surface
+  remains queryable while both releases are unset. The same workload records
+  zero Flow parses during Project-tab loading and exactly one after Flow-tab
+  activation. Timing was deliberately not made a brittle test threshold.
+- Known failures or incomplete work: none within Checkpoint 4.4. Heavy import
+  cost and first-screen timing remain assigned to Checkpoint 4.5.
+- Checkpoint state at end: `4.4` is `verified`; Checkpoint 4.5 is next.
+- Commit readiness or commit id: the S026 explorer boundary and S027 worker
+  implementation, concurrency hardening, regression tests, and record are
+  verified and ready for an owner-selected commit; no commit was requested or
+  created.
+- Exact next action: remeasure the five-sample cold `resistics.tui` import and
+  first-screen baseline, profile the import graph, then inventory Plotly,
+  Matplotlib, SciPy, ObsPy, and processing imports for lazy feature boundaries.
+
+### S028 - 2026-07-21 - Defer feature-specific TUI imports
+
+- Checkpoint state at start: `4.5` was `not_started`; Checkpoint 4.4 was
+  verified in S027. The tracker was moved to `in_progress` before production
+  edits.
+- Starting branch, HEAD, and worktree: `mth5` at owner commit `ff155bb`. The
+  verified S026-S027 explorer and worker changes were uncommitted, and the
+  required empty `pyrefly-baseline.json` remained untracked; both were
+  preserved.
+- Session objective: remove feature-specific services from the TUI startup
+  path, report missing dependencies at the action boundary, and exceed the
+  Phase 4 cold-import reduction target without weakening feature coverage.
+- Work completed: limited module startup to the standard library, Loguru, and
+  Textual; moved project, MTH5, explorer, job, flow, spectra, regression,
+  transfer-function, Plotly, and plot-service imports to their owning screens
+  and actions; and kept annotation-only domain imports behind `TYPE_CHECKING`.
+  Added one feature-error formatter that explains how to recover from a
+  missing required dependency while preserving other error detail. Updated
+  tests to patch services in their owning modules, removing dependence on the
+  former eager TUI aliases.
+- Test coverage: added a fresh-subprocess module-inventory regression covering
+  fourteen heavy feature/module roots and a focused missing-dependency/error-
+  preservation contract. All existing project opening, explorer, plotting,
+  processing, and project-creation TUI paths continue to run through the full
+  pilot suite.
+- Files changed: `resistics/tui.py`, `tests/test_tui.py`, and this
+  implementation record. Ignored before/after reports were written below
+  `.artifacts/hardening/performance/`; the untracked Pyrefly baseline was not
+  changed.
+- Decisions added or superseded: D042 records the lightweight module boundary,
+  feature-local import policy, actionable error handling, owning-module test
+  seams, and non-brittle regression strategy.
+- Verification commands and results:
+  - The focused TUI suite passed 37 tests; the complete suite passed 405 tests
+    in 25.82 seconds.
+  - Ruff format checked 44 maintained Python files and Ruff lint passed.
+    Pydoclint reported no unbaselined violations; Pyrefly reported zero
+    error-level diagnostics with the two established suppressions.
+  - All seven configured pre-commit hooks passed.
+- Measurements/artifacts: on CPython 3.13.5 under WSL2, the same-session
+  five-sample cold-import baseline had a 2.4280-second median before the change
+  and a 0.1748-second median afterward (range 0.1583-0.2059 seconds). Against
+  the governing verified 2.2659-second baseline, this is a 92.29% reduction,
+  exceeding the 60% Phase 4 gate. The five-sample first-screen median fell from
+  2.076730 to 0.235886 seconds (range 0.225711-0.239910 seconds), an 88.64%
+  reduction. Reports are
+  `.artifacts/hardening/performance/tui-import-4.5-before.json` and
+  `tui-import-4.5-after.json` in the same directory. Import profiling confirms
+  that Matplotlib, MTH5, mt-io, mt-metadata, Plotly, SciPy, and Resistics domain
+  services are absent from a fresh `resistics.tui` import.
+- Known failures or incomplete work: none within Checkpoint 4.5. The timing
+  values are environment evidence rather than automated thresholds.
+- Checkpoint state at end: `4.5` is `verified`; Checkpoint 4.6 is next.
+- Commit readiness or commit id: the S026-S028 explorer boundary, worker
+  implementation, deferred imports, regression tests, and records are verified
+  and ready for an owner-selected commit; no commit was requested or created.
+- Exact next action: inventory unconditional `tqdm` rendering in Resistics and
+  regressioninc processing paths, map existing `JobProgressEvent` ordering and
+  cancellation semantics, then add failing structured-progress tests at the
+  lowest shared processing boundary.

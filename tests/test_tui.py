@@ -2,8 +2,10 @@
 
 import asyncio
 import json
+import subprocess
+import sys
 from pathlib import Path
-from threading import Thread
+from threading import Event, Thread
 from time import perf_counter
 from types import SimpleNamespace
 
@@ -23,11 +25,13 @@ from textual.widgets import (
     Tree,
 )
 
+import resistics.flow as flow_module
 import resistics.tui as tui_module
+from resistics.explorer import ProjectExplorerState
 from resistics.flow import default_parameter_set, model_to_yaml, standard_mt_flow
 from resistics.gather import GatherCriteria
 from resistics.job import JobDefinition, JobProgressEvent, JobScope, JobState
-from resistics.project import ProjectDataDeletion, ProjectDataItem
+from resistics.project import MTH5FileSummary, ProjectDataDeletion, ProjectDataItem
 from resistics.sampling import to_datetime
 from resistics.testing import solution_mt
 from resistics.tui import (
@@ -63,7 +67,7 @@ class FakeProject:
             (project_path / "processing/jobs").mkdir(parents=True)
 
     def file_summary(self):
-        return SimpleNamespace(
+        return MTH5FileSummary(
             mth5_path=self.project_path / "data.h5",
             file_version="0.2.0",
             start_time=None,
@@ -109,6 +113,54 @@ class FakeProject:
         self.closed = True
 
 
+def test_tui_import_defers_feature_specific_modules():
+    deferred_modules = {
+        "matplotlib",
+        "mth5",
+        "mt_io",
+        "mt_metadata",
+        "plotly",
+        "resistics.explorer",
+        "resistics.gather",
+        "resistics.job",
+        "resistics.plot",
+        "resistics.project",
+        "resistics.regression",
+        "resistics.spectra",
+        "resistics.transfunc",
+        "scipy",
+    }
+    command = "\n".join(
+        (
+            "import sys",
+            "import resistics.tui",
+            f"deferred = {sorted(deferred_modules)!r}",
+            "print('\\n'.join(name for name in deferred if name in sys.modules))",
+        )
+    )
+
+    result = subprocess.run(  # noqa: S603 - executable and code are controlled
+        [sys.executable, "-c", command],
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+
+    assert result.stdout == "\n"
+
+
+def test_feature_errors_explain_missing_dependencies():
+    missing = ModuleNotFoundError("No module named 'plotly'", name="plotly")
+
+    assert tui_module._feature_error("Plotting", missing) == (
+        "Plotting requires the missing dependency 'plotly'. "
+        "Reinstall resistics with its required dependencies."
+    )
+    assert tui_module._feature_error("Plotting", ValueError("invalid plot")) == (
+        "invalid plot"
+    )
+
+
 def _record_call(calls, name, operation):
     def wrapped(*args, **kwargs):
         calls.append(name)
@@ -138,6 +190,249 @@ def _find_tree_node(node, data):
     return None
 
 
+async def _wait_for(condition, timeout=2.0):
+    async def poll():
+        while not condition():
+            await asyncio.sleep(0.01)
+
+    await asyncio.wait_for(poll(), timeout=timeout)
+
+
+def test_project_and_overview_loading_do_not_block_the_ui(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    load_started = Event()
+    release_load = Event()
+    summary_started = Event()
+    release_summary = Event()
+
+    def slow_load(project_path):
+        load_started.set()
+        release_load.wait(timeout=2)
+        return project
+
+    file_summary = project.file_summary
+
+    def slow_summary():
+        summary_started.set()
+        release_summary.wait(timeout=2)
+        return file_summary()
+
+    monkeypatch.setattr("resistics.project.load", slow_load)
+    monkeypatch.setattr(project, "file_summary", slow_summary)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            try:
+                await _wait_for(load_started.is_set)
+                assert app.screen.query_one("#project-loading", Static)
+
+                release_load.set()
+                await _wait_for(summary_started.is_set)
+                explorer = app.screen
+                assert isinstance(explorer, ProjectExplorerScreen)
+                assert "Loading project overview" in str(
+                    explorer.query_one("#project-content", Static).render()
+                )
+
+                release_summary.set()
+                await _wait_for(
+                    lambda: (
+                        "MTH5 version"
+                        in str(explorer.query_one("#project-content", Static).render())
+                    )
+                )
+                await pilot.pause()
+            finally:
+                release_load.set()
+                release_summary.set()
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
+def test_project_open_rejects_and_closes_a_superseded_result(monkeypatch, tmp_path):
+    first = FakeProject(tmp_path / "first")
+    second = FakeProject(tmp_path / "second")
+    first_started = Event()
+    release_first = Event()
+
+    def load_project(project_path):
+        if project_path == first.project_path:
+            first_started.set()
+            release_first.wait(timeout=2)
+            return first
+        return second
+
+    monkeypatch.setattr("resistics.project.load", load_project)
+    app = ResisticsTui(first.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)):
+            try:
+                await _wait_for(first_started.is_set)
+                app.open_project_path(second.project_path)
+                await _wait_for(
+                    lambda: (
+                        isinstance(app.screen, ProjectExplorerScreen)
+                        and app.screen.project is second
+                    )
+                )
+
+                release_first.set()
+                await _wait_for(lambda: first.closed)
+
+                assert isinstance(app.screen, ProjectExplorerScreen)
+                assert app.screen.project is second
+            finally:
+                release_first.set()
+
+    asyncio.run(run_test())
+    assert first.closed
+    assert second.closed
+
+
+def test_explorer_defers_project_close_until_discovery_finishes(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    summary_started = Event()
+    release_summary = Event()
+    file_summary = project.file_summary
+
+    def slow_summary():
+        summary_started.set()
+        release_summary.wait(timeout=2)
+        return file_summary()
+
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
+    monkeypatch.setattr(project, "file_summary", slow_summary)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            try:
+                await _wait_for(summary_started.is_set)
+                await pilot.press("x")
+                await pilot.pause()
+
+                assert app.screen.query_one("#open-project", Button)
+
+                assert not project.closed
+
+                release_summary.set()
+                await _wait_for(lambda: project.closed)
+            finally:
+                release_summary.set()
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
+def test_explorer_loads_inactive_tabs_lazily(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    flow_path = project.project_path / "processing/flows/standard.yaml"
+    flow_path.parent.mkdir(parents=True)
+    flow_path.write_text(model_to_yaml(standard_mt_flow()))
+    parse_calls = []
+
+    from resistics import explorer as explorer_module
+
+    parse = explorer_module.model_from_yaml_file
+
+    def tracked_parse(model_type, path):
+        parse_calls.append(path)
+        return parse(model_type, path)
+
+    monkeypatch.setattr(explorer_module, "model_from_yaml_file", tracked_parse)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)):
+            await _wait_for(lambda: isinstance(app.screen, ProjectExplorerScreen))
+            screen = app.screen
+            await _wait_for(
+                lambda: (
+                    "MTH5 version"
+                    in str(screen.query_one("#project-content", Static).render())
+                )
+            )
+
+            assert parse_calls == []
+            assert screen.query_one("#flow-table", DataTable).row_count == 0
+
+            screen.query_one(TabbedContent).active = "flows"
+            await _wait_for(
+                lambda: screen.query_one("#flow-table", DataTable).row_count == 1
+            )
+            assert parse_calls == [flow_path]
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
+def test_explorer_rejects_stale_worker_results(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)):
+            await _wait_for(lambda: isinstance(app.screen, ProjectExplorerScreen))
+            screen = app.screen
+            await _wait_for(
+                lambda: (
+                    "MTH5 version"
+                    in str(screen.query_one("#project-content", Static).render())
+                )
+            )
+            first_started = Event()
+            release_first = Event()
+            calls = 0
+
+            def state(n_runs):
+                summary = project.file_summary().model_copy(update={"n_runs": n_runs})
+                return ProjectExplorerState(
+                    project_path=project.project_path,
+                    mth5_identity=None,
+                    summary=summary,
+                    project_data_items=(),
+                    mth5_data_items=(),
+                    has_project_data_to_delete=False,
+                )
+
+            def delayed_state():
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    first_started.set()
+                    release_first.wait(timeout=2)
+                    return state(1)
+                return state(2)
+
+            monkeypatch.setattr(screen.explorer_index, "project_state", delayed_state)
+            try:
+                screen.action_refresh()
+                await _wait_for(first_started.is_set)
+                screen.action_refresh()
+                await _wait_for(
+                    lambda: (
+                        "Runs: 2"
+                        in str(screen.query_one("#project-content", Static).render())
+                    )
+                )
+                release_first.set()
+                await asyncio.sleep(0.05)
+
+                assert "Runs: 2" in str(
+                    screen.query_one("#project-content", Static).render()
+                )
+            finally:
+                release_first.set()
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
 def test_tui_mounts_project_views(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
     flow = standard_mt_flow()
@@ -147,7 +442,7 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
     parameters_path = project.project_path / "processing/parameters/default_mt.yaml"
     parameters_path.parent.mkdir(parents=True)
     parameters_path.write_text(model_to_yaml(default_parameter_set()))
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
@@ -165,14 +460,11 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
             )
             assert str(tree.root.label) == "Data"
             assert not tree.show_root
-            assert [str(node.label) for node in tree.root.children] == [
-                "Project",
-                "MTH5",
-            ]
+            assert len(tree.root.children) == 0
             assert table.row_count == 0
-            assert flow_table.row_count == 1
+            assert flow_table.row_count == 0
             assert flow_table.cell_padding == 1
-            assert parameter_table.row_count == 1
+            assert parameter_table.row_count == 0
             assert app.screen.query_one("#flows", TabPane)
             assert app.screen.query_one("#parameters", TabPane)
             assert app.screen.query_one("#criteria", TabPane)
@@ -188,11 +480,14 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
             assert flow_editor.read_only
             assert flow_editor.show_line_numbers
             app.screen.query_one(TabbedContent).active = "flows"
-            await asyncio.sleep(0)
+            await _wait_for(lambda: flow_table.row_count == 1)
             assert "restore_defaults" in {
                 binding.binding.action
                 for binding in app.screen.active_bindings.values()
             }
+            app.screen.query_one(TabbedContent).active = "parameters"
+            await _wait_for(lambda: parameter_table.row_count == 1)
+            app.screen.query_one(TabbedContent).active = "flows"
             app.screen.selected_flow_path = flow_path
             app.screen._show_yaml("#flow-content", flow_path)
             await pilot.press("e")
@@ -218,7 +513,11 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
             assert not app.screen.query("#install-defaults")
             assert app.sub_title == str(project.project_path)
             app.screen.query_one(TabbedContent).active = "data"
-            await asyncio.sleep(0)
+            await _wait_for(lambda: len(tree.root.children) == 2)
+            assert [str(node.label) for node in tree.root.children] == [
+                "Project",
+                "MTH5",
+            ]
             app.screen.set_focus(tree)
             app.action_focus_next()
             assert app.focused is metadata_details
@@ -273,13 +572,34 @@ def test_cached_action_checks_are_fast_and_do_not_repeat_io(
             )
         )
     )
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
         async with app.run_test(size=(100, 40)) as pilot:
             await pilot.pause()
             screen = app.screen
+            tabs = screen.query_one(TabbedContent)
+            data_tree = screen.query_one("#data-tree", Tree)
+            tabs.active = "data"
+            await _wait_for(
+                lambda: (
+                    _find_tree_node(
+                        data_tree.root,
+                        ("mth5", "/Experiment/Surveys/survey/Stations/field/run1"),
+                    )
+                    is not None
+                )
+            )
+            tabs.active = "flows"
+            await _wait_for(
+                lambda: screen.query_one("#flow-table", DataTable).row_count == 1
+            )
+            tabs.active = "jobs"
+            await _wait_for(
+                lambda: screen.query_one("#job-table", DataTable).row_count == 1
+            )
+            tabs.active = "project"
             io_calls = []
 
             monkeypatch.setattr(
@@ -330,12 +650,12 @@ def test_cached_action_checks_are_fast_and_do_not_repeat_io(
                     _record_call(io_calls, f"Path.{method_name}", operation),
                 )
             monkeypatch.setattr(
-                tui_module,
+                flow_module,
                 "model_from_yaml_file",
                 _record_call(
                     io_calls,
                     "model_from_yaml_file",
-                    tui_module.model_from_yaml_file,
+                    flow_module.model_from_yaml_file,
                 ),
             )
             monkeypatch.setattr(
@@ -364,8 +684,6 @@ def test_cached_action_checks_are_fast_and_do_not_repeat_io(
 
             elapsed = _measure_action_checks(screen, actions, io_calls)
 
-            tabs = screen.query_one(TabbedContent)
-            data_tree = screen.query_one("#data-tree", Tree)
             data_node = _find_tree_node(
                 data_tree.root,
                 (
@@ -405,7 +723,7 @@ def test_binding_refreshes_follow_owned_state_transitions(
 ):
     """Refresh the Footer once after state changes and not for content-only work."""
     project = FakeProject(tmp_path / "project")
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
@@ -499,7 +817,7 @@ def test_tui_invalidates_explorer_index_after_owned_mutations(monkeypatch, tmp_p
     parameters_path = project.project_path / "processing/parameters/default.yaml"
     parameters_path.parent.mkdir(parents=True)
     parameters_path.write_text(model_to_yaml(default_parameter_set()))
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
@@ -558,6 +876,10 @@ def test_tui_invalidates_explorer_index_after_owned_mutations(monkeypatch, tmp_p
                 ("project",),
                 ("project", "jobs"),
             ]
+            await _wait_for(
+                lambda: all(worker.is_finished for worker in screen.workers)
+            )
+            await _wait_for(lambda: screen._active_discoveries == 0)
 
     asyncio.run(run_test())
     assert project.closed
@@ -627,7 +949,7 @@ def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
             data_type="other",
         ),
     ]
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
@@ -635,6 +957,8 @@ def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
             await pilot.pause()
             screen = app.screen
             data_tree = screen.query_one("#data-tree", Tree)
+            screen.query_one(TabbedContent).active = "data"
+            await _wait_for(lambda: len(data_tree.root.children) == 2)
             assert [str(node.label) for node in data_tree.root.children] == [
                 "Project",
                 "MTH5",
@@ -665,7 +989,6 @@ def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
                 "mth5:/Time",
                 "mth5:/Time/ex",
             }
-            screen.query_one(TabbedContent).active = "data"
             data_tree.focus()
             time_category = mth5_node.children[0]
             data_tree.move_cursor(time_category)
@@ -739,7 +1062,7 @@ def test_tui_views_project_json_and_confirms_project_data_deletion(
     }
     project.output_labels = ["default"]
     project.project_data_paths = ["survey"]
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     def find_node(node, data):
@@ -812,7 +1135,7 @@ def test_tui_plot_controls_follow_supported_data_selection(monkeypatch, tmp_path
             data_type="spectra",
         ),
     ]
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     def find_node(node, data):
@@ -920,7 +1243,7 @@ def test_tui_builds_figures_with_existing_plotters(monkeypatch, tmp_path):
             return FakeSpectraData()
 
     reader = FakeSpectraReader()
-    monkeypatch.setattr(tui_module, "SpectraDataReader", lambda: reader)
+    monkeypatch.setattr("resistics.spectra.SpectraDataReader", lambda: reader)
     assert (
         ProjectExplorerScreen._build_plot_figure(project, ("spectra", spectra_path))
         is spectra_figure
@@ -955,7 +1278,7 @@ def test_tui_plots_a_valid_selected_flow(monkeypatch, tmp_path):
     flow_path.write_text(model_to_yaml(standard_mt_flow()))
     invalid_path = project.project_path / "processing/flows/invalid.yaml"
     invalid_path.write_text("not: [valid")
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
@@ -964,6 +1287,7 @@ def test_tui_plots_a_valid_selected_flow(monkeypatch, tmp_path):
             screen = app.screen
             screen.query_one(TabbedContent).active = "flows"
             flow_table = screen.query_one("#flow-table", DataTable)
+            await _wait_for(lambda: flow_table.row_count == 2)
             flow_table.focus()
             valid_row = next(
                 index
@@ -1036,7 +1360,7 @@ def test_tui_builds_and_enables_valid_job_plots(monkeypatch, tmp_path):
     )
     invalid_path = project.project_path / "processing/jobs/invalid.yaml"
     invalid_path.write_text("not: [valid")
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
@@ -1045,6 +1369,7 @@ def test_tui_builds_and_enables_valid_job_plots(monkeypatch, tmp_path):
             screen = app.screen
             screen.query_one(TabbedContent).active = "jobs"
             table = screen.query_one("#job-table", DataTable)
+            await _wait_for(lambda: table.row_count == 2)
             table.focus()
             valid_row = next(
                 index
@@ -1073,7 +1398,7 @@ def test_tui_builds_and_enables_valid_job_plots(monkeypatch, tmp_path):
 
 def test_close_project_returns_to_home(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
@@ -1106,13 +1431,14 @@ def test_tui_creates_a_job_template_from_dropdowns(monkeypatch, tmp_path):
     criteria_path = project.project_path / "processing/criteria/field.yaml"
     criteria_path.parent.mkdir(parents=True)
     criteria_path.write_text(model_to_yaml(GatherCriteria()))
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
         async with app.run_test(size=(100, 40)) as pilot:
             await pilot.pause()
             app.screen.query_one(TabbedContent).active = "jobs"
+            await _wait_for(lambda: "jobs" in app.screen._loaded_sections)
             await pilot.press("n")
             await pilot.pause()
             form = app.screen
@@ -1129,7 +1455,9 @@ def test_tui_creates_a_job_template_from_dropdowns(monkeypatch, tmp_path):
             form.query_one("#job-output-label", Input).value = "field_output"
             form.query_one("#job-criteria", Select).value = "field.yaml"
             form.create()
-            await pilot.pause()
+            await _wait_for(
+                lambda: app.screen.query_one("#job-table", DataTable).row_count == 1
+            )
             assert app.screen.query_one("#job-table", DataTable).row_count == 1
             yaml_text = (
                 project.project_path / "processing/jobs/field_job.yaml"
@@ -1151,13 +1479,16 @@ def test_tui_copies_and_deletes_selected_yaml_files(monkeypatch, tmp_path):
     flow_path.write_text(
         "# Retain this comment when copied\n" + model_to_yaml(standard_mt_flow())
     )
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
         async with app.run_test(size=(100, 40)) as pilot:
             await pilot.pause()
             app.screen.query_one(TabbedContent).active = "flows"
+            await _wait_for(
+                lambda: app.screen.query_one("#flow-table", DataTable).row_count == 1
+            )
             app.screen.selected_flow_path = flow_path
             app.screen._show_yaml("#flow-content", flow_path)
             await pilot.press("y")
@@ -1216,6 +1547,7 @@ def test_tui_deletes_invalid_yaml_from_highlight_without_opening_it(
             project.project_path / "processing/flows/invalid.yaml",
             "bad: [",
             "Select a flow",
+            "No YAML flows found in processing/flows",
         ),
         (
             "parameters",
@@ -1224,6 +1556,7 @@ def test_tui_deletes_invalid_yaml_from_highlight_without_opening_it(
             project.project_path / "processing/parameters/invalid.yaml",
             "bad: [",
             "Select a parameter set",
+            "No YAML parameter sets found in processing/parameters",
         ),
         (
             "criteria",
@@ -1232,6 +1565,7 @@ def test_tui_deletes_invalid_yaml_from_highlight_without_opening_it(
             project.project_path / "processing/criteria/legacy.yaml",
             "remote_references:\n  survey/a: survey/b\n",
             "Select a criteria file",
+            "No YAML criteria files found in processing/criteria",
         ),
         (
             "jobs",
@@ -1240,20 +1574,30 @@ def test_tui_deletes_invalid_yaml_from_highlight_without_opening_it(
             project.project_path / "processing/jobs/invalid.yaml",
             "bad: [",
             "Select a job",
+            "No YAML jobs found in processing/jobs",
         ),
     ]
-    for _, _, _, path, content, _ in resources:
+    for _, _, _, path, content, _, _ in resources:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
         async with app.run_test(size=(100, 40)) as pilot:
             await pilot.pause()
-            for tab, table_id, editor_id, path, _, placeholder in resources:
+            for (
+                tab,
+                table_id,
+                editor_id,
+                path,
+                _,
+                placeholder,
+                empty_message,
+            ) in resources:
                 app.screen.query_one(TabbedContent).active = tab
                 table = app.screen.query_one(table_id, DataTable)
+                await _wait_for(lambda table=table: table.row_count == 1)
                 table.focus()
                 table.move_cursor(row=0)
                 await pilot.pause()
@@ -1267,7 +1611,8 @@ def test_tui_deletes_invalid_yaml_from_highlight_without_opening_it(
                 delete_form.delete()
                 await pilot.pause()
                 assert not path.exists()
-                assert app.screen.query_one(editor_id, TextArea).text == placeholder
+                await _wait_for(lambda tab=tab: tab in app.screen._loaded_sections)
+                assert app.screen.query_one(editor_id, TextArea).text == empty_message
 
     asyncio.run(run_test())
     assert project.closed
@@ -1302,7 +1647,7 @@ def test_tui_copies_and_runs_highlighted_job_without_opening_it(monkeypatch, tmp
             )
         )
     )
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
@@ -1310,6 +1655,7 @@ def test_tui_copies_and_runs_highlighted_job_without_opening_it(monkeypatch, tmp
             await pilot.pause()
             app.screen.query_one(TabbedContent).active = "jobs"
             table = app.screen.query_one("#job-table", DataTable)
+            await _wait_for(lambda: table.row_count == 1)
             table.focus()
             table.move_cursor(row=0)
             await pilot.pause()
@@ -1376,7 +1722,7 @@ def test_tui_copies_highlighted_flow_parameters_and_criteria_without_opening(
     for _, _, _, path, content, _ in resources:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
@@ -1385,6 +1731,7 @@ def test_tui_copies_highlighted_flow_parameters_and_criteria_without_opening(
             for tab, table_id, editor_id, source, _, placeholder in resources:
                 app.screen.query_one(TabbedContent).active = tab
                 table = app.screen.query_one(table_id, DataTable)
+                await _wait_for(lambda table=table: table.row_count == 1)
                 table.focus()
                 table.move_cursor(row=0)
                 await pilot.pause()
@@ -1414,7 +1761,7 @@ def test_tui_opens_invalid_criteria_source_without_crashing(monkeypatch, tmp_pat
     criteria_path.parent.mkdir(parents=True)
     criteria_source = "remote_references:\n  survey/a: survey/b\n"
     criteria_path.write_text(criteria_source)
-    monkeypatch.setattr("resistics.tui.load", lambda project_path: project)
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
 
     async def run_test():
@@ -1422,6 +1769,7 @@ def test_tui_opens_invalid_criteria_source_without_crashing(monkeypatch, tmp_pat
             await pilot.pause()
             app.screen.query_one(TabbedContent).active = "criteria"
             table = app.screen.query_one("#criteria-table", DataTable)
+            await _wait_for(lambda: table.row_count == 1)
             table.focus()
             await pilot.press("enter")
             await pilot.pause()
@@ -1510,8 +1858,8 @@ def test_tui_runs_job_worker_and_reports_threaded_progress(monkeypatch, tmp_path
                 )
             )
 
-    monkeypatch.setattr("resistics.tui.load", lambda path: next(loaded_projects))
-    monkeypatch.setattr("resistics.tui.JobRunner", FakeJobRunner)
+    monkeypatch.setattr("resistics.project.load", lambda path: next(loaded_projects))
+    monkeypatch.setattr("resistics.job.JobRunner", FakeJobRunner)
     app = ResisticsTui(project_path)
 
     async def run_test():
@@ -1601,7 +1949,7 @@ def test_invalid_startup_project_returns_to_home(monkeypatch, tmp_path):
     def fail(project_path):
         raise ValueError("not a resistics project")
 
-    monkeypatch.setattr("resistics.tui.load", fail)
+    monkeypatch.setattr("resistics.project.load", fail)
     app = ResisticsTui(tmp_path / "missing")
 
     async def run_test():
@@ -1638,9 +1986,9 @@ def test_create_project_opens_the_new_project(monkeypatch, tmp_path):
         created.append((path, selected_mth5_path, reference_time))
         (path / "processing/jobs").mkdir(parents=True)
 
-    monkeypatch.setattr("resistics.tui.open_mth5", lambda path: source)
-    monkeypatch.setattr("resistics.tui.init_project", initialise)
-    monkeypatch.setattr("resistics.tui.load", lambda path: project)
+    monkeypatch.setattr("resistics.project.open_mth5", lambda path: source)
+    monkeypatch.setattr("resistics.project.init", initialise)
+    monkeypatch.setattr("resistics.project.load", lambda path: project)
     app = ResisticsTui()
 
     async def run_test():

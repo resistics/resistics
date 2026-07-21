@@ -5,7 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, TypeAlias, TypeVar
+from threading import Lock
+from typing import ClassVar, Literal, TypeAlias, TypeVar
+
+from pydantic import BaseModel, ConfigDict
 
 from resistics.flow import FlowDefinition, ParameterSet, model_from_yaml_file
 from resistics.gather import GatherCriteria
@@ -25,12 +28,13 @@ ResourceModel: TypeAlias = (
 _ProjectValue = TypeVar("_ProjectValue")
 
 
-@dataclass(frozen=True)
-class ExplorerFileIdentity:
+class ExplorerFileIdentity(BaseModel):
     """Filesystem identity used to reuse one parsed resource.
 
     Attributes
     ----------
+    model_config : ClassVar[ConfigDict]
+        Pydantic frozen-model configuration.
     path : Path
         Project resource path.
     modified_ns : int
@@ -39,33 +43,39 @@ class ExplorerFileIdentity:
         File size in bytes.
     """
 
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
     path: Path
     modified_ns: int
     size: int
 
 
-@dataclass(frozen=True)
-class ExplorerIssue:
+class ExplorerIssue(BaseModel):
     """Non-fatal project discovery failure retained for presentation layers.
 
     Attributes
     ----------
+    model_config : ClassVar[ConfigDict]
+        Pydantic frozen-model configuration.
     section : str
         Explorer section that could not be read.
     message : str
         User-facing failure detail.
     """
 
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
     section: str
     message: str
 
 
-@dataclass(frozen=True)
-class IndexedResource:
+class IndexedResource(BaseModel):
     """Parsed YAML resource or its stable validation failure.
 
     Attributes
     ----------
+    model_config : ClassVar[ConfigDict]
+        Pydantic frozen-model configuration.
     kind : ResourceKind
         Project resource namespace.
     identity : ExplorerFileIdentity
@@ -75,6 +85,8 @@ class IndexedResource:
     error : str | None
         Validation error for malformed content.
     """
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
     kind: ResourceKind
     identity: ExplorerFileIdentity
@@ -92,12 +104,13 @@ class IndexedResource:
         return self.model is not None
 
 
-@dataclass(frozen=True)
-class IndexedJob:
+class IndexedJob(BaseModel):
     """One cached job summary and its complete validation result.
 
     Attributes
     ----------
+    model_config : ClassVar[ConfigDict]
+        Pydantic frozen-model configuration.
     resource : IndexedResource
         Parsed job file record.
     summary : JobSummary
@@ -106,17 +119,20 @@ class IndexedJob:
         Cached resolved validation used for selection and execution.
     """
 
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
     resource: IndexedResource
     summary: JobSummary
     validation: JobValidation
 
 
-@dataclass(frozen=True)
-class ProjectExplorerState:
+class ProjectExplorerState(BaseModel):
     """Cached project and MTH5 catalogue state without live file handles.
 
     Attributes
     ----------
+    model_config : ClassVar[ConfigDict]
+        Pydantic frozen-model configuration.
     project_path : Path
         Root of the indexed project.
     mth5_identity : ExplorerFileIdentity | None
@@ -133,6 +149,8 @@ class ProjectExplorerState:
         Non-fatal discovery failures encountered while building the state.
     """
 
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
     project_path: Path
     mth5_identity: ExplorerFileIdentity | None
     summary: MTH5FileSummary
@@ -140,6 +158,28 @@ class ProjectExplorerState:
     mth5_data_items: tuple[ProjectDataItem, ...]
     has_project_data_to_delete: bool
     issues: tuple[ExplorerIssue, ...] = ()
+
+
+@dataclass(frozen=True)
+class _ResourceCacheKey:
+    """Private hash key for one parsed resource file version.
+
+    Attributes
+    ----------
+    kind : ResourceKind
+        Project resource namespace.
+    path : Path
+        Project resource path.
+    modified_ns : int
+        Nanosecond modification timestamp reported by the filesystem.
+    size : int
+        File size in bytes.
+    """
+
+    kind: ResourceKind
+    path: Path
+    modified_ns: int
+    size: int
 
 
 class ProjectExplorerIndex:
@@ -161,10 +201,17 @@ class ProjectExplorerIndex:
         self._project_state: ProjectExplorerState | None = None
         self._runs: tuple[RunSummary, ...] | None = None
         self._resources: dict[ResourceKind, tuple[IndexedResource, ...]] = {}
-        self._parsed_files: dict[
-            tuple[ResourceKind, ExplorerFileIdentity], IndexedResource
-        ] = {}
+        self._parsed_files: dict[_ResourceCacheKey, IndexedResource] = {}
         self._jobs: tuple[IndexedJob, ...] | None = None
+        self._section_epochs: dict[IndexSection, int] = {
+            "project": 0,
+            "flows": 0,
+            "parameters": 0,
+            "criteria": 0,
+            "jobs": 0,
+        }
+        self._jobs_epoch = 0
+        self._lock = Lock()
 
     def project_state(self) -> ProjectExplorerState:
         """Return cached project discovery state, building it on a miss.
@@ -174,8 +221,10 @@ class ProjectExplorerIndex:
         ProjectExplorerState
             Handle-free project and MTH5 catalogue DTOs.
         """
-        if self._project_state is not None:
-            return self._project_state
+        with self._lock:
+            if self._project_state is not None:
+                return self._project_state
+            epoch = self._section_epochs["project"]
 
         issues: list[ExplorerIssue] = []
         summary = self.project.file_summary()
@@ -189,8 +238,10 @@ class ProjectExplorerIndex:
             has_project_data = bool(self.project.preview_project_data_deletion().paths)
         except Exception as exc:
             has_project_data = False
-            issues.append(ExplorerIssue("project data deletion", str(exc)))
-        self._project_state = ProjectExplorerState(
+            issues.append(
+                ExplorerIssue(section="project data deletion", message=str(exc))
+            )
+        state = ProjectExplorerState(
             project_path=self.project.project_path,
             mth5_identity=self._optional_identity(summary.mth5_path),
             summary=summary,
@@ -199,7 +250,12 @@ class ProjectExplorerIndex:
             has_project_data_to_delete=has_project_data,
             issues=tuple(issues),
         )
-        return self._project_state
+        with self._lock:
+            if epoch == self._section_epochs["project"]:
+                if self._project_state is None:
+                    self._project_state = state
+                return self._project_state
+        return state
 
     def runs(self) -> tuple[RunSummary, ...]:
         """Return cached MTH5 run summaries, building them on first selection.
@@ -209,9 +265,17 @@ class ProjectExplorerIndex:
         tuple[RunSummary, ...]
             Stable run summaries used to resolve MTH5 data selections.
         """
-        if self._runs is None:
-            self._runs = tuple(self.project.list_runs())
-        return self._runs
+        with self._lock:
+            if self._runs is not None:
+                return self._runs
+            epoch = self._section_epochs["project"]
+        runs = tuple(self.project.list_runs())
+        with self._lock:
+            if epoch == self._section_epochs["project"]:
+                if self._runs is None:
+                    self._runs = runs
+                return self._runs
+        return runs
 
     def resources(self, kind: ResourceKind) -> tuple[IndexedResource, ...]:
         """Return cached parsed resources for one project namespace.
@@ -226,15 +290,20 @@ class ProjectExplorerIndex:
         tuple[IndexedResource, ...]
             Stable path-ordered resource records, including malformed files.
         """
-        cached = self._resources.get(kind)
-        if cached is not None:
-            return cached
+        with self._lock:
+            cached = self._resources.get(kind)
+            if cached is not None:
+                return cached
+            epoch = self._section_epochs[kind]
         directory = self.project.project_path / "processing" / kind
         records = tuple(
             self._resource(kind, identity)
             for identity in self._yaml_identities(directory)
         )
-        self._resources[kind] = records
+        with self._lock:
+            if epoch == self._section_epochs[kind]:
+                cached = self._resources.setdefault(kind, records)
+                return cached
         return records
 
     def jobs(self) -> tuple[IndexedJob, ...]:
@@ -245,12 +314,17 @@ class ProjectExplorerIndex:
         tuple[IndexedJob, ...]
             Path-ordered jobs, including malformed or unresolved definitions.
         """
-        if self._jobs is not None:
-            return self._jobs
-        self._jobs = tuple(
-            self._indexed_job(resource) for resource in self.resources("jobs")
-        )
-        return self._jobs
+        with self._lock:
+            if self._jobs is not None:
+                return self._jobs
+            epoch = self._jobs_epoch
+        jobs = tuple(self._indexed_job(resource) for resource in self.resources("jobs"))
+        with self._lock:
+            if epoch == self._jobs_epoch:
+                if self._jobs is None:
+                    self._jobs = jobs
+                return self._jobs
+        return jobs
 
     def job_validation(self, path: Path) -> JobValidation | None:
         """Return cached validation for one exact project job path.
@@ -299,20 +373,27 @@ class ProjectExplorerIndex:
         *sections : IndexSection
             Project or resource sections changed by an owning operation.
         """
-        for section in sections:
-            if section == "project":
-                self._project_state = None
-                self._runs = None
-            else:
-                self._resources.pop(section, None)
+        with self._lock:
+            for section in sections:
+                self._section_epochs[section] += 1
+                if section == "project":
+                    self._project_state = None
+                    self._runs = None
+                else:
+                    self._resources.pop(section, None)
+            self._jobs_epoch += 1
             self._jobs = None
 
     def invalidate_all(self) -> None:
         """Invalidate all discovery sections before an external refresh."""
-        self._project_state = None
-        self._runs = None
-        self._resources.clear()
-        self._jobs = None
+        with self._lock:
+            for section in self._section_epochs:
+                self._section_epochs[section] += 1
+            self._jobs_epoch += 1
+            self._project_state = None
+            self._runs = None
+            self._resources.clear()
+            self._jobs = None
 
     @staticmethod
     def _project_values(
@@ -339,7 +420,7 @@ class ProjectExplorerIndex:
         try:
             return operation()
         except Exception as exc:
-            issues.append(ExplorerIssue(name, str(exc)))
+            issues.append(ExplorerIssue(section=name, message=str(exc)))
             return []
 
     @staticmethod
@@ -419,10 +500,16 @@ class ProjectExplorerIndex:
         IndexedResource
             Parsed record or cached validation failure.
         """
-        key = (kind, identity)
-        cached = self._parsed_files.get(key)
-        if cached is not None:
-            return cached
+        key = _ResourceCacheKey(
+            kind=kind,
+            path=identity.path,
+            modified_ns=identity.modified_ns,
+            size=identity.size,
+        )
+        with self._lock:
+            cached = self._parsed_files.get(key)
+            if cached is not None:
+                return cached
         try:
             model = self._parse(kind, identity.path)
             resource = IndexedResource(kind=kind, identity=identity, model=model)
@@ -430,8 +517,8 @@ class ProjectExplorerIndex:
             resource = IndexedResource(
                 kind=kind, identity=identity, model=None, error=str(exc)
             )
-        self._parsed_files[key] = resource
-        return resource
+        with self._lock:
+            return self._parsed_files.setdefault(key, resource)
 
     @staticmethod
     def _parse(kind: ResourceKind, path: Path) -> ResourceModel:
@@ -491,7 +578,11 @@ class ProjectExplorerIndex:
                 errors=validation.errors,
                 warnings=validation.warnings,
             )
-        return IndexedJob(resource, summary, validation)
+        return IndexedJob(
+            resource=resource,
+            summary=summary,
+            validation=validation,
+        )
 
     def _validate_job_resource(self, resource: IndexedResource) -> JobValidation:
         """Validate one job using only models cached by this index.
