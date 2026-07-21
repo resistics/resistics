@@ -9,7 +9,7 @@ from __future__ import annotations
 import inspect
 import sys
 from collections import deque
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from importlib import import_module
 from pathlib import Path
 from typing import Any, Literal, TypeVar
@@ -23,10 +23,17 @@ from pydantic import (
     model_validator,
 )
 
-from resistics.common import ResisticsProcess, validate_output_label
+from resistics.common import (
+    CancellationCallback,
+    ProcessingCancelled,
+    ProcessingProgressCallback,
+    ProcessingProgressEvent,
+    ProcessingProgressState,
+    ResisticsProcess,
+    validate_output_label,
+)
 
-ProgressCallback = Callable[[dict[str, Any]], None]
-CancellationCallback = Callable[[], bool]
+ProgressCallback = ProcessingProgressCallback
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
@@ -423,10 +430,6 @@ def topological_order(flow: FlowStage) -> list[FlowNode]:
     return ordered
 
 
-class FlowCancelled(Exception):
-    """Raised when execution is cancelled between nodes."""
-
-
 class FlowExecutor:
     """Execute directly resolved processes in a flow stage.
 
@@ -470,7 +473,15 @@ class FlowExecutor:
         stage: FlowStage,
         context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Run one stage for one concrete run or station/rate batch."""
+        """Run one stage for one concrete run or station/rate batch.
+
+        Raises
+        ------
+        ProcessingCancelled
+            If cancellation is requested before or during a node.
+        Exception
+            If a process node fails.
+        """
         runtime = dict(processing_job.runtime)
         runtime.update(context or {})
         # A job's output label is its artifact namespace.  Do not allow an
@@ -479,17 +490,32 @@ class FlowExecutor:
         results: dict[str, Any] = {}
         for node in topological_order(stage):
             if self.cancellation_callback is not None and self.cancellation_callback():
-                self._emit({"event": "cancelled", "node_id": node.id})
-                raise FlowCancelled("Processing job cancelled")
+                self._emit(
+                    ProcessingProgressEvent(
+                        state=ProcessingProgressState.cancelled,
+                        task=node.id,
+                        current=0,
+                        total=1,
+                        message=f"Cancelled: {node.id}",
+                        stage_id=stage.stage_id,
+                        node_id=node.id,
+                        process=node.process,
+                    )
+                )
+                raise ProcessingCancelled("Processing job cancelled")
             process_class = resolve_process_class(node.process)
             params = processing_job.parameters.for_process(node.process)
             self._emit(
-                {
-                    "event": "started",
-                    "stage_id": stage.stage_id,
-                    "node_id": node.id,
-                    "process": node.process,
-                }
+                ProcessingProgressEvent(
+                    state=ProcessingProgressState.started,
+                    task=node.id,
+                    current=0,
+                    total=1,
+                    message=f"Started: {node.id}",
+                    stage_id=stage.stage_id,
+                    node_id=node.id,
+                    process=node.process,
+                )
             )
             try:
                 inputs = {
@@ -500,29 +526,54 @@ class FlowExecutor:
                     if node.configuration_source == "criteria"
                     else process_class(**params)
                 )
-                results[node.id] = instance.execute(inputs, runtime)
+                process_context = dict(runtime)
+                process_context["_resistics_progress_callback"] = (
+                    lambda event, stage=stage, node=node: self._emit(
+                        event.model_copy(
+                            update={
+                                "stage_id": event.stage_id or stage.stage_id,
+                                "node_id": event.node_id or node.id,
+                                "process": event.process or node.process,
+                            }
+                        )
+                    )
+                )
+                process_context["_resistics_cancellation_callback"] = (
+                    self.cancellation_callback
+                )
+                results[node.id] = instance.execute(inputs, process_context)
+            except ProcessingCancelled:
+                raise
             except Exception as exc:
                 self._emit(
-                    {
-                        "event": "failed",
-                        "stage_id": stage.stage_id,
-                        "node_id": node.id,
-                        "process": node.process,
-                        "error": str(exc),
-                    }
+                    ProcessingProgressEvent(
+                        state=ProcessingProgressState.failed,
+                        task=node.id,
+                        current=0,
+                        total=1,
+                        message=f"Failed: {node.id}",
+                        stage_id=stage.stage_id,
+                        node_id=node.id,
+                        process=node.process,
+                        error=str(exc),
+                    )
                 )
                 raise
             self._emit(
-                {
-                    "event": "completed",
-                    "stage_id": stage.stage_id,
-                    "node_id": node.id,
-                    "process": node.process,
-                }
+                ProcessingProgressEvent(
+                    state=ProcessingProgressState.completed,
+                    task=node.id,
+                    current=1,
+                    total=1,
+                    message=f"Completed: {node.id}",
+                    stage_id=stage.stage_id,
+                    node_id=node.id,
+                    process=node.process,
+                )
             )
         return results
 
-    def _emit(self, event: dict[str, Any]) -> None:
+    def _emit(self, event: ProcessingProgressEvent) -> None:
         if self.progress_callback is not None:
             self.progress_callback(event)
 

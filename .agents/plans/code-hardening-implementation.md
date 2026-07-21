@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 4.5 verified; Checkpoint 4.6 ready
+Status: in progress; Checkpoint 5.1 verified; Checkpoint 5.2 ready
 Created: 2026-07-19
 Last updated: 2026-07-21
 Working branch: `mth5`
@@ -26,30 +26,30 @@ the two documents do not drift independently.
 ## Current State
 
 - Programme state: `in_progress`
-- Active phase: Phase 4 - Make the TUI responsive
-- Active checkpoint: `4.6` (`both`) - Replace terminal progress output
+- Active phase: Phase 5 - Split large modules at stable boundaries
+- Active checkpoint: `5.2` (`resistics`) - Extract dialogs and launcher screens
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `4.5` in `S028`
-- Last verified checkpoint: `4.5` in `S028`
-- Last session: `S028`
-- Last verified commit: resistics `ff155bb` plus the verified uncommitted
-  S026 Pydantic explorer DTO refinement, S027 worker-loading implementation,
-  and S028 deferred-import implementation; regressioninc `9eb11a4` is the
-  base of uncommitted Checkpoints 1.1 and 1.2 work
+- Last completed checkpoint: `5.1` in `S030`
+- Last verified checkpoint: `5.1` in `S030`
+- Last session: `S030`
+- Last verified commit: resistics `09d048b` plus the verified uncommitted
+  S029-S030 structured-progress and TUI package-facade implementations;
+  regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
+  work
 - Current blocker: none
-- Next exact action: inventory unconditional `tqdm` rendering in Resistics and
-  regressioninc processing paths, map existing `JobProgressEvent` ordering and
-  cancellation semantics, then add failing structured-progress tests at the
-  lowest shared processing boundary.
+- Next exact action: map dialog and launcher dependencies on app helpers and
+  types, then move the lowest-coupling screens into `screens/dialogs.py` and
+  `screens/launcher.py` while preserving widget ids, bindings, and facade
+  exports.
 
 Current worktree caveat:
 
-- Resistics `ff155bb` records the tracked hardening work through Checkpoint 4.3,
-  including the cached explorer index and its invalidation integration.
+- Resistics `09d048b` records the tracked hardening work through Checkpoint 4.5,
+  including deferred feature imports and their startup measurements.
   The empty `pyrefly-baseline.json` remains untracked and is a required Phase 3
-  artifact. The verified public-Pydantic/private-dataclass explorer boundary
-  refinement, worker-backed loading implementation, deferred feature imports,
-  and tests are uncommitted.
+  artifact. The verified structured-progress implementation, dependency
+  cleanup, TUI package facade and skeleton, tests, lock refresh, and pydoclint
+  baseline refresh are uncommitted.
 - The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
   Checkpoint 1.6 after the obsolete hosted workflows were removed.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
@@ -241,9 +241,9 @@ or short command/result reference. Detailed output belongs in the session log or
 | 4.3 | resistics | `verified` | S025-S026; identity cache, Pydantic DTOs, owned invalidation |
 | 4.4 | resistics | `verified` | S027; 403 tests; responsive/lazy/stale-result coverage |
 | 4.5 | resistics | `verified` | S028; 0.1748 s import; 0.235886 s first screen; 405 tests |
-| 4.6 | both | `not_started` | Structured progress boundary |
-| Gate 4 | resistics | `not_started` | Depends on 4.1-4.6 |
-| 5.1 | resistics | `not_started` | TUI package facade |
+| 4.6 | both | `verified` | S029; structured lifecycle events; no raw terminal rendering |
+| Gate 4 | resistics | `verified` | S023-S029; responsive, zero-I/O, 92.29% import reduction |
+| 5.1 | resistics | `verified` | S030; facade/entry point preserved; 413 tests; artifacts verified |
 | 5.2 | resistics | `not_started` | Depends on 5.1 |
 | 5.3 | resistics | `not_started` | Depends on 4.3-4.4 and 5.1 |
 | 5.4 | resistics | `not_started` | Shared plot rendering |
@@ -389,23 +389,25 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 405 passed | S028 |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 413 passed | S030 |
 | Branch coverage | approximately 76% | 75.96% | 76.19% | S014; coverage XML |
 | Production Python | approximately 21,011 lines | 21,015 | 21,015 | S002 report |
 | Tests | approximately 5,941 lines | 6,051 | 6,051 | S002 report |
-| `resistics/tui.py` | 2,673 lines | 2,673 | 2,673 | S002 report |
+| `resistics/tui.py` | 2,673 lines | 2,673 | moved to `tui/app.py`; 3,592 | S030 report |
 | `resistics/plot.py` | 1,200 lines | 1,200 | 1,200 | S002 report |
 | Flake8 | approximately 40 findings | 43 findings | 43 findings | S001 |
 | Legacy complexity | not recorded | 17 CCR001; 5 C901; 4 ECE001 | same | S002 |
 | Black format | not recorded | 26 files differ | 26 files differ | S001 |
 | mypy | 210 errors across 17 files | 209 across 17 files | removed | S016 |
 | Pyrefly | not installed | 175 errors across 17 files | 0 new errors | S016 |
-| TUI cold import | approximately 2.18 seconds | 2.2659 s median | 0.1748 s median | S028 report |
+| TUI cold import | approximately 2.18 seconds | 2.2659 s median | 0.1606 s median | S030 report |
 | TUI first screen | not measured | 2.076730 s median | 0.235886 s median | S028 probe |
 | Cached TUI action checks | not measured | 5,200 in 0.002322 s; zero instrumented I/O | same | S023 XML |
 | TUI binding refresh ownership | not measured | calls 200/3/3/1 | calls 100/1/1/0; 13.007 ms maximum | S024 XML |
 | Explorer resource parsing | repeated by table, job, and selection | one parse per file identity | zero reads on cache hits | S025 tests |
 | TUI project/explorer loading | synchronous before first project screen | loading surface before blocked open/summary release | inactive tabs lazy; stale results rejected | S027 tests |
+| Terminal progress rendering | two unconditional `tqdm` loops | same | zero; serializable callbacks through TUI | S029 tests |
+| TUI module boundary | one module | one 2,673-line module | package facade plus app and extraction skeleton | S030 artifacts |
 | Public docstring coverage | not measured | 80.2%; 566/706 | same | S002 report |
 | Executable docstring examples | not measured | 778 prompts | same | S002 report |
 | Executable docstring plots | not measured | 16 directives | same | S002 report |
@@ -1715,6 +1717,29 @@ correct a factual error; note the correction explicitly.
   on eager aliases in `resistics.tui`. Protect the boundary with a fresh-
   process module-inventory test instead of a brittle timing threshold; keep
   repeatable multi-sample timings as checkpoint evidence.
+- `D043` (2026-07-21): Replace raw regression-loop rendering with the frozen
+  Pydantic `ProcessingProgressEvent` contract and `ProcessingProgressState`
+  lifecycle. Processes opt into progress and cancellation through keyword
+  arguments; the base flow adapter forwards executor-owned callbacks only when
+  those arguments are declared. Flow execution enriches events with stage,
+  node, and qualified process identity; `JobProgressEvent` carries the exact
+  nested event to standalone, app, and TUI consumers. A private dataclass owns
+  mutable frequency counters. Remove `tqdm`, `types-tqdm`, and their orphaned
+  `types-requests` dependency rather than retaining a renderer in core. The
+  sibling regressioninc inventory found no terminal renderer and requires no
+  change. Register pydoclint's external `DOC` code family with Ruff so six
+  definition-line suppressions can document pydoclint's inability to resolve
+  callback type aliases without weakening either checker.
+- `D044` (2026-07-21): Convert `resistics.tui` from one module into an explicit
+  package facade while keeping all implementation behavior in
+  `resistics.tui.app` for Checkpoint 5.1. Re-export only the TUI's own public
+  constants, aliases, screens, application class, and launchers; imported
+  Textual and standard-library names are not part of the supported facade.
+  Private-helper tests import the owning `app` module. Create documented empty
+  `state`, `services`, and `screens` boundaries now, but defer class movement
+  to Checkpoints 5.2-5.3 so the package conversion remains mechanical. Preserve
+  `resistics.tui:main`, update only the path-sensitive Ruff ignore and
+  pydoclint baseline, and verify both built distributions before extraction.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -2505,3 +2530,139 @@ correct a factual error; note the correction explicitly.
   regressioninc processing paths, map existing `JobProgressEvent` ordering and
   cancellation semantics, then add failing structured-progress tests at the
   lowest shared processing boundary.
+
+### S029 - 2026-07-21 - Replace terminal rendering with structured progress
+
+- Checkpoint state at start: `4.6` was `not_started`; Checkpoint 4.5 was
+  verified in S028 and had been committed by the owner.
+- Starting branch, HEAD, and worktree: `mth5` at owner commit `09d048b`. Only
+  the required empty `pyrefly-baseline.json` was untracked; it was preserved.
+- Session objective: remove unconditional terminal progress from processing
+  used by Textual, expose one serializable progress/cancellation contract for
+  standalone and UI consumers, and verify completion, cancellation, and
+  failure ordering.
+- Inventory and failing evidence: the sibling regressioninc package contained
+  no `tqdm` or terminal renderer. Resistics contained exactly two unconditional
+  `tqdm` loops, in gathered-data regression preparation and linear solving.
+  Flow execution already emitted untyped lifecycle dictionaries and job
+  execution translated them into Pydantic events, but inner numerical loops
+  could neither report structured progress nor observe cancellation. Initial
+  tests failed at collection because the shared event/cancellation contract did
+  not exist.
+- Work completed: added frozen Pydantic processing progress events with stable
+  lifecycle state, task, current/total, message, flow identity, and error
+  fields; a shared cancellation exception and callback aliases; and opt-in
+  callback forwarding from `ResisticsProcess.execute`. Flow execution now
+  emits and enriches typed node/process events. Job events retain the nested
+  processing event, while the TUI displays native current/total counters and
+  task status through its existing thread-safe activity surface. Gathered and
+  spectra regression preparation plus linear solving use a private dataclass
+  reporter and check cancellation before each evaluation frequency.
+- Dependency cleanup: removed `tqdm` and `types-tqdm` from project metadata.
+  Lock refresh also removed the now-orphaned `types-requests`; 174 packages
+  remain resolved. Ruff now recognises pydoclint's external `DOC` codes so six
+  narrow definition-line DOC105 suppressions remain valid for callback aliases
+  that pydoclint cannot resolve. Explicit pydoclint regeneration removed 17
+  stale entries, leaving 1,697 baseline lines.
+- Test coverage: added schema/JSON round-trip and start-advance-complete tests;
+  direct cancellation and failure tests; flow callback forwarding and identity
+  enrichment; job-level cancellation/failure ordering and terminal events; and
+  TUI current/total rendering. The focused flow, job, regression, and TUI
+  suites passed 97 tests.
+- Files changed: `resistics/common.py`, `resistics/flow.py`,
+  `resistics/job.py`, `resistics/regression.py`, `resistics/tui.py`, their four
+  focused test modules, `pyproject.toml`, `uv.lock`,
+  `pydoclint-baseline.txt`, and this implementation record. Regressioninc was
+  read-only because its inventory was already clean. The untracked Pyrefly
+  baseline was not changed.
+- Decisions added or superseded: D043 records the event model, callback
+  forwarding, private reporter, dependency removal, sibling no-op, and narrow
+  pydoclint/Ruff interoperability decision.
+- Verification commands and results:
+  - The complete suite passed 411 tests in 24.73 seconds.
+  - Ruff format checked 44 maintained Python files and Ruff lint passed.
+    Pydoclint reported no unbaselined violations; Pyrefly reported zero
+    error-level diagnostics with the two established suppressions.
+  - `uv lock --check` passed with 174 packages; source, project metadata, and
+    both repository inventories contain no `tqdm` reference.
+  - All seven configured pre-commit hooks passed, and `git diff --check`
+    passed.
+- Measurements/artifacts: two raw terminal renderers and three resolved
+  renderer/stub packages were removed. The replacement contract is protected
+  by six tests across direct numerical, flow, job, and TUI layers rather than
+  timing thresholds.
+- Known failures or incomplete work: none within Checkpoint 4.6. Standalone
+  callers may adapt the renderer-neutral callback to any progress library;
+  core deliberately provides no terminal renderer.
+- Checkpoint state at end: `4.6` and the Phase 4 review gate are `verified`;
+  Checkpoint 5.1 is next.
+- Commit readiness or commit id: the S029 structured-progress implementation,
+  dependency cleanup, lock/baseline refresh, regression tests, and record are
+  verified and ready for an owner-selected commit; no commit was requested or
+  created.
+- Exact next action: inventory the public names, module globals, internal
+  imports, and `resistics.tui:main` entry point that the Phase 5.1 package
+  facade must preserve before moving code mechanically.
+
+### S030 - 2026-07-21 - Introduce the TUI package facade
+
+- Checkpoint state at start: `5.1` was `not_started`; Checkpoint 4.6 and the
+  Phase 4 review gate were verified in S029.
+- Starting branch, HEAD, and worktree: `mth5` at owner commit `09d048b`. The
+  verified S029 structured-progress implementation was uncommitted, and the
+  required empty `pyrefly-baseline.json` remained untracked; both were
+  preserved.
+- Session objective: convert the single TUI module into the planned package
+  skeleton without changing application behavior, while preserving public
+  imports and the installed `resistics.tui:main` launcher.
+- Inventory and failing evidence: the supported module-owned surface comprised
+  four constants/type aliases, fourteen screens/application records, and the
+  two launch functions. Tests used two private helpers and one launcher
+  monkeypatch seam. A new facade contract initially failed twice because
+  `resistics.tui` was not yet a package.
+- Work completed: mechanically moved the complete implementation to
+  `resistics/tui/app.py`; added an explicit facade re-exporting only TUI-owned
+  public names; and created documented `state.py`, `services.py`, and
+  `screens/{dialogs,launcher,project}.py` extraction boundaries. Private-helper
+  tests now import their owning module. The launcher test patches the owning
+  app seam, while new contracts prove facade identity, package location, and
+  installed console-entry-point resolution. Updated the exact Ruff per-file
+  path and regenerated the line/path-sensitive pydoclint baseline without
+  changing its 1,697-line count.
+- Files changed by this checkpoint: deletion/move of `resistics/tui.py`, the
+  eight new files below `resistics/tui/`, `tests/test_cli.py`,
+  `tests/test_tui.py`, `pyproject.toml`, `pydoclint-baseline.txt`, and this
+  implementation record. Other dirty source, test, metadata, and lock changes
+  remain the verified S029 work. The Pyrefly baseline was not changed.
+- Decisions added or superseded: D044 records the explicit facade, single-app
+  implementation, placeholder boundaries, private-test ownership, and
+  path-sensitive tooling policy.
+- Verification commands and results:
+  - The launcher and TUI suites passed 41 tests; the complete suite passed 413
+    tests in 26.34 seconds.
+  - Ruff format checked 51 maintained Python files and Ruff lint passed.
+    Pydoclint reported no unbaselined violations; Pyrefly reported zero
+    error-level diagnostics with the two established suppressions.
+  - All seven configured pre-commit hooks passed, and `git diff --check`
+    passed.
+  - `uv build` produced the wheel and source distribution. Both contain the
+    complete eight-file TUI skeleton and no legacy `resistics/tui.py`; the
+    wheel entry-point metadata remains `resistics = resistics.tui:main`, and a
+    direct wheel import resolved the facade and app classes successfully.
+- Measurements/artifacts: five independent CPython 3.13.5/WSL2 imports ranged
+  from 0.1544 to 0.2159 seconds with a 0.1606-second median, compared with the
+  0.1748-second S028 median. The ignored report is
+  `.artifacts/hardening/performance/tui-import-5.1-after.json`; the facade adds
+  no measurable startup regression and the heavy-import test remains green.
+- Known failures or incomplete work: none within Checkpoint 5.1. The skeleton
+  modules intentionally contain no classes until their assigned extraction
+  checkpoints.
+- Checkpoint state at end: `5.1` is `verified`; Checkpoint 5.2 is next.
+- Commit readiness or commit id: the combined verified S029-S030 structured
+  progress, dependency cleanup, package facade, artifacts, tests, baselines,
+  and records are ready for an owner-selected commit; no commit was requested
+  or created.
+- Exact next action: map dialog and launcher dependencies on app helpers and
+  types, then move the lowest-coupling screens into `screens/dialogs.py` and
+  `screens/launcher.py` while preserving widget ids, bindings, and facade
+  exports.

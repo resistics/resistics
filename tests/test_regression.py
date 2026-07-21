@@ -26,7 +26,12 @@ And the corresponding predictor array has shape
 import numpy as np
 import pytest
 
-from resistics.common import History
+from resistics.common import (
+    History,
+    ProcessingCancelled,
+    ProcessingProgressEvent,
+    ProcessingProgressState,
+)
 from resistics.decimate import DecimationSetup
 from resistics.gather import GatheredData, SiteCombinedData, SiteCombinedMetadata
 from resistics.regression import (
@@ -108,6 +113,96 @@ def get_combined_metadata(
         eval_freqs=[10],
         histories=histories,
     )
+
+
+def _single_frequency_gathered_data() -> tuple[TransferFunction, GatheredData]:
+    out_data = SiteCombinedData(
+        get_combined_metadata("site1", ["run1"], ["Ex"]), TEST1_OUT_DATA
+    )
+    in_data = SiteCombinedData(
+        get_combined_metadata("site2", ["run1"], ["Hy"]), TEST1_IN_DATA
+    )
+    cross_data = SiteCombinedData(
+        get_combined_metadata("site3", ["run1"], ["Hx"]), TEST1_CROSS_DATA
+    )
+    return TransferFunction(out_chans=["Ex"], in_chans=["Hy"], cross_chans=["Hx"]), (
+        GatheredData(out_data=out_data, in_data=in_data, cross_data=cross_data)
+    )
+
+
+def test_regression_progress_orders_start_advance_and_completion():
+    tf, gathered_data = _single_frequency_gathered_data()
+    prepare_events: list[ProcessingProgressEvent] = []
+
+    regression_input = RegressionPreparerGathered().run(
+        tf, gathered_data, progress_callback=prepare_events.append
+    )
+
+    assert [event.state for event in prepare_events] == [
+        ProcessingProgressState.started,
+        ProcessingProgressState.advanced,
+        ProcessingProgressState.completed,
+    ]
+    assert [(event.current, event.total) for event in prepare_events] == [
+        (0, 1),
+        (1, 1),
+        (1, 1),
+    ]
+    assert (
+        ProcessingProgressEvent.model_validate_json(
+            prepare_events[-1].model_dump_json()
+        )
+        == prepare_events[-1]
+    )
+
+    solve_events: list[ProcessingProgressEvent] = []
+    SolverOLS().run(regression_input, progress_callback=solve_events.append)
+
+    assert [event.state for event in solve_events] == [
+        ProcessingProgressState.started,
+        ProcessingProgressState.advanced,
+        ProcessingProgressState.completed,
+    ]
+    assert all(event.task == "solve_regression" for event in solve_events)
+
+
+def test_regression_progress_reports_cancellation():
+    tf, gathered_data = _single_frequency_gathered_data()
+    events: list[ProcessingProgressEvent] = []
+
+    with pytest.raises(ProcessingCancelled, match="Cancelled"):
+        RegressionPreparerGathered().run(
+            tf,
+            gathered_data,
+            progress_callback=events.append,
+            cancellation_callback=lambda: True,
+        )
+
+    assert [event.state for event in events] == [
+        ProcessingProgressState.started,
+        ProcessingProgressState.cancelled,
+    ]
+    assert events[-1].current == 0
+
+
+def test_regression_progress_reports_failure(monkeypatch):
+    tf, gathered_data = _single_frequency_gathered_data()
+    events: list[ProcessingProgressEvent] = []
+
+    def fail(*args):
+        raise RuntimeError("synthetic regression failure")
+
+    monkeypatch.setattr(RegressionPreparerGathered, "_get_cross_powers", fail)
+    with pytest.raises(RuntimeError, match="synthetic regression failure"):
+        RegressionPreparerGathered().run(
+            tf, gathered_data, progress_callback=events.append
+        )
+
+    assert [event.state for event in events] == [
+        ProcessingProgressState.started,
+        ProcessingProgressState.failed,
+    ]
+    assert events[-1].error == "synthetic regression failure"
 
 
 def test_regression_preparer_1chan():

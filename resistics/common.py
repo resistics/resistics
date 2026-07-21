@@ -2,8 +2,10 @@
 Common resistics functions and classes used throughout the package
 """
 
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Mapping
 from datetime import UTC, datetime
+from enum import StrEnum
+from inspect import signature
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -25,6 +27,96 @@ def json_fallback(value: Any) -> Any:
 
 ELECTRIC_CHANS = ["Ex", "Ey", "E1", "E2", "E3", "E4"]
 MAGNETIC_CHANS = ["Hx", "Hy", "Hz", "Bx", "By", "Bz"]
+
+
+class ProcessingCancelled(Exception):
+    """Raised when a processing operation observes a cancellation request."""
+
+
+class ProcessingProgressState(StrEnum):
+    """Lifecycle state for a structured processing progress event.
+
+    Attributes
+    ----------
+    started :
+        Work has begun.
+    advanced :
+        One or more work units have completed.
+    completed :
+        All work units completed successfully.
+    cancelled :
+        A cancellation request stopped the work.
+    failed :
+        Work stopped because an operation failed.
+    """
+
+    started = "started"
+    advanced = "advanced"
+    completed = "completed"
+    cancelled = "cancelled"
+    failed = "failed"
+
+
+class ProcessingProgressEvent(BaseModel):
+    """Serializable progress emitted by a processing operation.
+
+    Attributes
+    ----------
+    model_config : ClassVar[ConfigDict]
+        Frozen Pydantic configuration rejecting unknown fields.
+    state : ProcessingProgressState
+        Current lifecycle state.
+    task : str
+        Stable task identifier suitable for programmatic consumers.
+    current : int
+        Number of completed work units.
+    total : int | None
+        Total work units when known.
+    message : str
+        Human-readable progress description.
+    stage_id : str | None
+        Owning flow stage when executed through a flow.
+    node_id : str | None
+        Owning flow node when executed through a flow.
+    process : str | None
+        Qualified process class when executed through a flow.
+    error : str | None
+        Failure detail for failed events.
+    """
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", frozen=True)
+
+    state: ProcessingProgressState
+    task: str
+    current: int = Field(ge=0)
+    total: int | None = Field(default=None, ge=0)
+    message: str
+    stage_id: str | None = None
+    node_id: str | None = None
+    process: str | None = None
+    error: str | None = None
+
+    @model_validator(mode="after")
+    def validate_current_not_after_total(self) -> "ProcessingProgressEvent":
+        """Reject progress beyond a known total.
+
+        Returns
+        -------
+        ProcessingProgressEvent
+            Validated progress event.
+
+        Raises
+        ------
+        ValueError
+            If completed work exceeds the known total.
+        """
+        if self.total is not None and self.current > self.total:
+            raise ValueError("current progress cannot exceed total progress")
+        return self
+
+
+ProcessingProgressCallback = Callable[[ProcessingProgressEvent], None]
+CancellationCallback = Callable[[], bool]
 
 
 def validate_output_label(value: str) -> str:
@@ -839,7 +931,8 @@ class ResisticsProcess(ResisticsModel):
         inputs : dict[str, Any]
             Named arguments for the process ``run`` method.
         context : Any
-            Flow execution context. The default adapter does not use it.
+            Flow execution context. Structured progress and cancellation
+            callbacks are forwarded when the ``run`` method accepts them.
 
         Returns
         -------
@@ -851,11 +944,20 @@ class ResisticsProcess(ResisticsModel):
         NotImplementedError
             If the process implements neither ``run`` nor its own ``execute``.
         """
-        del context
         run = getattr(self, "run", None)
         if not callable(run):
             raise NotImplementedError("Process must implement run() or execute()")
-        return run(**inputs)
+        run_inputs = dict(inputs)
+        if isinstance(context, Mapping):
+            parameters = signature(run).parameters
+            callback_keys = {
+                "progress_callback": "_resistics_progress_callback",
+                "cancellation_callback": "_resistics_cancellation_callback",
+            }
+            for parameter, context_key in callback_keys.items():
+                if parameter in parameters and context_key in context:
+                    run_inputs[parameter] = context[context_key]
+        return run(**run_inputs)
 
     def _get_record(self, messages: str | list[str]) -> Record:
         """

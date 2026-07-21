@@ -44,6 +44,13 @@ class BatchWriter(ResisticsProcess):
         return {"result_path": str(path)}
 
 
+class FailingProcess(ResisticsProcess):
+    output_type = "failed"
+
+    def run(self):
+        raise RuntimeError("synthetic processing failure")
+
+
 def make_project(tmp_path):
     project_path = tmp_path / "project"
     for path in (
@@ -116,6 +123,24 @@ def write_job(project, scope=None, criteria=None):
     path = project.project_path / "processing/jobs/example.yaml"
     path.write_text(model_to_yaml(definition))
     return path
+
+
+def resolve_flow_job(project, flow):
+    (project.project_path / "processing/flows/standard.yaml").write_text(
+        model_to_yaml(flow)
+    )
+    (project.project_path / "processing/parameters/defaults.yaml").write_text(
+        model_to_yaml(ParameterSet(name="defaults"))
+    )
+    path = project.project_path / "processing/jobs/example.yaml"
+    path.write_text(
+        model_to_yaml(
+            JobDefinition(name="example", flow="standard", parameters="defaults")
+        )
+    )
+    resolved = ProjectJobs(project).validate(path).resolved_job
+    assert resolved is not None
+    return resolved
 
 
 def test_empty_scope_batches_every_station_rate(tmp_path):
@@ -308,6 +333,74 @@ def test_batch_result_path_is_station_and_rate_specific(tmp_path):
         .as_posix()
         .endswith("data/survey/a/results/mt/128_000000")
     )
+
+
+def test_runner_orders_cancellation_and_terminal_events(tmp_path):
+    project = make_project(tmp_path)
+    resolved = resolve_flow_job(
+        project,
+        FlowDefinition(
+            id="cancel",
+            name="cancel",
+            stages=[
+                FlowStage(
+                    stage_id="runs",
+                    scope="run",
+                    nodes=[FlowNode(id="mark", process=f"{__name__}.RunMarker")],
+                )
+            ],
+        ),
+    )
+    progress = []
+    runner = JobRunner(project, progress_callback=progress.append)
+    runner.cancel()
+
+    assert runner.run(resolved) == JobState.cancelled
+
+    assert [event.state for event in progress] == [
+        JobState.running,
+        JobState.running,
+        JobState.cancelled,
+        JobState.cancelled,
+    ]
+    assert progress[-2].progress is not None
+    assert progress[-2].progress.current == 0
+    assert progress[-1].message == "Job cancelled"
+
+
+def test_runner_orders_failure_and_terminal_events(tmp_path):
+    project = make_project(tmp_path)
+    resolved = resolve_flow_job(
+        project,
+        FlowDefinition(
+            id="failure",
+            name="failure",
+            stages=[
+                FlowStage(
+                    stage_id="runs",
+                    scope="run",
+                    nodes=[FlowNode(id="fail", process=f"{__name__}.FailingProcess")],
+                )
+            ],
+        ),
+    )
+    progress = []
+
+    assert (
+        JobRunner(project, progress_callback=progress.append).run(resolved)
+        == JobState.failed
+    )
+
+    assert [event.state for event in progress] == [
+        JobState.running,
+        JobState.running,
+        JobState.running,
+        JobState.failed,
+        JobState.failed,
+    ]
+    assert progress[-2].progress is not None
+    assert progress[-2].progress.error == "synthetic processing failure"
+    assert progress[-1].error == "synthetic processing failure"
 
 
 def test_runner_runs_all_run_batches_before_station_rate_results(tmp_path):

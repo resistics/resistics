@@ -8,6 +8,7 @@ Resistics has a few built in solvers, but makes it possible to define custom
 solvers as required
 """
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Protocol
 
@@ -15,11 +16,15 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 from regressioninc.linear import LeastSquares
-from tqdm import tqdm
 
 from resistics.common import (
+    CancellationCallback,
     History,
     Metadata,
+    ProcessingCancelled,
+    ProcessingProgressCallback,
+    ProcessingProgressEvent,
+    ProcessingProgressState,
     ResisticsData,
     ResisticsProcess,
     WriteableMetadata,
@@ -34,6 +39,58 @@ class _FittableRegressor(Protocol):
     coef: np.ndarray | None
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> object: ...
+
+
+@dataclass
+class _ProgressReporter:
+    task: str
+    total: int
+    progress_callback: ProcessingProgressCallback | None = None
+    cancellation_callback: CancellationCallback | None = None
+    current: int = 0
+
+    def start(self, message: str) -> None:
+        self._emit(ProcessingProgressState.started, message)
+
+    def check_cancelled(self) -> None:
+        if self.cancellation_callback is None or not self.cancellation_callback():
+            return
+        message = f"Cancelled {self.task.replace('_', ' ')}"
+        self._emit(ProcessingProgressState.cancelled, message)
+        raise ProcessingCancelled(message)
+
+    def advance(self, message: str) -> None:
+        self.current += 1
+        self._emit(ProcessingProgressState.advanced, message)
+
+    def complete(self, message: str) -> None:
+        self._emit(ProcessingProgressState.completed, message)
+
+    def fail(self, error: Exception) -> None:
+        self._emit(
+            ProcessingProgressState.failed,
+            f"Failed {self.task.replace('_', ' ')}",
+            error=str(error),
+        )
+
+    def _emit(
+        self,
+        state: ProcessingProgressState,
+        message: str,
+        error: str | None = None,
+    ) -> None:
+        if self.progress_callback is None:
+            return
+        self.progress_callback(
+            ProcessingProgressEvent(
+                state=state,
+                task=self.task,
+                current=self.current,
+                total=self.total,
+                message=message,
+                error=error,
+            )
+        )
 
 
 def _cross_channels(tf: TransferFunction) -> list[str]:
@@ -220,8 +277,13 @@ class RegressionPreparerGathered(ResisticsProcess):
     output_type: ClassVar[str] = "regression_input"
     include_in_default_parameters: ClassVar[bool] = True
 
-    def run(
-        self, tf: TransferFunction, gathered_data: GatheredData
+    def run(  # noqa: DOC105 - pydoclint cannot resolve callback type aliases
+        self,
+        tf: TransferFunction,
+        gathered_data: GatheredData,
+        *,
+        progress_callback: ProcessingProgressCallback | None = None,
+        cancellation_callback: CancellationCallback | None = None,
     ) -> RegressionInputData:
         """
         Create the RegressionInputData
@@ -232,6 +294,10 @@ class RegressionPreparerGathered(ResisticsProcess):
             The transfer function
         gathered_data : GatheredData
             The gathered data
+        progress_callback : ProcessingProgressCallback, optional
+            Consumer for structured frequency progress.
+        cancellation_callback : CancellationCallback, optional
+            Callback checked before each evaluation frequency.
 
         Returns
         -------
@@ -245,10 +311,20 @@ class RegressionPreparerGathered(ResisticsProcess):
         logger.info(f"In chans: {gathered_data.in_data.metadata.chans}")
         logger.info(f"Cross chans site: {gathered_data.cross_data.metadata.site_name}")
         logger.info(f"Cross chans: {gathered_data.cross_data.metadata.chans}")
-        return self._get_regression_data(tf, gathered_data)
+        return self._get_regression_data(
+            tf,
+            gathered_data,
+            progress_callback=progress_callback,
+            cancellation_callback=cancellation_callback,
+        )
 
-    def _get_regression_data(
-        self, tf: TransferFunction, gathered_data: GatheredData
+    def _get_regression_data(  # noqa: DOC105 - callback aliases are documented
+        self,
+        tf: TransferFunction,
+        gathered_data: GatheredData,
+        *,
+        progress_callback: ProcessingProgressCallback | None = None,
+        cancellation_callback: CancellationCallback | None = None,
     ) -> RegressionInputData:
         """
         Get the regression input data
@@ -259,24 +335,53 @@ class RegressionPreparerGathered(ResisticsProcess):
             The transfer function
         gathered_data : GatheredData
             The gathered data
+        progress_callback : ProcessingProgressCallback, optional
+            Consumer for structured frequency progress.
+        cancellation_callback : CancellationCallback, optional
+            Callback checked before each evaluation frequency.
 
         Returns
         -------
         RegressionInputData
             Data to be used as input to a solver
+
+        Raises
+        ------
+        ProcessingCancelled
+            If cancellation is requested before a frequency is prepared.
+        Exception
+            If frequency preparation fails.
         """
         freqs = []
         obs = []
         preds = []
         metadata = gathered_data.out_data.metadata
         logger.info(f"Preparing regression data for {metadata.n_evals} frequencies")
-        for idx, freq in enumerate(tqdm(metadata.eval_freqs)):
-            out_powers, in_powers = self._get_cross_powers(tf, gathered_data, idx)
-            freqs.append(freq)
-            obs_freq = self._get_obs(tf, out_powers)
-            preds_freq = self._get_preds(tf, in_powers)
-            obs.append(obs_freq)
-            preds.append(preds_freq)
+        reporter = _ProgressReporter(
+            task="prepare_regression",
+            total=metadata.n_evals,
+            progress_callback=progress_callback,
+            cancellation_callback=cancellation_callback,
+        )
+        reporter.start("Preparing regression frequencies")
+        try:
+            for idx, freq in enumerate(metadata.eval_freqs):
+                reporter.check_cancelled()
+                out_powers, in_powers = self._get_cross_powers(tf, gathered_data, idx)
+                freqs.append(freq)
+                obs_freq = self._get_obs(tf, out_powers)
+                preds_freq = self._get_preds(tf, in_powers)
+                obs.append(obs_freq)
+                preds.append(preds_freq)
+                reporter.advance(
+                    f"Prepared regression frequency {idx + 1} of {metadata.n_evals}"
+                )
+        except ProcessingCancelled:
+            raise
+        except Exception as exc:
+            reporter.fail(exc)
+            raise
+        reporter.complete(f"Prepared {metadata.n_evals} regression frequencies")
         record = self._get_record(
             f"Produced regression input data for {metadata.n_evals} frequencies"
         )
@@ -420,21 +525,73 @@ class RegressionPreparerSpectra(ResisticsProcess):
     output_type: ClassVar[str] = "regression_input"
     include_in_default_parameters: ClassVar[bool] = True
 
-    def run(self, tf: TransferFunction, spec_data: SpectraData) -> RegressionInputData:
-        """Construct the linear equation for solving"""
+    def run(  # noqa: DOC105 - pydoclint cannot resolve callback type aliases
+        self,
+        tf: TransferFunction,
+        spec_data: SpectraData,
+        *,
+        progress_callback: ProcessingProgressCallback | None = None,
+        cancellation_callback: CancellationCallback | None = None,
+    ) -> RegressionInputData:
+        """Construct regression input while emitting frequency progress.
+
+        Parameters
+        ----------
+        tf : TransferFunction
+            Transfer-function definition.
+        spec_data : SpectraData
+            Spectra to prepare for regression.
+        progress_callback : ProcessingProgressCallback, optional
+            Consumer for structured frequency progress.
+        cancellation_callback : CancellationCallback, optional
+            Callback checked before each evaluation frequency.
+
+        Returns
+        -------
+        RegressionInputData
+            Prepared observations and predictors.
+
+        Raises
+        ------
+        ProcessingCancelled
+            If cancellation is requested before a frequency is prepared.
+        Exception
+            If frequency preparation fails.
+        """
         freqs = []
         obs = []
         preds = []
-        for ilevel in range(spec_data.metadata.n_levels):
-            level_metadata = spec_data.metadata.levels_metadata[ilevel]
-            out_powers, in_powers = self._get_cross_powers(tf, spec_data, ilevel)
-            for idx, freq in enumerate(level_metadata.freqs):
-                logger.info(
-                    f"Preparing regression data: level {ilevel}, freq. {idx} = {freq}"
-                )
-                freqs.append(freq)
-                obs.append(_observations(tf, out_powers[..., idx]))
-                preds.append(_predictors(in_powers[..., idx]))
+        total = sum(len(level.freqs) for level in spec_data.metadata.levels_metadata)
+        reporter = _ProgressReporter(
+            task="prepare_regression",
+            total=total,
+            progress_callback=progress_callback,
+            cancellation_callback=cancellation_callback,
+        )
+        reporter.start("Preparing regression frequencies")
+        try:
+            for ilevel in range(spec_data.metadata.n_levels):
+                level_metadata = spec_data.metadata.levels_metadata[ilevel]
+                out_powers, in_powers = self._get_cross_powers(tf, spec_data, ilevel)
+                for idx, freq in enumerate(level_metadata.freqs):
+                    reporter.check_cancelled()
+                    logger.info(
+                        "Preparing regression data: "
+                        f"level {ilevel}, freq. {idx} = {freq}"
+                    )
+                    freqs.append(freq)
+                    obs.append(_observations(tf, out_powers[..., idx]))
+                    preds.append(_predictors(in_powers[..., idx]))
+                    reporter.advance(
+                        f"Prepared regression frequency {reporter.current + 1} "
+                        f"of {total}"
+                    )
+        except ProcessingCancelled:
+            raise
+        except Exception as exc:
+            reporter.fail(exc)
+            raise
+        reporter.complete(f"Prepared {total} regression frequencies")
         record = self._get_record("Produced regression input data for spectra data")
         metadata = RegressionInputMetadata(contributors={"data": spec_data.metadata})
         metadata.history.add_record(record)
@@ -637,8 +794,30 @@ class Solver(ResisticsProcess):
     output_type: ClassVar[str] = "transfer_function"
     include_in_default_parameters: ClassVar[bool] = False
 
-    def run(self, regression_input: RegressionInputData) -> Solution:
-        """Every solver should have a run method"""
+    def run(  # noqa: DOC105 - pydoclint cannot resolve callback type aliases
+        self,
+        regression_input: RegressionInputData,
+        *,
+        progress_callback: ProcessingProgressCallback | None = None,
+        cancellation_callback: CancellationCallback | None = None,
+    ) -> Solution:
+        """Solve regression input with optional progress and cancellation.
+
+        Parameters
+        ----------
+        regression_input : RegressionInputData
+            Prepared regression observations and predictors.
+        progress_callback : ProcessingProgressCallback, optional
+            Consumer for structured frequency progress.
+        cancellation_callback : CancellationCallback, optional
+            Callback checked before each evaluation frequency.
+
+        Returns
+        -------
+        Solution
+            Transfer-function solution.
+        """
+        del regression_input, progress_callback, cancellation_callback
         raise NotImplementedError("Run not implemented in parent Solver class")
 
 
@@ -648,8 +827,13 @@ class SolverLinear(Solver):
     fit_intercept: bool = False
     """Flag for adding an intercept term"""
 
-    def _solve(
-        self, regression_input: RegressionInputData, model: _FittableRegressor
+    def _solve(  # noqa: DOC105 - callback aliases are documented
+        self,
+        regression_input: RegressionInputData,
+        model: _FittableRegressor,
+        *,
+        progress_callback: ProcessingProgressCallback | None = None,
+        cancellation_callback: CancellationCallback | None = None,
     ) -> Solution:
         """
         Get the regression solution for all evaluation frequencies
@@ -658,23 +842,52 @@ class SolverLinear(Solver):
         ----------
         regression_input : RegressionInputData
             The regression input data
-        model : BaseEstimator
+        model : _FittableRegressor
             The model to use to solve the linear regressions
+        progress_callback : ProcessingProgressCallback, optional
+            Consumer for structured frequency progress.
+        cancellation_callback : CancellationCallback, optional
+            Callback checked before each evaluation frequency.
 
         Returns
         -------
         Solution
             The solution for the transfer function
+
+        Raises
+        ------
+        ProcessingCancelled
+            If cancellation is requested before a frequency is solved.
+        Exception
+            If fitting a frequency fails.
         """
         n_freqs = regression_input.n_freqs
         tf = regression_input.tf
         n_out, n_in = _dimensions(tf)
         tensors = np.ndarray((n_freqs, n_out, n_in), dtype=np.complex128)
         logger.info(f"Solving for {n_freqs} evaluation frequencies")
-        for eval_idx in tqdm(range(n_freqs)):
-            for iout, out_chan in enumerate(tf.out_chans):
-                obs, preds = regression_input.get_inputs(eval_idx, out_chan)
-                tensors[eval_idx, iout] = self._get_coef(model, obs, preds)
+        reporter = _ProgressReporter(
+            task="solve_regression",
+            total=n_freqs,
+            progress_callback=progress_callback,
+            cancellation_callback=cancellation_callback,
+        )
+        reporter.start("Solving regression frequencies")
+        try:
+            for eval_idx in range(n_freqs):
+                reporter.check_cancelled()
+                for iout, out_chan in enumerate(tf.out_chans):
+                    obs, preds = regression_input.get_inputs(eval_idx, out_chan)
+                    tensors[eval_idx, iout] = self._get_coef(model, obs, preds)
+                reporter.advance(
+                    f"Solved regression frequency {eval_idx + 1} of {n_freqs}"
+                )
+        except ProcessingCancelled:
+            raise
+        except Exception as exc:
+            reporter.fail(exc)
+            raise
+        reporter.complete(f"Solved {n_freqs} regression frequencies")
         return self._get_solution(tf, regression_input, tensors)
 
     def _get_coef(
@@ -757,10 +970,36 @@ class SolverOLS(SolverLinear):
     n_jobs: int = -2
     """Number of jobs to run"""
 
-    def run(self, regression_input: RegressionInputData) -> Solution:
-        """Run ordinary least squares regression on the RegressionInputData"""
+    def run(  # noqa: DOC105 - pydoclint cannot resolve callback type aliases
+        self,
+        regression_input: RegressionInputData,
+        *,
+        progress_callback: ProcessingProgressCallback | None = None,
+        cancellation_callback: CancellationCallback | None = None,
+    ) -> Solution:
+        """Run ordinary least squares regression with structured progress.
+
+        Parameters
+        ----------
+        regression_input : RegressionInputData
+            Prepared regression observations and predictors.
+        progress_callback : ProcessingProgressCallback, optional
+            Consumer for structured frequency progress.
+        cancellation_callback : CancellationCallback, optional
+            Callback checked before each evaluation frequency.
+
+        Returns
+        -------
+        Solution
+            Transfer-function solution.
+        """
         model = get_least_squares_regressor()
-        return self._solve(regression_input, model)
+        return self._solve(
+            regression_input,
+            model,
+            progress_callback=progress_callback,
+            cancellation_callback=cancellation_callback,
+        )
 
 
 class SolutionWriter(ResisticsProcess):

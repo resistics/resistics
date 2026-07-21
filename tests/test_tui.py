@@ -26,7 +26,8 @@ from textual.widgets import (
 )
 
 import resistics.flow as flow_module
-import resistics.tui as tui_module
+import resistics.tui.app as tui_module
+from resistics.common import ProcessingProgressEvent, ProcessingProgressState
 from resistics.explorer import ProjectExplorerState
 from resistics.flow import default_parameter_set, model_to_yaml, standard_mt_flow
 from resistics.gather import GatherCriteria
@@ -1843,11 +1844,18 @@ def test_tui_runs_job_worker_and_reports_threaded_progress(monkeypatch, tmp_path
             self.progress_callback(
                 JobProgressEvent(
                     state=JobState.running,
-                    message="Started: results",
+                    message="Prepared regression frequency 2 of 4",
                     job_name=resolved_job.definition.name,
                     survey="survey",
                     station="a",
                     sample_rate=128.0,
+                    progress=ProcessingProgressEvent(
+                        state=ProcessingProgressState.advanced,
+                        task="prepare_regression",
+                        current=2,
+                        total=4,
+                        message="Prepared regression frequency 2 of 4",
+                    ),
                 )
             )
             self.progress_callback(
@@ -1899,8 +1907,10 @@ def test_tui_runs_job_worker_and_reports_threaded_progress(monkeypatch, tmp_path
             )
             activity_log = explorer.query_one("#activity-log", RichLog)
             activity = "\n".join(line.text for line in activity_log.lines)
-            assert "station survey/a, run run1" in activity
-            assert "station survey/a, sample rate 128 Hz" in activity
+            normalized_activity = " ".join(activity.split())
+            assert "station survey/a, run run1" in normalized_activity
+            assert "station survey/a, sample rate 128 Hz" in normalized_activity
+            assert "2/4" in normalized_activity
 
     asyncio.run(run_test())
     assert processing_project.closed

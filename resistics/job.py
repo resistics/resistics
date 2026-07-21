@@ -13,16 +13,20 @@ from pathlib import Path
 from shutil import rmtree
 from threading import Event
 from time import monotonic
-from typing import Any
 
 import numpy as np
 from loguru import logger
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from resistics import __version__
-from resistics.common import fs_to_string, validate_output_label
+from resistics.common import (
+    ProcessingCancelled,
+    ProcessingProgressEvent,
+    ProcessingProgressState,
+    fs_to_string,
+    validate_output_label,
+)
 from resistics.flow import (
-    FlowCancelled,
     FlowDefinition,
     FlowExecutor,
     FlowStage,
@@ -105,7 +109,37 @@ class JobState(str, Enum):  # noqa: UP042 - preserve existing string/Enum semant
 
 
 class JobProgressEvent(BaseModel):
-    """Serializable progress update emitted by :class:`JobRunner`."""
+    """Serializable progress update emitted by :class:`JobRunner`.
+
+    Attributes
+    ----------
+    state : JobState
+        Overall job lifecycle state.
+    message : str
+        Human-readable status detail.
+    job_name : str
+        Processing job identifier.
+    survey : str | None
+        Current MTH5 survey.
+    station : str | None
+        Current MTH5 station.
+    run : str | None
+        Current MTH5 run.
+    sample_rate : float | None
+        Current station sampling frequency.
+    node_id : str | None
+        Current flow node.
+    step_type : str | None
+        Current structured task identifier.
+    error : str | None
+        Failure detail.
+    progress : ProcessingProgressEvent | None
+        Fine-grained process progress when available.
+    elapsed_seconds : float
+        Elapsed job runtime.
+    timestamp : datetime
+        UTC event creation time.
+    """
 
     state: JobState
     message: str
@@ -117,6 +151,7 @@ class JobProgressEvent(BaseModel):
     node_id: str | None = None
     step_type: str | None = None
     error: str | None = None
+    progress: ProcessingProgressEvent | None = None
     elapsed_seconds: float = 0.0
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
@@ -545,7 +580,7 @@ class JobRunner:
                 self._run_batches(
                     executor, resolved_job, batches, criteria, partial_paths, started
                 )
-        except FlowCancelled:
+        except ProcessingCancelled:
             state = JobState.cancelled
         except Exception as exc:
             logger.exception(f"Processing job {processing_job.name!r} failed")
@@ -739,18 +774,24 @@ class JobRunner:
             started,
         )
 
-    def _flow_event(self, job_name: str, event: dict[str, Any], started: float) -> None:
-        event_name = event["event"]
-        state = JobState.failed if event_name == "failed" else JobState.running
-        message = f"{event_name.title()}: {event.get('node_id', 'job')}"
+    def _flow_event(
+        self, job_name: str, event: ProcessingProgressEvent, started: float
+    ) -> None:
+        if event.state == ProcessingProgressState.failed:
+            state = JobState.failed
+        elif event.state == ProcessingProgressState.cancelled:
+            state = JobState.cancelled
+        else:
+            state = JobState.running
         self._emit(
             state,
             job_name,
-            message,
+            event.message,
             started,
-            node_id=event.get("node_id"),
-            step_type=event.get("step_type"),
-            error=event.get("error"),
+            node_id=event.node_id,
+            step_type=event.task,
+            error=event.error,
+            progress=event,
         )
 
     def _emit(
@@ -766,6 +807,7 @@ class JobRunner:
         node_id: str | None = None,
         step_type: str | None = None,
         error: str | None = None,
+        progress: ProcessingProgressEvent | None = None,
     ) -> None:
         if self.progress_callback is None:
             return
@@ -781,6 +823,7 @@ class JobRunner:
                 node_id=node_id,
                 step_type=step_type,
                 error=error,
+                progress=progress,
                 elapsed_seconds=monotonic() - started,
             )
         )

@@ -1,4 +1,4 @@
-"""Terminal user interface for creating, inspecting, and processing projects."""
+"""Textual application for creating, inspecting, and processing projects."""
 
 from __future__ import annotations
 
@@ -100,6 +100,28 @@ def _feature_error(feature: str, error: Exception) -> str:
             "Reinstall resistics with its required dependencies."
         )
     return str(error)
+
+
+def _progress_details(event: JobProgressEvent) -> tuple[str, str]:
+    """Return the counter suffix and activity status for a job event.
+
+    Parameters
+    ----------
+    event : JobProgressEvent
+        Job event that may contain fine-grained process progress.
+
+    Returns
+    -------
+    tuple[str, str]
+        Counter suffix and complete activity-status text.
+    """
+    status = f"{event.job_name}: {event.state.value}"
+    if event.progress is None:
+        return "", status
+    if event.progress.total is None:
+        return f" [{event.progress.current}]", status
+    counter = f"{event.progress.current}/{event.progress.total}"
+    return f" [{counter}]", f"{event.job_name}: {event.progress.task} {counter}"
 
 
 async def _run_in_worker_thread(
@@ -2983,16 +3005,15 @@ class ProjectExplorerScreen(Screen[None]):
         if event.sample_rate is not None:
             context.append(f"sample rate {event.sample_rate:g} Hz")
         target = f" — {', '.join(context)}" if context else ""
+        progress, status = _progress_details(event)
         line = (
-            f"[{event.state.value}] {event.message}{target} "
+            f"[{event.state.value}] {event.message}{progress}{target} "
             f"({event.elapsed_seconds:.1f}s)"
         )
         if event.error:
             line += f"\n[red]{event.error}[/red]"
         self.query_one("#activity-log", RichLog).write(line)
-        self.query_one("#activity-status", Static).update(
-            f"{event.job_name}: {event.state.value}"
-        )
+        self.query_one("#activity-status", Static).update(status)
         if event.state in {
             self._job_state_type.completed,
             self._job_state_type.failed,

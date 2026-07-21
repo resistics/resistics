@@ -2,7 +2,13 @@
 
 import pytest
 
-from resistics.common import ResisticsProcess
+from resistics.common import (
+    CancellationCallback,
+    ProcessingProgressCallback,
+    ProcessingProgressEvent,
+    ProcessingProgressState,
+    ResisticsProcess,
+)
 from resistics.flow import (
     FlowDefinition,
     FlowExecutor,
@@ -60,6 +66,29 @@ class RuntimeOutputLabel(ResisticsProcess):
     def execute(self, inputs, context):
         del inputs
         return context["output_label"]
+
+
+class ProgressSource(ResisticsProcess):
+    output_type = "number"
+
+    def run(
+        self,
+        progress_callback: ProcessingProgressCallback | None = None,
+        cancellation_callback: CancellationCallback | None = None,
+    ):
+        assert progress_callback is not None
+        assert cancellation_callback is not None
+        assert not cancellation_callback()
+        progress_callback(
+            ProcessingProgressEvent(
+                state=ProcessingProgressState.advanced,
+                task="read_samples",
+                current=1,
+                total=1,
+                message="Read samples",
+            )
+        )
+        return 2
 
 
 def get_processing_job(flow=None, params=None):
@@ -268,8 +297,33 @@ def test_executor_runs_direct_process_class():
     )
 
     assert result["run"]["double"] == 4
-    assert events[0]["process"] == f"{__name__}.Source"
+    assert events[0].process == f"{__name__}.Source"
     assert [node.id for node in topological_order(flow.flow_stages()[0])] == [
         "source",
         "double",
     ]
+
+
+def test_executor_propagates_and_enriches_process_progress():
+    flow = FlowDefinition(
+        id="progress",
+        name="progress",
+        stages=[
+            FlowStage(
+                stage_id="run",
+                scope="run",
+                nodes=[FlowNode(id="source", process=f"{__name__}.ProgressSource")],
+            )
+        ],
+    )
+    events: list[ProcessingProgressEvent] = []
+
+    FlowExecutor(
+        progress_callback=events.append,
+        cancellation_callback=lambda: False,
+    ).run(get_processing_job(flow, ParameterSet(name="empty")))
+
+    progress = next(event for event in events if event.task == "read_samples")
+    assert progress.state == ProcessingProgressState.advanced
+    assert (progress.stage_id, progress.node_id) == ("run", "source")
+    assert progress.process == f"{__name__}.ProgressSource"

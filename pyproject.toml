@@ -39,7 +39,6 @@ dependencies = [
     "pydantic>=2.0",
     "prettyprinter>=0.18.0",
     "PyYAML>=5.4.1",
-    "tqdm>=4.61.0",
     "textual[syntax]>=1.0.0",
     "regressioninc",
     "mth5>=0.4.1",
@@ -65,7 +64,6 @@ dev = [
     "pydoclint>=0.9.1,<0.10",
     "pyrefly==1.1.1",
     "types-PyYAML",
-    "types-tqdm",
 ]
 docs = [
     "Sphinx",
@@ -148,6 +146,7 @@ quote-style = "double"
 skip-magic-trailing-comma = false
 
 [tool.ruff.lint]
+external = ["DOC"]
 select = [
     "A",
     "B",
@@ -190,7 +189,7 @@ ignore-decorators = ["pydantic.field_validator", "pydantic.model_validator"]
     "S101", # Assertions validate internal synthetic-data invariants.
     "S311", # Non-cryptographic randomness generates synthetic test data.
 ]
-"resistics/tui.py" = [
+"resistics/tui/app.py" = [
     "D102", # Textual callbacks and actions are framework entry points, not public APIs.
     "RUF012", # Textual requires mutable BINDINGS and related class attributes.
     "SIM117", # Nested Textual context managers mirror the composed widget tree.
