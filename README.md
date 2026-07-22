@@ -118,6 +118,23 @@ before enabling trusted publication. Until then, the local command above is
 the maintained vulnerability gate; there is no claim of continuous hosted
 monitoring.
 
+### Environment management
+
+uv is the sole supported project and dependency manager. The Phase 6 review
+verified paired wheel builds and exact dependency floors at Python 3.12 and
+3.14, and binary-only resolution of the complete dependency set at Python
+3.12-3.14 for manylinux 2.34, macOS x86-64, and Windows x86-64. The normal lock
+also passes a dry-run sync for all nine cells. No repeated solver or
+supported-platform failure justified adding Pixi or maintaining a second lock
+and contributor workflow.
+
+The current ``fast-sugiyama`` Linux wheel requires glibc 2.34; older glibc
+systems are not a verified wheel-only target and may require a Rust source
+build. If a required platform repeatedly cannot install MTH5, HDF5, or another
+native dependency through uv/PyPI, reproduce and record that failure before a
+bounded Pixi comparison. A single missing wheel, restricted network access, or
+an empty build cache is not by itself a reason to adopt a second manager.
+
 The gallery-disabled documentation command retains the measured legacy warning
 backlog until the Phase 7 documentation migration. Pyrefly is the sole type
 checker. All production modules
