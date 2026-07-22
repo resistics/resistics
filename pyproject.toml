@@ -211,6 +211,7 @@ ignore-decorators = ["pydantic.field_validator", "pydantic.model_validator"]
 
 [tool.pydoclint]
 style = "numpy"
+exclude = "resistics/(common|sampling|transfunc)\\.py"
 baseline = "pydoclint-baseline.txt"
 arg-type-hints-in-docstring = true
 arg-type-hints-in-signature = true

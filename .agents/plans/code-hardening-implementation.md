@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 7.2 verified; Checkpoint 7.3 ready
+Status: in progress; Checkpoint 7.3 group 1 verified; group 2 ready
 Created: 2026-07-19
 Last updated: 2026-07-22
 Working branch: `mth5`
@@ -28,30 +28,27 @@ the two documents do not drift independently.
 - Programme state: `in_progress`
 - Active phase: Phase 7 - MyST documentation modernisation
 - Active checkpoint: `7.3` (`resistics`) - Convert docstrings without moving their content
-- Checkpoint state: `not_started`
+- Checkpoint state: `in_progress`
 - Last completed checkpoint: `7.2` in `S043`
 - Last verified checkpoint: `7.2` in `S043`
-- Last session: `S043`
-- Last verified commit: resistics `70a84f2`, recording verified hardening
-  through Checkpoint 6.3;
+- Last session: `S044`
+- Last verified commit: resistics `ffdd125`, recording verified hardening
+  through Checkpoint 7.2;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: migrate the `common`, `sampling`, and `transfunc`
-  docstrings to MyST in place and configure explicit NumPy- and Sphinx-style
-  pydoclint invocations for the unconverted and converted module sets.
+- Next exact action: migrate the `time` metadata and data-container docstrings
+  to MyST in place, extend the explicit parser/linter module boundary, and run
+  their co-located doctests and plots before proceeding to time processors.
 
 Current worktree caveat:
 
-- Resistics `70a84f2` records verified hardening through Checkpoint 6.3. The
-  verified Checkpoint 6.4 uv/Pixi decision, environment-manager guidance, and
-  execution record are uncommitted. Checkpoint 7.1's selected standard-autodoc
-  MyST bridge, bounded representative fixture, dependencies, lock, page, and
-  execution record are stacked on that work and are also uncommitted.
-  Checkpoint 7.2's maintained MyST pages, current landing content, expanded API
-  navigation, Sphinx configuration, and execution record are stacked on those
-  changes. The required empty
-  `pyrefly-baseline.json` remains intentionally untracked.
+- Resistics `ffdd125` records verified hardening through Checkpoint 7.2.
+  Checkpoint 7.3 group 1's MyST conversions for `common`, `sampling`, and
+  `transfunc`, split pydoclint/pre-commit boundary, reduced legacy baseline,
+  documentation commands, inventory compatibility, and execution record are
+  uncommitted. The required empty `pyrefly-baseline.json` remains intentionally
+  untracked.
 - The owner's minimum/maximum Python CI intent remains a requirement of
   deferred Checkpoint 1.6 after the obsolete hosted workflows were removed;
   D053 makes that current matrix Python 3.12/3.14.
@@ -261,7 +258,7 @@ or short command/result reference. Detailed output belongs in the session log or
 | Gate 6 | resistics | `verified` | S038-S041; owned dependencies; paired wheels; OSV clean |
 | 7.1 | resistics | `verified` | S042; standard autodoc selected; 5 doctests; plot/reference proof |
 | 7.2 | resistics | `verified` | S043; 28 MyST pages; 62-page HTML build |
-| 7.3 | resistics | `not_started` | Depends on 2.3-2.4 and 7.1 |
+| 7.3 | resistics | `in_progress` | S044 group 1; 236 Sphinx doctests; group 2 ready |
 | 7.4 | resistics | `not_started` | Depends on 7.1 |
 | 7.5 | resistics | `not_started` | Depends on 7.2-7.4 |
 | 7.6 | resistics | `not_started` | Depends on 7.5 |
@@ -681,6 +678,21 @@ old id when evidence changes the direction.
   Sphinx Gallery pages only until Checkpoint 7.4 deletes that gallery; all
   maintained prose, navigation, labels, and cross-references remain native
   MyST.
+- `D058` (2026-07-22): During Checkpoint 7.3, use two explicit pydoclint
+  configurations and hooks. Unconverted modules remain under the committed
+  NumPy-style baseline; migrated modules are excluded from that baseline and
+  checked without a baseline in Sphinx style. The migrated configuration makes
+  annotations the sole type source by setting
+  `arg-type-hints-in-docstring = false`,
+  `arg-type-hints-in-signature = true`, `check-return-types = false`, and
+  `check-yield-types = false`, while retaining argument order, raises, short
+  docstring, private-function, and style-mismatch checks. Disable only
+  pydoclint's class-attribute comparison for migrated modules because its
+  Sphinx parser recognises neither MyST attribute syntax nor field prose;
+  preserve and inspect attribute documentation in rendered HTML instead.
+  Keep a blank line before each fenced doctest's closing marker so both Python
+  doctest and the Sphinx MyST doctest directive execute the same co-located
+  prompts.
 
 ## Blocker Log
 
@@ -3795,3 +3807,70 @@ correct a factual error; note the correction explicitly.
   MyST in place, preserve their examples and plots, and split pydoclint into
   explicit NumPy-style and Sphinx-style module invocations using the governing
   type-check settings.
+
+### S044 - 2026-07-22 - Migrate the first docstring group to MyST
+
+- Checkpoint state at start: Checkpoint 7.2 was verified in S043 and committed
+  by the owner at `ffdd125`; Checkpoint 7.3 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `ffdd125` with only the
+  required empty `pyrefly-baseline.json` intentionally untracked.
+- Session objective: establish the temporary dual pydoclint boundary and
+  migrate `common`, `sampling`, and `transfunc` docstrings in place without
+  losing their examples, admonitions, attributes, or contracts.
+- Work completed: converted NumPy parameter, return, yield, exception,
+  attribute, note, warning, and example syntax in all three modules to MyST
+  field lists, fenced directives, prose, and fenced doctests. Preserved all 236
+  prompts and added missing parameter, return, yield, exception, and signature
+  annotations exposed by baseline-free checking. Added a dedicated migrated
+  pydoclint configuration and split the pre-commit hooks between explicit
+  unconverted and migrated module sets. Routed the three modules through the
+  MyST autodoc parser, excluded them from the NumPy baseline, removed their
+  stale baseline blocks, updated permanent developer commands, and taught the
+  docstring inventory test to recognise both migration-era syntaxes.
+- Files changed: `resistics/common.py`, `resistics/sampling.py`,
+  `resistics/transfunc.py`, `docs/source/conf.py`, `docs/source/docstrings.md`,
+  `README.md`, `pyproject.toml`, `.pre-commit-config.yaml`,
+  `pydoclint-myst.toml`, `pydoclint-baseline.txt`,
+  `tests/test_docstring_contract.py`, and this implementation record.
+- Decisions added or superseded: D058 establishes baseline-free Sphinx-style
+  checks for migrated modules, keeps baseline-backed NumPy checks for the
+  remainder, records the narrow class-attribute parser limitation, and
+  preserves compatibility between Python and Sphinx doctest execution.
+- Verification commands and results:
+  - Both explicit pydoclint commands pass. The migrated group has no baseline;
+    it enforces the governing type-source settings plus argument, raises,
+    private-function, short-docstring, and style checks. The legacy baseline
+    fell from 1,637 to 1,463 lines after deleting the three migrated blocks.
+  - Python module doctest collection passed 34 documented objects. A focused
+    Sphinx doctest build executed all 236 prompts: 48 from `common`, 156 from
+    `sampling`, and 32 from `transfunc`, with zero failures. Focused HTML built
+    successfully and inspection confirmed native MyST field lists,
+    admonitions, signatures, source links, and highlighted examples; the
+    warning log contains no warning attributed to a migrated module.
+  - Ruff format/lint and Pyrefly passed for the migrated source. The complete
+    suite passed all 422 tests in 26.96 seconds. Repository-wide pre-commit
+    passed YAML, EOF, whitespace, Ruff, both pydoclint hooks, and Pyrefly before
+    the final inventory-test and record edits. The final scoped hook run over
+    every writable changed file passed; the implementation record has a final
+    newline and `git diff --check` passed. The lock check also passed.
+- Measurements/artifacts: focused HTML and doctest output are under
+  `/tmp/resistics-checkpoint-7-3-group1-*`; no generated gallery timing source
+  is retained. The transitional full-source read still reports warnings from
+  unconverted modules and the legacy gallery, but none from the migrated group.
+- Known failures or incomplete work: Checkpoint 7.3 has six logical migration
+  groups remaining. `time` is deliberately split between metadata/data
+  containers and readers/processors; parser routing may narrow to objects if
+  needed. Pydoclint's MyST/Sphinx parser cannot validate rendered class
+  attribute prose, so rendered-HTML review remains required for every migrated
+  class until the tool supports that syntax.
+  A later repository-wide EOF-hook rerun cannot reopen the managed read-only
+  `.agents` files in this workspace; this is a mount-permission failure rather
+  than a content finding and does not affect the passing scoped final gate.
+- Checkpoint state at end: `7.3` is `in_progress`; group 1 is verified and
+  group 2 is ready.
+- Commit readiness or commit id: the group-1 conversion, lint boundary,
+  baseline reduction, commands, tests, and record form a verified suggested
+  module-group commit; no commit was requested or created.
+- Exact next action: migrate `time` metadata and data-container docstrings to
+  MyST in place, extend both explicit module sets, and verify their examples,
+  plots, field lists, and rendered API before migrating time processors.

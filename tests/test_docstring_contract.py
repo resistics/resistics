@@ -82,8 +82,9 @@ def _iter_node_docstrings(
 
 def test_docstring_example_inventory_does_not_shrink() -> None:
     """Keep the established body of API-local examples intact."""
+    section_markers = ("Examples\n", "Example\n", "**Examples**\n")
     example_count = sum(
-        "Examples\n" in docstring or "Example\n" in docstring
+        any(marker in docstring for marker in section_markers)
         for _, docstring in _iter_docstrings()
     )
     assert example_count >= MINIMUM_EXAMPLE_DOCSTRINGS
@@ -92,7 +93,9 @@ def test_docstring_example_inventory_does_not_shrink() -> None:
 def test_plot_directives_remain_with_their_documented_objects() -> None:
     """Keep every established plot directive attached to its API object."""
     actual = {
-        name for name, docstring in _iter_docstrings() if ".. plot::" in docstring
+        name
+        for name, docstring in _iter_docstrings()
+        if ".. plot::" in docstring or "```{plot}" in docstring
     }
     assert actual >= PROTECTED_PLOT_DOCSTRINGS
 

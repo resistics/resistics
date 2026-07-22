@@ -1,6 +1,4 @@
-"""
-Common resistics functions and classes used throughout the package
-"""
+"""Common resistics functions and classes used throughout the package"""
 
 from collections.abc import Callable, Collection, Mapping
 from datetime import UTC, datetime
@@ -17,7 +15,11 @@ from resistics.sampling import RSDateTime, datetime_to_string
 
 
 def json_fallback(value: Any) -> Any:
-    """Fallback serializer for values Pydantic v2 cannot encode directly."""
+    """Fallback serializer for values Pydantic v2 cannot encode directly.
+
+    :param value: Value that the normal Pydantic serializer could not encode.
+    :return: A JSON-compatible timestamp, callable name, or string.
+    """
     if isinstance(value, RSDateTime):
         return datetime_to_string(value)
     if isinstance(value, Callable):
@@ -28,17 +30,10 @@ def json_fallback(value: Any) -> Any:
 def _summary_lines(value: Any, level: int = 0) -> list[str]:
     """Render JSON-compatible model data with stable four-space nesting.
 
-    Parameters
-    ----------
-    value : Any
-        Value decoded from a model's JSON representation.
-    level : int
-        Current nesting level.
+    :param value: Value decoded from a model's JSON representation.
+    :param level: Current nesting level.
 
-    Returns
-    -------
-    list[str]
-        Rendered output lines without a trailing newline.
+    :return: Rendered output lines without a trailing newline.
     """
     indentation = " " * (4 * level)
     if isinstance(value, dict):
@@ -85,18 +80,13 @@ class ProcessingCancelled(Exception):
 class ProcessingProgressState(StrEnum):
     """Lifecycle state for a structured processing progress event.
 
-    Attributes
-    ----------
-    started :
-        Work has begun.
-    advanced :
-        One or more work units have completed.
-    completed :
-        All work units completed successfully.
-    cancelled :
-        A cancellation request stopped the work.
-    failed :
-        Work stopped because an operation failed.
+    **Attributes**
+
+    - **started :** — Work has begun.
+    - **advanced :** — One or more work units have completed.
+    - **completed :** — All work units completed successfully.
+    - **cancelled :** — A cancellation request stopped the work.
+    - **failed :** — Work stopped because an operation failed.
     """
 
     started = "started"
@@ -109,28 +99,18 @@ class ProcessingProgressState(StrEnum):
 class ProcessingProgressEvent(BaseModel):
     """Serializable progress emitted by a processing operation.
 
-    Attributes
-    ----------
-    model_config : ClassVar[ConfigDict]
-        Frozen Pydantic configuration rejecting unknown fields.
-    state : ProcessingProgressState
-        Current lifecycle state.
-    task : str
-        Stable task identifier suitable for programmatic consumers.
-    current : int
-        Number of completed work units.
-    total : int | None
-        Total work units when known.
-    message : str
-        Human-readable progress description.
-    stage_id : str | None
-        Owning flow stage when executed through a flow.
-    node_id : str | None
-        Owning flow node when executed through a flow.
-    process : str | None
-        Qualified process class when executed through a flow.
-    error : str | None
-        Failure detail for failed events.
+    **Attributes**
+
+    - **model_config** — Frozen Pydantic configuration rejecting unknown fields.
+    - **state** — Current lifecycle state.
+    - **task** — Stable task identifier suitable for programmatic consumers.
+    - **current** — Number of completed work units.
+    - **total** — Total work units when known.
+    - **message** — Human-readable progress description.
+    - **stage_id** — Owning flow stage when executed through a flow.
+    - **node_id** — Owning flow node when executed through a flow.
+    - **process** — Qualified process class when executed through a flow.
+    - **error** — Failure detail for failed events.
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", frozen=True)
@@ -149,15 +129,9 @@ class ProcessingProgressEvent(BaseModel):
     def validate_current_not_after_total(self) -> "ProcessingProgressEvent":
         """Reject progress beyond a known total.
 
-        Returns
-        -------
-        ProcessingProgressEvent
-            Validated progress event.
+        :return: Validated progress event.
 
-        Raises
-        ------
-        ValueError
-            If completed work exceeds the known total.
+        :raises ValueError: If completed work exceeds the known total.
         """
         if self.total is not None and self.current > self.total:
             raise ValueError("current progress cannot exceed total progress")
@@ -169,7 +143,13 @@ CancellationCallback = Callable[[], bool]
 
 
 def validate_output_label(value: str) -> str:
-    """Validate one output-label path component used for derived artifacts."""
+    """Validate one output-label path component used for derived artifacts.
+
+    :param value: Candidate label, including any surrounding whitespace.
+    :return: The stripped, safe path component.
+    :raises ValueError: If the label is empty, special, or contains a path or
+        null separator.
+    """
     value = value.strip()
     if (
         not value
@@ -183,25 +163,21 @@ def validate_output_label(value: str) -> str:
 
 
 def get_version() -> str:
-    """Get the version of resistics"""
+    """Get the installed Resistics version.
+
+    :return: Package version string.
+    """
     import resistics
 
     return resistics.__version__
 
 
 def is_file(file_path: Path) -> bool:
-    """
-    Check if a path exists and points to a file
+    """Check if a path exists and points to a file
 
-    Parameters
-    ----------
-    file_path : Path
-        The path to check
+    :param file_path: The path to check
 
-    Returns
-    -------
-    bool
-        True if it exists and is a file, False otherwise
+    :return: True if it exists and is a file, False otherwise
     """
     if not file_path.exists():
         logger.warning(f"File path {file_path} does not exist")
@@ -213,20 +189,12 @@ def is_file(file_path: Path) -> bool:
 
 
 def assert_file(file_path: Path) -> None:
-    """
-    Require that a file exists
+    """Require that a file exists
 
-    Parameters
-    ----------
-    file_path : Path
-        The path to check
+    :param file_path: The path to check
 
-    Raises
-    ------
-    FileNotFoundError
-        If the path does not exist
-    NotFileError
-        If the path is not a file
+    :raises FileNotFoundError: If the path does not exist
+    :raises NotFileError: If the path is not a file
     """
     from resistics.errors import NotFileError
 
@@ -239,12 +207,8 @@ def assert_file(file_path: Path) -> None:
 def save_compressed_arrays(file_path: Path, arrays: dict[str, np.ndarray]) -> None:
     """Persist named NumPy arrays in one compressed archive.
 
-    Parameters
-    ----------
-    file_path : Path
-        Archive path, with or without the ``.npz`` suffix.
-    arrays : dict[str, np.ndarray]
-        Named arrays to persist.
+    :param file_path: Archive path, with or without the ``.npz`` suffix.
+    :param arrays: Named arrays to persist.
     """
     np.savez_compressed(
         file_path,
@@ -253,18 +217,11 @@ def save_compressed_arrays(file_path: Path, arrays: dict[str, np.ndarray]) -> No
 
 
 def is_dir(dir_path: Path) -> bool:
-    """
-    Check if a path exists and points to a directory
+    """Check if a path exists and points to a directory
 
-    Parameters
-    ----------
-    dir_path : Path
-        The path to check
+    :param dir_path: The path to check
 
-    Returns
-    -------
-    bool
-        True if it exists and is a directory, False otherwise
+    :return: True if it exists and is a directory, False otherwise
     """
     if not dir_path.exists():
         logger.warning(f"Directory path {dir_path} does not exist")
@@ -276,20 +233,12 @@ def is_dir(dir_path: Path) -> bool:
 
 
 def assert_dir(dir_path: Path) -> None:
-    """
-    Require that a path is a directory
+    """Require that a path is a directory
 
-    Parameters
-    ----------
-    dir_path : Path
-        Path to check
+    :param dir_path: Path to check
 
-    Raises
-    ------
-    FileNotFoundError
-        If the path does not exist
-    NotDirectoryError
-        If the path is not a directory
+    :raises FileNotFoundError: If the path does not exist
+    :raises NotDirectoryError: If the path is not a directory
     """
     from resistics.errors import NotDirectoryError
 
@@ -300,29 +249,18 @@ def assert_dir(dir_path: Path) -> None:
 
 
 def dir_contents(dir_path: Path) -> tuple[list[Path], list[Path]]:
-    """
-    Get contents of directory
+    """Get contents of directory
 
     Includes both files and directories
 
-    Parameters
-    ----------
-    dir_path : Path
-        Parent directory path
+    :param dir_path: Parent directory path
 
-    Returns
-    -------
-    dirs : list
-        List of directories
-    files : list
-        List of files excluding hidden files
+    :return:
+        - **dirs** — List of directories
+        - **files** — List of files excluding hidden files
 
-    Raises
-    ------
-    PathNotFoundError
-        Path does not exist
-    NotDirectoryError
-        Path is not a directory
+    :raises PathNotFoundError: Path does not exist
+    :raises NotDirectoryError: Path is not a directory
     """
     from resistics.errors import NotDirectoryError, PathNotFoundError
 
@@ -342,61 +280,41 @@ def dir_contents(dir_path: Path) -> tuple[list[Path], list[Path]]:
 
 
 def dir_files(dir_path: Path) -> list[Path]:
-    """
-    Get files in directory
+    """Get files in directory
 
     Excludes hidden files
 
-    Parameters
-    ----------
-    dir_path : Path
-        Parent directory path
+    :param dir_path: Parent directory path
 
-    Returns
-    -------
-    files : list
-        List of files excluding hidden files
+    :return: **files** — List of files excluding hidden files
     """
     _, files = dir_contents(dir_path)
     return files
 
 
 def dir_subdirs(dir_path: Path) -> list[Path]:
-    """
-    Get subdirectories in directory
+    """Get subdirectories in directory
 
     Excludes hidden files
 
-    Parameters
-    ----------
-    dir_path : Path
-        Parent directory path
+    :param dir_path: Parent directory path
 
-    Returns
-    -------
-    dirs : list
-        List of subdirectories
+    :return: **dirs** — List of subdirectories
     """
     dirs, _ = dir_contents(dir_path)
     return dirs
 
 
 def known_chan(chan: str) -> bool:
-    """
-    Check whether resistics is familiar with a channel name
+    """Check whether resistics is familiar with a channel name
 
-    Parameters
-    ----------
-    chan : str
-        The channel name
+    :param chan: The channel name
 
-    Returns
-    -------
-    bool
-        True if it is a resistics known channel, false otherwise
+    :return: True if it is a resistics known channel, false otherwise
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.common import known_chan
     >>> known_chan("Ex")
     True
@@ -404,81 +322,66 @@ def known_chan(chan: str) -> bool:
     True
     >>> known_chan("cat")
     False
+
+    ```
     """
     return chan in ELECTRIC_CHANS or chan in MAGNETIC_CHANS
 
 
 def is_electric(chan: str) -> bool:
-    """
-    Check if a channel is electric
+    """Check if a channel is electric
 
-    Parameters
-    ----------
-    chan : str
-        Channel name
+    :param chan: Channel name
 
-    Returns
-    -------
-    bool
-        True if channel is electric
+    :return: True if channel is electric
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.common import is_electric
     >>> is_electric("Ex")
     True
     >>> is_electric("Hx")
     False
+
+    ```
     """
     return chan in ELECTRIC_CHANS
 
 
 def is_magnetic(chan: str) -> bool:
-    """
-    Check if channel is magnetic
+    """Check if channel is magnetic
 
-    Parameters
-    ----------
-    chan : str
-        Channel name
+    :param chan: Channel name
 
-    Returns
-    -------
-    bool
-        True if channel is magnetic
+    :return: True if channel is magnetic
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.common import is_magnetic
     >>> is_magnetic("Ex")
     False
     >>> is_magnetic("Hx")
     True
+
+    ```
     """
     return chan in MAGNETIC_CHANS
 
 
 def get_chan_type(chan: str) -> str:
-    """
-    Get the channel type from the channel name
+    """Get the channel type from the channel name
 
-    Parameters
-    ----------
-    chan : str
-        The name of the channel
+    :param chan: The name of the channel
 
-    Returns
-    -------
-    str
-        The channel type
+    :return: The channel type
 
-    Raises
-    ------
-    ValueError
-        If the channel is not known to resistics
+    :raises ValueError: If the channel is not known to resistics
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.common import get_chan_type
     >>> get_chan_type("Ex")
     'electric'
@@ -488,6 +391,8 @@ def get_chan_type(chan: str) -> str:
     Traceback (most recent call last):
     ...
     ValueError: Channel abc not recognised as either electric or magnetic
+
+    ```
     """
     if is_electric(chan):
         return "electric"
@@ -497,25 +402,14 @@ def get_chan_type(chan: str) -> str:
 
 
 def check_chan(chan: str, chans: Collection[str]) -> bool:
-    """
-    Check a channel exists and raise a KeyError if not
+    """Check a channel exists and raise a KeyError if not
 
-    Parameters
-    ----------
-    chan : str
-        The channel to check
-    chans : Collection[str]
-        A collection of channels to check against
+    :param chan: The channel to check
+    :param chans: A collection of channels to check against
 
-    Returns
-    -------
-    bool
-        True if all checks passed
+    :return: True if all checks passed
 
-    Raises
-    ------
-    ChannelNotFoundError
-        If the channel is not found in the channel list
+    :raises ChannelNotFoundError: If the channel is not found in the channel list
     """
     from resistics.errors import ChannelNotFoundError
 
@@ -526,24 +420,20 @@ def check_chan(chan: str, chans: Collection[str]) -> bool:
 
 
 def fs_to_string(fs: float) -> str:
-    """
-    Convert sampling frequency into a string for filenames
+    """Convert sampling frequency into a string for filenames
 
-    Parameters
-    ----------
-    fs : float
-        The sampling frequency
+    :param fs: The sampling frequency
 
-    Returns
-    -------
-    str
-        Sample frequency converted to string for the purposes of a filename
+    :return: Sample frequency converted to string for the purposes of a filename
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.common import fs_to_string
     >>> fs_to_string(512.0)
     '512_000000'
+
+    ```
     """
     return (f"{fs:.6f}").replace(".", "_")
 
@@ -551,27 +441,18 @@ def fs_to_string(fs: float) -> str:
 def array_to_string(
     data: np.ndarray, sep: str = ", ", precision: int = 8, scientific: bool = False
 ) -> str:
-    """
-    Convert an array to a string for logging or printing
+    """Convert an array to a string for logging or printing
 
-    Parameters
-    ----------
-    data : np.ndarray
-        The array
-    sep : str, optional
-        The separator to use, by default ", "
-    precision : int, optional
-        Number of decimal places, by default 8. Ignored for integers.
-    scientific : bool, optional
-        Flag for formatting floats as scientific, by default False
+    :param data: The array
+    :param sep: The separator to use, by default ", "
+    :param precision: Number of decimal places, by default 8. Ignored for integers.
+    :param scientific: Flag for formatting floats as scientific, by default False
 
-    Returns
-    -------
-    str
-        String representation of array
+    :return: String representation of array
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> import numpy as np
     >>> from resistics.common import array_to_string
     >>> data = np.array([1,2,3,4,5])
@@ -582,6 +463,8 @@ def array_to_string(
     '1.00000000, 2.00000000, 3.00000000, 4.00000000, 5.00000000'
     >>> array_to_string(data, precision=3, scientific=True)
     '1.000e+00, 2.000e+00, 3.000e+00, 4.000e+00, 5.000e+00'
+
+    ```
     """
     style: str = "e" if scientific else "f"
     output_str = np.array2string(
@@ -604,27 +487,50 @@ class ResisticsModel(BaseModel):
     def __str__(self) -> str:
         return self.to_string()
 
-    def model_dump(self, *args, **kwargs) -> dict[str, Any]:
-        """Dump model data, preserving subclass fields for process registries."""
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        """Dump model data, preserving subclass fields for process registries.
+
+        :param *args: Positional arguments forwarded to Pydantic.
+        :param **kwargs: Keyword arguments forwarded to Pydantic.
+        :return: Serialized model data.
+        """
         kwargs.setdefault("serialize_as_any", True)
         return super().model_dump(*args, **kwargs)
 
-    def model_dump_json(self, *args, **kwargs) -> str:
-        """Dump model JSON, preserving subclass fields for process registries."""
+    def model_dump_json(self, *args: Any, **kwargs: Any) -> str:
+        """Dump model JSON, preserving subclass fields for process registries.
+
+        :param *args: Positional arguments forwarded to Pydantic.
+        :param **kwargs: Keyword arguments forwarded to Pydantic.
+        :return: Serialized model JSON.
+        """
         kwargs.setdefault("serialize_as_any", True)
         kwargs.setdefault("fallback", json_fallback)
         return super().model_dump_json(*args, **kwargs)
 
-    def dict(self, *args, **kwargs) -> dict[str, Any]:
-        """Backward-compatible dict dump using Pydantic v2 serialization."""
+    def dict(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        """Provide the legacy dictionary serialization name.
+
+        :param *args: Positional arguments forwarded to ``model_dump``.
+        :param **kwargs: Keyword arguments forwarded to ``model_dump``.
+        :return: Serialized model data using Pydantic v2 semantics.
+        """
         return self.model_dump(*args, **kwargs)
 
-    def json(self, *args, **kwargs) -> str:
-        """Backward-compatible JSON dump using Pydantic v2 serialization."""
+    def json(self, *args: Any, **kwargs: Any) -> str:
+        """Provide the legacy JSON serialization name.
+
+        :param *args: Positional arguments forwarded to ``model_dump_json``.
+        :param **kwargs: Keyword arguments forwarded to ``model_dump_json``.
+        :return: Serialized model JSON using Pydantic v2 semantics.
+        """
         return self.model_dump_json(*args, **kwargs)
 
     def to_string(self) -> str:
-        """Class info as string"""
+        """Render model data as readable YAML.
+
+        :return: YAML representation preserving field order.
+        """
         import json
 
         import yaml
@@ -652,7 +558,10 @@ class Metadata(ResisticsModel):
 
     @model_validator(mode="after")
     def validate_n_chans(self) -> "Metadata":
-        """Initialise number of channels"""
+        """Initialise the channel count when the model defines channels.
+
+        :return: Validated metadata with a derived channel count.
+        """
         values = self.__dict__
         if values.get("n_chans") == 0:
             values["n_chans"] = len(values["chans"])
@@ -666,13 +575,9 @@ class WriteableMetadata(Metadata):
     """Information about a file, relevant if writing out or reading back in"""
 
     def write(self, json_path: Path):
-        """
-        Write out JSON metadata file
+        """Write out JSON metadata file
 
-        Parameters
-        ----------
-        json_path : Path
-            Path to write JSON file
+        :param json_path: Path to write JSON file
         """
         self.file_info = ResisticsFile()
         with json_path.open("w") as f:
@@ -680,17 +585,17 @@ class WriteableMetadata(Metadata):
 
 
 class Record(ResisticsModel):
-    """
-    Class to hold a record
+    """Class to hold a record
 
     A record holds information about a process that was run. It is intended to
     track processes applied to data, allowing a process history to be saved
     along with any datasets.
 
-    Examples
-    --------
+    **Examples**
+
     A simple example of creating a process record
 
+    ```{doctest}
     >>> from resistics.common import Record
     >>> messages = ["message 1", "message 2"]
     >>> record = Record(
@@ -706,6 +611,8 @@ class Record(ResisticsModel):
         'messages': ['message 1', 'message 2'],
         'record_type': 'example'
     }
+
+    ```
     """
 
     time_local: datetime = Field(default_factory=datetime.now)
@@ -721,16 +628,13 @@ class Record(ResisticsModel):
 
 
 class History(ResisticsModel):
-    """
-    Class for storing processing history
+    """Class for storing processing history
 
-    Parameters
-    ----------
-    records : List[Record], optional
-        List of records, by default []
+    :param records: List of records, by default []
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.testing import record_example1, record_example2
     >>> from resistics.common import History
     >>> record1 = record_example1()
@@ -763,18 +667,16 @@ class History(ResisticsModel):
             }
         ]
     }
+
+    ```
     """
 
     records: list[Record] = Field(default_factory=list)
 
     def add_record(self, record: Record):
-        """
-        Add a process record to the list
+        """Add a process record to the list
 
-        Parameters
-        ----------
-        record : Record
-            The record to add
+        :param record: The record to add
         """
         self.records.append(record)
 
@@ -786,31 +688,21 @@ def get_record(
     time_utc: datetime | None = None,
     time_local: datetime | None = None,
 ) -> Record:
-    """
-    Get a process record
+    """Get a process record
 
-    Parameters
-    ----------
-    creator : Dict[str, Any]
-        The creator and its parameters as a dictionary
-    messages : Union[str, List[str]]
-        The messages as either a single str or a list of strings
-    record_type : str, optional
-        The type of record, by default "process"
-    time_utc : Optional[datetime], optional
-        UTC time to attach to the record, by default None. If None, will default
+    :param creator: The creator and its parameters as a dictionary
+    :param messages: The messages as either a single str or a list of strings
+    :param record_type: The type of record, by default "process"
+    :param time_utc: UTC time to attach to the record, by default None. If None, will default
         to UTC now
-    time_local : Optional[datetime], optional
-        Local time to attach to the record, by default None. If None, will
+    :param time_local: Local time to attach to the record, by default None. If None, will
         defult to local now
 
-    Returns
-    -------
-    Record
-        The process record
+    :return: The process record
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.common import get_record
     >>> record = get_record(
     ...     creator={"name": "example", "a": 5, "b": -7.0},
@@ -826,6 +718,8 @@ def get_record(
     datetime.datetime(...)
     >>> record.time_local
     datetime.datetime(...)
+
+    ```
     """
     if isinstance(messages, str):
         messages = [messages]
@@ -843,28 +737,21 @@ def get_record(
 
 
 def get_history(record: Record, history: History | None = None) -> History:
-    """
-    Get a new History instance or add a record to a copy of an existing one
+    """Get a new History instance or add a record to a copy of an existing one
 
     This method always makes a deepcopy of an input history to avoid any
     unplanned modifications to the inputs.
 
-    Parameters
-    ----------
-    record : Record
-        The record
-    history : Optional[History], optional
-        A history to add to, by default None
+    :param record: The record
+    :param history: A history to add to, by default None
 
-    Returns
-    -------
-    History
-        History with the record added
+    :return: History with the record added
 
-    Examples
-    --------
+    **Examples**
+
     Get a new History with a single Record
 
+    ```{doctest}
     >>> from resistics.common import get_history
     >>> from resistics.testing import record_example1, record_example2
     >>> record1 = record_example1()
@@ -886,10 +773,13 @@ def get_history(record: Record, history: History | None = None) -> History:
         ]
     }
 
+    ```
+
     Alternatively, add to an existing History. This will make a copy of the
     original history. If a copy is not needed, the add_record method of history
     can be used.
 
+    ```{doctest}
     >>> record2 = record_example2()
     >>> history = get_history(record2, history)
     >>> history.summary()
@@ -919,6 +809,8 @@ def get_history(record: Record, history: History | None = None) -> History:
             }
         ]
     }
+
+    ```
     """
     if history is None:
         return History(records=[record])
@@ -928,8 +820,7 @@ def get_history(record: Record, history: History | None = None) -> History:
 
 
 class ResisticsProcess(ResisticsModel):
-    """
-    Base class for resistics processes
+    """Base class for resistics processes
 
     Resistics processes perform operations on data (including read and write
     operations). Each time a ResisticsProcess child class is run, it should add
@@ -944,23 +835,22 @@ class ResisticsProcess(ResisticsModel):
 
     @model_validator(mode="after")
     def validate_name(self) -> "ResisticsProcess":
-        """Inialise the name attribute of the resistics process"""
+        """Initialise an omitted process name from its concrete class.
+
+        :return: Validated process with a stable name.
+        """
         if not self.name:
             self.name = self.__class__.__name__
         return self
 
     def parameters(self) -> dict[str, Any]:
-        """
-        Return any process parameters incuding the process name
+        """Return any process parameters incuding the process name
 
         These parameters are expected to be primatives and should be sufficient
         to reinitialise the process and re-run the data. The base class assumes
         all class variables meet this description.
 
-        Returns
-        -------
-        Dict[str, Any]
-            Dictionary of parameters
+        :return: Dictionary of parameters
         """
         import json
 
@@ -973,23 +863,13 @@ class ResisticsProcess(ResisticsModel):
         writers, and selectors that require project or batch context override
         this method in their owning modules.
 
-        Parameters
-        ----------
-        inputs : dict[str, Any]
-            Named arguments for the process ``run`` method.
-        context : Any
-            Flow execution context. Structured progress and cancellation
+        :param inputs: Named arguments for the process ``run`` method.
+        :param context: Flow execution context. Structured progress and cancellation
             callbacks are forwarded when the ``run`` method accepts them.
 
-        Returns
-        -------
-        Any
-            The value returned by the process ``run`` method.
+        :return: The value returned by the process ``run`` method.
 
-        Raises
-        ------
-        NotImplementedError
-            If the process implements neither ``run`` nor its own ``execute``.
+        :raises NotImplementedError: If the process implements neither ``run`` nor its own ``execute``.
         """
         run = getattr(self, "run", None)
         if not callable(run):
@@ -1007,47 +887,54 @@ class ResisticsProcess(ResisticsModel):
         return run(**run_inputs)
 
     def _get_record(self, messages: str | list[str]) -> Record:
-        """
-        Get the record for the processor
+        """Get the record for the processor
 
-        Parameters
-        ----------
-        messages : Union[str, List[str]]
-            The messages to add for the processor
+        :param messages: The messages to add for the processor
 
-        Returns
-        -------
-        Record
-            A record
+        :return: A record
         """
         return get_record(self.parameters(), messages)
 
 
 class ResisticsBase:
-    """
-    Resistics base class
+    """Resistics base class
 
     Parent class to ensure consistency of common methods
     """
 
     def __repr__(self) -> str:
-        """Return a string of class information"""
+        """Return a string of class information.
+
+        :return: Human-readable class details.
+        """
         return self.to_string()
 
     def __str__(self) -> str:
-        """Return a string of class information"""
+        """Return a string of class information.
+
+        :return: Human-readable class details.
+        """
         return self.to_string()
 
     def type_to_string(self) -> str:
-        """Get the class type as a string"""
+        """Get the class type as a string.
+
+        :return: Qualified runtime class representation.
+        """
         return str(self.__class__)
 
     def to_string(self) -> str:
-        """Class details as a string"""
+        """Render class details as a string.
+
+        :return: Human-readable class details.
+        """
         return self.type_to_string()
 
     def summary(self, symbol: str = "-") -> None:
-        """Print a summary of class details"""
+        """Print a delimited summary of class details.
+
+        :param symbol: Character used to draw the summary delimiters.
+        """
         name = str(self.__class__)
         length = len(name) + 10
         print("##" + 3 * symbol + "Begin Summary" + ((length - 18) * symbol))
@@ -1062,23 +949,29 @@ class ResisticsData(ResisticsBase):
 
 
 class ResisticsWriter(ResisticsProcess):
-    """
-    Parent process for data writers
+    """Parent process for data writers
 
-    Parameters
-    ----------
-    overwrite : bool, optional
-        Boolean flag for overwriting the existing data, by default False
+    :param overwrite: Boolean flag for overwriting the existing data, by default False
     """
 
     overwrite: bool = True
 
     def run(self, dir_path: Path, data: ResisticsData) -> None:
-        """Write out a ResisticsData child object to a directory"""
+        """Write a data object to a directory in a concrete writer.
+
+        :param dir_path: Destination directory.
+        :param data: Data object to persist.
+        :raises NotImplementedError: Always; concrete writers implement this
+            operation.
+        """
         raise NotImplementedError("To be implemented in child writers")
 
     def _check_dir(self, dir_path: Path) -> bool:
-        """Check the output directory"""
+        """Prepare an output directory according to overwrite policy.
+
+        :param dir_path: Destination directory to validate or create.
+        :return: Whether writing may proceed.
+        """
         if dir_path.exists() and not self.overwrite:
             logger.error(f"Write path {dir_path} exists and overwrite is False")
             return False
@@ -1092,16 +985,9 @@ class ResisticsWriter(ResisticsProcess):
     def _get_writer_record(self, dir_path: Path, data_type: type):
         """Get a process record for the writer.
 
-        Parameters
-        ----------
-        dir_path : Path
-            Destination directory.
-        data_type : type
-            Concrete data type being written.
+        :param dir_path: Destination directory.
+        :param data_type: Concrete data type being written.
 
-        Returns
-        -------
-        Record
-            Writer process record.
+        :return: Writer process record.
         """
         return super()._get_record([f"Writing out {data_type.__name__} to {dir_path}"])

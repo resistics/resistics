@@ -8,7 +8,9 @@
 - attotime is a high precision datetime library
 """
 
+from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -26,8 +28,15 @@ class HighResDateTime(RSDateTime):
     """Wrapper around RSDateTime to use for pydantic"""
 
     @classmethod
-    def __get_pydantic_core_schema__(cls, source_type, handler):
-        """Get the validator schema that will be used by pydantic v2."""
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: Any
+    ) -> core_schema.CoreSchema:
+        """Build the Pydantic validation and serialization schema.
+
+        :param source_type: Source annotation supplied by Pydantic.
+        :param handler: Pydantic schema-generation callback.
+        :return: Core schema using the high-resolution datetime validator.
+        """
         return core_schema.no_info_plain_validator_function(
             cls.validate,
             serialization=core_schema.plain_serializer_function_ser_schema(
@@ -37,8 +46,15 @@ class HighResDateTime(RSDateTime):
         )
 
     @classmethod
-    def __get_pydantic_json_schema__(cls, core_schema, handler):
-        """Add to the pydantic JSON schema."""
+    def __get_pydantic_json_schema__(
+        cls, core_schema: core_schema.CoreSchema, handler: Any
+    ) -> dict[str, Any]:
+        """Describe the serialized high-resolution timestamp.
+
+        :param core_schema: Core schema generated for the annotation.
+        :param handler: Pydantic JSON-schema callback.
+        :return: String schema with the accepted timestamp pattern.
+        """
         return {
             "type": "string",
             "pattern": "%Y-%m-%d %H:%M:%S.%f_%o_%q_%v",
@@ -46,13 +62,21 @@ class HighResDateTime(RSDateTime):
         }
 
     @classmethod
-    def __get_validators__(cls):
-        """Yield validators for RSDateTime"""
+    def __get_validators__(cls) -> Iterator[Callable[[Any], RSDateTime]]:
+        """Yield the compatibility validator for ``RSDateTime``.
+
+        :yield: High-resolution datetime validator.
+        """
         yield cls.validate
 
     @classmethod
-    def validate(cls, val: RSDateTime | DateTimeLike):
-        """Validator to be used by pydantic"""
+    def validate(cls, val: RSDateTime | DateTimeLike) -> RSDateTime:
+        """Validate and normalize a high-resolution datetime input.
+
+        :param val: Existing high-resolution datetime or supported datetime input.
+        :return: Normalized high-resolution datetime.
+        :raises ValueError: If the input is not a supported datetime value.
+        """
         if isinstance(val, RSDateTime):
             return val
         if isinstance(val, (str, pd.Timestamp, datetime)):
@@ -66,22 +90,19 @@ class HighResDateTime(RSDateTime):
 def datetime_to_string(time: RSDateTime) -> str:
     """Convert a datetime to a string.
 
-    Parameters
-    ----------
-    time : RSDateTime
-        Resistics datetime
+    :param time: Resistics datetime
 
-    Returns
-    -------
-    str
-        String representation
+    :return: String representation
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.sampling import to_datetime, to_timedelta, datetime_to_string
     >>> time = to_datetime("2021-01-01") + to_timedelta(1/16384)
     >>> datetime_to_string(time)
     '2021-01-01 00:00:00.000061_035156_250000_000000'
+
+    ```
     """
     return time.strftime("%Y-%m-%d %H:%M:%S.%f_%o_%q_%v")
 
@@ -91,18 +112,13 @@ def datetime_from_string(time: str) -> RSDateTime:
 
     Only a fixed format is allowed %Y-%m-%d %H:%M:%S.%f_%o_%q_%v
 
-    Parameters
-    ----------
-    time : str
-        time as a string
+    :param time: time as a string
 
-    Returns
-    -------
-    RSDateTime
-        The resistics datetime
+    :return: The resistics datetime
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.sampling import to_datetime, to_timedelta
     >>> from resistics.sampling import datetime_to_string, datetime_from_string
     >>> time = to_datetime("2021-01-01") + to_timedelta(1/16384)
@@ -111,6 +127,8 @@ def datetime_from_string(time: str) -> RSDateTime:
     '2021-01-01 00:00:00.000061_035156_250000_000000'
     >>> datetime_from_string(time_str)
     attotime.objects.attodatetime(2021, 1, 1, 0, 0, 0, 61, 35.15625)
+
+    ```
     """
     return RSDateTime.strptime(time, "%Y-%m-%d %H:%M:%S.%f_%o_%q_%v")
 
@@ -121,18 +139,13 @@ def to_datetime(time: DateTimeLike) -> RSDateTime:
     RSDateTime uses attodatetime which is a high precision datetime format
     helpful for high sampling frequencies.
 
-    Parameters
-    ----------
-    time : DateTimeLike
-        Input time as either a string, pd.Timestamp or native python datetime
+    :param time: Input time as either a string, pd.Timestamp or native python datetime
 
-    Returns
-    -------
-    RSDateTime
-        High precision datetime object
+    :return: High precision datetime object
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> import pandas as pd
     >>> from resistics.sampling import to_datetime
     >>> a = "2021-01-01 00:00:00"
@@ -146,6 +159,8 @@ def to_datetime(time: DateTimeLike) -> RSDateTime:
     >>> c = pd.Timestamp(a).to_pydatetime()
     >>> str(to_datetime(c))
     '2021-01-01 00:00:00'
+
+    ```
     """
     if isinstance(time, str):
         try:
@@ -169,27 +184,23 @@ def to_datetime(time: DateTimeLike) -> RSDateTime:
 
 
 def to_timestamp(time: RSDateTime) -> pd.Timestamp:
-    """
-    Convert a RSDateTime to a pandas Timestamp
+    """Convert a RSDateTime to a pandas Timestamp
 
-    Parameters
-    ----------
-    time : RSDateTime
-        An RSDateTime instance
+    :param time: An RSDateTime instance
 
-    Returns
-    -------
-    pd.Timestamp
-        RSDateTime converted to Timestamp
+    :return: RSDateTime converted to Timestamp
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.sampling import to_datetime, to_timestamp
     >>> time = to_datetime("2021-01-01 00:30:00.345")
     >>> print(time)
     2021-01-01 00:30:00.345
     >>> to_timestamp(time)
     Timestamp('2021-01-01 00:30:00.345000')
+
+    ```
     """
     return pd.Timestamp(time.isoformat())
 
@@ -201,29 +212,26 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
     RSTimeDelta uses attotimedelta, a high precision timedelta object. This can
     be useful for high sampling frequencies.
 
-    .. warning::
+    ```{warning}
+    At high time resolutions, there are machine precision errors that
+    come into play. Therefore, if nanoseconds < 0.0001, it will be zeroed
+    out
+    ```
+    :param delta: Timedelta as a float (assumed to be seconds), timedelta or pd.Timedelta
 
-        At high time resolutions, there are machine precision errors that
-        come into play. Therefore, if nanoseconds < 0.0001, it will be zeroed
-        out
+    :return: High precision timedelta
 
-    Parameters
-    ----------
-    delta : TimeDeltaLike
-        Timedelta as a float (assumed to be seconds), timedelta or pd.Timedelta
+    **Examples**
 
-    Returns
-    -------
-    RSTimeDelta
-        High precision timedelta
-
-    Examples
-    --------
+    ```{doctest}
     >>> import pandas as pd
     >>> from resistics.sampling import to_timedelta
 
+    ```
+
     Low frequency sampling
 
+    ```{doctest}
     >>> fs = 0.0000125
     >>> to_timedelta(1/fs)
     attotime.objects.attotimedelta(0, 80000)
@@ -238,8 +246,11 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
     >>> str(to_timedelta(1/fs))
     '0:00:03.2'
 
+    ```
+
     Higher frequency sampling
 
+    ```{doctest}
     >>> fs = 4096
     >>> to_timedelta(1/fs)
     attotime.objects.attotimedelta(0, 0, 244, 140.625)
@@ -252,10 +263,15 @@ def to_timedelta(delta: TimeDeltaLike) -> RSTimeDelta:
     >>> str(to_timedelta(1/fs))
     '0:00:00.0000019073486328125'
 
+    ```
+
     to_timedelta can also accept pandas Timedelta objects
 
+    ```{doctest}
     >>> str(to_timedelta(pd.Timedelta(1, "s")))
     '0:00:01'
+
+    ```
     """
     from math import floor
 
@@ -289,22 +305,17 @@ def to_seconds(delta: RSTimeDelta) -> tuple[float, float]:
     seconds, the second entry in the Tuple is the remaining amount of time
     converted to seconds.
 
-    Parameters
-    ----------
-    delta : RSTimeDelta
-        timedelta
+    :param delta: timedelta
 
-    Returns
-    -------
-    days_in_seconds
-        The days in the delta converted to seconds
-    remaining_in_seconds
-        The remaining amount of time in the delta converted to seconds
+    :return:
+        - The days in the delta converted to seconds
+        - The remaining amount of time in the delta converted to seconds
 
-    Examples
-    --------
+    **Examples**
+
     Example with a small timedelta
 
+    ```{doctest}
     >>> from resistics.sampling import to_datetime, to_timedelta, to_seconds
     >>> a = to_timedelta(1/4_096)
     >>> str(a)
@@ -315,8 +326,11 @@ def to_seconds(delta: RSTimeDelta) -> tuple[float, float]:
     >>> remaining_in_seconds
     0.000244140625
 
+    ```
+
     Example with a larger timedelta
 
+    ```{doctest}
     >>> a = to_datetime("2021-01-01 00:00:00")
     >>> b = to_datetime("2021-02-01 08:24:30")
     >>> days_in_seconds, remaining_in_seconds = to_seconds(b-a)
@@ -324,6 +338,8 @@ def to_seconds(delta: RSTimeDelta) -> tuple[float, float]:
     2678400
     >>> remaining_in_seconds
     30270.0
+
+    ```
     """
     days_in_seconds = delta.days * (3600 * 24)
     microseconds_in_seconds = delta.microseconds / 1_000_000
@@ -339,25 +355,18 @@ def to_n_samples(delta: RSTimeDelta, fs: float, method: str = "round") -> int:
 
     This method is inclusive of start and end sample.
 
-    Parameters
-    ----------
-    delta : RSTimeDelta
-        The timedelta
-    fs : float
-        The sampling frequency
-    method : str
-        Method to deal with floats, default is 'round'. Other options include
+    :param delta: The timedelta
+    :param fs: The sampling frequency
+    :param method: Method to deal with floats, default is 'round'. Other options include
         'ceil' and 'floor'
 
-    Returns
-    -------
-    int
-        The number of samples in the timedelta
+    :return: The number of samples in the timedelta
 
-    Examples
-    --------
+    **Examples**
+
     With sampling frequency of 4096 Hz
 
+    ```{doctest}
     >>> from resistics.sampling import to_timedelta, to_n_samples
     >>> fs = 4096
     >>> delta = to_timedelta(8*3600 + (21/fs))
@@ -372,8 +381,11 @@ def to_n_samples(delta: RSTimeDelta, fs: float, method: str = "round") -> int:
     >>> check_inclusive
     117964822
 
+    ```
+
     With a sampling frequency of 65536 Hz
 
+    ```{doctest}
     >>> fs = 65_536
     >>> delta = to_timedelta(2*3600 + (40_954/fs))
     >>> str(delta)
@@ -386,6 +398,8 @@ def to_n_samples(delta: RSTimeDelta, fs: float, method: str = "round") -> int:
     >>> check_inclusive = check + 1
     >>> check_inclusive
     471900155
+
+    ```
     """
     from math import ceil, floor
 
@@ -404,30 +418,18 @@ def to_n_samples(delta: RSTimeDelta, fs: float, method: str = "round") -> int:
 
 
 def check_sample(n_samples: int, sample: int) -> bool:
-    """
-    Check sample is between 0 <= from_sample < n_samples
+    """Check sample is between 0 <= from_sample < n_samples
 
-    Parameters
-    ----------
-    n_samples : int
-        Number of samples
-    sample : int
-        Sample to check
+    :param n_samples: Number of samples
+    :param sample: Sample to check
 
-    Returns
-    -------
-    bool
-        Return True if no errors
+    :return: Return True if no errors
 
-    Raises
-    ------
-    ValueError
-        If sample < 0
-    ValueError
-        If sample > n_samples
+    :raises ValueError: If the sample is negative or not less than ``n_samples``.
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.sampling import check_sample
     >>> check_sample(100, 45)
     True
@@ -439,6 +441,8 @@ def check_sample(n_samples: int, sample: int) -> bool:
     Traceback (most recent call last):
     ...
     ValueError: Sample -1 must be >= 0
+
+    ```
     """
     if sample < 0:
         raise ValueError(f"Sample {sample} must be >= 0")
@@ -452,30 +456,19 @@ def sample_to_datetime(
 ) -> RSDateTime:
     """Convert a sample to a pandas Timestamp.
 
-    Parameters
-    ----------
-    fs : float
-        The sampling frequency
-    first_time : RSDateTime
-        The first time
-    sample : int
-        The sample
-    n_samples : Optional[int], optional
-        The number of samples, used for checking, by default None.
+    :param fs: The sampling frequency
+    :param first_time: The first time
+    :param sample: The sample
+    :param n_samples: The number of samples, used for checking, by default None.
         If provided, the sample is checked to make sure it's not out of bounds.
 
-    Returns
-    -------
-    RSDateTime
-        The timestamp of the sample
+    :return: The timestamp of the sample
 
-    Raises
-    ------
-    ValueError
-        If n_samples is provided and sample is < 0 or >= n_samples
+    :raises ValueError: If n_samples is provided and sample is < 0 or >= n_samples
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> import pandas as pd
     >>> from resistics.sampling import to_datetime, sample_to_datetime
     >>> fs = 512
@@ -484,6 +477,8 @@ def sample_to_datetime(
     >>> sample_datetime = sample_to_datetime(fs, first_time, sample)
     >>> str(sample_datetime)
     '2021-01-02 00:00:01'
+
+    ```
     """
     if n_samples is not None and (sample < 0 or sample >= n_samples):
         raise ValueError(
@@ -502,31 +497,20 @@ def samples_to_datetimes(
 
     The first sample is assumed to be 0.
 
-    Parameters
-    ----------
-    fs : float
-        The sampling frequency in seconds
-    first_time : RSDateTime
-        The time of the first sample
-    from_sample : int
-        The sample to read data from
-    to_sample : int
-        The sample to read data to
+    :param fs: The sampling frequency in seconds
+    :param first_time: The time of the first sample
+    :param from_sample: The sample to read data from
+    :param to_sample: The sample to read data to
 
-    Returns
-    -------
-    from_time : RSDateTime
-        The timestamp to read data from
-    to_time : RSDateTime
-        The timestamp to read data to
+    :return:
+        - **from_time** — The timestamp to read data from
+        - **to_time** — The timestamp to read data to
 
-    Raises
-    ------
-    ValueError
-        If from sample is greater than or equal to to sample
+    :raises ValueError: If from sample is greater than or equal to to sample
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> import pandas as pd
     >>> from resistics.sampling import to_datetime, samples_to_datetimes
     >>> fs = 512
@@ -538,6 +522,8 @@ def samples_to_datetimes(
     '2021-01-02 00:00:01'
     >>> str(to_time)
     '2021-01-02 00:00:02'
+
+    ```
     """
     if from_sample >= to_sample:
         raise ValueError(f"From sample {from_sample} >= to sample {to_sample}")
@@ -558,30 +544,20 @@ def check_from_time(
     - If from_time < first time, then first time will be returned.
     - If from_time > last time, it will raise a ValueError.
 
-    Parameters
-    ----------
-    first_time : RSDateTime
-        The time of the first sample
-    last_time : RSDateTime
-        The time of the last sample
-    from_time : RSDateTime
-        Time to get the data from
+    :param first_time: The time of the first sample
+    :param last_time: The time of the last sample
+    :param from_time: Time to get the data from
 
-    Returns
-    -------
-    RSDateTime
-        A from time adjusted as needed given the first and last sample time
+    :return: A from time adjusted as needed given the first and last sample time
 
-    Raises
-    ------
-    ValueError
-        If the from time is after the time of the last sample
+    :raises ValueError: If the from time is after the time of the last sample
 
-    Examples
-    --------
+    **Examples**
+
     With a from time between first and last time. This should be the normal use
     case.
 
+    ```{doctest}
     >>> from resistics.sampling import to_datetime, check_from_time
     >>> first_time = to_datetime("2021-01-02 00:00:00")
     >>> last_time = to_datetime("2021-01-02 23:00:00")
@@ -590,21 +566,29 @@ def check_from_time(
     >>> str(from_time)
     '2021-01-02 03:00:00'
 
+    ```
+
     An alternative scenario when from time is before the time of the first
     sample
 
+    ```{doctest}
     >>> from_time = to_datetime("2021-01-01 23:00:00")
     >>> from_time = check_from_time(first_time, last_time, from_time)
     >>> str(from_time)
     '2021-01-02 00:00:00'
 
+    ```
+
     An error will be raised when from time is after the time of the last sample
 
+    ```{doctest}
     >>> from_time = to_datetime("2021-01-02 23:30:00")
     >>> from_time = check_from_time(first_time, last_time, from_time)
     Traceback (most recent call last):
     ...
     ValueError: From time 2021-01-02 23:30:00 greater than time of last sample 2021-01-02 23:00:00
+
+    ```
     """
     if from_time > last_time:
         raise ValueError(
@@ -626,30 +610,20 @@ def check_to_time(
     - If to time > last time, then last time will be returned.
     - If to time < first time, it will raise a ValueError.
 
-    Parameters
-    ----------
-    first_time : RSDateTime
-        The time of the first sample
-    last_time : RSDateTime
-        The time of the last sample
-    to_time : RSDateTime
-        Time to get the data to
+    :param first_time: The time of the first sample
+    :param last_time: The time of the last sample
+    :param to_time: Time to get the data to
 
-    Returns
-    -------
-    RSDateTime
-        A to time adjusted as needed
+    :return: A to time adjusted as needed
 
-    Raises
-    ------
-    ValueError
-        If the to time is before the time of the first sample
+    :raises ValueError: If the to time is before the time of the first sample
 
-    Examples
-    --------
+    **Examples**
+
     With a to time between first and last time. This should be the normal use
     case.
 
+    ```{doctest}
     >>> from resistics.sampling import to_datetime, check_to_time
     >>> first_time = to_datetime("2021-01-02 00:00:00")
     >>> last_time = to_datetime("2021-01-02 23:00:00")
@@ -658,20 +632,28 @@ def check_to_time(
     >>> str(to_time)
     '2021-01-02 20:00:00'
 
+    ```
+
     An alternative scenario when to time is after the time of the last sample
 
+    ```{doctest}
     >>> to_time = to_datetime("2021-01-02 23:30:00")
     >>> to_time = check_to_time(first_time, last_time, to_time)
     >>> str(to_time)
     '2021-01-02 23:00:00'
 
+    ```
+
     An error will be raised when to time is before the time of the first sample
 
+    ```{doctest}
     >>> to_time = to_datetime("2021-01-01 23:30:00")
     >>> to_time = check_to_time(first_time, last_time, to_time)
     Traceback (most recent call last):
     ...
     ValueError: To time 2021-01-01 23:30:00 less than time of first sample 2021-01-02 00:00:00
+
+    ```
     """
     if to_time < first_time:
         raise ValueError(
@@ -692,24 +674,16 @@ def from_time_to_sample(
 ) -> int:
     """Get the sample for the from time.
 
-    Parameters
-    ----------
-    fs : float
-        Sampling frequency Hz
-    first_time : RSDateTime
-        Time of first sample
-    last_time : RSDateTime
-        Time of last sample
-    from_time : RSDateTime
-        From time
+    :param fs: Sampling frequency Hz
+    :param first_time: Time of first sample
+    :param last_time: Time of last sample
+    :param from_time: From time
 
-    Returns
-    -------
-    int
-        The sample coincident with or after the from time
+    :return: The sample coincident with or after the from time
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.sampling import to_datetime, from_time_to_sample
     >>> first_time = to_datetime("2021-01-01 00:00:00")
     >>> last_time = to_datetime("2021-01-02 00:00:00")
@@ -722,6 +696,8 @@ def from_time_to_sample(
     >>> from_time = to_datetime("2021-01-01 01:00:00.0078125")
     >>> from_time_to_sample(fs, first_time, last_time, from_time)
     460801
+
+    ```
     """
     from_time = check_from_time(first_time, last_time, from_time)
     delta_first = from_time - first_time
@@ -737,29 +713,20 @@ def to_time_to_sample(
 ) -> int:
     """Get the to time sample.
 
-    .. warning::
+    ```{warning}
+    This will return the sample of the to time. In cases where this will
+    be used for a range, 1 should be added to it to ensure it is included.
+    ```
+    :param fs: Sampling frequency Hz
+    :param first_time: Time of first sample
+    :param last_time: Time of last sample
+    :param to_time: The to time
 
-        This will return the sample of the to time. In cases where this will
-        be used for a range, 1 should be added to it to ensure it is included.
+    :return: The sample coincident with or immediately before the to time
 
-    Parameters
-    ----------
-    fs : float
-        Sampling frequency Hz
-    first_time : RSDateTime
-        Time of first sample
-    last_time : RSDateTime
-        Time of last sample
-    to_time : RSDateTime
-        The to time
+    **Examples**
 
-    Returns
-    -------
-    int
-        The sample coincident with or immediately before the to time
-
-    Examples
-    --------
+    ```{doctest}
     >>> from resistics.sampling import to_time_to_sample
     >>> first_time = to_datetime("2021-01-01 04:00:00")
     >>> last_time = to_datetime("2021-01-01 13:00:00")
@@ -774,6 +741,8 @@ def to_time_to_sample(
     >>> to_time = to_datetime("2021-01-01 05:10:00")
     >>> to_time_to_sample(fs, first_time, last_time, to_time)
     17203200
+
+    ```
     """
     to_time = check_to_time(first_time, last_time, to_time)
     delta_first = to_time - first_time
@@ -790,38 +759,27 @@ def datetimes_to_samples(
 ) -> tuple[int, int]:
     """Convert from and to time to samples.
 
-    .. warning::
+    ```{warning}
+    If using these samples in ranging, the from sample can be left unchanged
+    but one should be added to the to sample to ensure it is included.
+    ```
+    ```{note}
+    If from_time is not a sample timestamp, the next sample is taken
+    If to_time is not a sample timestamp, the previous sample is taken
+    ```
+    :param fs: The sampling frequency in Hz
+    :param first_time: The time of the first sample
+    :param last_time: The time of the last sample
+    :param from_time: A from time
+    :param to_time: A to time
 
-        If using these samples in ranging, the from sample can be left unchanged
-        but one should be added to the to sample to ensure it is included.
+    :return:
+        - **from_sample** — Sample to read data from
+        - **to_sample** — Sample to read data to
 
-    .. note::
+    **Examples**
 
-        If from_time is not a sample timestamp, the next sample is taken
-        If to_time is not a sample timestamp, the previous sample is taken
-
-    Parameters
-    ----------
-    fs : float
-        The sampling frequency in Hz
-    first_time : RSDateTime
-        The time of the first sample
-    last_time : RSDateTime
-        The time of the last sample
-    from_time : RSDateTime
-        A from time
-    to_time : RSDateTime
-        A to time
-
-    Returns
-    -------
-    from_sample : int
-        Sample to read data from
-    to_sample : int
-        Sample to read data to
-
-    Examples
-    --------
+    ```{doctest}
     >>> from resistics.sampling import to_datetime, datetimes_to_samples
     >>> first_time = to_datetime("2021-01-01 04:00:00")
     >>> last_time = to_datetime("2021-01-01 05:30:00")
@@ -837,6 +795,8 @@ def datetimes_to_samples(
     58982400
     >>> to_sample
     68812800
+
+    ```
     """
     from_sample = from_time_to_sample(fs, first_time, last_time, from_time)
     to_sample = to_time_to_sample(fs, first_time, last_time, to_time)
@@ -856,32 +816,21 @@ def datetime_array(
     where exact datetimes are not required, it is suggested to use
     datetime_array_estimate instead.
 
-    Parameters
-    ----------
-    first_time : RSDateTime
-        The first time
-    fs : float
-        The sampling frequency
-    n_samples : Optional[int], optional
-        The number of samples, by default None
-    samples : Optional[np.ndarray], optional
-        The samples for which to return a datetime, by default None
+    :param first_time: The first time
+    :param fs: The sampling frequency
+    :param n_samples: The number of samples, by default None
+    :param samples: The samples for which to return a datetime, by default None
 
-    Returns
-    -------
-    np.ndarray
-        Numpy array of RSDateTimes
+    :return: Numpy array of RSDateTimes
 
-    Raises
-    ------
-    ValueError
-        If both n_samples and samples is None
+    :raises ValueError: If both n_samples and samples is None
 
-    Examples
-    --------
+    **Examples**
+
     This examples shows the value of using higher resolution datetimes, however
     this is computationally more expensive.
 
+    ```{doctest}
     >>> import pandas as pd
     >>> from resistics.sampling import to_datetime, datetime_array
     >>> first_time = to_datetime("2021-01-01 00:00:00")
@@ -893,6 +842,8 @@ def datetime_array(
     >>> pdarr = pd.date_range(start="2021-01-01 00:00:00", freq=pd.Timedelta(1/4096, "s"), periods=n_samples)
     >>> pdarr[-1]
     Timestamp('2021-01-01 00:00:00.024169959')
+
+    ```
     """
     if n_samples is not None:
         samples = np.arange(n_samples)
@@ -911,29 +862,18 @@ def datetime_array_estimate(
     """Estimate datetime array with lower precision but much faster
     performance.
 
-    Parameters
-    ----------
-    first_time : Union[RSDateTime, datetime, str, pd.Timestamp]
-        The first time
-    fs : float
-        The sampling frequency
-    n_samples : Optional[int], optional
-        The number of samples, by default None
-    samples : Optional[np.ndarray], optional
-        An array of samples to return datetimes for, by default None
+    :param first_time: The first time
+    :param fs: The sampling frequency
+    :param n_samples: The number of samples, by default None
+    :param samples: An array of samples to return datetimes for, by default None
 
-    Returns
-    -------
-    pd.DatetimeIndex
-        A pandas DatetimeIndex
+    :return: A pandas DatetimeIndex
 
-    Raises
-    ------
-    ValueError
-        If both n_samples and samples are None
+    :raises ValueError: If both n_samples and samples are None
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> import pandas as pd
     >>> from resistics.sampling import to_datetime, datetime_array_estimate
     >>> first_time = to_datetime("2021-01-01 00:00:00")
@@ -942,6 +882,8 @@ def datetime_array_estimate(
     >>> arr = datetime_array_estimate(first_time, fs, n_samples=n_samples)
     >>> print(f"{arr[0]} - {arr[-1]}")
     2021-01-01 00:00:00 - 2021-01-01 00:00:07.804687500
+
+    ```
     """
     if isinstance(first_time, RSDateTime):
         first_time = pd.to_datetime(first_time.isoformat())

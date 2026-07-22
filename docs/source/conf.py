@@ -91,6 +91,7 @@ myst_ref_domains = ["std", "py"]
 nb_execution_mode = "off"
 myst_autodoc_docstring_parser_regexes = [
     (r"prototype_api(?:\..*)?", "myst"),
+    (r"resistics\.(?:common|sampling|transfunc)(?:\..*)?", "myst"),
     (r"resistics(?:\..*)?", "rst"),
 ]
 # sphinx gallery

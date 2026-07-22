@@ -60,7 +60,9 @@ Run both documentation checks after changing a production API:
 
 ```console
 uv run --locked --no-sync ruff check resistics
-uv run --locked --no-sync pydoclint resistics
+uv run --locked --no-sync pydoclint --config=pyproject.toml resistics
+uv run --locked --no-sync pydoclint --config=pydoclint-myst.toml \
+  resistics/common.py resistics/sampling.py resistics/transfunc.py
 ```
 
 Ruff enforces public docstring presence. Pydoclint enforces agreement between

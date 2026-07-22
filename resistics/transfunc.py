@@ -1,9 +1,8 @@
-"""
-Module defining transfer functions
-"""
+"""Module defining transfer functions"""
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
 from typing import Annotated, Any, ClassVar
 
 import numpy as np
@@ -16,17 +15,19 @@ from resistics.common import Metadata
 
 
 class Component(Metadata):
-    """
-    Data class for a single component in a Transfer function
+    """Data class for a single component in a Transfer function
 
-    Example
-    -------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.transfunc import Component
     >>> component = Component(real=[1, 2, 3, 4, 5], imag=[-5, -4, -3, -2 , -1])
     >>> component.get_value(0)
     (1-5j)
     >>> component.to_numpy()
     array([1.-5.j, 2.-4.j, 3.-3.j, 4.-2.j, 5.-1.j])
+
+    ```
     """
 
     real: list[float]
@@ -35,42 +36,43 @@ class Component(Metadata):
     """The complex part of the component"""
 
     def get_value(self, eval_idx: int) -> complex:
-        """Get the value for an evaluation frequency"""
+        """Get the complex value at one evaluation index.
+
+        :param eval_idx: Evaluation-frequency index.
+        :return: Complex component value.
+        """
         return self.real[eval_idx] + 1j * self.imag[eval_idx]
 
     def to_numpy(self) -> np.ndarray:
-        """Get the component as a numpy complex array"""
+        """Get the complete component as a complex NumPy array.
+
+        :return: Complex values with real and imaginary parts combined.
+        """
         return np.array(self.real) + 1j * np.array(self.imag)
 
 
 def get_component_key(out_chan: str, in_chan: str) -> str:
-    """
-    Get key for out channel and in channel combination in the solution
+    """Get key for out channel and in channel combination in the solution
 
-    Parameters
-    ----------
-    out_chan : str
-        The output channel
-    in_chan : str
-        The input channel
+    :param out_chan: The output channel
+    :param in_chan: The input channel
 
-    Returns
-    -------
-    str
-        The component key
+    :return: The component key
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.regression import get_component_key
     >>> get_component_key("Ex", "Hy")
     'ExHy'
+
+    ```
     """
     return f"{out_chan}{in_chan}"
 
 
 class TransferFunction(Metadata):
-    """
-    Define a generic transfer function
+    """Define a generic transfer function
 
     This class is a describes generic transfer function, including:
 
@@ -85,53 +87,50 @@ class TransferFunction(Metadata):
     child classes may have a plotting function as different transfer functions
     may need different types of plots.
 
-    .. note::
+    ```{note}
+    Users interested in writing a custom transfer function should inherit
+    from this generic Transfer function
+    ```
+    **Attributes**
 
-        Users interested in writing a custom transfer function should inherit
-        from this generic Transfer function
+    - **name** — Registered transfer-function model name.
+    - **variation** — Short label identifying this variation.
+    - **out_chans** — Output channels.
+    - **in_chans** — Input channels.
+    - **cross_chans** — Channels used to calculate cross spectra.
+    - **n_out** — Number of output channels.
+    - **n_in** — Number of input channels.
+    - **n_cross** — Number of cross-power channels.
 
-    Attributes
-    ----------
-    name : str
-        Registered transfer-function model name.
-    variation : Annotated[str, Field(max_length=16)]
-        Short label identifying this variation.
-    out_chans : list[str]
-        Output channels.
-    in_chans : list[str]
-        Input channels.
-    cross_chans : list[str]
-        Channels used to calculate cross spectra.
-    n_out : int
-        Number of output channels.
-    n_in : int
-        Number of input channels.
-    n_cross : int
-        Number of cross-power channels.
+    **See Also**
 
-    See Also
-    --------
     ImpandanceTensor : Transfer function for the MT impedance tensor
     Tipper : Transfer function for the MT tipper
 
-    Examples
-    --------
+    **Examples**
+
     A generic example
 
+    ```{doctest}
     >>> from resistics.transfunc import TransferFunction
     >>> tf = TransferFunction(variation="example", out_chans=["bye", "see you", "ciao"], in_chans=["hello", "hi_there"])
-    >>> print(tf.to_string())
+    >>> print(tf.to_string())  # doctest: +NORMALIZE_WHITESPACE
     | bye      |   | bye_hello         bye_hi_there      | | hello    |
     | see you  | = | see you_hello     see you_hi_there  | | hi_there |
     | ciao     |   | ciao_hello        ciao_hi_there     |
 
+    ```
+
     Combining the impedance tensor and the tipper into one TransferFunction
 
+    ```{doctest}
     >>> tf = TransferFunction(variation="combined", out_chans=["Ex", "Ey"], in_chans=["Hx", "Hy", "Hz"])
     >>> print(tf.to_string())
     | Ex |   | Ex_Hx Ex_Hy Ex_Hz | | Hx |
     | Ey | = | Ey_Hx Ey_Hy Ey_Hz | | Hy |
                                    | Hz |
+
+    ```
     """
 
     _types: ClassVar[dict[str, type[TransferFunction]]] = {}
@@ -154,8 +153,7 @@ class TransferFunction(Metadata):
     """The number of cross power channels"""
 
     def __init_subclass__(cls) -> None:
-        """
-        Used to automatically register child transfer functions in `_types`
+        """Used to automatically register child transfer functions in `_types`
 
         When a TransferFunction child class is imported, it is added to the base
         TransferFunction _types variable. Later, this dictionary of class types
@@ -171,15 +169,26 @@ class TransferFunction(Metadata):
         cls._types[cls.__name__] = cls
 
     @classmethod
-    def __get_pydantic_core_schema__(cls, source_type, handler):
-        """Get the validator schema that will be used by pydantic v2."""
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: Any
+    ) -> core_schema.CoreSchema:
+        """Build the Pydantic schema for registered transfer functions.
+
+        :param source_type: Source annotation supplied by Pydantic.
+        :param handler: Pydantic schema-generation callback.
+        :return: Core schema dispatching dictionaries before normal validation.
+        """
         return core_schema.no_info_before_validator_function(
             cls.validate_model_input, handler(source_type)
         )
 
     @classmethod
     def validate_model_input(cls, value: Any) -> Any:
-        """Resolve registered transfer-function dictionaries in pydantic."""
+        """Resolve registered transfer-function dictionaries in Pydantic.
+
+        :param value: Existing transfer function, dictionary, or unrelated value.
+        :return: A dispatched transfer function or the unchanged input.
+        """
         if isinstance(value, TransferFunction):
             return value
         if isinstance(value, dict) and "name" in value:
@@ -187,63 +196,66 @@ class TransferFunction(Metadata):
         return value
 
     @classmethod
-    def __get_validators__(cls):
-        """Get the validators that will be used by pydantic"""
+    def __get_validators__(
+        cls,
+    ) -> Iterator[Callable[[TransferFunction | dict[str, Any]], TransferFunction]]:
+        """Yield the compatibility transfer-function validator.
+
+        :yield: Registered transfer-function validator.
+        """
         yield cls.validate
 
     @classmethod
     def validate(cls, value: TransferFunction | dict[str, Any]) -> TransferFunction:
-        """
-        Validate a TransferFunction
+        """Validate a TransferFunction
 
-        Parameters
-        ----------
-        value : Union[TransferFunction, Dict[str, Any]]
-            A TransferFunction child class or a dictionary
+        :param value: A TransferFunction child class or a dictionary
 
-        Returns
-        -------
-        TransferFunction
-            A TransferFunction or TransferFunction child class
+        :return: A TransferFunction or TransferFunction child class
 
-        Raises
-        ------
-        ValueError
-            If the value is neither a TransferFunction or a dictionary
-        KeyError
-            If name is not in the dictionary
-        ValueError
-            If initialising from dictionary fails
+        :raises ValueError: If the input is invalid, its registered name is unknown,
+            or child-model initialization fails.
+        :raises KeyError: If name is not in the dictionary
 
-        Examples
-        --------
+        **Examples**
+
         The following example will show how a child TransferFunction class
         can be instantiated using a dictionary and the parent TransferFunction
         (but only as long as that child class has been imported).
 
+        ```{doctest}
         >>> from resistics.transfunc import TransferFunction
+
+        ```
 
         Show known TransferFunction types in built into resistics
 
+        ```{doctest}
         >>> for entry in TransferFunction._types.items():
         ...     print(entry)
         ('ImpedanceTensor', <class 'resistics.transfunc.ImpedanceTensor'>)
         ('Tipper', <class 'resistics.transfunc.Tipper'>)
 
+        ```
+
         Now let's initialise an ImpedanceTensor from the base TransferFunction
         and a dictionary.
 
+        ```{doctest}
         >>> mytf = {"name": "ImpedanceTensor", "variation": "ecross", "cross_chans": ["Ex", "Ey"]}
         >>> test = TransferFunction(**mytf) # doctest: +ELLIPSIS
         Traceback (most recent call last):
         ...
         pydantic_core._pydantic_core.ValidationError: ...
 
+        ```
+
         The generic TransferFunction does not dispatch to a child class during
         direct base-class construction. To get this to work, instead use the
         validate class method. This is the class method used by pydantic for
         fields typed as TransferFunction.
 
+        ```{doctest}
         >>> mytf = {"name": "ImpedanceTensor", "variation": "ecross", "cross_chans": ["Ex", "Ey"]}
         >>> test = TransferFunction.validate(mytf)
         >>> test.summary()
@@ -258,30 +270,41 @@ class TransferFunction(Metadata):
             'n_cross': 2
         }
 
+        ```
+
         That's more like it. Unknown transfer function names are rejected so
         malformed or unavailable model types cannot leak dictionaries through
         a field declared as a TransferFunction.
 
+        ```{doctest}
         >>> mytf = {"name": "NewTF", "cross_chans": ["Ex", "Ey"]}
         >>> test = TransferFunction.validate(mytf)
         Traceback (most recent call last):
         ...
         ValueError: Unknown transfer function 'NewTF'
 
+        ```
+
         Or if the dictionary does not have a name key
 
+        ```{doctest}
         >>> mytf = {"cross_chans": ["Ex", "Ey"]}
         >>> test = TransferFunction.validate(mytf)
         Traceback (most recent call last):
         ...
         KeyError: 'No name provided for initialisation of TransferFunction'
 
+        ```
+
         Unexpected inputs will also raise an error
 
+        ```{doctest}
         >>> test = TransferFunction.validate(5)
         Traceback (most recent call last):
         ...
         ValueError: TransferFunction unable to initialise from <class 'int'>
+
+        ```
         """
         if isinstance(value, TransferFunction):
             return value
@@ -309,15 +332,9 @@ class TransferFunction(Metadata):
     def validate_contract(self) -> TransferFunction:
         """Resolve and validate all channel-derived fields.
 
-        Returns
-        -------
-        TransferFunction
-            The validated transfer function with concrete derived fields.
+        :return: The validated transfer function with concrete derived fields.
 
-        Raises
-        ------
-        ValueError
-            If a supplied dimension disagrees with its channel list.
+        :raises ValueError: If a supplied dimension disagrees with its channel list.
         """
         if not self.name:
             self.name = self.__class__.__name__
@@ -337,26 +354,28 @@ class TransferFunction(Metadata):
         return self
 
     def n_eqns_per_output(self) -> int:
-        """Get the number of equations per output"""
+        """Get the number of equations per output.
+
+        :return: Number of configured cross channels.
+        """
         return len(self.cross_chans)
 
     def n_regressors(self) -> int:
-        """Get the number of regressors"""
+        """Get the number of regressors.
+
+        :return: Number of configured input channels.
+        """
         return self.n_in
 
     def solution_components(self) -> list[str]:
-        """
-        Get the components of the solution based on the input and output
+        """Get the components of the solution based on the input and output
         channels
 
-        Returns
-        -------
-        List[str]
-            The solution components
+        :return: The solution components
 
-        Examples
-        --------
+        **Examples**
 
+        ```{doctest}
         >>> from resistics.transfunc import TransferFunction
         >>> tf = TransferFunction(
         ...     variation="a",
@@ -365,6 +384,8 @@ class TransferFunction(Metadata):
         ... )
         >>> tf.solution_components()
         ['xa', 'xb', 'xc', 'ya', 'yb', 'yc']
+
+        ```
         """
         return [
             f"{out_chan}{in_chan}"
@@ -372,8 +393,11 @@ class TransferFunction(Metadata):
             for in_chan in self.in_chans
         ]
 
-    def to_string(self):
-        """Get the transfer function as as string"""
+    def to_string(self) -> str:
+        """Render the transfer-function equation layout.
+
+        :return: Multiline matrix-style representation.
+        """
         n_lines = max(len(self.in_chans), len(self.out_chans))
         lens = [len(x) for x in self.in_chans] + [len(x) for x in self.out_chans]
         max_len = max(lens)
@@ -388,20 +412,35 @@ class TransferFunction(Metadata):
         return outstr.rstrip("\n")
 
     def _out_chan_string(self, il: int, max_len: int) -> str:
-        """Get the out channels string"""
+        """Render the output-channel cell for one line.
+
+        :param il: Zero-based output line.
+        :param max_len: Shared channel-name field width.
+        :return: Padded output-channel cell or whitespace.
+        """
         if il >= self.n_out:
             empty_len = max_len + 4
             return f"{'':{empty_len}s}"
         return f"| {self.out_chans[il]:{max_len}s} |"
 
     def _in_chan_string(self, il: int, max_len: int) -> str:
-        """Get the in channel string"""
+        """Render the input-channel cell for one line.
+
+        :param il: Zero-based input line.
+        :param max_len: Shared channel-name field width.
+        :return: Padded input-channel cell or an empty string.
+        """
         if il >= self.n_in:
             return ""
         return f"| {self.in_chans[il]:{max_len}s} |"
 
     def _tensor_string(self, il: int, max_len: int) -> str:
-        """Get the tensor string"""
+        """Render the solution-component cells for one line.
+
+        :param il: Zero-based output line.
+        :param max_len: Shared channel-name field width.
+        :return: Padded component row or whitespace.
+        """
         if il >= self.n_out:
             element_len = ((max_len * 2 + 1) + 1) * self.n_in + 3
             return f"{'':{element_len}s}"
@@ -414,11 +453,10 @@ class TransferFunction(Metadata):
 
 
 class ImpedanceTensor(TransferFunction):
-    """
-    Standard magnetotelluric impedance tensor
+    """Standard magnetotelluric impedance tensor
 
-    Notes
-    -----
+    **Notes**
+
     Information about data units
 
     - Magnetic permeability in nT . m / A
@@ -427,22 +465,22 @@ class ImpedanceTensor(TransferFunction):
     - Z = E/H is in mV / m . nT
     - Units of resistance = Ohm = V / A
 
-    Attributes
-    ----------
-    variation : Annotated[str, Field(max_length=16)]
-        Short label identifying this impedance-tensor variation.
-    out_chans : list[str]
-        Electric output channels.
-    in_chans : list[str]
-        Magnetic input channels.
+    **Attributes**
 
-    Examples
-    --------
+    - **variation** — Short label identifying this impedance-tensor variation.
+    - **out_chans** — Electric output channels.
+    - **in_chans** — Magnetic input channels.
+
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.transfunc import ImpedanceTensor
     >>> tf = ImpedanceTensor()
     >>> print(tf.to_string())
     | ex | = | ex_hx ex_hy | | hx |
     | ey |   | ey_hx ey_hy | | hy |
+
+    ```
     """
 
     variation: Annotated[str, Field(max_length=16)] = "default"
@@ -451,44 +489,27 @@ class ImpedanceTensor(TransferFunction):
 
     @staticmethod
     def get_resistivity(periods: np.ndarray, component: Component) -> np.ndarray:
-        """
-        Get apparent resistivity for a component
+        """Get apparent resistivity for a component
 
-        Parameters
-        ----------
-        periods : np.ndarray
-            The periods of the component
-        component : Component
-            The component values
+        :param periods: The periods of the component
+        :param component: The component values
 
-        Returns
-        -------
-        np.ndarray
-            Apparent resistivity
+        :return: Apparent resistivity
         """
         squared = np.power(np.absolute(component.to_numpy()), 2)
         return 0.2 * periods * squared
 
     @staticmethod
     def get_phase(key: str, component: Component) -> np.ndarray:
-        """
-        Get the phase for the component
+        """Get the phase for the component
 
-        .. note::
+        ```{note}
+        Components exhx and exhy are wrapped around in [0,90]
+        ```
+        :param key: The component name
+        :param component: The component values
 
-            Components exhx and exhy are wrapped around in [0,90]
-
-        Parameters
-        ----------
-        key : str
-            The component name
-        component : Component
-            The component values
-
-        Returns
-        -------
-        np.ndarray
-            The phase values
+        :return: The phase values
         """
         phase = np.angle(component.to_numpy())
         # unwrap into specific quadrant and convert to degrees
@@ -503,24 +524,15 @@ class ImpedanceTensor(TransferFunction):
         res_lim: list[float] | None = None,
         phs_lim: list[float] | None = None,
     ) -> go.Figure:
-        """
-        Get a figure for plotting the ImpedanceTensor
+        """Get a figure for plotting the ImpedanceTensor
 
-        Parameters
-        ----------
-        x_lim : Optional[List[float]], optional
-            The x limits, to be provided as powers of 10, by default None. For
+        :param x_lim: The x limits, to be provided as powers of 10, by default None. For
             example, for 0.001, use -3
-        res_lim : Optional[List[float]], optional
-            The y limits for resistivity, to be provided as powers of 10, by
+        :param res_lim: The y limits for resistivity, to be provided as powers of 10, by
             default None. For example, for 1000, use 3
-        phs_lim : Optional[List[float]], optional
-            The phase limits, by default None
+        :param phs_lim: The phase limits, by default None
 
-        Returns
-        -------
-        go.Figure
-            Plotly figure
+        :return: Plotly figure
         """
         from resistics.plot import PLOTLY_MARGIN, PLOTLY_TEMPLATE
 
@@ -562,40 +574,25 @@ class ImpedanceTensor(TransferFunction):
         phs_lim: list[float] | None = None,
         symbol: str | None = "circle",
     ) -> go.Figure:
-        """
-        Plot the Impedance tensor
+        """Plot the Impedance tensor
 
-        Parameters
-        ----------
-        freqs : List[float]
-            The frequencies where the impedance tensor components have been
+        :param freqs: The frequencies where the impedance tensor components have been
             calculated
-        components : Dict[str, Component]
-            The component data
-        fig : Optional[go.Figure], optional
-            Figure to add to, by default None
-        to_plot : Optional[List[str]], optional
-            The components to plot, by default all of the components of the
+        :param components: The component data
+        :param fig: Figure to add to, by default None
+        :param to_plot: The components to plot, by default all of the components of the
             impedance tensor
-        legend : str, optional
-            Legend prefix for the components, by default "Impedance tensor"
-        x_lim : Optional[List[float]], optional
-            The x limits, to be provided as powers of 10, by default None. For
+        :param legend: Legend prefix for the components, by default "Impedance tensor"
+        :param x_lim: The x limits, to be provided as powers of 10, by default None. For
             example, for 0.001, use -3. Only used when a figure is not provided.
-        res_lim : Optional[List[float]], optional
-            The y limits for resistivity, to be provided as powers of 10, by
+        :param res_lim: The y limits for resistivity, to be provided as powers of 10, by
             default None. For example, for 1000, use 3. Only used when a figure
             is not provided.
-        phs_lim : Optional[List[float]], optional
-            The phase limits, by default None. Only used when a figure is not
+        :param phs_lim: The phase limits, by default None. Only used when a figure is not
             provided.
-        symbol : Optional[str], optional
-            The marker symbol to use, by default "circle"
+        :param symbol: The marker symbol to use, by default "circle"
 
-        Returns
-        -------
-        go.Figure
-            [description]
+        :return: [description]
         """
         if fig is None:
             fig = ImpedanceTensor.get_fig(x_lim=x_lim, res_lim=res_lim, phs_lim=phs_lim)
@@ -646,8 +643,7 @@ class ImpedanceTensor(TransferFunction):
 
 
 class Tipper(TransferFunction):
-    """
-    Magnetotelluric tipper
+    """Magnetotelluric tipper
 
     The tipper components are Tx = HzHx and Ty = HzHy
 
@@ -655,28 +651,28 @@ class Tipper(TransferFunction):
 
     The tipper angle is arctan (Re(Ty)/Re(Tx))
 
-    Attributes
-    ----------
-    variation : Annotated[str, Field(max_length=16)]
-        Short label identifying this tipper variation.
-    out_chans : list[str]
-        Vertical magnetic output channel.
-    in_chans : list[str]
-        Horizontal magnetic input channels.
+    **Attributes**
 
-    Notes
-    -----
+    - **variation** — Short label identifying this tipper variation.
+    - **out_chans** — Vertical magnetic output channel.
+    - **in_chans** — Horizontal magnetic input channels.
+
+    **Notes**
+
     Information about units
 
     - Tipper T = H/H is dimensionless
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.transfunc import Tipper
     >>> tf = Tipper()
     >>> print(tf.to_string())
     | Hz | = | Hz_Hx Hz_Hy | | Hx |
                              | Hy |
+
+    ```
     """
 
     variation: Annotated[str, Field(max_length=16)] = "default"
@@ -684,19 +680,31 @@ class Tipper(TransferFunction):
     in_chans: list[str] = ["Hx", "Hy"]
 
     def get_length(self, components: dict[str, Component]) -> np.ndarray:
-        """Get the tipper length"""
+        """Calculate real tipper-vector length.
+
+        :param components: ``HzHx`` and ``HzHy`` solution components.
+        :return: Length at each evaluation frequency.
+        """
         txRe = components["HzHx"].real
         tyRe = components["HzHy"].real
         return np.sqrt(np.power(txRe, 2) + np.power(tyRe, 2))
 
     def get_real_angle(self, components: dict[str, Component]) -> np.ndarray:
-        """Get the real angle"""
+        """Calculate the real tipper-vector angle.
+
+        :param components: ``HzHx`` and ``HzHy`` solution components.
+        :return: Angle in degrees at each evaluation frequency.
+        """
         txRe = np.array(components["HzHx"].real)
         tyRe = np.array(components["HzHy"].real)
         return np.arctan(tyRe / txRe) * 180 / np.pi
 
     def get_imag_angle(self, components: dict[str, Component]) -> np.ndarray:
-        """Get the imaginary angle"""
+        """Calculate the imaginary tipper-vector angle.
+
+        :param components: ``HzHx`` and ``HzHy`` solution components.
+        :return: Angle in degrees at each evaluation frequency.
+        """
         txIm = np.array(components["HzHx"].imag)
         tyIm = np.array(components["HzHy"].imag)
         return np.arctan(tyIm / txIm) * 180 / np.pi
@@ -709,32 +717,20 @@ class Tipper(TransferFunction):
         len_lim: list[float] | None = None,
         ang_lim: list[float] | None = None,
     ) -> go.Figure:
-        """
-        Plot the impedance tensor
+        """Plot the impedance tensor
 
-        .. warning::
-
-            This probably needs further checking and verification
-
-        Parameters
-        ----------
-        freqs : List[float]
-            The x axis frequencies
-        components : Dict[str, Component]
-            The component data
-        x_lim : Optional[List[float]], optional
-            The x limits, to be provided as powers of 10, by default None. For
+        ```{warning}
+        This probably needs further checking and verification
+        ```
+        :param freqs: The x axis frequencies
+        :param components: The component data
+        :param x_lim: The x limits, to be provided as powers of 10, by default None. For
             example, for 0.001, use -3
-        len_lim : Optional[List[float]], optional
-            The y limits for tipper length, to be provided as powers of 10, by
+        :param len_lim: The y limits for tipper length, to be provided as powers of 10, by
             default None. For example, for 1000, use 3
-        ang_lim : Optional[List[float]], optional
-            The angle limits, by default None
+        :param ang_lim: The angle limits, by default None
 
-        Returns
-        -------
-        go.Figure
-            Plotly figure
+        :return: Plotly figure
         """
         import warnings
 
