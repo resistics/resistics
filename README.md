@@ -7,7 +7,7 @@
 [![codecov](https://codecov.io/gh/resistics/resistics/branch/master/graph/badge.svg?token=CXLJC9J7AW)](https://codecov.io/gh/resistics/resistics)
 [![Code style: Ruff](https://img.shields.io/badge/code%20style-Ruff-D7FF64.svg)](https://docs.astral.sh/ruff/)
 
-Resistics is a native Python 3.11-3.14 package for the processing of
+Resistics is a native Python 3.12-3.14 package for the processing of
 magnetotelluric (MT) data. It incorporates robust processing methods and adopts
 a modular approach to processing which allows for customisation and future
 improvements to be quickly adopted.
@@ -79,13 +79,48 @@ uv run --locked --no-sync pytest
 uv run --locked --no-sync pytest --cov=resistics --cov-branch --cov-report=term --cov-report=html --cov-report=xml
 uv run --locked --no-sync sphinx-build -D sphinx_gallery_conf.plot_gallery=0 -b html docs/source .artifacts/hardening/documentation/html
 uv build --no-sources
-uv audit --locked
+uv run --locked --no-sync python scripts/check_minimum_dependencies.py
+uv run --locked --no-sync python scripts/audit_dependencies.py
 uv run --locked --no-sync python scripts/check_no_legacy_packaging.py
 ```
 
+The dependency-floor check requires the sibling checkout shown above and a
+Python 3.12 interpreter discoverable by uv. It builds both local wheels,
+resolves Resistics' runtime plus shared/test dependencies with uv's
+``lowest-direct`` policy, verifies that every declared floor was selected,
+and runs the installed packages' doctests in a disposable environment. It does
+not modify ``.venv`` or ``uv.lock``. Transitive dependencies remain owned by
+their declaring packages and use uv's normal compatible resolution.
+
+### Dependency security
+
+The dependency-audit command reads the supported Python minors from project
+metadata and audits the complete locked environment, including the default
+development, documentation, shared, and test groups, for each one. It queries
+the OSV vulnerability database and fails on any known vulnerability or adverse
+project status. It is intentionally a networked production-gate command rather
+than a pre-commit hook.
+
+The accepted-risk list in ``scripts/audit_dependencies.py`` is empty by
+default. If an advisory has no compatible fixed release, a temporary exception
+may be added only with its advisory ID, mitigation rationale, owner, and review
+date no more than 90 days away. The script rejects incomplete, duplicate,
+expired, or excessively long-lived records and uses uv's
+``--ignore-until-fixed`` option, so the advisory becomes a failure as soon as
+OSV reports an available fix. Advisories with compatible fixes are updated and
+locked rather than accepted.
+
+Hosted dependency monitoring remains an owner follow-up until hosted
+automation is rebuilt. That work must enable Dependabot for Python and GitHub
+Actions, pin every third-party action to a full commit SHA, give workflows and
+jobs only their minimum permissions, and protect the publishing environment
+before enabling trusted publication. Until then, the local command above is
+the maintained vulnerability gate; there is no claim of continuous hosted
+monitoring.
+
 The gallery-disabled documentation command retains the measured legacy warning
-backlog until the Phase 7 documentation migration. Dependency-audit policy is
-hardened in Phase 6. Pyrefly is the sole type checker. All production modules
+backlog until the Phase 7 documentation migration. Pyrefly is the sole type
+checker. All production modules
 are error- and warning-clean under the pinned checker, and the distribution
 advertises its inline public annotations through PEP 561. The committed empty
 baseline makes any new error-level finding fail the local gate; updating it is

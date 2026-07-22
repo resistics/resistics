@@ -3,14 +3,17 @@ Next release
 
 - **Added:** ``Project`` and ``MTH5File`` now support deterministic ``close()``
   and context-manager ownership of their read-only MTH5 handles.
+- **Added:** A locked OSV dependency audit covers every supported Python minor
+  and enforces expiring, owned records for any temporarily accepted risk.
 - **Changed:** Project loading closes partially opened MTH5 files when opening,
   channel-summary preparation, or model construction fails.
 - **Changed:** ``resistics.testing`` now contains only the small data builders
   used by executable documentation; regression-only factories and comparisons
   are owned by the test suite.
-- **Changed:** Direct dependency lower bounds now describe the supported Python
-  3.11-era package APIs. Exact pins were relaxed unless an incompatibility is
-  documented; the evidence-backed ``tsdownsample<0.2`` constraint remains.
+- **Changed:** Resistics now targets Python 3.12-3.14 and uses the current
+  locked dependency releases as its supported floors. Dependency requirements
+  remain open above those floors, including ``tsdownsample``; no speculative
+  runtime upper bounds are retained.
 - **Removed:** The pre-MTH5 ``Site``/``Measurement`` directory path and file-name
   helpers, the ``Project.dir_path`` and ``Project.metadata`` compatibility
   aliases, their unused exception classes, ``init(force=...)``, and

@@ -12,7 +12,7 @@ from collections import deque
 from collections.abc import Iterable
 from importlib import import_module
 from pathlib import Path
-from typing import Any, Literal, TypeVar
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -34,7 +34,6 @@ from resistics.common import (
 )
 
 ProgressCallback = ProcessingProgressCallback
-ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 class FlowNode(BaseModel):
@@ -883,7 +882,9 @@ def model_to_yaml(model: BaseModel) -> str:
     return yaml.safe_dump(model_to_dict(model), sort_keys=False)
 
 
-def model_from_yaml(model_type: type[ModelT], yaml_text: str) -> ModelT:
+def model_from_yaml[ModelT: BaseModel](
+    model_type: type[ModelT], yaml_text: str
+) -> ModelT:
     """Validate YAML text as the requested Pydantic flow model."""
     import yaml
 
@@ -901,6 +902,8 @@ def model_to_yaml_file(model: BaseModel, path: Path) -> None:
     path.write_text(model_to_yaml(model))
 
 
-def model_from_yaml_file(model_type: type[ModelT], path: Path) -> ModelT:
+def model_from_yaml_file[ModelT: BaseModel](
+    model_type: type[ModelT], path: Path
+) -> ModelT:
     """Read and validate a Pydantic flow model from a YAML file."""
     return model_from_yaml(model_type, path.read_text())

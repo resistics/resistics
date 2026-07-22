@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
-from typing import ClassVar, Literal, TypeAlias, TypeVar
+from typing import ClassVar, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
@@ -20,11 +20,9 @@ from resistics.job import (
 )
 from resistics.project import MTH5FileSummary, Project, ProjectDataItem, RunSummary
 
-ResourceKind: TypeAlias = Literal["flows", "parameters", "criteria", "jobs"]
-IndexSection: TypeAlias = Literal["project", "flows", "parameters", "criteria", "jobs"]
-ResourceModel: TypeAlias = (
-    FlowDefinition | ParameterSet | GatherCriteria | JobDefinition
-)
+type ResourceKind = Literal["flows", "parameters", "criteria", "jobs"]
+type IndexSection = Literal["project", "flows", "parameters", "criteria", "jobs"]
+type ResourceModel = FlowDefinition | ParameterSet | GatherCriteria | JobDefinition
 _ProjectValue = TypeVar("_ProjectValue")
 
 

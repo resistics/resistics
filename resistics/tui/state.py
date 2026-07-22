@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Literal, TypeAlias
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -15,13 +15,13 @@ if TYPE_CHECKING:
 
 TIME_PLOT_MAX_POINTS = 5_000
 
-TimePlotSelection: TypeAlias = tuple[str, str, str, str | None]
-PlotTarget: TypeAlias = (
+type TimePlotSelection = tuple[str, str, str, str | None]
+type PlotTarget = (
     tuple[Literal["flow", "job", "spectra", "transfer_function"], Path]
     | tuple[Literal["project"], None]
     | tuple[Literal["time"], TimePlotSelection]
 )
-ExplorerView: TypeAlias = Literal[
+type ExplorerView = Literal[
     "project", "data", "flows", "parameters", "criteria", "jobs"
 ]
 

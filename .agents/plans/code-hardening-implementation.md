@@ -1,8 +1,8 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 6.1 verified; Checkpoint 6.2 ready
+Status: in progress; Checkpoint 6.3 verified; Checkpoint 6.4 ready
 Created: 2026-07-19
-Last updated: 2026-07-21
+Last updated: 2026-07-22
 Working branch: `mth5`
 Starting HEAD: `c345ae6`
 Governing plan: [codebase-hardening.md](codebase-hardening.md)
@@ -27,27 +27,32 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 6 - Dependencies, security, and compatibility
-- Active checkpoint: `6.2` (`resistics`) - Test lowest supported dependencies
+- Active checkpoint: `6.4` (`resistics`) - Decide uv versus Pixi from evidence
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `6.1` in `S038`
-- Last verified checkpoint: `6.1` in `S038`
-- Last session: `S038`
-- Last verified commit: resistics `d86c59a`, recording Checkpoint 5.7 and the
-  MTH5-only hardening boundary;
+- Last completed checkpoint: `6.3` in `S040`
+- Last verified checkpoint: `6.3` in `S040`
+- Last session: `S040`
+- Last verified commit: resistics `dfa45fe`, recording Checkpoint 6.1's direct
+  dependency ownership and lock reduction;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: design the repeatable Checkpoint 6.2 lowest-direct-version
-  resolution command against paired built distributions and Python 3.11.
+- Next exact action: inventory reproduced uv/PyPI failures from the hardening
+  sessions and decide whether any meets Checkpoint 6.4's threshold for a
+  bounded Pixi experiment.
 
 Current worktree caveat:
 
-- Resistics `d86c59a` records the hardening work through Checkpoint 5.7. The
-  verified Checkpoint 6.1 dependency metadata, dependency-free summary
-  rendering, lock reduction, changelog, and execution record are uncommitted.
+- Resistics `dfa45fe` records the hardening work through Checkpoint 6.1. The
+  verified Checkpoint 6.2 modern dependency floors, Python 3.12 baseline,
+  paired-wheel compatibility command, Python 3.12 annotations, lock, changelog,
+  README, and execution record are uncommitted. Checkpoint 6.3's locked
+  multi-Python OSV audit, security policy, and hosted follow-up record are
+  stacked on that work and are also uncommitted.
   The required empty `pyrefly-baseline.json` remains intentionally untracked.
-- The owner's Python 3.11/3.14 CI intent remains a requirement of deferred
-  Checkpoint 1.6 after the obsolete hosted workflows were removed.
+- The owner's minimum/maximum Python CI intent remains a requirement of
+  deferred Checkpoint 1.6 after the obsolete hosted workflows were removed;
+  D053 makes that current matrix Python 3.12/3.14.
 - `../regressioninc/regressioninc/base.py` contains a pre-existing user change
   for Pydantic 2 and must not be reverted or absorbed silently into packaging
   work.
@@ -248,8 +253,8 @@ or short command/result reference. Detailed output belongs in the session log or
 | 5.7 | resistics | `verified` | S037; 422 tests; root Ruff and artifacts verified |
 | Gate 5 | resistics | `verified` | S030-S037; public removals documented; graph behavior protected |
 | 6.1 | resistics | `verified` | S038; 128-package lock; ownership map; artifacts verified |
-| 6.2 | resistics | `not_started` | Credible lower-bound matrix |
-| 6.3 | resistics | `not_started` | Audit and workflow monitoring |
+| 6.2 | resistics | `verified` | S039; Python 3.12 paired wheels; 17 floors; 89 doctests |
+| 6.3 | resistics | `verified` | S040; Python 3.12-3.14 OSV audit; zero accepted risks |
 | 6.4 | resistics | `not_started` | uv/Pixi evidence decision |
 | Gate 6 | resistics | `not_started` | Depends on 6.1-6.4 |
 | 7.1 | resistics | `not_started` | MyST/API-generator prototype |
@@ -370,6 +375,15 @@ tracked notebook. Plotly and Textual remain runtime requirements because they
 back supported public behavior; Matplotlib remains outside runtime metadata.
 The transitional ``docs/requirements.txt`` file remains until Checkpoint 7.5,
 but its now-unused IPython, nbformat, and seedir entries were removed here.
+
+#### Checkpoint 6.3 hosted security follow-ups
+
+| Follow-up | Owner and timing | Required boundary | Consequence while deferred |
+| --- | --- | --- | --- |
+| Dependabot | Repository owner; Checkpoint 1.6 | Monitor the uv/Python lock and GitHub Actions dependencies | Vulnerabilities are found by the documented local OSV gate, not continuously hosted |
+| Action pinning | Repository owner; Checkpoint 1.6 | Pin every third-party action to a reviewed full commit SHA | No future workflow may be treated as supply-chain hardened before this review |
+| Workflow permissions | Repository owner; Checkpoints 1.6-1.7 | Default to read-only and grant only the minimum job-specific permissions | Hosted automation and publication remain outside the production-readiness claim |
+| Protected publishing | Repository owner; Checkpoint 1.7 | Use a protected publishing environment, required approval, and a matching trusted publisher | Releases remain a manual owner action and this branch is not publication-ready |
 
 ### Phase 7 - MyST documentation
 
@@ -596,6 +610,19 @@ old id when evidence changes the direction.
   the mandatory CLI threshold until Checkpoint 3.3 triages them. Remove mypy,
   its configuration, cache ignores, generated project cache, documentation,
   and lock-only dependencies instead of translating its old exceptions.
+- `D054` (2026-07-22): Make one repository script the dependency-security
+  authority. Derive Python 3.12-3.14 from package classifiers and run uv's
+  locked OSV audit against the complete default environment for each minor;
+  this checks marker-specific runtime, development, documentation, shared, and
+  test resolutions without requiring each interpreter to be installed. Keep
+  the networked check in the production gate rather than pre-commit. Begin with
+  no accepted risks. An advisory without a compatible fix may be suppressed
+  only through a complete, owned record with a review no more than 90 days away
+  and uv
+  ``--ignore-until-fixed``; available fixes must be updated and locked. Defer
+  Dependabot, full-SHA action pinning, least-privilege workflow permissions,
+  and protected trusted publishing to their existing owner checkpoints without
+  implying that hosted monitoring currently exists.
 
 ## Blocker Log
 
@@ -1889,6 +1916,20 @@ correct a factual error; note the correction explicitly.
   fast-sugiyama pins because no incompatibility justifies upper bounds. Retain
   only the reproduced ``tsdownsample<0.2`` cap from D022. Checkpoint 6.2 owns
   installation and execution of the complete declared minimum set.
+- `D053` (2026-07-21, supersedes D052's lower-bound and tsdownsample-cap
+  policy): Prefer a modern supported floor over preserving compatibility with
+  old dependency releases. Raise Resistics to Python `>=3.12,<3.15` so its
+  floors can be the current locked NumPy 2.5 and SciPy 1.18 releases; raise all
+  runtime and uv-group floors to their current verified releases. Keep these as
+  open `>=` requirements so newer compatible packages can resolve. Remove the
+  speculative `tsdownsample<0.2` cap because D022 verified only 0.1.5.1 and no
+  incompatible 0.2 release was reproduced. Retain exact Pyrefly 1.1.1 as a
+  deliberately versioned static-analysis/baseline contract, not a runtime
+  compatibility promise. Test Resistics' runtime, shared, and test floors with
+  uv `lowest-direct` on Python 3.12, while building and installing both local
+  wheels. Leave regressioninc's own transitive lower-bound audit to its
+  separate repository review; Resistics neither pins nor claims those
+  transitive versions.
 - Verification commands and results:
   - `uv lock --check` passed with 174 resolved packages, and locked all-group
     sync completed successfully.
@@ -3350,3 +3391,135 @@ correct a factual error; note the correction explicitly.
 - Exact next action: design the repeatable Checkpoint 6.2 command that resolves
   the lowest practical direct versions on Python 3.11 and tests paired built
   resistics/regressioninc distributions rather than editable source checkouts.
+
+### S039 - 2026-07-21 - Verify modern dependency floors from paired wheels
+
+- Checkpoint state at start: Checkpoint 6.1 was committed and verified;
+  Checkpoint 6.2 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `dfa45fe` with only the
+  required empty `pyrefly-baseline.json` untracked. No unrelated tracked change
+  was present or modified.
+- Session objective: add a repeatable local compatibility command that proves
+  Resistics' declared direct floors on its minimum Python using paired built
+  distributions without mutating the normal locked environment.
+- Work completed: prototyped uv `lowest-direct` resolution and demonstrated
+  that the former `pydantic>=2.0` declaration could not import the current
+  `JsonValue` API. Following owner direction to prefer current dependencies
+  rather than old-version compatibility, moved Resistics to Python 3.12-3.14
+  and raised every runtime and uv-group floor to its current locked release.
+  Removed the speculative tsdownsample upper cap and refreshed the legacy docs
+  requirements to the same current documentation stack. Updated Ruff and
+  Pyrefly to target Python 3.12 and migrated the type aliases and generic
+  functions newly exposed by that target to native Python 3.12 syntax. Added
+  `scripts/check_minimum_dependencies.py`: it builds both local wheels, compiles
+  runtime/shared/test requirements with `lowest-direct`, rejects any floor that
+  silently resolves higher, creates a disposable Python 3.12 environment,
+  installs both wheels, checks dependency consistency and source isolation, and
+  executes installed-package doctests. Documented the command and policy in the
+  README and refreshed the lock and release notes.
+- Files changed: `pyproject.toml`, `uv.lock`, `README.md`, `CHANGELOG.rst`,
+  `docs/requirements.txt`, the new minimum-dependency checker, five production
+  modules using Python 3.12 typing syntax, and this implementation record.
+- Decisions added or superseded: D053 supersedes D052's old-version floors and
+  tsdownsample cap while retaining direct/transitive ownership and paired-wheel
+  isolation.
+- Verification commands and results:
+  - The documented Python 3.12 command built both wheels, resolved 72 packages,
+    selected all 17 checked runtime/shared/test requirements at their exact
+    declared floors, reported a consistent 73-package installed environment,
+    imported both packages from site-packages, and passed all 89 installed
+    Resistics/RegressionInC doctests in 3.78 seconds.
+  - The normal locked environment synced successfully and the complete source
+    suite passed all 422 tests in 27.18 seconds.
+  - Ruff format/lint, pydoclint, and Python-3.12-targeted Pyrefly passed with
+    zero errors and the two established suppressions. The repository-wide
+    pre-commit gate passed every YAML, EOF, whitespace, Ruff, pydoclint, and
+    Pyrefly hook; the legacy-packaging and diff checks also passed.
+  - The gallery-disabled Sphinx build succeeded with the established offline
+    inventory/stale-gallery warnings. The normal wheel and sdist built under
+    `/tmp/resistics-checkpoint-6-2-dist-20260721/`; wheel metadata declares
+    Python 3.12-3.14, all modern runtime floors, no tsdownsample upper bound,
+    and the `py.typed` marker. The final isolated build required the approved
+    network retry when Hatchling was absent from the sandbox-visible cache.
+- Measurements/artifacts: removing Python 3.11 lock variants reduced the normal
+  lock from 128 to 124 packages. The compatibility command uses a temporary
+  directory and leaves no environment, requirements file, or distribution in
+  the repository; retained package artifacts are under `/tmp` only.
+- Known failures or incomplete work: resolving regressioninc's own declared
+  direct minima as first-class inputs exposed its stale `statsmodels>=0.13.2`
+  floor, which cannot build on Python 3.11 with current isolated build tooling.
+  That is evidence for the separate regressioninc repository dependency review,
+  not a transitive version Resistics should claim. The prior coverage-only TUI
+  timing/teardown sensitivity is unchanged and unrelated to this checkpoint.
+- Checkpoint state at end: `6.2` is `verified`; Checkpoint 6.3 is ready.
+- Commit readiness or commit id: the modern floors, Python 3.12 contract,
+  compatibility command, annotations, documentation, lock, artifacts, and
+  record are verified and ready for an owner-selected commit; no commit was
+  requested or created.
+- Exact next action: define Checkpoint 6.3's local vulnerability policy and add
+  repeatable locked audits for every supported Python variant represented by
+  the normal lock.
+
+### S040 - 2026-07-22 - Add local dependency security auditing
+
+- Checkpoint state at start: Checkpoint 6.2 was verified but uncommitted;
+  Checkpoint 6.3 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `dfa45fe` with the complete
+  verified Checkpoint 6.2 dependency-floor and Python-baseline changes still
+  uncommitted. The required empty `pyrefly-baseline.json` remained intentionally
+  untracked; no existing work was reverted or overwritten.
+- Session objective: make vulnerability discovery a repeatable local gate for
+  every supported Python variant, define a strict policy for unavailable fixes
+  and accepted risks, and durably assign the hosted security follow-ups without
+  prematurely recreating hosted workflows.
+- Work completed: added `scripts/audit_dependencies.py`, which reads the
+  minor-specific Python classifiers, invokes `uv audit --locked` for Python
+  3.12, 3.13, and 3.14, and audits the complete default runtime/development/
+  documentation/test environment without installing those interpreters. Added
+  an empty-by-default accepted-risk registry whose records require an advisory
+  ID, mitigation rationale, owner, and review date; duplicate, incomplete, and
+  expired records or reviews more than 90 days away fail before auditing, and
+  accepted advisories use only `--ignore-until-fixed`. Replaced the
+  single-version audit in the documented production gate, explained why the
+  networked check is not a pre-commit hook,
+  recorded the zero-exception policy, added the release note, and assigned
+  Dependabot, action pinning, minimum permissions, and protected trusted
+  publishing to the existing owner checkpoints with their consequences.
+- Files changed: new `scripts/audit_dependencies.py`, `README.md`,
+  `CHANGELOG.rst`, and this implementation record. These changes are stacked on
+  the still-uncommitted Checkpoint 6.2 file set.
+- Decisions added or superseded: D054 establishes the metadata-derived locked
+  audit matrix, narrow accepted-risk mechanism, local-versus-hosted boundary,
+  and explicit hosted-security ownership.
+- Verification commands and results:
+  - The documented audit command passed for Python 3.12, 3.13, and 3.14. Each
+    target resolved the 124-package lock and reported no known vulnerability or
+    adverse project status across 123 audited packages. No accepted risk was
+    configured.
+  - A focused policy probe recovered exactly the three supported classifiers
+    and proved expired and more-than-90-day accepted-risk records are rejected.
+  - The complete source suite passed all 422 tests in 30.68 seconds.
+  - Repository-wide pre-commit passed YAML, EOF, whitespace, Ruff format/lint,
+    pydoclint, and Pyrefly. The lock check resolved 124 packages.
+- Measurements/artifacts: the audit creates no repository artifact or alternate
+  environment. OSV results are deliberately live rather than committed and the
+  three commands reuse the normal lock resolution.
+- Known failures or incomplete work: uv's audit command remains explicitly
+  preview-gated, so the wrapper opts into its named preview feature and will
+  expose a future CLI change as a failing maintained command. OSV access is
+  network-dependent. Hosted monitoring and publication protection do not exist
+  yet and remain the owned Checkpoint 1.6/1.7 deferrals listed above. A final
+  targeted pre-commit invocation that explicitly named this read-only
+  ``.agents`` record hit the established managed-workspace ``rb+`` restriction
+  in the external EOF hook; byte inspection and ``git diff --check`` confirmed
+  its correct single newline, and the rerun across every normal repository file
+  changed by this checkpoint passed all applicable hooks.
+- Checkpoint state at end: `6.3` is `verified`; Checkpoint 6.4 is ready.
+- Commit readiness or commit id: the local audit command, policy,
+  documentation, follow-up ownership, release note, and record are verified and
+  ready with the preceding Checkpoint 6.2 work for an owner-selected commit; no
+  commit was requested or created.
+- Exact next action: inventory every observed uv/PyPI resolution, build, wheel,
+  and platform failure from Phases 1 and 6; separate sandbox/network and stale
+  metadata failures from native-package compatibility limitations before
+  deciding whether Checkpoint 6.4 needs a bounded Pixi trial.

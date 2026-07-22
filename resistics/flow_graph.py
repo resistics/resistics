@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from html import escape
 from itertools import pairwise
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import plotly.graph_objects as go
@@ -26,13 +26,13 @@ FLOW_CARD_WIDTH = 160
 FLOW_CARD_HEIGHT = 96
 FLOW_CARD_TEXT_SIZE = 13
 FLOW_ARROW_CLEARANCE = 16
-_FlowGraphNode: TypeAlias = tuple[
+type _FlowGraphNode = tuple[
     int,
     "FlowStage",
     "FlowNode",
     "ProcessDescriptor",
 ]
-_FlowGraphEdge: TypeAlias = tuple[int, str, str, str, str]
+type _FlowGraphEdge = tuple[int, str, str, str, str]
 
 
 @dataclass(frozen=True)

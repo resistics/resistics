@@ -3,7 +3,7 @@ name = "resistics"
 version = "1.0.0a3"
 description = "Python package for processing magnetotelluric data"
 authors = [{ name = "Neeraj Shah", email = "resistics@outlook.com" }]
-requires-python = ">=3.11,<3.15"
+requires-python = ">=3.12,<3.15"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENCE.txt"]
@@ -18,7 +18,6 @@ keywords = [
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
@@ -27,20 +26,20 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 dependencies = [
-    "numpy>=1.23.5",
-    "scipy>=1.9.3",
-    "pandas>=1.5.3",
-    "tsdownsample>=0.1.5.1,<0.2",
+    "numpy>=2.5.0",
+    "scipy>=1.18.0",
+    "pandas>=3.0.3",
+    "tsdownsample>=0.1.5.1",
     "attotime>=0.2.3",
-    "plotly>=5.11.0",
+    "plotly>=6.8.0",
     "fast-sugiyama>=0.5.3",
-    "loguru>=0.6.0",
-    "pydantic>=2.0",
-    "PyYAML>=6.0",
-    "textual[syntax]>=1.0.0",
+    "loguru>=0.7.3",
+    "pydantic>=2.13.4",
+    "PyYAML>=6.0.3",
+    "textual[syntax]>=8.2.8",
     "regressioninc>=0.1.0a0",
     "mth5>=0.6.8",
-    "xarray>=2023.1.0",
+    "xarray>=2026.4.0",
 ]
 
 [project.scripts]
@@ -55,24 +54,24 @@ Source = "https://github.com/resistics/resistics"
 
 [dependency-groups]
 # Matplotlib executes API plots under pytest and renders them under Sphinx.
-shared = ["matplotlib>=3.6.3"]
+shared = ["matplotlib>=3.11.0"]
 dev = [
-    "pre-commit",
-    "ruff>=0.15.22,<0.16",
-    "pydoclint>=0.9.1,<0.10",
+    "pre-commit>=4.6.0",
+    "ruff>=0.15.22",
+    "pydoclint>=0.9.1",
     "pyrefly==1.1.1",
-    "types-PyYAML",
+    "types-PyYAML>=6.0.12.20260518",
 ]
 docs = [
-    "Sphinx",
-    "furo",
-    "sphinx-gallery",
-    "sphinxext-opengraph",
-    "autodoc-pydantic",
-    "sphinx-copybutton",
-    "kaleido",
+    "Sphinx>=9.1.0",
+    "furo>=2025.12.19",
+    "sphinx-gallery>=0.21.0",
+    "sphinxext-opengraph>=0.13.0",
+    "autodoc-pydantic>=2.2.0",
+    "sphinx-copybutton>=0.5.2",
+    "kaleido>=1.3.0",
 ]
-tests = ["pytest", "pytest-cov"]
+tests = ["pytest>=9.1.1", "pytest-cov>=7.1.0"]
 
 [tool.uv]
 default-groups = ["shared", "dev", "docs", "tests"]
@@ -105,7 +104,7 @@ baseline = "pyrefly-baseline.json"
 output-format = "min-text"
 preset = "default"
 project-includes = ["resistics"]
-python-version = "3.11"
+python-version = "3.12"
 
 [tool.coverage.paths]
 source = ["resistics"]
@@ -127,7 +126,7 @@ output = ".artifacts/hardening/coverage/coverage.xml"
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py312"
 extend-exclude = ["docs", "examples"]
 force-exclude = true
 

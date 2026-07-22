@@ -9,12 +9,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from threading import Lock
-from typing import TYPE_CHECKING, Literal, TypeVar
+from typing import TYPE_CHECKING, Literal
 
 from textual.screen import Screen
 from textual.widget import Widget
-
-_WorkerValue = TypeVar("_WorkerValue")
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -71,9 +69,9 @@ def _feature_error(feature: str, error: Exception) -> str:
     return str(error)
 
 
-async def _run_in_worker_thread(
-    operation: Callable[[], _WorkerValue],
-) -> _WorkerValue:
+async def _run_in_worker_thread[WorkerValue](
+    operation: Callable[[], WorkerValue],
+) -> WorkerValue:
     """Run blocking work in a dedicated thread owned by one Textual worker.
 
     The executor is not shared with the asyncio event loop, so cancelling a
@@ -81,12 +79,12 @@ async def _run_in_worker_thread(
 
     Parameters
     ----------
-    operation : Callable[[], _WorkerValue]
+    operation : Callable[[], WorkerValue]
         Blocking callable that does not mutate Textual widgets.
 
     Returns
     -------
-    _WorkerValue
+    WorkerValue
         Value returned by the blocking callable.
     """
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="resistics-tui")
