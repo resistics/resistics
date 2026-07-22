@@ -8,10 +8,13 @@
 from pathlib import Path
 import os
 import re
+import sys
 import resistics
 import plotly.io as pio
 from plotly.io._sg_scraper import plotly_sg_scraper
 from sphinx_gallery.sorting import FileNameSortKey
+
+sys.path.insert(0, str(Path(__file__).parents[1]))
 
 project = "resistics"
 copyright = "2019, Neeraj Shah"
@@ -36,6 +39,8 @@ extensions = [
     "matplotlib.sphinxext.plot_directive",
     "sphinx_gallery.gen_gallery",
     "sphinxext.opengraph",
+    "myst_nb",
+    "_ext.myst_autodoc",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -44,7 +49,7 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["setup.rst", "modules.rst"]
+exclude_patterns = ["tutorial-*/*.ipynb"]
 
 # resistics configuration
 # code styles
@@ -80,6 +85,14 @@ autodoc_pydantic_model_show_validator_summary = False
 autodoc_pydantic_model_show_validator_members = False
 autodoc_pydantic_model_hide_paramlist = True
 autodoc_pydantic_field_show_default = True
+# MyST migration prototype
+myst_enable_extensions = ["fieldlist"]
+myst_ref_domains = ["std", "py"]
+nb_execution_mode = "off"
+myst_autodoc_docstring_parser_regexes = [
+    (r"prototype_api(?:\..*)?", "myst"),
+    (r"resistics(?:\..*)?", "rst"),
+]
 # sphinx gallery
 pio.renderers.default = "sphinx_gallery_png"
 image_scrapers = ("matplotlib", plotly_sg_scraper)
