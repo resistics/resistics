@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 6.3 verified; Checkpoint 6.4 ready
+Status: in progress; Checkpoint 7.2 verified; Checkpoint 7.3 ready
 Created: 2026-07-19
 Last updated: 2026-07-22
 Working branch: `mth5`
@@ -26,30 +26,32 @@ the two documents do not drift independently.
 ## Current State
 
 - Programme state: `in_progress`
-- Active phase: Phase 6 - Dependencies, security, and compatibility
-- Active checkpoint: `6.4` (`resistics`) - Decide uv versus Pixi from evidence
+- Active phase: Phase 7 - MyST documentation modernisation
+- Active checkpoint: `7.3` (`resistics`) - Convert docstrings without moving their content
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `6.3` in `S040`
-- Last verified checkpoint: `6.3` in `S040`
-- Last session: `S040`
-- Last verified commit: resistics `dfa45fe`, recording Checkpoint 6.1's direct
-  dependency ownership and lock reduction;
+- Last completed checkpoint: `7.2` in `S043`
+- Last verified checkpoint: `7.2` in `S043`
+- Last session: `S043`
+- Last verified commit: resistics `70a84f2`, recording verified hardening
+  through Checkpoint 6.3;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: inventory reproduced uv/PyPI failures from the hardening
-  sessions and decide whether any meets Checkpoint 6.4's threshold for a
-  bounded Pixi experiment.
+- Next exact action: migrate the `common`, `sampling`, and `transfunc`
+  docstrings to MyST in place and configure explicit NumPy- and Sphinx-style
+  pydoclint invocations for the unconverted and converted module sets.
 
 Current worktree caveat:
 
-- Resistics `dfa45fe` records the hardening work through Checkpoint 6.1. The
-  verified Checkpoint 6.2 modern dependency floors, Python 3.12 baseline,
-  paired-wheel compatibility command, Python 3.12 annotations, lock, changelog,
-  README, and execution record are uncommitted. Checkpoint 6.3's locked
-  multi-Python OSV audit, security policy, and hosted follow-up record are
-  stacked on that work and are also uncommitted.
-  The required empty `pyrefly-baseline.json` remains intentionally untracked.
+- Resistics `70a84f2` records verified hardening through Checkpoint 6.3. The
+  verified Checkpoint 6.4 uv/Pixi decision, environment-manager guidance, and
+  execution record are uncommitted. Checkpoint 7.1's selected standard-autodoc
+  MyST bridge, bounded representative fixture, dependencies, lock, page, and
+  execution record are stacked on that work and are also uncommitted.
+  Checkpoint 7.2's maintained MyST pages, current landing content, expanded API
+  navigation, Sphinx configuration, and execution record are stacked on those
+  changes. The required empty
+  `pyrefly-baseline.json` remains intentionally untracked.
 - The owner's minimum/maximum Python CI intent remains a requirement of
   deferred Checkpoint 1.6 after the obsolete hosted workflows were removed;
   D053 makes that current matrix Python 3.12/3.14.
@@ -255,10 +257,10 @@ or short command/result reference. Detailed output belongs in the session log or
 | 6.1 | resistics | `verified` | S038; 128-package lock; ownership map; artifacts verified |
 | 6.2 | resistics | `verified` | S039; Python 3.12 paired wheels; 17 floors; 89 doctests |
 | 6.3 | resistics | `verified` | S040; Python 3.12-3.14 OSV audit; zero accepted risks |
-| 6.4 | resistics | `not_started` | uv/Pixi evidence decision |
-| Gate 6 | resistics | `not_started` | Depends on 6.1-6.4 |
-| 7.1 | resistics | `not_started` | MyST/API-generator prototype |
-| 7.2 | resistics | `not_started` | Depends on 7.1 |
+| 6.4 | resistics | `verified` | S041; uv retained; 3x3 binary resolution matrix |
+| Gate 6 | resistics | `verified` | S038-S041; owned dependencies; paired wheels; OSV clean |
+| 7.1 | resistics | `verified` | S042; standard autodoc selected; 5 doctests; plot/reference proof |
+| 7.2 | resistics | `verified` | S043; 28 MyST pages; 62-page HTML build |
 | 7.3 | resistics | `not_started` | Depends on 2.3-2.4 and 7.1 |
 | 7.4 | resistics | `not_started` | Depends on 7.1 |
 | 7.5 | resistics | `not_started` | Depends on 7.2-7.4 |
@@ -384,6 +386,26 @@ but its now-unused IPython, nbformat, and seedir entries were removed here.
 | Action pinning | Repository owner; Checkpoint 1.6 | Pin every third-party action to a reviewed full commit SHA | No future workflow may be treated as supply-chain hardened before this review |
 | Workflow permissions | Repository owner; Checkpoints 1.6-1.7 | Default to read-only and grant only the minimum job-specific permissions | Hosted automation and publication remain outside the production-readiness claim |
 | Protected publishing | Repository owner; Checkpoint 1.7 | Use a protected publishing environment, required approval, and a matching trusted publisher | Releases remain a manual owner action and this branch is not publication-ready |
+
+#### Checkpoint 6.4 environment-manager evidence
+
+| Evidence | Classification | Outcome |
+| --- | --- | --- |
+| The former lttbc wheel loaded against an incompatible NumPy ABI | Reproduced native-wheel incompatibility | Replaced by tsdownsample in S008; all Python-minor installs then passed |
+| fast-sugiyama 0.5.3 has no wheel usable on manylinux 2.28 | Current platform boundary | Its wheels require manylinux 2.34; older glibc is not a verified wheel-only target |
+| Isolated builds could not fetch Hatchling inside the managed sandbox | Network/cache restriction | Every network-enabled retry built successfully; not a solver or package compatibility defect |
+| regressioninc's old statsmodels floor failed a Python 3.11 source build | Stale sibling lower-bound metadata | Owned by regressioninc's separate dependency review; current Resistics floors install on Python 3.12 and 3.14 |
+| Coverage-instrumented TUI timing and legacy gallery failures | Application/test/documentation behavior | Unrelated to dependency solving or native package availability |
+
+uv 0.11.25 resolved the complete runtime and default group set using binary
+distributions for Python 3.12, 3.13, and 3.14 on x86-64 manylinux 2.34, macOS,
+and Windows: all nine cells passed, as did locked dry-run syncs for the same
+matrix. The lock records corresponding supported-minor wheels for the critical
+NumPy, SciPy, Pandas, h5py, tsdownsample, PyProj, Pydantic Core, scikit-learn,
+and statsmodels native stack. S039 and S041 executed paired installed wheels
+and 89 doctests at the Python 3.12 and 3.14 endpoints. No repeated uv/PyPI
+limitation remains on the declared local contract, so Checkpoint 6.4's
+threshold for a Pixi trial was not met.
 
 ### Phase 7 - MyST documentation
 
@@ -623,6 +645,42 @@ old id when evidence changes the direction.
   Dependabot, full-SHA action pinning, least-privilege workflow permissions,
   and protected trusted publishing to their existing owner checkpoints without
   implying that hosted monitoring currently exists.
+- `D055` (2026-07-22): Retain uv 0.11.25 as the sole environment and dependency
+  manager and do not run a Pixi trial. Paired installed wheels pass at both
+  supported Python endpoints, and the complete dependency set resolves with
+  binary distributions across the tested Python 3.12-3.14 by x86-64 Linux,
+  macOS, and Windows matrix. The only current wheel boundary is
+  fast-sugiyama's manylinux 2.34 floor; an older-glibc target would need a
+  separately verified source build or a new platform decision. Treat sandbox
+  DNS/cache failures, stale sibling minimum metadata, and application/test/docs
+  failures separately from package-manager limitations. Trial Pixi only after
+  a required target repeatedly fails because uv/PyPI cannot supply or
+  reasonably build a native dependency; do not add a second lock for concern
+  alone.
+- `D056` (2026-07-22): Retain standard Sphinx autodoc as the Phase 7 API
+  generator. The autodoc2 0.5.0 prototype did not reach the current API's
+  fidelity: it omitted public facade re-exports, collapsed overloads to the
+  implementation signature, and rendered Pydantic constructors as generic
+  ``**data`` input. Standard autodoc preserved those contracts and can render
+  Python 3.12 ``type`` aliases through an explicit data directive. Route
+  converted docstrings through the local ``myst_autodoc`` adapter so one
+  dynamic generator supplies discovery and source links while selected content
+  is parsed as MyST. Keep the regex-based MyST/RST boundary explicit until
+  Checkpoint 7.5. The adapter also supplies the missing MyST state-machine hook
+  required by Matplotlib's fenced ``{plot}`` directive; remove that hook when
+  upstream MyST implements ``insert_input``. Keep unavoidable imports confined
+  to the locked documentation environment. Retain the prototype-only autodoc2
+  dependency until Checkpoint 7.5 removes the unselected transitional stack.
+- `D057` (2026-07-22): Make every maintained site-structure, narrative, and
+  API module-entry page a MyST source now, including newly visible entry pages
+  for the current explorer, flow, job, mask, templates, and TUI modules. Delete
+  the obsolete generated-module-list source instead of translating it. Keep
+  standard autodoc directives inside explicit fenced ``{eval-rst}`` blocks
+  until the selected generator's transitional parser stack is removed in
+  Checkpoint 7.5. Retain one fenced RST citation definition for the legacy
+  Sphinx Gallery pages only until Checkpoint 7.4 deletes that gallery; all
+  maintained prose, navigation, labels, and cross-references remain native
+  MyST.
 
 ## Blocker Log
 
@@ -3523,3 +3581,217 @@ correct a factual error; note the correction explicitly.
   and platform failure from Phases 1 and 6; separate sandbox/network and stale
   metadata failures from native-package compatibility limitations before
   deciding whether Checkpoint 6.4 needs a bounded Pixi trial.
+
+### S041 - 2026-07-22 - Retain uv from compatibility evidence
+
+- Checkpoint state at start: Checkpoint 6.3 was verified and the owner had
+  committed Checkpoints 6.2-6.3 at `70a84f2`; Checkpoint 6.4 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `70a84f2` with only the
+  required empty `pyrefly-baseline.json` untracked. No unrelated tracked change
+  was present or modified.
+- Session objective: classify every observed resolution, build, native-wheel,
+  and platform failure; verify the current supported matrix strongly enough to
+  decide whether a bounded Pixi experiment is justified; and close the local
+  Phase 6 gate.
+- Failure classification: the old lttbc/NumPy ABI mismatch was the sole prior
+  reproduced native-wheel incompatibility and disappeared when S008 replaced
+  lttbc with tsdownsample. Repeated Hatchling failures occurred only when the
+  managed sandbox could not reach PyPI and every approved network retry built
+  successfully. Regressioninc's Python 3.11 statsmodels minimum-build failure
+  is stale metadata in the separately owned sibling review. Coverage-sensitive
+  TUI assertions and legacy gallery failures are application/test/docs issues,
+  not dependency-manager evidence.
+- Current platform boundary: a binary-only manylinux 2.28 resolution correctly
+  failed because fast-sugiyama 0.5.3 publishes Linux wheels at manylinux 2.34.
+  Repeating the matrix at that actual wheel floor passed. Older glibc systems
+  remain outside the verified wheel-only target and would require separately
+  proving a Rust source build or revisiting the supported-platform decision.
+- Work completed: retained uv 0.11.25 as the sole environment manager and did
+  not add Pixi, a second lock, or another contributor path because the
+  governing trial threshold was not met. Added permanent README guidance for
+  the decision and its re-evaluation trigger, recorded the failure taxonomy and
+  matrix evidence above, and completed the Phase 6 review gate.
+- Files changed: `README.md` and this implementation record only. No package
+  source, dependency declaration, lock, or build configuration changed.
+- Decisions added or superseded: D055 retains uv, documents the manylinux 2.34
+  boundary, distinguishes package-manager evidence from environmental and
+  application failures, and defines the future Pixi-trial trigger.
+- Verification commands and results:
+  - Built the local RegressionInC wheel, then used uv's binary-only resolver
+    against Resistics runtime plus every default group and ignored local source
+    overrides. All nine Python 3.12/3.13/3.14 by x86-64 manylinux 2.34/macOS/
+    Windows cells resolved. Linux/macOS selected 120 distributions and Windows
+    selected 123 because of platform support packages. The exact 124-package
+    lock also passed dry-run all-group syncs for the same nine cells.
+  - Lock artifact inspection confirmed supported-minor Linux, macOS, and
+    Windows wheels for the critical NumPy, SciPy, Pandas, h5py, tsdownsample,
+    PyProj, Pydantic Core, scikit-learn, and statsmodels native stack.
+  - The Python 3.14 paired-wheel floor check built both local wheels, selected
+    all 17 declared runtime/shared/test floors exactly, installed a consistent
+    73-package environment, imported both projects only from site-packages, and
+    passed all 89 installed doctests in 4.23 seconds. Together with S039, both
+    supported Python endpoints now have the same installed-wheel evidence.
+  - Locked all-group sync resolved 124 packages. The complete source suite
+    passed all 422 tests in 29.57 seconds. Repository-wide pre-commit passed
+    YAML, EOF, whitespace, Ruff format/lint, pydoclint, and Pyrefly.
+  - The Python 3.12-3.14 OSV audit again found no known vulnerability or adverse
+    status across 123 audited packages per target and retained zero accepted
+    risks. The source distribution and universal wheel rebuilt successfully
+    under `/tmp/resistics-checkpoint-6-4-3YY99wIk/resistics/`.
+- Measurements/artifacts: the nine resolver outputs and temporary sibling wheel
+  are under `/tmp/resistics-checkpoint-6-4-3YY99wIk/`; no generated evidence is
+  retained in the repository. The experiment added no environment manager,
+  dependency, configuration, or lockfile.
+- Known failures or incomplete work: the macOS and Windows evidence proves
+  resolution and binary availability, not runtime behavior on those hosts;
+  hosted cross-platform execution remains the owned Checkpoint 1.6 deferral.
+  ARM wheel metadata exists for the critical native stack but was not promoted
+  to an executed support claim. Older-than-glibc-2.34 Linux is not a verified
+  wheel-only target. The first sandboxed Python 3.14 endpoint build again
+  demonstrated the known network restriction before its approved retry passed.
+- Checkpoint state at end: `6.4` and the Phase 6 review gate are `verified`;
+  Checkpoint 7.1 is ready.
+- Commit readiness or commit id: the environment-manager decision, permanent
+  guidance, Phase 6 evidence, artifacts, and record are verified and ready for
+  an owner-selected commit; no commit was requested or created.
+- Exact next action: add MyST-NB and autodoc2 for a bounded Checkpoint 7.1
+  prototype, then compare representative Pydantic, inheritance, alias,
+  overload, signature, ``__all__``, cross-reference, and source-link output
+  against the current API before selecting one generator.
+
+### S042 - 2026-07-22 - Establish the MyST foundation
+
+- Checkpoint state at start: Checkpoint 6.4 and Gate 6 were verified in S041;
+  the owner had not yet committed that work, and Checkpoint 7.1 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `70a84f2` with the verified
+  S041 changes to `README.md` and this record uncommitted, plus the required
+  empty `pyrefly-baseline.json` intentionally untracked. Those changes were
+  preserved.
+- Session objective: install and prototype the MyST documentation stack,
+  compare static autodoc2 output with the current dynamic API generator, select
+  one generator, and prove the mixed MyST/RST path with executable content and
+  references before bulk conversion.
+- Prototype result: autodoc2 statically found normal production objects and
+  produced source links, but it did not reach parity. It omitted facade
+  re-exports such as `resistics.gather.GatherCriteria`, collapsed two overloads
+  to the implementation signature, rendered the representative Pydantic model
+  as ``(/, **data: Any)``, and could not run Matplotlib's fenced ``{plot}``
+  because MyST's mock state machine lacks ``insert_input``. Standard autodoc
+  preserved the facade identity, both overloads, the aliased Pydantic
+  constructor, inherited members, ``__all__`` filtering, and source links.
+- Work completed: added MyST-NB 1.4.0 and sphinx-autodoc2 0.5.0 to the uv docs
+  group and refreshed the lock. Selected standard autodoc and left autodoc2
+  inactive for removal with the transitional stack in Checkpoint 7.5. Added a
+  docs-local adapter that wraps regex-selected autodoc content in a nested MyST
+  parser while leaving unconverted production docstrings as RST. Its bounded
+  Matplotlib bridge parses RST emitted by fenced ``{plot}`` blocks. Added a
+  minimal labelled MyST page and a docs-only representative module covering a
+  Python 3.12 type alias, Pydantic field alias, inheritance, positional- and
+  keyword-only parameters, overloads, ``__all__``, and MyST docstring syntax.
+- Files changed: `pyproject.toml`, `uv.lock`, `docs/requirements.txt`,
+  `docs/source/conf.py`, `docs/source/index.rst`, new
+  `docs/source/myst-foundation.md`, new `docs/_ext/myst_autodoc.py` package,
+  new `docs/prototype_api` package, and this implementation record. The S041
+  README and record edits remain part of the preceding checkpoint.
+- Decisions added or superseded: D056 selects standard autodoc, defines the
+  docs-environment import boundary, records why autodoc2 failed parity, and
+  makes both transitional parser routing and the Matplotlib compatibility hook
+  explicit.
+- Verification commands and results:
+  - `uv lock` resolved 169 packages and locked MyST-NB 1.4.0, MyST-Parser
+    5.1.0, and sphinx-autodoc2 0.5.0; locked all-group sync completed.
+  - The network-enabled focused HTML build fetched all five configured
+    intersphinx inventories and completed. Inspection proved the internal
+    function and stable label targets, external `pathlib.Path` target, Pydantic
+    alias constructor, both overload signatures, inherited method, explicit
+    type alias, source links, field lists, doctest rendering, valid plot image,
+    and exclusion of the object omitted by ``__all__``.
+  - The focused Sphinx doctest builder ran five examples with five passing and
+    no failures. Matplotlib executed the MyST-fenced plot and emitted PNG,
+    high-resolution PNG, PDF, and source artifacts under the temporary build.
+  - Explicit Ruff format and lint checks passed for the otherwise excluded
+    docs-local Python extension and prototype package. The complete source
+    suite passed all 422 tests in 40.35 seconds; repository-wide pre-commit
+    passed YAML, EOF, whitespace, Ruff format/lint, pydoclint, and Pyrefly.
+    The lock check and `git diff --check` also passed.
+- Measurements/artifacts: focused HTML, doctest output, and the generator
+  comparison are under `/tmp/resistics-checkpoint-7-1-*`; no generated build
+  output is retained in the repository. The docs-only prototype package and
+  parser regex are transitional evidence to remove in Checkpoint 7.5 after the
+  production migration carries the same coverage.
+- Known failures or incomplete work: the existing RST site still emits its
+  pre-existing duplicate-object, generated-gallery navigation, and unpickleable
+  gallery-configuration warnings; warning cleanup is owned by Checkpoints
+  7.2-7.7. Standard autodoc remains dynamic and therefore imports requested
+  modules inside the locked documentation environment. The local Matplotlib
+  bridge is required only because upstream MyST does not yet implement the
+  directive state-machine insertion method.
+- Checkpoint state at end: `7.1` is `verified`; Checkpoint 7.2 is ready.
+- Commit readiness or commit id: the foundation, generator decision,
+  dependencies, lock, prototype evidence, and record are ready with the
+  preceding uncommitted S041 work for an owner-selected commit; no commit was
+  requested or created.
+- Exact next action: convert the site structure and maintained narrative/API
+  entry pages to MyST with stable labels while retaining the explicit
+  per-object parser boundary for unconverted production docstrings.
+
+### S043 - 2026-07-22 - Convert site structure and narrative pages to MyST
+
+- Checkpoint state at start: Checkpoint 7.1 was verified in S042 and its
+  foundation was uncommitted; Checkpoint 7.2 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `70a84f2` with the verified
+  S041 uv guidance and S042 documentation-foundation changes uncommitted, plus
+  the required empty `pyrefly-baseline.json` intentionally untracked. Those
+  changes were preserved.
+- Session objective: convert maintained site structure, narrative, navigation,
+  and API-entry pages to MyST, provide stable labels, and make the landing page
+  describe the current MTH5-backed processing contracts.
+- Work completed: replaced the maintained top-level RST sources with 28 MyST
+  pages; converted all navigation to suffixless MyST toctrees; added explicit
+  stable page and section labels; deleted the obsolete `modules.rst`; and
+  exposed current explorer, flow, job, mask, templates, and TUI module entry
+  pages. Rewrote the landing and getting-started content around read-only MTH5
+  projects, derived outputs, flows, parameter sets, jobs, trusted process
+  plugins, structured execution, the Textual application, and the independent
+  library API. Updated the lower-level, custom-process, docstring, and
+  literature pages without changing production behaviour.
+- Files changed: `docs/source/conf.py`; the former top-level narrative,
+  navigation, and API-entry `.rst` files and their `.md` replacements; six new
+  current-module API pages; `docs/source/myst-foundation.md`; and this
+  implementation record. Earlier README, dependency, lock, extension, and
+  prototype changes remain owned by S041-S042.
+- Decisions added or superseded: D057 records the all-MyST maintained-page
+  boundary, deletion of the obsolete module list, current-module navigation,
+  and the two explicitly temporary fenced RST compatibility cases.
+- Verification commands and results:
+  - A fresh network-enabled `sphinx-build -b html -E -D plot_gallery=0` fetched
+    all five intersphinx inventories and built 62 source pages successfully.
+    Inspection confirmed the current landing headings and navigation links to
+    getting started plus the flow, job, and TUI API pages. Stable-label audit
+    found no duplicates; there are no maintained top-level `.rst` pages.
+  - The complete source suite passed all 422 tests in 28.11 seconds.
+    Repository-wide pre-commit passed YAML, EOF, whitespace, Ruff format/lint,
+    pydoclint, and Pyrefly. The lock check and `git diff --check` also passed.
+- Measurements/artifacts: final HTML is under
+  `/tmp/resistics-checkpoint-7-2-final-html`; no generated gallery timing source
+  is retained in the repository. The fresh build completed with 219 warnings,
+  down from the 224-warning offline build after all intersphinx inventories
+  loaded.
+- Known failures or incomplete work: the successful transitional build is not
+  yet warning-clean. Its remaining warnings come from the legacy gallery,
+  duplicate autodoc/Pydantic object descriptions, and RST parsing of
+  unconverted inherited or external docstrings; exposing the current public
+  modules makes more of that existing API debt visible. Docstring migration,
+  gallery replacement, transitional-stack removal, and the strict warning gate
+  are explicitly owned by Checkpoints 7.3-7.6. There are no missing-document,
+  unresolved citation, toctree-target, or MyST page-structure failures from
+  this conversion.
+- Checkpoint state at end: `7.2` is `verified`; Checkpoint 7.3 is ready.
+- Commit readiness or commit id: the maintained MyST pages, current landing and
+  navigation, configuration adjustment, and record are verified with the
+  preceding uncommitted S041-S042 work for an owner-selected commit; no commit
+  was requested or created.
+- Exact next action: migrate `common`, `sampling`, and `transfunc` docstrings to
+  MyST in place, preserve their examples and plots, and split pydoclint into
+  explicit NumPy-style and Sphinx-style module invocations using the governing
+  type-check settings.
