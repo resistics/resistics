@@ -1,5 +1,4 @@
-"""
-Small, stable data builders used by Resistics' executable documentation.
+"""Small, stable data builders used by Resistics' executable documentation.
 
 This includes testing data for:
 
@@ -30,7 +29,10 @@ DEFAULT_TIME_DATA_DTYPE = np.float32
 
 
 def record_example1() -> Record:
-    """Get an example Record"""
+    """Get an example Record
+
+    :return: Get an example Record
+    """
     from resistics.common import get_record
 
     return get_record(
@@ -40,7 +42,10 @@ def record_example1() -> Record:
 
 
 def record_example2() -> Record:
-    """Get an example Record"""
+    """Get an example Record
+
+    :return: Get an example Record
+    """
     from resistics.common import get_record
 
     return get_record(
@@ -52,22 +57,13 @@ def record_example2() -> Record:
 def time_metadata_1chan(
     fs: float = 10, first_time: str = "2021-01-01 00:00:00", n_samples: int = 11
 ) -> TimeMetadata:
-    """
-    Get TimeMetadata for a single channel, "chan1"
+    """Get TimeMetadata for a single channel, "chan1"
 
-    Parameters
-    ----------
-    fs : float, optional
-        The sampling frequency, by default 10
-    first_time : str, optional
-        The first time, by default "2021-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 11
+    :param fs: The sampling frequency, by default 10
+    :param first_time: The first time, by default "2021-01-01 00:00:00"
+    :param n_samples: The number of samples, by default 11
 
-    Returns
-    -------
-    TimeMetadata
-        TimeMetadata
+    :return: TimeMetadata
     """
     first_timestamp = pd.to_datetime(first_time)
     time_dict = {
@@ -91,22 +87,13 @@ def time_metadata_1chan(
 def time_metadata_2chan(
     fs: float = 10, first_time: str = "2021-01-01 00:00:00", n_samples: int = 11
 ) -> TimeMetadata:
-    """
-    Get a TimeMetadata instance with two channels, "chan1" and "chan2"
+    """Get a TimeMetadata instance with two channels, "chan1" and "chan2"
 
-    Parameters
-    ----------
-    fs : float, optional
-        The sampling frequency, by default 10
-    first_time : str, optional
-        The first time, by default "2021-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 11
+    :param fs: The sampling frequency, by default 10
+    :param first_time: The first time, by default "2021-01-01 00:00:00"
+    :param n_samples: The number of samples, by default 11
 
-    Returns
-    -------
-    TimeMetadata
-        TimeMetadata
+    :return: TimeMetadata
     """
     first_timestamp = pd.to_datetime(first_time)
     time_dict = {
@@ -139,24 +126,14 @@ def time_metadata_general(
     first_time: str = "2020-01-01 00:00:00",
     n_samples: int = 11,
 ) -> TimeMetadata:
-    """
-    Get general time metadata
+    """Get general time metadata
 
-    Parameters
-    ----------
-    chans : List[str]
-        The channels in the time data
-    fs : float, optional
-        The sampling frequency, by default 10
-    first_time : _type_, optional
-        The time of the first sample, by default "2020-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 11
+    :param chans: The channels in the time data
+    :param fs: The sampling frequency, by default 10
+    :param first_time: The time of the first sample, by default "2020-01-01 00:00:00"
+    :param n_samples: The number of samples, by default 11
 
-    Returns
-    -------
-    TimeMetadata
-        An instance of TimeMetadata with the approripate properties
+    :return: An instance of TimeMetadata with the approripate properties
     """
     first_timestamp = pd.to_datetime(first_time)
     time_dict = {
@@ -178,22 +155,13 @@ def time_metadata_general(
 def time_metadata_mt(
     fs: float = 10, first_time: str = "2020-01-01 00:00:00", n_samples: int = 11
 ) -> TimeMetadata:
-    """
-    Get a magnetotelluric time metadata with four channels "Ex", "Ey", "Hx", "Hy"
+    """Get a magnetotelluric time metadata with four channels "Ex", "Ey", "Hx", "Hy"
 
-    Parameters
-    ----------
-    fs : float, optional
-        The sampling frequency, by default 10
-    first_time : str, optional
-        The first time, by default "2020-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 11
+    :param fs: The sampling frequency, by default 10
+    :param first_time: The first time, by default "2020-01-01 00:00:00"
+    :param n_samples: The number of samples, by default 11
 
-    Returns
-    -------
-    TimeMetadata
-        TimeMetadata
+    :return: TimeMetadata
     """
     chans = ["Ex", "Ey", "Hx", "Hy"]
     return time_metadata_general(
@@ -207,24 +175,14 @@ def time_data_ones(
     n_samples: int = 10,
     dtype: type | None = None,
 ) -> TimeData:
-    """
-    TimeData with all ones
+    """TimeData with all ones
 
-    Parameters
-    ----------
-    fs : float, optional
-        The sampling frequency, by default 10
-    first_time : str, optional
-        The time of the first sample, by default "2020-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 10
-    dtype : Optional[Type], optional
-        The data type for the values, by default None
+    :param fs: The sampling frequency, by default 10
+    :param first_time: The time of the first sample, by default "2020-01-01 00:00:00"
+    :param n_samples: The number of samples, by default 10
+    :param dtype: The data type for the values, by default None
 
-    Returns
-    -------
-    TimeData
-        The TimeData
+    :return: The TimeData
     """
     if dtype is None:
         dtype = DEFAULT_TIME_DATA_DTYPE
@@ -247,22 +205,13 @@ def time_data_simple(
     first_time: str = "2020-01-01 00:00:00",
     dtype: type | None = None,
 ) -> TimeData:
-    """
-    Time data with 16 samples
+    """Time data with 16 samples
 
-    Parameters
-    ----------
-    fs : float, optional
-        The sampling frequency, by default 10
-    first_time : str, optional
-        The time of the first sample, by default "2020-01-01 00:00:00"
-    dtype : Optional[Type], optional
-        The data type for the values, by default None
+    :param fs: The sampling frequency, by default 10
+    :param first_time: The time of the first sample, by default "2020-01-01 00:00:00"
+    :param dtype: The data type for the values, by default None
 
-    Returns
-    -------
-    TimeData
-        The TimeData
+    :return: The TimeData
     """
     if dtype is None:
         dtype = DEFAULT_TIME_DATA_DTYPE
@@ -289,22 +238,13 @@ def time_data_with_nans(
     first_time: str = "2020-01-01 00:00:00",
     dtype: type | None = None,
 ) -> TimeData:
-    """
-    TimeData with 16 samples and some nan values
+    """TimeData with 16 samples and some nan values
 
-    Parameters
-    ----------
-    fs : float, optional
-        Sampling frequency, by default 10
-    first_time : str, optional
-        The time of the first sample, by default "2020-01-01 00:00:00"
-    dtype : Optional[Type], optional
-        The data type for the values, by default None
+    :param fs: Sampling frequency, by default 10
+    :param first_time: The time of the first sample, by default "2020-01-01 00:00:00"
+    :param dtype: The data type for the values, by default None
 
-    Returns
-    -------
-    TimeData
-        The TimeData
+    :return: The TimeData
     """
     if dtype is None:
         dtype = DEFAULT_TIME_DATA_DTYPE
@@ -332,24 +272,14 @@ def time_data_random(
     n_samples: int = 10,
     dtype: type | None = None,
 ) -> TimeData:
-    """
-    TimeData with random values and specifiable number of samples
+    """TimeData with random values and specifiable number of samples
 
-    Parameters
-    ----------
-    fs : float, optional
-        The sampling frequency, by default 10
-    first_time : str, optional
-        Time of first sample, by default "2020-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 10
-    dtype : Optional[Type], optional
-        The data type for the values, by default None
+    :param fs: The sampling frequency, by default 10
+    :param first_time: Time of first sample, by default "2020-01-01 00:00:00"
+    :param n_samples: The number of samples, by default 10
+    :param dtype: The data type for the values, by default None
 
-    Returns
-    -------
-    TimeData
-        The TimeData
+    :return: The TimeData
     """
     if dtype is None:
         dtype = DEFAULT_TIME_DATA_DTYPE
@@ -374,26 +304,15 @@ def time_data_periodic(
     n_samples: int = 100,
     dtype: type | None = None,
 ) -> TimeData:
-    """
-    Get period TimeData
+    """Get period TimeData
 
-    Parameters
-    ----------
-    frequencies : List[float]
-        Frequencies to include
-    fs : float, optional
-        Sampling frequency, by default 50
-    first_time : str, optional
-        The first time, by default "2020-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 100
-    dtype : Optional[Type], optional
-        The data type for the values, by default None
+    :param frequencies: Frequencies to include
+    :param fs: Sampling frequency, by default 50
+    :param first_time: The first time, by default "2020-01-01 00:00:00"
+    :param n_samples: The number of samples, by default 100
+    :param dtype: The data type for the values, by default None
 
-    Returns
-    -------
-    TimeData
-        Periodic TimeData
+    :return: Periodic TimeData
     """
     if dtype is None:
         dtype = DEFAULT_TIME_DATA_DTYPE
@@ -416,32 +335,21 @@ def time_data_periodic(
 
 
 def time_data_with_offset(
-    offset=0.05,
+    offset: float = 0.05,
     fs: float = 10,
     first_time: str = "2020-01-01 00:00:00",
     n_samples: int = 11,
     dtype: type | None = None,
 ) -> TimeData:
-    """
-    Get TimeData with an offset on the sampling
+    """Get TimeData with an offset on the sampling
 
-    Parameters
-    ----------
-    offset : float, optional
-        The offset on the sampling in seconds, by default 0.05
-    fs : float, optional
-        The sampling frequency, by default 10
-    first_time : str, optional
-        The first time of the TimeData, by default "2020-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 11
-    dtype : Optional[Type], optional
-        The data type for the values, by default None
+    :param offset: The offset on the sampling in seconds, by default 0.05
+    :param fs: The sampling frequency, by default 10
+    :param first_time: The first time of the TimeData, by default "2020-01-01 00:00:00"
+    :param n_samples: The number of samples, by default 11
+    :param dtype: The data type for the values, by default None
 
-    Returns
-    -------
-    TimeData
-        The TimeData
+    :return: The TimeData
     """
     if dtype is None:
         dtype = DEFAULT_TIME_DATA_DTYPE
@@ -468,8 +376,7 @@ def decimated_metadata(
     n_levels: int = 3,
     factor: int = 4,
 ) -> DecimatedMetadata:
-    """
-    Get example decimated metadata
+    """Get example decimated metadata
 
     The final level has n_samples. The number of samples for all other
     levels is calculated using a decimation factor of 4.
@@ -478,23 +385,13 @@ def decimated_metadata(
     a sample frequency of fs and all other levels sampling frequencies are
     calculated from there.
 
-    Parameters
-    ----------
-    fs : float, optional
-        The sampling frequency of the last level, by default 0.25
-    first_time : str, optional
-        The time of the first sample, by default "2021-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 1024
-    n_levels : int, optional
-        The number of decimation levels, by default 3
-    factor : int, optional
-        The decimation factor for each level, by default 4
+    :param fs: The sampling frequency of the last level, by default 0.25
+    :param first_time: The time of the first sample, by default "2021-01-01 00:00:00"
+    :param n_samples: The number of samples, by default 1024
+    :param n_levels: The number of decimation levels, by default 3
+    :param factor: The decimation factor for each level, by default 4
 
-    Returns
-    -------
-    DecimatedMetadata
-        DecimatedMetadata
+    :return: DecimatedMetadata
     """
     from resistics.decimate import DecimatedLevelMetadata
     from resistics.sampling import to_datetime, to_timedelta
@@ -533,26 +430,15 @@ def decimated_data_random(
     n_levels: int = 3,
     factor: int = 4,
 ) -> DecimatedData:
-    """
-    Get random decimated data
+    """Get random decimated data
 
-    Parameters
-    ----------
-    fs : float, optional
-        Sampling frequency, by default 10
-    first_time : str, optional
-        The time of the first sample, by default "2021-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 1024
-    n_levels : int, optional
-        The number of levels, by default 3
-    factor : int, optional
-        The decimation factor for each level, by default 4
+    :param fs: Sampling frequency, by default 10
+    :param first_time: The time of the first sample, by default "2021-01-01 00:00:00"
+    :param n_samples: The number of samples, by default 1024
+    :param n_levels: The number of levels, by default 3
+    :param factor: The decimation factor for each level, by default 4
 
-    Returns
-    -------
-    DecimatedData
-        The decimated data
+    :return: The decimated data
     """
     metadata = decimated_metadata(
         fs, first_time, n_samples=n_samples, n_levels=n_levels, factor=factor
@@ -579,26 +465,15 @@ def decimated_data_linear(
     n_levels: int = 3,
     factor: int = 4,
 ):
-    """
-    Get linear decimated data
+    """Get linear decimated data
 
-    Parameters
-    ----------
-    fs : float, optional
-        Sampling frequency, by default 10
-    first_time : str, optional
-        The time of the first sample, by default "2021-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 1024
-    n_levels : int, optional
-        The number of levels, by default 3
-    factor : int, optional
-        The decimation factor for each level, by default 4
+    :param fs: Sampling frequency, by default 10
+    :param first_time: The time of the first sample, by default "2021-01-01 00:00:00"
+    :param n_samples: The number of samples, by default 1024
+    :param n_levels: The number of levels, by default 3
+    :param factor: The decimation factor for each level, by default 4
 
-    Returns
-    -------
-    DecimatedData
-        The decimated data
+    :return: The decimated data
     """
     metadata = decimated_metadata(
         fs, first_time, n_samples=n_samples, n_levels=n_levels, factor=factor
@@ -627,28 +502,16 @@ def decimated_data_periodic(
     n_levels: int = 3,
     factor: int = 4,
 ):
-    """
-    Get periodic decimated data
+    """Get periodic decimated data
 
-    Parameters
-    ----------
-    frequencies : Dict[str, List[float]]
-        Mapping from channel to list of frequencies to add
-    fs : float, optional
-        Sampling frequency, by default 10
-    first_time : str, optional
-        The time of the first sample, by default "2021-01-01 00:00:00"
-    n_samples : int, optional
-        The number of samples, by default 1024
-    n_levels : int, optional
-        The number of levels, by default 3
-    factor : int, optional
-        The decimation factor for each level, by default 4
+    :param frequencies: Mapping from channel to list of frequencies to add
+    :param fs: Sampling frequency, by default 10
+    :param first_time: The time of the first sample, by default "2021-01-01 00:00:00"
+    :param n_samples: The number of samples, by default 1024
+    :param n_levels: The number of levels, by default 3
+    :param factor: The decimation factor for each level, by default 4
 
-    Returns
-    -------
-    DecimatedData
-        The decimated data
+    :return: The decimated data
     """
     metadata = decimated_metadata(
         fs, first_time, n_samples=n_samples, n_levels=n_levels, factor=factor
@@ -679,13 +542,9 @@ def decimated_data_periodic(
 
 
 def spectra_data_basic() -> SpectraData:
-    """
-    Spectra data with a single decimation level
+    """Spectra data with a single decimation level
 
-    Returns
-    -------
-    SpectraData
-        Spectra data with a single level, a single channel and two windows
+    :return: Spectra data with a single level, a single channel and two windows
     """
 
     data = {}
@@ -724,24 +583,14 @@ def spectra_data_basic() -> SpectraData:
 def _regression_input_metadata_single_site(
     fs: float, freqs: list[float], tf: TransferFunction
 ) -> RegressionInputMetadata:
-    """
-    Given a transfer function, get example regression input metadata assuming a
+    """Given a transfer function, get example regression input metadata assuming a
     single site
 
-    Parameters
-    ----------
-    fs : float
-        The sampling frequency
-    freqs : List[float]
-        The evaluation frequencies
-    tf : TransferFunction
-        The transfer function for which to create RegressionInputMetadata
+    :param fs: The sampling frequency
+    :param freqs: The evaluation frequencies
+    :param tf: The transfer function for which to create RegressionInputMetadata
 
-    Returns
-    -------
-    RegressionInputMetadata
-        Example regression input metadata with fs=128 and 5 evaluation
-        frequencies
+    :return: Example regression input metadata with fs=128 and 5 evaluation frequencies
     """
     out_site = SiteCombinedMetadata(
         site_name="site1",
@@ -777,13 +626,9 @@ def _regression_input_metadata_single_site(
 
 
 def _components_mt() -> dict[str, Component]:
-    """
-    Get example components for the Impedance Tensor
+    """Get example components for the Impedance Tensor
 
-    Returns
-    -------
-    Dict[str, Component]
-        Dictionary of component values (exhx, exhy, eyhx, eyhy)
+    :return: Dictionary of component values (exhx, exhy, eyhx, eyhy)
     """
     return {
         "exhx": Component(real=[1, 1, 2, 2, 3, 3], imag=[5, 5, 4, 4, 3, 3]),
@@ -794,13 +639,9 @@ def _components_mt() -> dict[str, Component]:
 
 
 def solution_mt() -> Solution:
-    """
-    Get an example impedance tensor solution
+    """Get an example impedance tensor solution
 
-    Returns
-    -------
-    Solution
-        The solution for an MT dataset
+    :return: The solution for an MT dataset
     """
     tf = ImpedanceTensor()
     fs = 256

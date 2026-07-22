@@ -1,5 +1,4 @@
-"""
-Classes and methods for storing and manipulating time data, including:
+"""Classes and methods for storing and manipulating time data, including:
 
 - The TimeMetadata model for defining metadata for TimeData
 - The TimeData class for storing TimeData
@@ -40,38 +39,23 @@ from resistics.sampling import (
 class ChanMetadata(Metadata):
     """Channel metadata.
 
-    Attributes
-    ----------
-    model_config : ConfigDict
-        Pydantic assignment-validation configuration.
-    name : str
-        Channel component name.
-    data_files : list[str] | None
-        Legacy source filenames, absent for MTH5-backed channels.
-    chan_type : str
-        Electric, magnetic, auxiliary, or another MTH5 channel type.
-    chan_source : str | None
-        Component name in the source dataset.
-    sensor : str
-        Sensor type.
-    serial : str
-        Sensor serial identifier.
-    gain1 : float
-        Primary channel gain.
-    gain2 : float
-        Secondary channel gain.
-    scaling : float
-        Scaling applied to channel samples.
-    chopper : bool
-        Whether sensor chopper mode was enabled.
-    dipole_dist : float
-        Electric dipole length.
-    sensor_calibration_file : str
-        Explicit sensor calibration filename.
-    instrument_calibration_file : str
-        Explicit instrument calibration filename.
-    mth5_metadata : dict[str, Any]
-        MTH5 channel metadata preserved at ingestion.
+    **Attributes**
+
+    - **model_config** — Pydantic assignment-validation configuration.
+    - **name** — Channel component name.
+    - **data_files** — Legacy source filenames, absent for MTH5-backed channels.
+    - **chan_type** — Electric, magnetic, auxiliary, or another MTH5 channel type.
+    - **chan_source** — Component name in the source dataset.
+    - **sensor** — Sensor type.
+    - **serial** — Sensor serial identifier.
+    - **gain1** — Primary channel gain.
+    - **gain2** — Secondary channel gain.
+    - **scaling** — Scaling applied to channel samples.
+    - **chopper** — Whether sensor chopper mode was enabled.
+    - **dipole_dist** — Electric dipole length.
+    - **sensor_calibration_file** — Explicit sensor calibration filename.
+    - **instrument_calibration_file** — Explicit instrument calibration filename.
+    - **mth5_metadata** — MTH5 channel metadata preserved at ingestion.
     """
 
     model_config = ConfigDict(validate_assignment=True)
@@ -93,8 +77,13 @@ class ChanMetadata(Metadata):
 
     @field_validator("data_files", mode="before")
     @classmethod
-    def validate_data_files(cls, value: Any) -> list[str]:
-        """Validate data files and convert to list if required"""
+    def validate_data_files(cls, value: Any) -> list[str] | None:
+        """Validate data files and convert to a list when required.
+
+        :param value: Source filename, list of filenames, or absent value.
+
+        :return: Normalised filename list, or ``None`` when no files are set.
+        """
         if isinstance(value, str):
             return [value]
         return value
@@ -102,7 +91,15 @@ class ChanMetadata(Metadata):
     @field_validator("chan_type")
     @classmethod
     def validate_chan_type(cls, value: str, info: ValidationInfo) -> str:
-        """Validate the channel type"""
+        """Validate or infer the channel type.
+
+        :param value: Explicit channel type, when supplied.
+        :param info: Validation context containing the channel name.
+
+        :return: Explicit or inferred channel type.
+
+        :raises ValueError: If a type cannot be inferred from the channel name.
+        """
         if value:
             return value
         try:
@@ -113,59 +110,45 @@ class ChanMetadata(Metadata):
             ) from None
 
     def electric(self) -> bool:
-        """True if the channel is an electric channel"""
+        """Check whether this is an electric channel.
+
+        :return: ``True`` for an electric channel.
+        """
         return self.chan_type == "electric"
 
     def magnetic(self) -> bool:
-        """True if the channel is a magnetic channel"""
+        """Check whether this is a magnetic channel.
+
+        :return: ``True`` for a magnetic channel.
+        """
         return self.chan_type == "magnetic"
 
 
 class TimeMetadata(WriteableMetadata):
     """Metadata for one MTH5-backed time-series run.
 
-    Attributes
-    ----------
-    model_config : ConfigDict
-        Pydantic assignment-validation configuration.
-    fs : float
-        Sampling frequency in hertz.
-    chans : list[str]
-        Ordered channel component names.
-    n_chans : int
-        Number of channels.
-    n_samples : int
-        Number of samples per channel.
-    first_time : HighResDateTime
-        Time of the first sample.
-    last_time : HighResDateTime
-        Time of the last sample.
-    system : str
-        Data-logger type.
-    serial : str
-        Data-logger serial identifier.
-    wgs84_latitude : float
-        Station latitude in WGS84.
-    wgs84_longitude : float
-        Station longitude in WGS84.
-    easting : float
-        Station easting in local coordinates.
-    northing : float
-        Station northing in local coordinates.
-    elevation : float
-        Station elevation.
-    chans_metadata : dict[str, ChanMetadata]
-        Metadata indexed by channel component.
-    history : History
-        Processing history.
-    survey : str
-        MTH5 survey identifier.
-    station : str
-        MTH5 station identifier.
-    run : str
-        MTH5 run identifier.
-    mth5_metadata : dict[str, Any]
-        MTH5 survey, station, and run metadata preserved at ingestion.
+    **Attributes**
+
+    - **model_config** — Pydantic assignment-validation configuration.
+    - **fs** — Sampling frequency in hertz.
+    - **chans** — Ordered channel component names.
+    - **n_chans** — Number of channels.
+    - **n_samples** — Number of samples per channel.
+    - **first_time** — Time of the first sample.
+    - **last_time** — Time of the last sample.
+    - **system** — Data-logger type.
+    - **serial** — Data-logger serial identifier.
+    - **wgs84_latitude** — Station latitude in WGS84.
+    - **wgs84_longitude** — Station longitude in WGS84.
+    - **easting** — Station easting in local coordinates.
+    - **northing** — Station northing in local coordinates.
+    - **elevation** — Station elevation.
+    - **chans_metadata** — Metadata indexed by channel component.
+    - **history** — Processing history.
+    - **survey** — MTH5 survey identifier.
+    - **station** — MTH5 station identifier.
+    - **run** — MTH5 run identifier.
+    - **mth5_metadata** — MTH5 survey, station, and run metadata preserved at ingestion.
     """
 
     model_config = ConfigDict(validate_assignment=True)
@@ -191,21 +174,15 @@ class TimeMetadata(WriteableMetadata):
     mth5_metadata: dict[str, Any] = Field(default_factory=dict)
 
     def __getitem__(self, chan: str) -> ChanMetadata:
-        """
-        Get channel metadata
+        """Get channel metadata
 
-        Parameters
-        ----------
-        chan : str
-            The channel to get metadata for
+        :param chan: The channel to get metadata for
 
-        Returns
-        -------
-        ChanMetadata
-            Metadata for the channel
+        :return: Metadata for the channel
 
-        Examples
-        --------
+        **Examples**
+
+        ```{doctest}
         >>> from resistics.testing import time_metadata_2chan
         >>> metadata = time_metadata_2chan()
         >>> chan_metadata = metadata["chan1"]
@@ -226,6 +203,8 @@ class TimeMetadata(WriteableMetadata):
             'instrument_calibration_file': '',
             'mth5_metadata': {}
         }
+
+        ```
         """
         from resistics.common import check_chan
 
@@ -248,120 +227,112 @@ class TimeMetadata(WriteableMetadata):
         return self.fs / 2
 
     def get_chan_types(self) -> list[str]:
-        """
-        Get all the different channel types
+        """Get all the different channel types
 
-        Returns
-        -------
-        List[str]
-            A list of different channel types
+        :return: A list of different channel types
 
-        Examples
-        --------
+        **Examples**
+
+        ```{doctest}
         >>> from resistics.testing import time_metadata_mt
         >>> metadata = time_metadata_mt()
         >>> metadata.get_chan_types()
         ['electric', 'magnetic']
+
+        ```
         """
         chan_types = {x.chan_type for x in self.chans_metadata.values()}
         return sorted(chan_types)
 
     def get_chans_with_type(self, chan_type: str) -> list[str]:
-        """
-        Get channels with the given type
+        """Get channels with the given type
 
-        Parameters
-        ----------
-        chan_type : str
-            The channel type
+        :param chan_type: The channel type
 
-        Returns
-        -------
-        List[str]
-            A list of channels with the given channel type
+        :return: A list of channels with the given channel type
 
-        Examples
-        --------
+        **Examples**
+
+        ```{doctest}
         >>> from resistics.testing import time_metadata_mt
         >>> metadata = time_metadata_mt()
         >>> metadata.get_chans_with_type("magnetic")
         ['Hx', 'Hy']
+
+        ```
         """
         return [x for x in self.chans if self.chans_metadata[x].chan_type == chan_type]
 
     def get_electric_chans(self) -> list[str]:
-        """
-        Get list of electric channels
+        """Get list of electric channels
 
-        Returns
-        -------
-        List[str]
-            List of electric channels
+        :return: List of electric channels
 
-        Examples
-        --------
+        **Examples**
+
+        ```{doctest}
         >>> from resistics.testing import time_metadata_mt
         >>> metadata = time_metadata_mt()
         >>> metadata.get_electric_chans()
         ['Ex', 'Ey']
+
+        ```
         """
         return [x for x in self.chans if self.chans_metadata[x].electric()]
 
     def get_magnetic_chans(self) -> list[str]:
-        """
-        Get list of magnetic channels
+        """Get list of magnetic channels
 
-        Returns
-        -------
-        List[str]
-            List of magnetic channels
+        :return: List of magnetic channels
 
-        Examples
-        --------
+        **Examples**
+
+        ```{doctest}
         >>> from resistics.testing import time_metadata_mt
         >>> metadata = time_metadata_mt()
         >>> metadata.get_magnetic_chans()
         ['Hx', 'Hy']
+
+        ```
         """
         return [x for x in self.chans if self.chans_metadata[x].magnetic()]
 
     def any_electric(self) -> bool:
-        """True if any channels are electric"""
+        """Check whether any channels are electric.
+
+        :return: ``True`` when at least one channel is electric.
+        """
         return len(self.get_electric_chans()) != 0
 
     def any_magnetic(self) -> bool:
-        """True if any channels are magnetic"""
+        """Check whether any channels are magnetic.
+
+        :return: ``True`` when at least one channel is magnetic.
+        """
         return len(self.get_magnetic_chans()) != 0
 
 
 def get_time_metadata(
     time_dict: dict[str, Any], chans_dict: dict[str, dict[str, Any]]
 ) -> TimeMetadata:
-    """
-    Get metadata for TimeData
+    """Get metadata for TimeData
 
     The time and channel dictionaries must have the TimeMetadata required
     fields. For more information about the required fields, see
-    :class:`~TimeMetadata`
+    {py:class}`~TimeMetadata`
 
-    Parameters
-    ----------
-    time_dict : Dict[str, Any]
-        Dictionary with metadata for the whole dataset
-    chans_dict : Dict[str, Dict[str, Any]]
-        Dictionary of dictionaries with metadata for each channel
+    :param time_dict: Dictionary with metadata for the whole dataset
+    :param chans_dict: Dictionary of dictionaries with metadata for each channel
 
-    Returns
-    -------
-    TimeMetadata
-        Metadata for TimeData
+    :return: Metadata for TimeData
 
-    See Also
-    --------
+    **See Also**
+
     TimeMetadata : The TimeMetadata class which is returned
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.time import get_time_metadata
     >>> time_dict = {
     ...     "fs": 10,
@@ -432,6 +403,8 @@ def get_time_metadata(
         'run': '',
         'mth5_metadata': {}
     }
+
+    ```
     """
     chans = time_dict["chans"]
     chans_metadata = {chan: ChanMetadata(**chans_dict[chan]) for chan in chans}
@@ -445,36 +418,26 @@ def adjust_time_metadata(
     first_time: RSDateTime,
     n_samples: int,
 ) -> TimeMetadata:
-    """
-    Adjust time data metadata
+    """Adjust time data metadata
 
     This is required if changes have been made to the sampling frequency, the
     time of the first sample of the number of samples. This might occur in
     processes such as resampling or decimating.
 
-    .. warning::
+    ```{warning}
+    The metadata passed in will be changed in place. If the original
+    metadata should be retained, pass through a deepcopy
+    ```
+    :param metadata: Metadata to adjust
+    :param fs: The sampling frequency
+    :param first_time: The first time of the data
+    :param n_samples: The number of samples
 
-        The metadata passed in will be changed in place. If the original
-        metadata should be retained, pass through a deepcopy
+    :return: Adjusted metadata
 
-    Parameters
-    ----------
-    metadata : TimeMetadata
-        Metadata to adjust
-    fs : float
-        The sampling frequency
-    first_time : RSDateTime
-        The first time of the data
-    n_samples : int
-        The number of samples
+    **Examples**
 
-    Returns
-    -------
-    TimeMetadata
-        Adjusted metadata
-
-    Examples
-    --------
+    ```{doctest}
     >>> from resistics.sampling import to_datetime
     >>> from resistics.time import adjust_time_metadata
     >>> from resistics.testing import time_metadata_2chan
@@ -496,6 +459,8 @@ def adjust_time_metadata(
     attotime.objects.attodatetime(2021, 3, 1, 0, 1, 0, 0, 0)
     >>> metadata.last_time
     attotime.objects.attodatetime(2021, 3, 1, 0, 1, 2, 450000, 0)
+
+    ```
     """
     from resistics.sampling import to_timedelta
 
@@ -508,23 +473,21 @@ def adjust_time_metadata(
 
 
 class TimeData(ResisticsData):
-    """
-    Class for holding time data
+    """Class for holding time data
 
     Samples are stored internally as an xarray object labelled by channel and
     time. The ``data`` property exposes its mutable NumPy array with shape:
 
     n_chans x n_samples
 
-    Parameters
-    ----------
-    metadata : TimeMetadata
-        Metadata for the TimeData
-    data : np.ndarray | xr.DataArray | xr.Dataset
-        Channel-labelled data or a NumPy array in channel/sample order.
+    :param metadata: Metadata for the TimeData
+    :param data: Channel-labelled data or a NumPy array in channel/sample order.
 
-    Examples
-    --------
+    :raises ValueError: If channel names are duplicated or labelled data is invalid.
+
+    **Examples**
+
+    ```{doctest}
     >>> import numpy as np
     >>> from resistics.testing import time_metadata_2chan
     >>> from resistics.time import TimeData
@@ -536,6 +499,8 @@ class TimeData(ResisticsData):
     array([ 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11])
     >>> time_data["chan1"]
     array([ 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11])
+
+    ```
     """
 
     def __init__(
@@ -543,13 +508,6 @@ class TimeData(ResisticsData):
         metadata: TimeMetadata,
         data: np.ndarray | xr.DataArray | xr.Dataset,
     ) -> None:
-        """Initialise time data.
-
-        Raises
-        ------
-        ValueError
-            If channels are duplicated or the labelled data shape is invalid.
-        """
         self.metadata = metadata
         if len(set(metadata.chans)) != len(metadata.chans):
             raise ValueError("TimeData channel names must be unique")
@@ -599,71 +557,42 @@ class TimeData(ResisticsData):
     def to_xarray(self) -> xr.DataArray:
         """Return the labelled channel/time sample array.
 
-        Returns
-        -------
-        xr.DataArray
-            Samples labelled by channel and time.
+        :return: Samples labelled by channel and time.
         """
         return self._array
 
     def __getitem__(self, chan: str) -> np.ndarray:
-        """
-        Get channel time data
+        """Get channel time data
 
-        Parameters
-        ----------
-        chan : str
-            The channel to get data for
+        :param chan: The channel to get data for
 
-        Returns
-        -------
-        np.ndarray
-            pandas Series with channel data and datetime index
+        :return: pandas Series with channel data and datetime index
         """
         return self.get_chan(chan)
 
     def __setitem__(self, chan: str, chan_data: np.ndarray) -> None:
-        """
-        Set channel time data
+        """Set channel time data
 
-        Parameters
-        ----------
-        chan : str
-            The channel to set the data for
-        chan_data : np.ndarray
-            The new channel data
+        :param chan: The channel to set the data for
+        :param chan_data: The new channel data
         """
         self.set_chan(chan, chan_data)
 
     def get_chan_index(self, chan: str) -> int:
-        """
-        Get the channel index in the data
+        """Get the channel index in the data
 
-        Parameters
-        ----------
-        chan : str
-            The channel
+        :param chan: The channel
 
-        Returns
-        -------
-        int
-            The index
+        :return: The index
         """
         return self._chan_to_idx[chan]
 
     def get_chan(self, chan: str) -> np.ndarray:
-        """
-        Get the time data for a channel
+        """Get the time data for a channel
 
-        Parameters
-        ----------
-        chan : str
-            The channel for which to get the time data
+        :param chan: The channel for which to get the time data
 
-        Returns
-        -------
-        np.ndarray
-            pandas Series with channel data and datetime index
+        :return: pandas Series with channel data and datetime index
         """
         from resistics.common import check_chan
 
@@ -671,22 +600,12 @@ class TimeData(ResisticsData):
         return np.asarray(self._array.sel(channel=chan).data)
 
     def set_chan(self, chan: str, chan_data: np.ndarray) -> None:
-        """
-        Set channel time data
+        """Set channel time data
 
-        Parameters
-        ----------
-        chan : str
-            The channel to set the data for
-        chan_data : np.ndarray
-            The new channel data
+        :param chan: The channel to set the data for
+        :param chan_data: The new channel data
 
-        Raises
-        ------
-        ValueError
-            If the data has incorrect size
-        ValueError
-            If the data has incorrect dtype
+        :raises ValueError: If the data has an incorrect size or dtype.
         """
         from resistics.common import check_chan
 
@@ -702,23 +621,14 @@ class TimeData(ResisticsData):
     def get_timestamps(
         self, samples: np.ndarray | None = None, estimate: bool = True
     ) -> np.ndarray | pd.DatetimeIndex:
-        """
-        Get an array of timestamps
+        """Get an array of timestamps
 
-        Parameters
-        ----------
-        samples : Optional[np.ndarray], optional
-            If provided, timestamps are only returned for the specified samples,
+        :param samples: If provided, timestamps are only returned for the specified samples,
             by default None
-        estimate : bool, optional
-            Flag for using estimates instead of high precision datetimes, by
+        :param estimate: Flag for using estimates instead of high precision datetimes, by
             default True
 
-        Returns
-        -------
-        Union[np.ndarray, pd.DatetimeIndex]
-            The return dates. This will be a numpy array of RSDateTime objects
-            if estimate is False, else it will be a pandas DatetimeIndex
+        :return: The return dates. This will be a numpy array of RSDateTime objects if estimate is False, else it will be a pandas DatetimeIndex
         """
         from resistics.sampling import datetime_array, datetime_array_estimate
 
@@ -732,22 +642,14 @@ class TimeData(ResisticsData):
         )
 
     def subsection(self, from_time: DateTimeLike, to_time: DateTimeLike) -> "TimeData":
-        """
-        Get a subsection of the TimeData
+        """Get a subsection of the TimeData
 
         Returns a new TimeData object
 
-        Parameters
-        ----------
-        from_time : DateTimeLike
-            Start of subsection
-        to_time : DateTimeLike
-            End of subsection
+        :param from_time: Start of subsection
+        :param to_time: End of subsection
 
-        Returns
-        -------
-        TimeData
-            Subsection as new TimeData
+        :return: Subsection as new TimeData
         """
         sub = Subsection(from_time=from_time, to_time=to_time)
         return sub.run(self)
@@ -759,25 +661,21 @@ class TimeData(ResisticsData):
 
         Returns a new TimeData object
 
-        Parameters
-        ----------
-        from_sample : Optional[int], optional
-            The sample to go from, by default None. If not provided, this will
+        :param from_sample: The sample to go from, by default None. If not provided, this will
             be the first sample.
-        to_sample : Optional[int], optional
-            The sample to end at, by default None. If not provided, this will be
+        :param to_sample: The sample to end at, by default None. If not provided, this will be
             the last sample
 
-        Returns
-        -------
-        TimeData
-            The subsamples as a new TimeData object
+        :return: The subsamples as a new TimeData object
         """
         sub = Subsamples(from_sample=from_sample, to_sample=to_sample)
         return sub.run(self)
 
     def copy(self) -> "TimeData":
-        """Get a deepcopy of the time data object"""
+        """Get a deep copy of the time data object.
+
+        :return: Independent copy of the metadata and sample data.
+        """
         return TimeData(
             self.metadata.model_copy(deep=True), self._array.copy(deep=True)
         )
@@ -790,34 +688,20 @@ class TimeData(ResisticsData):
         legend: str = "TimeData",
         max_pts: int | None = 10_000,
     ) -> go.Figure:
-        """
-        Plot time series data
+        """Plot time series data
 
-        Parameters
-        ----------
-        fig : Optional[go.Figure], optional
-            A figure if appending the data to an existing plot, by default None
-        chans : Optional[List[str]], optional
-            Explicit definition of channels to plot, by default None
-        color : str, optional
-            The color for the data, by default "blue"
-        legend : str, optional
-            The legend group to use, by default "TimeData". This is more useful
+        :param fig: A figure if appending the data to an existing plot, by default None
+        :param chans: Explicit definition of channels to plot, by default None
+        :param color: The color for the data, by default "blue"
+        :param legend: The legend group to use, by default "TimeData". This is more useful
             when plotting multiple TimeData
-        max_pts : Optional[int], optional
-            The maximum number of points for any channel plot before applying
+        :param max_pts: The maximum number of points for any channel plot before applying
             LTTB downsampling, by default 10_000. If set to None, no
             downsampling will be applied.
 
-        Returns
-        -------
-        go.Figure
-            Plotly Figure
+        :return: Plotly Figure
 
-        Raises
-        ------
-        ValueError
-            If a figure is provided and channels have not been explicitly
+        :raises ValueError: If a figure is provided and channels have not been explicitly
             defined
         """
         from resistics.plot import apply_lttb, get_time_fig
@@ -850,20 +734,29 @@ class TimeData(ResisticsData):
         return fig
 
     def to_string(self) -> str:
-        """Class details as a string"""
+        """Render the class details.
+
+        :return: Human-readable time-data and metadata details.
+        """
         outstr = f"{self.type_to_string()}\n"
         outstr += self.metadata.to_string()
         return outstr
 
 
 class MTH5TimeReader(ResisticsProcess):
-    """Read a selected MTH5 run group into channel-labelled :class:`TimeData`."""
+    """Read a selected MTH5 run group into channel-labelled {py:class}`TimeData`."""
 
     output_type: ClassVar[str] = "time_data"
     runtime_requirements: ClassVar[list[str]] = ["project", "run_batch"]
 
     def execute(self, inputs: dict[str, Any], context: Any) -> TimeData:
-        """Read the concrete run selected by the current flow batch."""
+        """Read the concrete run selected by the current flow batch.
+
+        :param inputs: Flow inputs; this reader does not consume upstream data.
+        :param context: Runtime project, run batch, and optional read bounds.
+
+        :return: Selected MTH5 run as channel-labelled time data.
+        """
         del inputs
         batch = context["run_batch"]
         return context["project"].read_run(
@@ -885,7 +778,20 @@ class MTH5TimeReader(ResisticsProcess):
         to_sample: int | None = None,
         sample_rate: float | None = None,
     ) -> TimeData:
-        """Read one bounded MTH5 run."""
+        """Read one bounded MTH5 run.
+
+        :param run_group: MTH5 run group to read.
+        :param chans: Components to select, or all channels when omitted.
+        :param from_time: Inclusive lower time bound.
+        :param to_time: Inclusive upper time bound.
+        :param from_sample: Inclusive lower sample bound.
+        :param to_sample: Inclusive upper sample bound.
+        :param sample_rate: Sampling frequency in hertz for sample-bound conversion.
+
+        :return: Selected MTH5 run as channel-labelled time data.
+
+        :raises ValueError: If sample bounds lack a sampling frequency or the run is invalid.
+        """
         start = None if from_time is None else pd.Timestamp(from_time).isoformat()
         end = None if to_time is None else pd.Timestamp(to_time).isoformat()
         n_samples = None
@@ -907,15 +813,9 @@ class MTH5TimeReader(ResisticsProcess):
 def _mth5_metadata_dict(value: Any) -> dict[str, Any]:
     """Convert MTH5 metadata to a serialisable dictionary.
 
-    Parameters
-    ----------
-    value : Any
-        MTH5 metadata object or dictionary.
+    :param value: MTH5 metadata object or dictionary.
 
-    Returns
-    -------
-    dict[str, Any]
-        Single-level metadata dictionary.
+    :return: Single-level metadata dictionary.
     """
     if value is None:
         return {}
@@ -930,19 +830,11 @@ def _mth5_metadata_dict(value: Any) -> dict[str, Any]:
 def _nested_mth5_value(value: Any, *names: str, default: Any = "") -> Any:
     """Read a nested MTH5 metadata value without concrete-type coupling.
 
-    Parameters
-    ----------
-    value : Any
-        Root metadata object.
-    *names : str
-        Attribute path to follow.
-    default : Any
-        Value returned when the path is absent.
+    :param value: Root metadata object.
+    :param *names: Attribute path to follow.
+    :param default: Value returned when the path is absent.
 
-    Returns
-    -------
-    Any
-        Nested value or ``default``.
+    :return: Nested value or ``default``.
     """
     for name in names:
         value = getattr(value, name, None)
@@ -954,22 +846,25 @@ def _nested_mth5_value(value: Any, *names: str, default: Any = "") -> Any:
 def _mth5_identifier(value: Any) -> str:
     """Return a normalised MTH5 metadata identifier.
 
-    Parameters
-    ----------
-    value : Any
-        MTH5 metadata object.
+    :param value: MTH5 metadata object.
 
-    Returns
-    -------
-    str
-        Identifier, or an empty string when absent.
+    :return: Identifier, or an empty string when absent.
     """
     result = getattr(value, "id", "")
     return "" if result is None else str(result)
 
 
 def _mth5_run_ts_to_time_data(run_ts: Any, chans: list[str] | None = None) -> TimeData:
-    """Convert an MTH5 RunTS-like object to channel-labelled resistics data."""
+    """Convert an MTH5 RunTS-like object to channel-labelled resistics data.
+
+    :param run_ts: MTH5 ``RunTS``-like object.
+    :param chans: Components to select, or all available channels when omitted.
+
+    :return: Channel-labelled time data and MTH5-derived metadata.
+
+    :raises NotImplementedError: If the object cannot provide an xarray dataset.
+    :raises ValueError: If channels, samples, or a valid sample rate are unavailable.
+    """
     if hasattr(run_ts, "dataset"):
         dataset = run_ts.dataset
     elif hasattr(run_ts, "to_xarray"):
@@ -1059,28 +954,18 @@ def new_time_data(
     data: np.ndarray | None = None,
     record: Record | None = None,
 ) -> TimeData:
-    """
-    Get a new TimeData
+    """Get a new TimeData
 
     Values are taken from an existing TimeData where they are not explicitly
     specified. This is useful in a process where only some aspects of the
     TimeData have been changed
 
-    Parameters
-    ----------
-    time_data : TimeData
-        The existing TimeData
-    metadata : Optional[TimeMetadata], optional
-        A new TimeMetadata, by default None
-    data : Optional[np.ndarray], optional
-        New data, by default None
-    record : Optional[Record], optional
-        A new record to add, by default None
+    :param time_data: The existing TimeData
+    :param metadata: A new TimeMetadata, by default None
+    :param data: New data, by default None
+    :param record: A new record to add, by default None
 
-    Returns
-    -------
-    TimeData
-        A new TimeData instance
+    :return: A new TimeData instance
     """
     if metadata is None:
         metadata = time_data.metadata.model_copy(deep=True)
@@ -1099,46 +984,49 @@ class TimeProcess(ResisticsProcess):
     include_in_default_parameters: ClassVar[bool] = False
 
     def run(self, time_data: TimeData) -> TimeData:
-        """Run the time processor"""
+        """Run the time processor.
+
+        :param time_data: Time data to process.
+
+        :return: Processed time data.
+
+        :raises NotImplementedError: Always; subclasses must implement this method.
+        """
         raise NotImplementedError("Run not implemented in parent TimeProcess")
 
 
 class Subsection(TimeProcess):
-    """
-    Get a subsection of time data
+    """Get a subsection of time data
 
-    Parameters
-    ----------
-    from_time : DateTimeLike
-        Time to take subsection from
-    to_time : DateTimeLike
-        Time to take subsection to
+    :param from_time: Time to take subsection from
+    :param to_time: Time to take subsection to
 
-    Examples
-    --------
-    .. plot::
-        :width: 90%
+    **Examples**
 
-        >>> import matplotlib.pyplot as plt
-        >>> from resistics.testing import time_data_random
-        >>> from resistics.time import Subsection
-        >>> time_data = time_data_random(n_samples=1000)
-        >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
-        2020-01-01 00:00:00 2020-01-01 00:01:39.9
-        >>> process = Subsection(from_time="2020-01-01 00:00:25", to_time="2020-01-01 00:00:50.9")
-        >>> subsection = process.run(time_data)
-        >>> print(subsection.metadata.first_time, subsection.metadata.last_time)
-        2020-01-01 00:00:25 2020-01-01 00:00:50.9
-        >>> subsection.metadata.n_samples
-        260
-        >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
-        >>> plt.plot(subsection.get_timestamps(), subsection["Ex"], label="sub") # doctest: +SKIP
-        >>> plt.legend(loc=3) # doctest: +SKIP
-        >>> plt.tight_layout() # doctest: +SKIP
-        >>> plt.show() # doctest: +SKIP
+    ```{plot}
+    :width: 90%
+    :filename-prefix: subsection
 
-    See Also
-    --------
+    >>> import matplotlib.pyplot as plt
+    >>> from resistics.testing import time_data_random
+    >>> from resistics.time import Subsection
+    >>> time_data = time_data_random(n_samples=1000)
+    >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
+    2020-01-01 00:00:00 2020-01-01 00:01:39.9
+    >>> process = Subsection(from_time="2020-01-01 00:00:25", to_time="2020-01-01 00:00:50.9")
+    >>> subsection = process.run(time_data)
+    >>> print(subsection.metadata.first_time, subsection.metadata.last_time)
+    2020-01-01 00:00:25 2020-01-01 00:00:50.9
+    >>> subsection.metadata.n_samples
+    260
+    >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
+    >>> plt.plot(subsection.get_timestamps(), subsection["Ex"], label="sub") # doctest: +SKIP
+    >>> plt.legend(loc=3) # doctest: +SKIP
+    >>> plt.tight_layout() # doctest: +SKIP
+    >>> plt.show() # doctest: +SKIP
+    ```
+    **See Also**
+
     Subsamples : Getting a section of data using samples rather than dates
     """
 
@@ -1146,18 +1034,11 @@ class Subsection(TimeProcess):
     to_time: DateTimeLike
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Take a subsection from TimeData
+        """Take a subsection from TimeData
 
-        Parameters
-        ----------
-        time_data : TimeData
-            TimeData to take subsection from
+        :param time_data: TimeData to take subsection from
 
-        Returns
-        -------
-        TimeData
-            Subsection TimeData
+        :return: Subsection TimeData
         """
         from resistics.sampling import (
             datetimes_to_samples,
@@ -1192,93 +1073,91 @@ class Subsection(TimeProcess):
 
 
 class Subsamples(TimeProcess):
-    """
-    Get a subsamples of time data, an alternative to getting a subsection by
+    """Get a subsamples of time data, an alternative to getting a subsection by
     times
 
-    Parameters
-    ----------
-    from_sample : int
-        Sample to begin from
-    to_time : DateTimeLike
-        Sample to end at
+    :param from_sample: Sample to begin from
+    :param to_sample: Sample to end at
 
-    Examples
-    --------
+    **Examples**
+
     Taking subsample using positive sample numbers. Sample 0 is the first
     sample and sample -1 is the last sample.
 
-    .. plot::
-        :width: 90%
+    ```{plot}
+    :width: 90%
+    :filename-prefix: subsamples-positive
 
-        >>> import matplotlib.pyplot as plt
-        >>> from resistics.testing import time_data_random
-        >>> from resistics.time import Subsamples
-        >>> time_data = time_data_random(n_samples=300)
-        >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
-        2020-01-01 00:00:00 2020-01-01 00:00:29.9
-        >>> process = Subsamples(from_sample=10, to_sample=120)
-        >>> subsample = process.run(time_data)
-        >>> print(subsample.metadata.first_time, subsample.metadata.last_time)
-        2020-01-01 00:00:01 2020-01-01 00:00:12
-        >>> subsample.metadata.n_samples
-        111
-        >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
-        >>> plt.plot(subsample.get_timestamps(), subsample["Ex"], label="sub") # doctest: +SKIP
-        >>> plt.legend(loc=3) # doctest: +SKIP
-        >>> plt.tight_layout() # doctest: +SKIP
-        >>> plt.show() # doctest: +SKIP
-
+    >>> import matplotlib.pyplot as plt
+    >>> from resistics.testing import time_data_random
+    >>> from resistics.time import Subsamples
+    >>> time_data = time_data_random(n_samples=300)
+    >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
+    2020-01-01 00:00:00 2020-01-01 00:00:29.9
+    >>> process = Subsamples(from_sample=10, to_sample=120)
+    >>> subsample = process.run(time_data)
+    >>> print(subsample.metadata.first_time, subsample.metadata.last_time)
+    2020-01-01 00:00:01 2020-01-01 00:00:12
+    >>> subsample.metadata.n_samples
+    111
+    >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
+    >>> plt.plot(subsample.get_timestamps(), subsample["Ex"], label="sub") # doctest: +SKIP
+    >>> plt.legend(loc=3) # doctest: +SKIP
+    >>> plt.tight_layout() # doctest: +SKIP
+    >>> plt.show() # doctest: +SKIP
+    ```
     Another option is to use negative sample numbers which counts back from the
     end of the time data.
 
-    .. plot::
-        :width: 90%
+    ```{plot}
+    :width: 90%
+    :filename-prefix: subsamples-negative
 
-        >>> import matplotlib.pyplot as plt
-        >>> from resistics.testing import time_data_random
-        >>> from resistics.time import Subsamples
-        >>> time_data = time_data_random(n_samples=300)
-        >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
-        2020-01-01 00:00:00 2020-01-01 00:00:29.9
-        >>> process = Subsamples(from_sample=-100, to_sample=-50)
-        >>> subsample = process.run(time_data)
-        >>> print(subsample.metadata.first_time, subsample.metadata.last_time)
-        2020-01-01 00:00:20 2020-01-01 00:00:25
-        >>> subsample.metadata.n_samples
-        51
-        >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
-        >>> plt.plot(subsample.get_timestamps(), subsample["Ex"], label="sub") # doctest: +SKIP
-        >>> plt.legend(loc=3) # doctest: +SKIP
-        >>> plt.tight_layout() # doctest: +SKIP
-        >>> plt.show() # doctest: +SKIP
-
+    >>> import matplotlib.pyplot as plt
+    >>> from resistics.testing import time_data_random
+    >>> from resistics.time import Subsamples
+    >>> time_data = time_data_random(n_samples=300)
+    >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
+    2020-01-01 00:00:00 2020-01-01 00:00:29.9
+    >>> process = Subsamples(from_sample=-100, to_sample=-50)
+    >>> subsample = process.run(time_data)
+    >>> print(subsample.metadata.first_time, subsample.metadata.last_time)
+    2020-01-01 00:00:20 2020-01-01 00:00:25
+    >>> subsample.metadata.n_samples
+    51
+    >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
+    >>> plt.plot(subsample.get_timestamps(), subsample["Ex"], label="sub") # doctest: +SKIP
+    >>> plt.legend(loc=3) # doctest: +SKIP
+    >>> plt.tight_layout() # doctest: +SKIP
+    >>> plt.show() # doctest: +SKIP
+    ```
     If from_sample is not passed, it will be set to 0. If to_sample is not
     passed this will default to the last sample.
 
-    .. plot::
-        :width: 90%
+    ```{plot}
+    :width: 90%
+    :filename-prefix: subsamples-default
 
-        >>> import matplotlib.pyplot as plt
-        >>> from resistics.testing import time_data_random
-        >>> from resistics.time import Subsamples
-        >>> time_data = time_data_random(n_samples=300)
-        >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
-        2020-01-01 00:00:00 2020-01-01 00:00:29.9
-        >>> process = Subsamples(to_sample=100)
-        >>> subsample = process.run(time_data)
-        >>> print(subsample.metadata.first_time, subsample.metadata.last_time)
-        2020-01-01 00:00:00 2020-01-01 00:00:10
-        >>> subsample.metadata.n_samples
-        101
-        >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
-        >>> plt.plot(subsample.get_timestamps(), subsample["Ex"], label="sub") # doctest: +SKIP
-        >>> plt.legend(loc=3) # doctest: +SKIP
-        >>> plt.tight_layout() # doctest: +SKIP
-        >>> plt.show() # doctest: +SKIP
+    >>> import matplotlib.pyplot as plt
+    >>> from resistics.testing import time_data_random
+    >>> from resistics.time import Subsamples
+    >>> time_data = time_data_random(n_samples=300)
+    >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
+    2020-01-01 00:00:00 2020-01-01 00:00:29.9
+    >>> process = Subsamples(to_sample=100)
+    >>> subsample = process.run(time_data)
+    >>> print(subsample.metadata.first_time, subsample.metadata.last_time)
+    2020-01-01 00:00:00 2020-01-01 00:00:10
+    >>> subsample.metadata.n_samples
+    101
+    >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], label="full") # doctest: +SKIP
+    >>> plt.plot(subsample.get_timestamps(), subsample["Ex"], label="sub") # doctest: +SKIP
+    >>> plt.legend(loc=3) # doctest: +SKIP
+    >>> plt.tight_layout() # doctest: +SKIP
+    >>> plt.show() # doctest: +SKIP
+    ```
+    **See Also**
 
-    See Also
-    --------
     Subsection : For taking a subsection using dates
     """
 
@@ -1286,27 +1165,13 @@ class Subsamples(TimeProcess):
     to_sample: int | None = None
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Take a subsection from TimeData
+        """Take a subsection from TimeData
 
-        Parameters
-        ----------
-        time_data : TimeData
-            TimeData to take subsection from
+        :param time_data: TimeData to take subsection from
 
-        Returns
-        -------
-        TimeData
-            Subsection TimeData
+        :return: Subsection TimeData
 
-        Raises
-        ------
-        ProcessRunError
-            If from_sample is not less than to_sample
-        ProcessRunError
-            If from_sample is out of range
-        ProcessRunError
-            If to_sample is out of range
+        :raises ProcessRunError: If the sample bounds are unordered or out of range.
         """
         from resistics.sampling import check_sample, samples_to_datetimes
 
@@ -1347,13 +1212,13 @@ class Subsamples(TimeProcess):
 
 
 class InterpolateNans(TimeProcess):
-    """
-    Interpolate nan values in the data
+    """Interpolate nan values in the data
 
     Preserve the data type of the input time data
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.testing import time_data_with_nans
     >>> from resistics.time import InterpolateNans
     >>> time_data = time_data_with_nans()
@@ -1365,23 +1230,18 @@ class InterpolateNans(TimeProcess):
     >>> time_data_new["Hx"]
     array([2., 2., 3., 5., 1., 2., 3., 4., 2., 6., 7., 6., 5., 4., 3., 2.],
           dtype=float32)
+
+    ```
     """
 
     include_in_default_parameters: ClassVar[bool] = True
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Interpolate nan values
+        """Interpolate nan values
 
-        Parameters
-        ----------
-        time_data : TimeData
-            TimeData to remove nan values from
+        :param time_data: TimeData to remove nan values from
 
-        Returns
-        -------
-        TimeData
-            TimeData with no nan values
+        :return: TimeData with no nan values
         """
         logger.info(f"Removing nan values from channels {time_data.metadata.chans}")
         messages = []
@@ -1394,18 +1254,11 @@ class InterpolateNans(TimeProcess):
         return new_time_data(time_data, data=data, record=record)
 
     def _interpolate_nans(self, chan_data: np.ndarray) -> np.ndarray:
-        """
-        Remove nans from an array
+        """Remove nans from an array
 
-        Parameters
-        ----------
-        chan_data : np.ndarray
-            The array
+        :param chan_data: The array
 
-        Returns
-        -------
-        np.ndarray
-            Array with nans removed
+        :return: Array with nans removed
         """
         nan_bool = np.isnan(chan_data)
         if not np.any(nan_bool):
@@ -1418,13 +1271,13 @@ class InterpolateNans(TimeProcess):
 
 
 class RemoveMean(TimeProcess):
-    """
-    Remove channel mean value from each channel
+    """Remove channel mean value from each channel
 
     Preserve the data type of the input time data
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> import numpy as np
     >>> from resistics.testing import time_data_simple
     >>> from resistics.time import RemoveMean
@@ -1440,23 +1293,18 @@ class RemoveMean(TimeProcess):
             2.5,  1.5,  0.5, -0.5, -1.5], dtype=float32)
     >>> bool(np.all(hx_test == time_data_new["Hx"]))
     True
+
+    ```
     """
 
     include_in_default_parameters: ClassVar[bool] = True
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Remove mean from TimeData
+        """Remove mean from TimeData
 
-        Parameters
-        ----------
-        time_data : TimeData
-            TimeData input
+        :param time_data: TimeData input
 
-        Returns
-        -------
-        TimeData
-            TimeData with mean removed
+        :return: TimeData with mean removed
         """
         from resistics.common import array_to_string
 
@@ -1470,24 +1318,21 @@ class RemoveMean(TimeProcess):
 
 
 class Add(TimeProcess):
-    """
-    Add values to channels
+    """Add values to channels
 
     Add can be used to add a constant value to all channels or values for
     specific channels can be provided.
 
     Add preserves the data type of the original data
 
-    Parameters
-    ----------
-    add : Union[float, Dict[str, float]]
-        Either a scalar to add to all channels or dictionary with values to
+    :param add: Either a scalar to add to all channels or dictionary with values to
         add to each channel
 
-    Examples
-    --------
+    **Examples**
+
     Using a constant value for all channels passed as a scalar
 
+    ```{doctest}
     >>> from resistics.testing import time_data_ones
     >>> from resistics.time import Add
     >>> time_data = time_data_ones()
@@ -1498,8 +1343,11 @@ class Add(TimeProcess):
     >>> time_data_new["Ey"] - time_data["Ey"]
     array([5., 5., 5., 5., 5., 5., 5., 5., 5., 5.], dtype=float32)
 
+    ```
+
     Variable values for the channels provided as a dictionary
 
+    ```{doctest}
     >>> time_data = time_data_ones()
     >>> process = Add(add={"Ex": 3, "Hy": -7})
     >>> time_data_new = process.run(time_data)
@@ -1509,23 +1357,18 @@ class Add(TimeProcess):
     array([-7., -7., -7., -7., -7., -7., -7., -7., -7., -7.], dtype=float32)
     >>> time_data_new["Ey"] - time_data["Ey"]
     array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], dtype=float32)
+
+    ```
     """
 
     add: float | dict[str, float]
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Add values to the data
+        """Add values to the data
 
-        Parameters
-        ----------
-        time_data : TimeData
-            The input TimeData
+        :param time_data: The input TimeData
 
-        Returns
-        -------
-        TimeData
-            TimeData with values added
+        :return: TimeData with values added
         """
         add = self._get_add(time_data)
         logger.info(f"Added {add} to channels {time_data.metadata.chans}")
@@ -1535,7 +1378,12 @@ class Add(TimeProcess):
         return new_time_data(time_data, data=data, record=record)
 
     def _get_add(self, time_data: TimeData) -> np.ndarray:
-        """Make an array to add to the data"""
+        """Make an array to add to the data.
+
+        :param time_data: Time data whose channel order and dtype are required.
+
+        :return: Per-channel values in time-data channel order.
+        """
         add = np.zeros(shape=(time_data.metadata.n_chans), dtype=time_data.data.dtype)
         if isinstance(self.add, (float, int)):
             return add + self.add
@@ -1547,24 +1395,21 @@ class Add(TimeProcess):
 
 
 class Multiply(TimeProcess):
-    """
-    Multiply channels by values
+    """Multiply channels by values
 
     Multiply can be used to add a constant value to all channels or values for
     specific channels can be provided.
 
     Multiply preseves the original type of the time data
 
-    Parameters
-    ----------
-    multiplier : Union[Dict[str, float], float]
-        Either a float to multiply all channels with the same value or a
+    :param multiplier: Either a float to multiply all channels with the same value or a
         dictionary to specify different values for each channel
 
-    Examples
-    --------
+    **Examples**
+
     Using a constant value for all channels passed as a scalar
 
+    ```{doctest}
     >>> from resistics.testing import time_data_ones
     >>> from resistics.time import Multiply
     >>> time_data = time_data_ones()
@@ -1575,8 +1420,11 @@ class Multiply(TimeProcess):
     >>> time_data_new["Ey"]/time_data["Ey"]
     array([5., 5., 5., 5., 5., 5., 5., 5., 5., 5.], dtype=float32)
 
+    ```
+
     Variable values for the channels provided as a dictionary
 
+    ```{doctest}
     >>> time_data = time_data_ones()
     >>> process = Multiply(multiplier={"Ex": 3, "Hy": -7})
     >>> time_data_new = process.run(time_data)
@@ -1586,23 +1434,18 @@ class Multiply(TimeProcess):
     array([-7., -7., -7., -7., -7., -7., -7., -7., -7., -7.], dtype=float32)
     >>> time_data_new["Ey"]/time_data["Ey"]
     array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.], dtype=float32)
+
+    ```
     """
 
     multiplier: float | dict[str, float]
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Multiply the channels
+        """Multiply the channels
 
-        Parameters
-        ----------
-        time_data : TimeData
-            Input TimeData
+        :param time_data: Input TimeData
 
-        Returns
-        -------
-        TimeData
-            TimeData with channels multiplied by the specified numbers
+        :return: TimeData with channels multiplied by the specified numbers
         """
         mult = self._get_mult(time_data)
         logger.info(f"Multipying channels {time_data.metadata.chans} by {mult}")
@@ -1612,7 +1455,12 @@ class Multiply(TimeProcess):
         return new_time_data(time_data, data=data, record=record)
 
     def _get_mult(self, time_data: TimeData) -> np.ndarray:
-        """Make an array to multiply the data with"""
+        """Make an array to multiply the data with.
+
+        :param time_data: Time data whose channel order and dtype are required.
+
+        :return: Per-channel multipliers in time-data channel order.
+        """
         mult = np.ones(shape=(time_data.metadata.n_chans), dtype=time_data.data.dtype)
         if isinstance(self.multiplier, (float, int)):
             return mult * self.multiplier
@@ -1624,57 +1472,44 @@ class Multiply(TimeProcess):
 
 
 class LowPass(TimeProcess):
-    """
-    Apply low pass filter
+    """Apply low pass filter
 
-    Parameters
-    ----------
-    cutoff : float
-        The cutoff for the low pass
-    order : int, optional
-        Order of the filter, by default 10
+    :param cutoff: The cutoff for the low pass
+    :param order: Order of the filter, by default 10
 
-    Examples
-    --------
+    **Examples**
+
     Low pass to remove 20 Hz from a time series sampled at 50 Hz
 
-    .. plot::
-        :width: 90%
+    ```{plot}
+    :width: 90%
+    :filename-prefix: low-pass
 
-        import matplotlib.pyplot as plt
-        from resistics.testing import time_data_periodic
-        from resistics.time import LowPass
-        time_data = time_data_periodic([10, 50], fs=250, n_samples=100)
-        process = LowPass(cutoff=30)
-        filtered = process.run(time_data)
-        plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original")
-        plt.plot(filtered.get_timestamps(), filtered["chan1"], label="filtered")
-        plt.legend(loc=3)
-        plt.tight_layout()
-        plt.plot()
+    import matplotlib.pyplot as plt
+    from resistics.testing import time_data_periodic
+    from resistics.time import LowPass
+    time_data = time_data_periodic([10, 50], fs=250, n_samples=100)
+    process = LowPass(cutoff=30)
+    filtered = process.run(time_data)
+    plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original")
+    plt.plot(filtered.get_timestamps(), filtered["chan1"], label="filtered")
+    plt.legend(loc=3)
+    plt.tight_layout()
+    plt.plot()
+    ```
     """
 
     cutoff: float
     order: int = 10
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Apply the low pass filter
+        """Apply the low pass filter
 
-        Parameters
-        ----------
-        time_data : TimeData
-            The input TimeData
+        :param time_data: The input TimeData
 
-        Returns
-        -------
-        TimeData
-            The low pass filtered TimeData
+        :return: The low pass filtered TimeData
 
-        Raises
-        ------
-        ProcessRunError
-            If cutoff > nyquist
+        :raises ProcessRunError: If cutoff > nyquist
         """
         from scipy.signal import butter, sosfiltfilt
 
@@ -1694,57 +1529,44 @@ class LowPass(TimeProcess):
 
 
 class HighPass(TimeProcess):
-    """
-    High pass filter time data
+    """High pass filter time data
 
-    Parameters
-    ----------
-    cutoff : float
-        Cutoff for the high pass filter
-    order : int, optional
-        Order of the filter, by default 10
+    :param cutoff: Cutoff for the high pass filter
+    :param order: Order of the filter, by default 10
 
-    Examples
-    --------
+    **Examples**
+
     High pass to remove 3 Hz from signal sampled at 50 Hz
 
-    .. plot::
-        :width: 90%
+    ```{plot}
+    :width: 90%
+    :filename-prefix: high-pass
 
-        import matplotlib.pyplot as plt
-        from resistics.testing import time_data_periodic
-        from resistics.time import HighPass
-        time_data = time_data_periodic([10, 50], fs=250, n_samples=100)
-        process = HighPass(cutoff=30)
-        filtered = process.run(time_data)
-        plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original")
-        plt.plot(filtered.get_timestamps(), filtered["chan1"], label="filtered")
-        plt.legend(loc=3)
-        plt.tight_layout()
-        plt.plot()
+    import matplotlib.pyplot as plt
+    from resistics.testing import time_data_periodic
+    from resistics.time import HighPass
+    time_data = time_data_periodic([10, 50], fs=250, n_samples=100)
+    process = HighPass(cutoff=30)
+    filtered = process.run(time_data)
+    plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original")
+    plt.plot(filtered.get_timestamps(), filtered["chan1"], label="filtered")
+    plt.legend(loc=3)
+    plt.tight_layout()
+    plt.plot()
+    ```
     """
 
     cutoff: float
     order: int = 10
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Apply the high pass filter
+        """Apply the high pass filter
 
-        Parameters
-        ----------
-        time_data : TimeData
-            The input TimeData
+        :param time_data: The input TimeData
 
-        Returns
-        -------
-        TimeData
-            The high pass filtered TimeData
+        :return: The high pass filtered TimeData
 
-        Raises
-        ------
-        ProcessRunError
-            If cutoff > nyquist
+        :raises ProcessRunError: If cutoff > nyquist
         """
         from scipy.signal import butter, sosfiltfilt
 
@@ -1764,36 +1586,32 @@ class HighPass(TimeProcess):
 
 
 class BandPass(TimeProcess):
-    """
-    Band pass filter time data
+    """Band pass filter time data
 
-    Parameters
-    ----------
-    cutoff_low : float
-        The low cutoff for the band pass filter
-    cutoff_high : float
-        The high cutoff for the band pass filter
-    order : int, optional
-        The order of the filter, by default 10
+    :param cutoff_low: The low cutoff for the band pass filter
+    :param cutoff_high: The high cutoff for the band pass filter
+    :param order: The order of the filter, by default 10
 
-    Examples
-    --------
+    **Examples**
+
     Band pass to isolate 12 Hz signal
 
-    .. plot::
-        :width: 90%
+    ```{plot}
+    :width: 90%
+    :filename-prefix: band-pass
 
-        import matplotlib.pyplot as plt
-        from resistics.testing import time_data_periodic
-        from resistics.time import BandPass
-        time_data = time_data_periodic([10, 50], fs=250, n_samples=100)
-        process = BandPass(cutoff_low=45, cutoff_high=55)
-        filtered = process.run(time_data)
-        plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original")
-        plt.plot(filtered.get_timestamps(), filtered["chan1"], label="filtered")
-        plt.legend(loc=3)
-        plt.tight_layout()
-        plt.plot()
+    import matplotlib.pyplot as plt
+    from resistics.testing import time_data_periodic
+    from resistics.time import BandPass
+    time_data = time_data_periodic([10, 50], fs=250, n_samples=100)
+    process = BandPass(cutoff_low=45, cutoff_high=55)
+    filtered = process.run(time_data)
+    plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original")
+    plt.plot(filtered.get_timestamps(), filtered["chan1"], label="filtered")
+    plt.legend(loc=3)
+    plt.tight_layout()
+    plt.plot()
+    ```
     """
 
     cutoff_low: float
@@ -1801,25 +1619,13 @@ class BandPass(TimeProcess):
     order: int = 10
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Apply the band pass filter
+        """Apply the band pass filter
 
-        Parameters
-        ----------
-        time_data : TimeData
-            The input TimeData
+        :param time_data: The input TimeData
 
-        Returns
-        -------
-        TimeData
-            The band pass filtered TimeData
+        :return: The band pass filtered TimeData
 
-        Raises
-        ------
-        ProcessRunError
-            If cutoff_low > cutoff_high
-        ProcessRunError
-            If cutoff_high > nyquist
+        :raises ProcessRunError: If cutoffs are unordered or exceed the Nyquist frequency.
         """
         from scipy.signal import butter, sosfiltfilt
 
@@ -1846,36 +1652,32 @@ class BandPass(TimeProcess):
 
 
 class Notch(TimeProcess):
-    """
-    Notch filter time data
+    """Notch filter time data
 
-    Parameters
-    ----------
-    notch : float
-        The frequency to notch
-    band : Optional[float], optional
-        The bandwidth of the filter, by default None
-    order : int, optional
-        The order of the filter, by default 10
+    :param notch: The frequency to notch
+    :param band: The bandwidth of the filter, by default None
+    :param order: The order of the filter, by default 10
 
-    Examples
-    --------
+    **Examples**
+
     Notch to remove a 50 Hz signal, for example powerline noise
 
-    .. plot::
-        :width: 90%
+    ```{plot}
+    :width: 90%
+    :filename-prefix: notch
 
-        import matplotlib.pyplot as plt
-        from resistics.testing import time_data_periodic
-        from resistics.time import Notch
-        time_data = time_data_periodic([10, 50], fs=250, n_samples=100)
-        process = Notch(notch=50, band=10)
-        filtered = process.run(time_data)
-        plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original")
-        plt.plot(filtered.get_timestamps(), filtered["chan1"], label="filtered")
-        plt.legend(loc=3)
-        plt.tight_layout()
-        plt.plot()
+    import matplotlib.pyplot as plt
+    from resistics.testing import time_data_periodic
+    from resistics.time import Notch
+    time_data = time_data_periodic([10, 50], fs=250, n_samples=100)
+    process = Notch(notch=50, band=10)
+    filtered = process.run(time_data)
+    plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original")
+    plt.plot(filtered.get_timestamps(), filtered["chan1"], label="filtered")
+    plt.legend(loc=3)
+    plt.tight_layout()
+    plt.plot()
+    ```
     """
 
     notch: float
@@ -1883,23 +1685,13 @@ class Notch(TimeProcess):
     order: int = 10
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Apply notch filter to TimeData
+        """Apply notch filter to TimeData
 
-        Parameters
-        ----------
-        time_data : TimeData
-            Input TimeData
+        :param time_data: Input TimeData
 
-        Returns
-        -------
-        TimeData
-            Filtered TimeData
+        :return: Filtered TimeData
 
-        Raises
-        ------
-        ProcessRunError
-            If notch frequency > nyquist
+        :raises ProcessRunError: If notch frequency > nyquist
         """
         from scipy.signal import butter, sosfiltfilt
 
@@ -1926,74 +1718,63 @@ class Notch(TimeProcess):
 
 
 class Resample(TimeProcess):
-    """
-    Resample TimeData
+    """Resample TimeData
 
     Note that resampling is done on np.float64 data and this will lead to a
     temporary increase in memory usage. Once resampling is complete, the data is
     converted back to its original data type.
 
-    Parameters
-    ----------
-    new_fs : int
-        The new sampling frequency
+    :param new_fs: The new sampling frequency
 
-    Examples
-    --------
+    **Examples**
+
     Resample the data from 250 Hz to 50 Hz
 
-    .. plot::
-        :width: 90%
+    ```{plot}
+    :width: 90%
+    :filename-prefix: resample
 
-        >>> import matplotlib.pyplot as plt
-        >>> from resistics.testing import time_data_periodic
-        >>> from resistics.time import Resample
-        >>> time_data = time_data_periodic([10, 50], fs=250, n_samples=200)
-        >>> print(time_data.metadata.n_samples, time_data.metadata.first_time, time_data.metadata.last_time)
-        200 2020-01-01 00:00:00 2020-01-01 00:00:00.796
-        >>> process = Resample(new_fs=50)
-        >>> resampled = process.run(time_data)
-        >>> print(resampled.metadata.n_samples, resampled.metadata.first_time, resampled.metadata.last_time)
-        40 2020-01-01 00:00:00 2020-01-01 00:00:00.78
-        >>> plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original") # doctest: +SKIP
-        >>> plt.plot(resampled.get_timestamps(), resampled["chan1"], label="resampled") # doctest: +SKIP
-        >>> plt.legend(loc=3) # doctest: +SKIP
-        >>> plt.tight_layout() # doctest: +SKIP
-        >>> plt.show() # doctest: +SKIP
+    >>> import matplotlib.pyplot as plt
+    >>> from resistics.testing import time_data_periodic
+    >>> from resistics.time import Resample
+    >>> time_data = time_data_periodic([10, 50], fs=250, n_samples=200)
+    >>> print(time_data.metadata.n_samples, time_data.metadata.first_time, time_data.metadata.last_time)
+    200 2020-01-01 00:00:00 2020-01-01 00:00:00.796
+    >>> process = Resample(new_fs=50)
+    >>> resampled = process.run(time_data)
+    >>> print(resampled.metadata.n_samples, resampled.metadata.first_time, resampled.metadata.last_time)
+    40 2020-01-01 00:00:00 2020-01-01 00:00:00.78
+    >>> plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original") # doctest: +SKIP
+    >>> plt.plot(resampled.get_timestamps(), resampled["chan1"], label="resampled") # doctest: +SKIP
+    >>> plt.legend(loc=3) # doctest: +SKIP
+    >>> plt.tight_layout() # doctest: +SKIP
+    >>> plt.show() # doctest: +SKIP
+    ```
     """
 
     new_fs: float
 
     def run(self, time_data: TimeData) -> TimeData:
-        r"""
-        Resample TimeData
+        """Resample TimeData
 
         Resampling uses the polyphase method which does not assume periodicity
         Calculate the upsample rate and the downsampling rate and using
         polyphase filtering, the final sample rate is:
 
-        .. math::
-
-            (up / down) * original sample rate
-
+        ```{math}
+        (up / down) * original sample rate
+        ```
         Therefore, to get a sampling frequency of resampFreq, want:
 
-        .. math::
-
-            (resampFreq / sampleFreq) * sampleFreq
-
+        ```{math}
+        (resampFreq / sampleFreq) * sampleFreq
+        ```
         Use the fractions library to get up and down as integers which they are
         required to be.
 
-        Parameters
-        ----------
-        time_data : TimeData
-            Input TimeData
+        :param time_data: Input TimeData
 
-        Returns
-        -------
-        TimeData
-            Resampled TimeData
+        :return: Resampled TimeData
         """
         from fractions import Fraction
 
@@ -2025,68 +1806,58 @@ class Resample(TimeProcess):
 
 
 class Decimate(TimeProcess):
-    """
-    Decimate TimeData
+    """Decimate TimeData
 
-    .. warning::
+    ```{warning}
+    Data is converted to np.float64 prior to decimation. This is going to
+    cause a temporary increase in memory usage, but decimating np.float64
+    delivers improved results.
 
-        Data is converted to np.float64 prior to decimation. This is going to
-        cause a temporary increase in memory usage, but decimating np.float64
-        delivers improved results.
+    The decimated data is converted back to its original data type prior
+    to being returned.
 
-        The decimated data is converted back to its original data type prior
-        to being returned.
+    The max_factor for a single decimation step is by default set as 3.
+    When using np.float64 data, it is possible to use a larger decimation
+    factor, up to 13, but this does again have an impact on results.
 
-        The max_factor for a single decimation step is by default set as 3.
-        When using np.float64 data, it is possible to use a larger decimation
-        factor, up to 13, but this does again have an impact on results.
+    For more information, see
+    https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.decimate.html
+    ```
+    :param factor: The decimation factor
 
-        For more information, see
-        https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.decimate.html
+    **Examples**
 
-    Parameters
-    ----------
-    factor : int
-        The decimation factor
+    ```{plot}
+    :width: 90%
+    :filename-prefix: decimate
 
-    Examples
-    --------
-    .. plot::
-        :width: 90%
-
-        >>> import matplotlib.pyplot as plt
-        >>> from resistics.testing import time_data_periodic
-        >>> from resistics.time import Decimate
-        >>> time_data = time_data_periodic([10, 50], fs=250, n_samples=200)
-        >>> print(time_data.metadata.n_samples, time_data.metadata.first_time, time_data.metadata.last_time)
-        200 2020-01-01 00:00:00 2020-01-01 00:00:00.796
-        >>> process = Decimate(factor=5)
-        >>> decimated = process.run(time_data)
-        >>> print(decimated.metadata.n_samples, decimated.metadata.first_time, decimated.metadata.last_time)
-        40 2020-01-01 00:00:00 2020-01-01 00:00:00.78
-        >>> plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original") # doctest: +SKIP
-        >>> plt.plot(decimated.get_timestamps(), decimated["chan1"], label="decimated") # doctest: +SKIP
-        >>> plt.legend(loc=3) # doctest: +SKIP
-        >>> plt.tight_layout() # doctest: +SKIP
-        >>> plt.show() # doctest: +SKIP
+    >>> import matplotlib.pyplot as plt
+    >>> from resistics.testing import time_data_periodic
+    >>> from resistics.time import Decimate
+    >>> time_data = time_data_periodic([10, 50], fs=250, n_samples=200)
+    >>> print(time_data.metadata.n_samples, time_data.metadata.first_time, time_data.metadata.last_time)
+    200 2020-01-01 00:00:00 2020-01-01 00:00:00.796
+    >>> process = Decimate(factor=5)
+    >>> decimated = process.run(time_data)
+    >>> print(decimated.metadata.n_samples, decimated.metadata.first_time, decimated.metadata.last_time)
+    40 2020-01-01 00:00:00 2020-01-01 00:00:00.78
+    >>> plt.plot(time_data.get_timestamps(), time_data["chan1"], label="original") # doctest: +SKIP
+    >>> plt.plot(decimated.get_timestamps(), decimated["chan1"], label="decimated") # doctest: +SKIP
+    >>> plt.legend(loc=3) # doctest: +SKIP
+    >>> plt.tight_layout() # doctest: +SKIP
+    >>> plt.show() # doctest: +SKIP
+    ```
     """
 
     factor: Annotated[int, Field(ge=1)]
     max_single_factor: Annotated[int, Field(ge=2)] = 3
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Decimate TimeData
+        """Decimate TimeData
 
-        Parameters
-        ----------
-        time_data : TimeData
-            Input TimeData
+        :param time_data: Input TimeData
 
-        Returns
-        -------
-        TimeData
-            Decimated TimeData
+        :return: Decimated TimeData
         """
         from scipy.signal import decimate
 
@@ -2127,26 +1898,21 @@ class Decimate(TimeProcess):
         - Now want to combine factors to reduce the number of calls
         - Each single downsample factor must be <= self.max_single_factor
 
-        Parameters
-        ----------
-        downsample_factor : int
-            The number to factorise
+        :param downsample_factor: The number to factorise
 
-        Returns
-        -------
-        List[int]
-            The downsampling factors to use
+        :return: The downsampling factors to use
 
-        Notes
-        -----
+        **Notes**
+
         There's a few pathological cases here that are being ignored. For
         example, what if the downsample factor is the product of two large
         primes.
 
-        Examples
-        --------
+        **Examples**
+
         A low value example
 
+        ```{doctest}
         >>> from resistics.time import Decimate
         >>> process = Decimate(factor=24)
         >>> process._get_downsample_factors(process.factor)
@@ -2154,14 +1920,19 @@ class Decimate(TimeProcess):
         >>> process._prime_factorisation(process.factor)
         [2, 2, 2, 3]
 
+        ```
+
         An example with a higher value and a different maximum factor for any
         single decimation step
 
+        ```{doctest}
         >>> process = Decimate(factor=96, max_single_factor=13)
         >>> process._get_downsample_factors(process.factor)
         [8, 12]
         >>> process._prime_factorisation(process.factor)
         [2, 2, 2, 2, 2, 3]
+
+        ```
         """
         if downsample_factor <= self.max_single_factor:
             return [downsample_factor]
@@ -2178,18 +1949,11 @@ class Decimate(TimeProcess):
         return downsamples
 
     def _prime_factorisation(self, n: int) -> list[int]:
-        """
-        Factorise an integer into primes
+        """Factorise an integer into primes
 
-        Parameters
-        ----------
-        n : int
-            The integer to factorise
+        :param n: The integer to factorise
 
-        Returns
-        -------
-        List[int]
-            List of factors
+        :return: List of factors
         """
         import math
 
@@ -2211,46 +1975,43 @@ class Decimate(TimeProcess):
 
 
 class ShiftTimestamps(TimeProcess):
-    """
-    Shift timestamps. This method is usually used when there is an offset on the
+    """Shift timestamps. This method is usually used when there is an offset on the
     sampling, so that instead of coinciding with a second or an hour, they are
     offset from this.
 
     The function interpolates the original data onto the shifted timestamps.
 
-    Parameters
-    ----------
-    shift : float
-        The shift in seconds. This must be positive as data is never
+    :param shift: The shift in seconds. This must be positive as data is never
         extrapolated
 
-    Examples
-    --------
+    **Examples**
+
     An example shifting timestamps for TimeData with a sample period of 20
     seconds (fs = 1/20 = 0.05 Hz) but with an offset of 10 seconds on the
     timestamps
 
-    .. plot::
-        :width: 90%
+    ```{plot}
+    :width: 90%
+    :filename-prefix: shift-timestamps
 
-        >>> from resistics.testing import time_data_with_offset
-        >>> from resistics.time import ShiftTimestamps
-        >>> time_data = time_data_with_offset(offset=10, fs=1/20, n_samples=5)
-        >>> [x.time().strftime('%H:%M:%S') for x in time_data.get_timestamps()]
-        ['00:00:10', '00:00:30', '00:00:50', '00:01:10', '00:01:30']
-        >>> process = ShiftTimestamps(shift=10, style="linear")
-        >>> result = process.run(time_data)
-        >>> [x.time().strftime('%H:%M:%S') for x in result.get_timestamps()]
-        ['00:00:20', '00:00:40', '00:01:00', '00:01:20']
-        >>> plt.plot(time_data.get_timestamps(), time_data["chan1"], "bo", label="original") # doctest: +SKIP
-        >>> plt.plot(result.get_timestamps(), result["chan1"], "rd", label="shifted") # doctest: +SKIP
-        >>> plt.legend(loc=4) # doctest: +SKIP
-        >>> plt.grid() # doctest: +SKIP
-        >>> plt.tight_layout() # doctest: +SKIP
-        >>> plt.show() # doctest: +SKIP
+    >>> from resistics.testing import time_data_with_offset
+    >>> from resistics.time import ShiftTimestamps
+    >>> time_data = time_data_with_offset(offset=10, fs=1/20, n_samples=5)
+    >>> [x.time().strftime('%H:%M:%S') for x in time_data.get_timestamps()]
+    ['00:00:10', '00:00:30', '00:00:50', '00:01:10', '00:01:30']
+    >>> process = ShiftTimestamps(shift=10, style="linear")
+    >>> result = process.run(time_data)
+    >>> [x.time().strftime('%H:%M:%S') for x in result.get_timestamps()]
+    ['00:00:20', '00:00:40', '00:01:00', '00:01:20']
+    >>> plt.plot(time_data.get_timestamps(), time_data["chan1"], "bo", label="original") # doctest: +SKIP
+    >>> plt.plot(result.get_timestamps(), result["chan1"], "rd", label="shifted") # doctest: +SKIP
+    >>> plt.legend(loc=4) # doctest: +SKIP
+    >>> plt.grid() # doctest: +SKIP
+    >>> plt.tight_layout() # doctest: +SKIP
+    >>> plt.show() # doctest: +SKIP
+    ```
+    **See Also**
 
-    See Also
-    --------
     CropTimestamps : Crop timestamps to a specified time unit
     """
 
@@ -2258,23 +2019,13 @@ class ShiftTimestamps(TimeProcess):
     style: Literal["spline", "linear"] = "spline"
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Shift timestamps and interpolate data
+        """Shift timestamps and interpolate data
 
-        Parameters
-        ----------
-        time_data : TimeData
-            Input TimeData
+        :param time_data: Input TimeData
 
-        Returns
-        -------
-        TimeData
-            TimeData with shifted timestamps and data interpolated
+        :return: TimeData with shifted timestamps and data interpolated
 
-        Raises
-        ------
-        ProcessRunError
-            If the shift is greater than the sampling frequency. This method is
+        :raises ProcessRunError: If the shift is greater than the sampling frequency. This method is
             not supposed to be used for resampling, but simply for removing an
             offset from timestamps
         """
@@ -2316,23 +2067,13 @@ class ShiftTimestamps(TimeProcess):
     def _spline_interpolate(
         self, x: np.ndarray, x_shift: np.ndarray, time_data: TimeData
     ) -> np.ndarray:
-        """
-        Perform a spline interpolation
+        """Perform a spline interpolation
 
-        Parameters
-        ----------
-        x : np.ndarray
-            The sample numbers of the current timestamps.
-        x_shift : np.ndarray
-            The sample number of the requested timestamps.
-        time_data : TimeData
-            The time data
+        :param x: The sample numbers of the current timestamps.
+        :param x_shift: The sample number of the requested timestamps.
+        :param time_data: The time data
 
-        Returns
-        -------
-        np.ndarray
-            The values of the data at the new timestamps calculated via a spline
-            interpolation
+        :return: The values of the data at the new timestamps calculated via a spline interpolation
         """
         from scipy.interpolate import splev, splrep
 
@@ -2348,23 +2089,13 @@ class ShiftTimestamps(TimeProcess):
     def _linear_interpolate(
         self, x: np.ndarray, x_shift: np.ndarray, time_data: TimeData
     ) -> np.ndarray:
-        """
-        Perform a linear interpolation
+        """Perform a linear interpolation
 
-        Parameters
-        ----------
-        x : np.ndarray
-            The sample numbers of the current timestamps.
-        x_shift : np.ndarray
-            The sample number of the requested timestamps.
-        time_data : TimeData
-            The time data
+        :param x: The sample numbers of the current timestamps.
+        :param x_shift: The sample number of the requested timestamps.
+        :param time_data: The time data
 
-        Returns
-        -------
-        np.ndarray
-            The values of the data at the new timestamps calculated via a linear
-            interpolation
+        :return: The values of the data at the new timestamps calculated via a linear interpolation
         """
         from scipy.interpolate import interp1d
 
@@ -2374,12 +2105,11 @@ class ShiftTimestamps(TimeProcess):
 
 
 class CropTimestamps(TimeProcess):
-    """
-    Crop timestamps to make them begin at the next second or minute or hour
+    """Crop timestamps to make them begin at the next second or minute or hour
     and end one sample before the nearest second, minute or hour.
 
     Input timestamps should be sampled coincidentally with the time
-    unit. This can be achieved with :class:`~ShiftTimestamps`.
+    unit. This can be achieved with {py:class}`~ShiftTimestamps`.
 
     Cropping works as follows:
 
@@ -2388,36 +2118,34 @@ class CropTimestamps(TimeProcess):
     - Last times are cropped to the previous time unit or maintained if they are
       a whole time unit already
 
-    Parameters
-    ----------
-    time_unit : str
-        The time unit to crop to given in pandas style time freq
+    :param time_unit: The time unit to crop to given in pandas style time freq
 
-    Examples
-    --------
+    **Examples**
+
     An example cropping timestamps to the nearest minute.
 
-    .. plot::
-        :width: 90%
+    ```{plot}
+    :width: 90%
+    :filename-prefix: crop-timestamps
 
-        >>> from resistics.testing import time_data_random
-        >>> from resistics.time import CropTimestamps
-        >>> time_data = time_data_random(n_samples=1000)
-        >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
-        2020-01-01 00:00:00 2020-01-01 00:01:39.9
-        >>> process = CropTimestamps(time_unit="T")
-        >>> result = process.run(time_data)
-        >>> print(result.metadata.first_time, result.metadata.last_time)
-        2020-01-01 00:00:00 2020-01-01 00:01:00
-        >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], "bo-", label="original") # doctest: +SKIP
-        >>> plt.plot(result.get_timestamps(), result["Ex"], "rd-", label="cropped") # doctest: +SKIP
-        >>> plt.legend(loc=4) # doctest: +SKIP
-        >>> plt.grid() # doctest: +SKIP
-        >>> plt.tight_layout() # doctest: +SKIP
-        >>> plt.show() # doctest: +SKIP
+    >>> from resistics.testing import time_data_random
+    >>> from resistics.time import CropTimestamps
+    >>> time_data = time_data_random(n_samples=1000)
+    >>> print(time_data.metadata.first_time, time_data.metadata.last_time)
+    2020-01-01 00:00:00 2020-01-01 00:01:39.9
+    >>> process = CropTimestamps(time_unit="T")
+    >>> result = process.run(time_data)
+    >>> print(result.metadata.first_time, result.metadata.last_time)
+    2020-01-01 00:00:00 2020-01-01 00:01:00
+    >>> plt.plot(time_data.get_timestamps(), time_data["Ex"], "bo-", label="original") # doctest: +SKIP
+    >>> plt.plot(result.get_timestamps(), result["Ex"], "rd-", label="cropped") # doctest: +SKIP
+    >>> plt.legend(loc=4) # doctest: +SKIP
+    >>> plt.grid() # doctest: +SKIP
+    >>> plt.tight_layout() # doctest: +SKIP
+    >>> plt.show() # doctest: +SKIP
+    ```
+    **See Also**
 
-    See Also
-    --------
     ShiftTimestamps : Calculate data values on shifted timestamps
     """
 
@@ -2426,15 +2154,9 @@ class CropTimestamps(TimeProcess):
     def run(self, time_data: TimeData) -> TimeData:
         """Crop timestamps to the next time unit
 
-        Parameters
-        ----------
-        time_data : TimeData
-            The TimeData to crop
+        :param time_data: The TimeData to crop
 
-        Returns
-        -------
-        TimeData
-            The cropped TimeData
+        :return: The cropped TimeData
         """
         from resistics.sampling import (
             datetimes_to_samples,
@@ -2475,21 +2197,14 @@ class CropTimestamps(TimeProcess):
 
 
 def serialize_custom_fnc(fnc: Callable) -> str:
-    """
-    Serialize the custom functions
+    """Serialize the custom functions
 
     This is not really reversible and recovering parameters from ApplyFunction
     is not supported
 
-    Parameters
-    ----------
-    fnc : Callable
-        Function to serialize
+    :param fnc: Function to serialize
 
-    Returns
-    -------
-    str
-        serialized output
+    :return: serialized output
     """
     from resistics.common import array_to_string
 
@@ -2500,19 +2215,16 @@ def serialize_custom_fnc(fnc: Callable) -> str:
 
 
 class ApplyFunction(TimeProcess):
-    """
-    Apply a generic functions to the time data
+    """Apply a generic functions to the time data
 
     To be used with single argument functions that take the channel data array
     and a perform transformation on the data.
 
-    Parameters
-    ----------
-    fncs : Dict[str, Callable]
-        Dictionary of channel to callable
+    :param fncs: Dictionary of channel to callable
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> import numpy as np
     >>> from resistics.testing import time_data_ones
     >>> from resistics.time import ApplyFunction
@@ -2527,6 +2239,8 @@ class ApplyFunction(TimeProcess):
     array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.], dtype=float32)
     >>> result["Hy"]
     array([-1., -1., -1., -1., -1., -1., -1., -1., -1., -1.])
+
+    ```
     """
 
     model_config = ConfigDict(
@@ -2540,18 +2254,11 @@ class ApplyFunction(TimeProcess):
     fncs: dict[str, Callable]
 
     def run(self, time_data: TimeData) -> TimeData:
-        """
-        Apply functions to channel data
+        """Apply functions to channel data
 
-        Parameters
-        ----------
-        time_data : TimeData
-            Input TimeData
+        :param time_data: Input TimeData
 
-        Returns
-        -------
-        TimeData
-            Transformed TimeData
+        :return: Transformed TimeData
         """
         logger.info(f"Applying custom functions to channels {list(self.fncs.keys())}")
         messages = []

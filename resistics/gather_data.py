@@ -41,7 +41,7 @@ class EvaluationFrequencyGather(ResisticsProcess):
 
     The selection is deliberately a separate input: it makes the persisted
     evaluation artifact boundary explicit and leaves window-selection policy in
-    :class:`GatherCriteria`, not in a job or parameter file.  Remote-reference
+    {py:class}`GatherCriteria`, not in a job or parameter file.  Remote-reference
     alignment is intentionally not guessed; an explicit resolved remote is
     rejected until the cross-station aligner is implemented.
     """
@@ -51,7 +51,14 @@ class EvaluationFrequencyGather(ResisticsProcess):
     runtime_requirements: ClassVar[list[str]] = ["project_path"]
 
     def execute(self, inputs: dict[str, Any], context: Any) -> GatheredData:
-        """Load and concatenate all selected local-run evaluation artifacts."""
+        """Load and concatenate all selected local-run evaluation artifacts.
+
+        :param inputs: Named upstream values supplied to the process.
+        :param context: Runtime values supplied by the flow executor.
+        :return: Load and concatenate all selected local-run evaluation artifacts.
+        :raises NotImplementedError: If the requested operation cannot satisfy its contract.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         from resistics.spectra import EvaluationFrequencyReader
         from resistics.transfunc import ImpedanceTensor
 
@@ -131,8 +138,7 @@ class EvaluationFrequencyGather(ResisticsProcess):
 
 
 class SiteCombinedMetadata(WriteableMetadata):
-    """
-    Metadata for combined data
+    """Metadata for combined data
 
     Combined metadata stores metadata for measurements that are combined from
     a single site.
@@ -177,8 +183,7 @@ class SiteCombinedMetadata(WriteableMetadata):
 
 
 class SiteCombinedData(ResisticsData):
-    """
-    Combined data is data that is combined from a single site for the purposes
+    """Combined data is data that is combined from a single site for the purposes
     of regression.
 
     All of the data that is combined should have the same sampling frequency,
@@ -192,30 +197,25 @@ class SiteCombinedData(ResisticsData):
     n_wins x n_chans
 
     The data is complex valued.
+
+    :param metadata: Metadata describing the combined site arrays.
+    :param data: Combined arrays keyed by evaluation-frequency index.
     """
 
     def __init__(self, metadata: SiteCombinedMetadata, data: dict[int, np.ndarray]):
-        """
-        Initialise the CombinedData
-
-        Parameters
-        ----------
-        metadata : CombinedMetadata
-            The combined metadata
-        data : Dict[int, np.ndarray]
-            The data with index the evaluation frequency index and value the
-            combined data from a site for the evaluation frequency
-        """
         self.metadata = metadata
         self.data = data
 
 
 class GatheredData(ResisticsData):
-    """
-    Class to hold data to be used in by Regression preparers
+    """Class to hold data to be used in by Regression preparers
 
     Gathered data has an out_data, in_data and cross_data. The important thing
     here is that the data is all aligned with regards to windows
+
+    :param out_data: Aligned output-channel data from the target site.
+    :param in_data: Aligned input-channel data from the target site.
+    :param cross_data: Aligned cross-channel data from the target or remote site.
     """
 
     def __init__(
@@ -232,10 +232,7 @@ class GatheredData(ResisticsData):
 class _GatherAssembler:
     """Assemble one immutable gather plan into regression-ready arrays.
 
-    Parameters
-    ----------
-    record_factory : Callable[[list[str]], Any]
-        Factory used to append gather records to copied histories.
+    :param record_factory: Factory used to append gather records to copied histories.
     """
 
     def __init__(self, record_factory: Callable[[list[str]], Any]):
@@ -251,23 +248,13 @@ class _GatherAssembler:
     ) -> GatheredData:
         """Materialise selected rows and combined metadata from a gather plan.
 
-        Parameters
-        ----------
-        plan : _GatherPlan
-            Immutable aligned window selections.
-        target : str
-            Canonical target station path.
-        tf : TransferFunction
-            Transfer function defining output, input, and cross channels.
-        target_artifacts : dict[str, Any]
-            Validated target artifacts keyed by run path.
-        remote_artifacts : dict[str, dict[str, Any]]
-            Compatible remote artifacts keyed by station and run path.
+        :param plan: Immutable aligned window selections.
+        :param target: Canonical target station path.
+        :param tf: Transfer function defining output, input, and cross channels.
+        :param target_artifacts: Validated target artifacts keyed by run path.
+        :param remote_artifacts: Compatible remote artifacts keyed by station and run path.
 
-        Returns
-        -------
-        GatheredData
-            Window-aligned arrays and source metadata ready for regression.
+        :return: Window-aligned arrays and source metadata ready for regression.
         """
         cross_channels = _cross_channels(tf)
         out_values = {}
@@ -345,26 +332,14 @@ class _GatherAssembler:
     ) -> np.ndarray:
         """Extract selected rows once per source artifact.
 
-        Parameters
-        ----------
-        locators : tuple[_EvaluationLocator, ...]
-            Ordered source rows selected by the planner.
-        level : int
-            Realised decimation level.
-        evaluation_index : int
-            Evaluation-frequency index within the level.
-        channels : list[str]
-            Channel names to extract.
+        :param locators: Ordered source rows selected by the planner.
+        :param level: Realised decimation level.
+        :param evaluation_index: Evaluation-frequency index within the level.
+        :param channels: Channel names to extract.
 
-        Returns
-        -------
-        np.ndarray
-            Complex array shaped as selected windows by channels.
+        :return: Complex array shaped as selected windows by channels.
 
-        Raises
-        ------
-        ChannelNotFoundError
-            If an artifact does not contain a requested channel.
+        :raises ChannelNotFoundError: If an artifact does not contain a requested channel.
         """
         from resistics.errors import ChannelNotFoundError
 
@@ -401,25 +376,14 @@ class _GatherAssembler:
     ) -> SiteCombinedMetadata:
         """Build source-aware metadata for one gathered channel role.
 
-        Parameters
-        ----------
-        site_name : str
-            Display name for the contributing station set.
-        site_names : list[str]
-            Canonical contributing station paths.
-        used_runs : frozenset[str]
-            Run paths contributing selected rows.
-        channels : list[str]
-            Channels represented by the assembled arrays.
-        eval_freqs : list[float]
-            Ordered realised evaluation frequencies.
-        artifacts : dict[str, Any]
-            Source artifacts keyed by run path.
+        :param site_name: Display name for the contributing station set.
+        :param site_names: Canonical contributing station paths.
+        :param used_runs: Run paths contributing selected rows.
+        :param channels: Channels represented by the assembled arrays.
+        :param eval_freqs: Ordered realised evaluation frequencies.
+        :param artifacts: Source artifacts keyed by run path.
 
-        Returns
-        -------
-        SiteCombinedMetadata
-            Combined source identity, channel, frequency, and history metadata.
+        :return: Combined source identity, channel, frequency, and history metadata.
         """
         first_run = sorted(used_runs)[0]
         first_artifact = artifacts[first_run]
@@ -455,8 +419,7 @@ class _GatherAssembler:
 
 
 class QuickGather(ResisticsProcess):
-    """
-    Processor to gather data outside of a resistics environment
+    """Processor to gather data outside of a resistics environment
 
     This is intended for use when quickly calculating out a transfer function
     for a single measurement and only a single spectra data instance is accepted
@@ -464,8 +427,8 @@ class QuickGather(ResisticsProcess):
 
     Remote reference or intersite processing is not possible using QuickGather
 
-    See Also
-    --------
+    **See Also**
+
     Gather : For persisted, aligned project gathering.
     """
 
@@ -476,27 +439,17 @@ class QuickGather(ResisticsProcess):
         tf: TransferFunction,
         eval_data: SpectraData,
     ) -> GatheredData:
-        """
-        Generate the GatheredData object for input into regression preparation
+        """Generate the GatheredData object for input into regression preparation
 
         The input is a single spectra data instance and is used to populate the
         in_data, out_data and cross_data.
 
-        Parameters
-        ----------
-        dir_path : Path
-            The directory path to the measurement
-        dec_params : DecimationParameters
-            The decimation parameters
-        tf : TransferFunction
-            The transfer function
-        eval_data : SpectraData
-            The spectra data at the evaluation frequencies
+        :param dir_path: The directory path to the measurement
+        :param dec_params: The decimation parameters
+        :param tf: The transfer function
+        :param eval_data: The spectra data at the evaluation frequencies
 
-        Returns
-        -------
-        GatheredData
-            GatheredData for regression preparer
+        :return: GatheredData for regression preparer
         """
         metadata = eval_data.metadata
         cross_channels = _cross_channels(tf)
@@ -540,7 +493,16 @@ class QuickGather(ResisticsProcess):
         metadata: SpectraMetadata,
         data: dict[int, np.ndarray],
     ) -> SiteCombinedData:
-        """Get the combined metadata"""
+        """Get the combined metadata
+
+        :param meas: Measurement role represented by the combined data.
+        :param fs: Optional sample rate used to filter or describe the data.
+        :param chans: Channels to include, or all available channels when omitted.
+        :param eval_freqs: Evaluation frequencies represented by the arrays.
+        :param metadata: Metadata describing the associated arrays.
+        :param data: Arrays keyed by decimation level.
+        :return: Get the combined metadata
+        """
         combined_metadata = SiteCombinedMetadata(
             site_name=meas,
             fs=fs,

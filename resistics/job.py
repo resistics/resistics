@@ -42,15 +42,19 @@ from resistics.project import Project, get_results_path
 class JobDefinition(BaseModel):
     """Human-authored job referencing project flow and parameter files.
 
-    Examples
-    --------
+    **Examples**
+
     A minimal job uses the complete project scope and the default output label.
 
+    ```{doctest}
+    >>> from resistics.job import JobDefinition
     >>> job = JobDefinition(
     ...     name="example", flow="default-flow", parameters="default-parameters"
     ... )
     >>> job.output_label
     'default'
+
+    ```
     """
 
     name: str
@@ -109,36 +113,23 @@ class JobState(str, Enum):  # noqa: UP042 - preserve existing string/Enum semant
 
 
 class JobProgressEvent(BaseModel):
-    """Serializable progress update emitted by :class:`JobRunner`.
+    """Serializable progress update emitted by {py:class}`JobRunner`.
 
-    Attributes
-    ----------
-    state : JobState
-        Overall job lifecycle state.
-    message : str
-        Human-readable status detail.
-    job_name : str
-        Processing job identifier.
-    survey : str | None
-        Current MTH5 survey.
-    station : str | None
-        Current MTH5 station.
-    run : str | None
-        Current MTH5 run.
-    sample_rate : float | None
-        Current station sampling frequency.
-    node_id : str | None
-        Current flow node.
-    step_type : str | None
-        Current structured task identifier.
-    error : str | None
-        Failure detail.
-    progress : ProcessingProgressEvent | None
-        Fine-grained process progress when available.
-    elapsed_seconds : float
-        Elapsed job runtime.
-    timestamp : datetime
-        UTC event creation time.
+    **Attributes**
+
+    - **state** — Overall job lifecycle state.
+    - **message** — Human-readable status detail.
+    - **job_name** — Processing job identifier.
+    - **survey** — Current MTH5 survey.
+    - **station** — Current MTH5 station.
+    - **run** — Current MTH5 run.
+    - **sample_rate** — Current station sampling frequency.
+    - **node_id** — Current flow node.
+    - **step_type** — Current structured task identifier.
+    - **error** — Failure detail.
+    - **progress** — Fine-grained process progress when available.
+    - **elapsed_seconds** — Elapsed job runtime.
+    - **timestamp** — UTC event creation time.
     """
 
     state: JobState
@@ -198,7 +189,12 @@ _JOB_TEMPLATE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
 def validate_job_template_name(name: str) -> str:
-    """Return a filename-safe template name or raise a user-facing error."""
+    """Return a filename-safe template name or raise a user-facing error.
+
+    :param name: Stable name used for the persisted resource.
+    :return: A filename-safe template name or raise a user-facing error.
+    :raises ValueError: If the requested operation cannot satisfy its contract.
+    """
     value = name.strip()
     if not _JOB_TEMPLATE_NAME.fullmatch(value):
         raise ValueError(
@@ -210,14 +206,20 @@ def validate_job_template_name(name: str) -> str:
 
 
 class ProjectJobs:
-    """Access and create job definitions belonging to one project."""
+    """Access and create job definitions belonging to one project.
+
+    :param project: Open project that owns the job definitions.
+    """
 
     def __init__(self, project: Project):
         self.project = project
         self.jobs_path = project.project_path / "processing" / "jobs"
 
     def list(self) -> builtins.list[JobSummary]:
-        """List and validate project YAML jobs without executing them."""
+        """List and validate project YAML jobs without executing them.
+
+        :return: List and validate project YAML jobs without executing them.
+        """
         paths = sorted(
             path
             for pattern in ("*.yaml", "*.yml")
@@ -253,7 +255,12 @@ class ProjectJobs:
         return summaries
 
     def create_template(self, definition: JobDefinition) -> Path:
-        """Create a new editable YAML job template without overwriting a job."""
+        """Create a new editable YAML job template without overwriting a job.
+
+        :param definition: Job definition to persist as a template.
+        :return: The value produced when this operation completes.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         name = validate_job_template_name(definition.name)
         definition = definition.model_copy(update={"name": name})
         for suffix in (".yaml", ".yml"):
@@ -271,7 +278,11 @@ class ProjectJobs:
         return path
 
     def validate(self, job: Path | str) -> JobValidation:
-        """Resolve and validate a job, returning user-facing errors."""
+        """Resolve and validate a job, returning user-facing errors.
+
+        :param job: Job path or name to resolve within the project.
+        :return: The value produced when this operation completes.
+        """
         try:
             job_path = self._job_path(job)
             definition = model_from_yaml_file(JobDefinition, job_path)
@@ -311,29 +322,16 @@ class ProjectJobs:
     ) -> JobValidation:
         """Validate one job from resources already loaded by a caller.
 
-        Parameters
-        ----------
-        job_path : Path
-            Project-local job definition path.
-        definition : JobDefinition
-            Parsed job definition.
-        flow_path : Path
-            Resolved flow definition path.
-        flow : FlowDefinition
-            Parsed flow definition.
-        parameters_path : Path
-            Resolved parameter-set path.
-        parameters : ParameterSet
-            Parsed parameter set.
-        criteria_path : Path | None
-            Resolved criteria path when the job references criteria.
-        criteria : GatherCriteria | None
-            Parsed criteria when the job references criteria.
+        :param job_path: Project-local job definition path.
+        :param definition: Parsed job definition.
+        :param flow_path: Resolved flow definition path.
+        :param flow: Parsed flow definition.
+        :param parameters_path: Resolved parameter-set path.
+        :param parameters: Parsed parameter set.
+        :param criteria_path: Resolved criteria path when the job references criteria.
+        :param criteria: Parsed criteria when the job references criteria.
 
-        Returns
-        -------
-        JobValidation
-            Complete validation result without reading YAML resources.
+        :return: Complete validation result without reading YAML resources.
         """
         errors: list[str] = []
         warnings: list[str] = []
@@ -390,7 +388,11 @@ class ProjectJobs:
         )
 
     def _criteria_errors(self, criteria: GatherCriteria) -> builtins.list[str]:
-        """Validate configured station/rate references against project inventory."""
+        """Validate configured station/rate references against project inventory.
+
+        :param criteria: Gathering policy resolved for the batch.
+        :return: The value produced when this operation completes.
+        """
         table = self.project.table.copy()
         if "station_path" not in table:
             table["station_path"] = (
@@ -432,7 +434,13 @@ class ProjectJobs:
     def selected_stages(
         definition: JobDefinition, flow: FlowDefinition
     ) -> builtins.list[FlowStage]:
-        """Resolve the optional stage scope, preserving flow execution order."""
+        """Resolve the optional stage scope, preserving flow execution order.
+
+        :param definition: Job definition to persist as a template.
+        :param flow: Flow definition to inspect or execute.
+        :return: The value produced when this operation completes.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         available = flow.flow_stages()
         requested = definition.scope.stages
         if not requested:
@@ -500,7 +508,11 @@ class ProjectJobs:
     def plan_batches(
         self, definition: JobDefinition
     ) -> builtins.list[StationRateBatch]:
-        """Expand a job scope into deterministic station/rate batches."""
+        """Expand a job scope into deterministic station/rate batches.
+
+        :param definition: Job definition to persist as a template.
+        :return: Expand a job scope into deterministic station/rate batches.
+        """
         table = self.project.table.copy()
         scope = definition.scope
         if scope.surveys:
@@ -525,14 +537,23 @@ class ProjectJobs:
         return batches
 
     def batch_output_path(self, batch: StationRateBatch, output_label: str) -> Path:
-        """Return the station-centric output path for one rate batch."""
+        """Return the station-centric output path for one rate batch.
+
+        :param batch: Batch used by this operation.
+        :param output_label: Artifact namespace containing or receiving the data.
+        :return: The station-centric output path for one rate batch.
+        """
         return get_results_path(
             self.project.project_path, batch.survey, batch.station, output_label
         ) / fs_to_string(batch.sample_rate)
 
 
 class JobRunner:
-    """Execute one validated project job and emit structured progress."""
+    """Execute one validated project job and emit structured progress.
+
+    :param project: Open project in which the job executes.
+    :param progress_callback: Optional callback that receives job progress events.
+    """
 
     def __init__(
         self,
@@ -548,7 +569,11 @@ class JobRunner:
         self._cancel_event.set()
 
     def run(self, resolved_job: ResolvedJob) -> JobState:
-        """Run every selected run and station/rate stage synchronously."""
+        """Run every selected run and station/rate stage synchronously.
+
+        :param resolved_job: Resolved job used by this operation.
+        :return: Outputs produced by the completed operation.
+        """
         processing_job = resolved_job.processing_job
         started = monotonic()
         log_path = self.project.project_path / "logs" / f"{processing_job.name}.log"
@@ -612,7 +637,16 @@ class JobRunner:
         partial_paths: list[Path],
         started: float,
     ) -> None:
-        """Run durable run stages before their station/rate gather stages."""
+        """Run durable run stages before their station/rate gather stages.
+
+        :param executor: Executor used by this operation.
+        :param resolved_job: Resolved job used by this operation.
+        :param batches: Batches used by this operation.
+        :param criteria: Gathering policy resolved for the batch.
+        :param partial_paths: Partial paths used by this operation.
+        :param started: Started used by this operation.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         for stage in resolved_job.stages:
             if stage.scope == "run":
                 for run_path in self._run_stage_paths(batches, criteria):
@@ -681,7 +715,13 @@ class JobRunner:
     def _run_stage_paths(
         self, batches: list[StationRateBatch], criteria: GatherCriteria
     ) -> list[str]:
-        """Expand target run work by one hop to required remote runs."""
+        """Expand target run work by one hop to required remote runs.
+
+        :param batches: Batches used by this operation.
+        :param criteria: Gathering policy resolved for the batch.
+        :return: Expand target run work by one hop to required remote runs.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         paths = {run_path for batch in batches for run_path in batch.run_paths}
         table = self.project.table.copy()
         if "station_path" not in table:
@@ -754,7 +794,13 @@ class JobRunner:
         job_name: str,
         started: float,
     ) -> None:
-        """Persist captured Python warnings without writing them to the terminal."""
+        """Persist captured Python warnings without writing them to the terminal.
+
+        :param log_path: Log path used by this operation.
+        :param caught_warnings: Caught warnings used by this operation.
+        :param job_name: Job name used by this operation.
+        :param started: Started used by this operation.
+        """
         if not caught_warnings:
             return
         lines = ["\nCaptured Python warnings:\n"]

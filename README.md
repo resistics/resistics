@@ -74,8 +74,6 @@ The complete local production gate is:
 uv run --locked --no-sync ruff format --check resistics tests scripts
 uv run --locked --no-sync ruff check resistics tests scripts
 uv run --locked --no-sync pydoclint --config=pyproject.toml resistics
-uv run --locked --no-sync pydoclint --config=pydoclint-myst.toml \
-  resistics/common.py resistics/sampling.py resistics/transfunc.py
 uv run --locked --no-sync pyrefly check
 uv run --locked --no-sync pytest
 uv run --locked --no-sync pytest --cov=resistics --cov-branch --cov-report=term --cov-report=html --cov-report=xml

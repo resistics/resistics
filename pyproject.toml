@@ -210,19 +210,20 @@ ignore-decorators = ["pydantic.field_validator", "pydantic.model_validator"]
 ]
 
 [tool.pydoclint]
-style = "numpy"
-exclude = "resistics/(common|sampling|transfunc)\\.py"
-baseline = "pydoclint-baseline.txt"
-arg-type-hints-in-docstring = true
+style = "sphinx"
+arg-type-hints-in-docstring = false
 arg-type-hints-in-signature = true
 check-arg-order = true
 skip-checking-short-docstrings = false
 skip-checking-raises = false
 skip-checking-private-functions = false
-check-return-types = true
-check-yield-types = true
-check-class-attributes = true
-check-style-mismatch = false
+check-return-types = false
+check-yield-types = false
+# docstring-parser-fork does not recognise MyST attribute syntax as a class
+# attribute section. Attribute prose remains mandatory and is reviewed in the
+# rendered API, while Pydantic and Python own the field types.
+check-class-attributes = false
+check-style-mismatch = true
 check-arg-defaults = false
 auto-regenerate-baseline = false
 show-filenames-in-every-violation-message = true

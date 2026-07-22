@@ -11,7 +11,9 @@ import re
 import sys
 import resistics
 import plotly.io as pio
+from matplotlib.sphinxext.plot_directive import PlotDirective
 from plotly.io._sg_scraper import plotly_sg_scraper
+from sphinx.application import Sphinx
 from sphinx_gallery.sorting import FileNameSortKey
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
@@ -85,14 +87,12 @@ autodoc_pydantic_model_show_validator_summary = False
 autodoc_pydantic_model_show_validator_members = False
 autodoc_pydantic_model_hide_paramlist = True
 autodoc_pydantic_field_show_default = True
-# MyST migration prototype
 myst_enable_extensions = ["fieldlist"]
 myst_ref_domains = ["std", "py"]
 nb_execution_mode = "off"
 myst_autodoc_docstring_parser_regexes = [
     (r"prototype_api(?:\..*)?", "myst"),
-    (r"resistics\.(?:common|sampling|transfunc)(?:\..*)?", "myst"),
-    (r"resistics(?:\..*)?", "rst"),
+    (r"resistics(?:\..*)?", "myst"),
 ]
 # sphinx gallery
 pio.renderers.default = "sphinx_gallery_png"
@@ -128,3 +128,27 @@ html_favicon = str(Path("_static", "images", "favicon.png"))
 html_theme_options = {
     "navigation_with_keys": True,
 }
+
+
+class _DocstringPlotDirective(PlotDirective):
+    """Keep generated autodoc plots relative to the active documentation page."""
+
+    def run(self):
+        """Run the plot directive with a Sphinx-source path for Python docstrings."""
+        document = self.state_machine.document
+        source = document["source"]
+        if Path(source).resolve().is_relative_to(Path(__file__).parent.resolve()):
+            return super().run()
+
+        env = document.settings.env
+        document["source"] = env.doc2path(env.docname, base=True)
+        try:
+            return super().run()
+        finally:
+            document["source"] = source
+
+
+def setup(app: Sphinx) -> dict[str, bool]:
+    """Register plot handling that supports plots embedded in API docstrings."""
+    app.add_directive("plot", _DocstringPlotDirective, override=True)
+    return {"parallel_read_safe": True, "parallel_write_safe": True}

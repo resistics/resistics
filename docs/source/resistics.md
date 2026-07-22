@@ -1,9 +1,9 @@
 (api-reference)=
 # API reference
 
-The API is grouped by the public module that owns each contract. Module pages
-currently use standard autodoc while production docstrings migrate from
-reStructuredText to MyST in bounded groups.
+The API is grouped by the public module that owns each contract. Every module
+page uses MyST-aware autodoc so signatures, fields, examples, and directives
+remain co-located with their implementation.
 
 ```{toctree}
 :maxdepth: 2

@@ -1,5 +1,4 @@
-"""
-The regression module provides functions and classes for the following:
+"""The regression module provides functions and classes for the following:
 
 - Preparing gathered data for regression
 - Performing the regression to calculate the components of the transfer function
@@ -116,7 +115,10 @@ def _predictors(in_powers: np.ndarray) -> np.ndarray:
 
 
 def get_least_squares_regressor() -> _FittableRegressor:
-    """Return the regressioninc least-squares regressor."""
+    """Return the regressioninc least-squares regressor.
+
+    :return: Fresh complex least-squares estimator.
+    """
     return LeastSquares()
 
 
@@ -130,8 +132,7 @@ class RegressionInputMetadata(Metadata):
 
 
 class RegressionInputData(ResisticsData):
-    """
-    Class to hold data that will be input into a solver
+    """Class to hold data that will be input into a solver
 
     The purpose of regression input data is to provision for many different
     solvers and user written solvers.
@@ -191,6 +192,12 @@ class RegressionInputData(ResisticsData):
 
     Note that the predictors are the same regardless of the output channel,
     only the observations change.
+
+    :param metadata: Contributor metadata and combined processing history.
+    :param tf: Transfer-function channel definition to solve.
+    :param freqs: Evaluation frequencies in hertz.
+    :param obs: Per-frequency observations keyed by output channel.
+    :param preds: Per-frequency predictor matrices.
     """
 
     def __init__(
@@ -200,26 +207,7 @@ class RegressionInputData(ResisticsData):
         freqs: list[float],
         obs: list[dict[str, np.ndarray]],
         preds: list[np.ndarray],
-    ):
-        """
-        Initialisation of regression input data
-
-        Parameters
-        ----------
-        metadata : RegressionInputMetadata
-            The metadata, mainly to hold the various processing histories that
-            have been combined to produce the data
-        tf : TransferFunction
-            The transfer function that is to be solver
-        freqs : List[float]
-            The evaluation frequencies
-        obs : List[Dict[str, np.ndarray]]
-            The observations (output channels). This is a list of dictionaries.
-            The entries into the list are on for each evaluation evaluation
-            frequency. They keys of the dictionary are the output channels.
-        preds : List[np.ndarray]
-            The predictions, an entry for each evaluation frequenvy
-        """
+    ) -> None:
         self.metadata = metadata
         self.tf = tf
         self.freqs = freqs
@@ -232,20 +220,12 @@ class RegressionInputData(ResisticsData):
         return len(self.freqs)
 
     def get_inputs(self, freq_idx: int, out_chan: str) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Get observations and predictions
+        """Get observations and predictions
 
-        Parameters
-        ----------
-        freq_idx : int
-            The evaluation frequency index
-        out_chan : str
-            The output channel
+        :param freq_idx: The evaluation frequency index
+        :param out_chan: The output channel
 
-        Returns
-        -------
-        Tuple[np.ndarray, np.ndarray]
-            Observations and predictons
+        :return: Observations and predictons
         """
         return self.obs[freq_idx][out_chan], self.preds[freq_idx]
 
@@ -256,15 +236,17 @@ class ImpedanceTensorSetup(ResisticsProcess):
     output_type: ClassVar[str] = "transfer_function"
 
     def run(self) -> TransferFunction:
-        """Return the default impedance tensor channel definition."""
+        """Return the default impedance tensor channel definition.
+
+        :return: Electric outputs over magnetic inputs for standard MT processing.
+        """
         from resistics.transfunc import ImpedanceTensor
 
         return ImpedanceTensor()
 
 
 class RegressionPreparerGathered(ResisticsProcess):
-    """
-    Regression preparer for gathered data
+    """Regression preparer for gathered data
 
     In nearly all cases, this is the regresson preparer to use. As input, it
     requires GatheredData.
@@ -285,24 +267,14 @@ class RegressionPreparerGathered(ResisticsProcess):
         progress_callback: ProcessingProgressCallback | None = None,
         cancellation_callback: CancellationCallback | None = None,
     ) -> RegressionInputData:
-        """
-        Create the RegressionInputData
+        """Create the RegressionInputData
 
-        Parameters
-        ----------
-        tf : TransferFunction
-            The transfer function
-        gathered_data : GatheredData
-            The gathered data
-        progress_callback : ProcessingProgressCallback, optional
-            Consumer for structured frequency progress.
-        cancellation_callback : CancellationCallback, optional
-            Callback checked before each evaluation frequency.
+        :param tf: The transfer function
+        :param gathered_data: The gathered data
+        :param progress_callback: Consumer for structured frequency progress.
+        :param cancellation_callback: Callback checked before each evaluation frequency.
 
-        Returns
-        -------
-        RegressionInputData
-            Data that can be used as input into a solver
+        :return: Data that can be used as input into a solver
         """
         logger.info("Preparing regression data")
         logger.info(f"Out chans site: {gathered_data.out_data.metadata.site_name}")
@@ -326,31 +298,17 @@ class RegressionPreparerGathered(ResisticsProcess):
         progress_callback: ProcessingProgressCallback | None = None,
         cancellation_callback: CancellationCallback | None = None,
     ) -> RegressionInputData:
-        """
-        Get the regression input data
+        """Get the regression input data
 
-        Parameters
-        ----------
-        tf : TransferFunction
-            The transfer function
-        gathered_data : GatheredData
-            The gathered data
-        progress_callback : ProcessingProgressCallback, optional
-            Consumer for structured frequency progress.
-        cancellation_callback : CancellationCallback, optional
-            Callback checked before each evaluation frequency.
+        :param tf: The transfer function
+        :param gathered_data: The gathered data
+        :param progress_callback: Consumer for structured frequency progress.
+        :param cancellation_callback: Callback checked before each evaluation frequency.
 
-        Returns
-        -------
-        RegressionInputData
-            Data to be used as input to a solver
+        :return: Data to be used as input to a solver
 
-        Raises
-        ------
-        ProcessingCancelled
-            If cancellation is requested before a frequency is prepared.
-        Exception
-            If frequency preparation fails.
+        :raises ProcessingCancelled: If cancellation is requested before a frequency is prepared.
+        :raises Exception: If frequency preparation fails.
         """
         freqs = []
         obs = []
@@ -398,8 +356,7 @@ class RegressionPreparerGathered(ResisticsProcess):
     def _get_cross_powers(
         self, tf: TransferFunction, gathered_data: GatheredData, eval_idx: int
     ) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Get cross powers
+        """Get cross powers
 
         Gathered data for an evaluation frequency is:
 
@@ -420,20 +377,11 @@ class RegressionPreparerGathered(ResisticsProcess):
         out_data = [n_wins, n_out_chans, new_axis]
         cross_data = [n_wins, new_axis, n_cross_chans]
 
-        Parameters
-        ----------
-        tf : TransferFunction
-            Definition of transfer function
-        gathered_data : GatheredData
-            All the gathered data
-        eval_idx : int
-            The evaluation frequency index
+        :param tf: Definition of transfer function
+        :param gathered_data: All the gathered data
+        :param eval_idx: The evaluation frequency index
 
-        Returns
-        -------
-        Tuple[np.ndarray, np.ndarray]
-            Cross powers with output channels and cross powers with input
-            channels
+        :return: Cross powers with output channels and cross powers with input channels
         """
         # calculate the cross powers
         out_data = gathered_data.out_data.data[eval_idx]
@@ -449,30 +397,21 @@ class RegressionPreparerGathered(ResisticsProcess):
     def _get_obs(
         self, tf: TransferFunction, out_powers: np.ndarray
     ) -> dict[str, np.ndarray]:
-        """
-        Get observations for an output channel
+        """Get observations for an output channel
 
         This is a single dimension array with shape
 
         [n_wins * n_cross_chans]
 
-        Parameters
-        ----------
-        tf : TransferFunction
-            Definition of transfer function
-        out_powers : np.ndarray
-            The cross powers for the output channels
+        :param tf: Definition of transfer function
+        :param out_powers: The cross powers for the output channels
 
-        Returns
-        -------
-        Dict[str, np.ndarray]
-            Dictionary with output channel as key and observations as value
+        :return: Dictionary with output channel as key and observations as value
         """
         return _observations(tf, out_powers)
 
     def _get_preds(self, tf: TransferFunction, in_powers: np.ndarray) -> np.ndarray:
-        """
-        Construct the predictors
+        """Construct the predictors
 
         The in_powers is received with shape
 
@@ -482,40 +421,29 @@ class RegressionPreparerGathered(ResisticsProcess):
 
         [n_wins * n_cross_chans, n_in_chans]
 
-        Parameters
-        ----------
-        tf : TransferFunction
-            Transfer function definition
-        in_powers : np.ndarray
-            The cross powers for the input channels
+        :param tf: Transfer function definition
+        :param in_powers: The cross powers for the input channels
 
-        Returns
-        -------
-        np.ndarray
-            The predictors
+        :return: The predictors
         """
         return _predictors(in_powers)
 
 
 class RegressionPreparerSpectra(ResisticsProcess):
-    """
-    Prepare regression data directly from spectra data
+    """Prepare regression data directly from spectra data
 
     This can be useful for running a single measurement
 
-    See Also
-    --------
+    **See Also**
+
     RegressionPreparerGathered : Produce regression input data from gathered
     data
 
-    Attributes
-    ----------
-    input_types : ClassVar[dict[str, str]]
-        Flow ports for a transfer function and spectra data.
-    output_type : ClassVar[str]
-        Flow type produced for solver input.
-    include_in_default_parameters : ClassVar[bool]
-        Whether default parameter sets include this preparer.
+    **Attributes**
+
+    - **input_types** — Flow ports for a transfer function and spectra data.
+    - **output_type** — Flow type produced for solver input.
+    - **include_in_default_parameters** — Whether default parameter sets include this preparer.
     """
 
     input_types: ClassVar[dict[str, str]] = {
@@ -535,28 +463,15 @@ class RegressionPreparerSpectra(ResisticsProcess):
     ) -> RegressionInputData:
         """Construct regression input while emitting frequency progress.
 
-        Parameters
-        ----------
-        tf : TransferFunction
-            Transfer-function definition.
-        spec_data : SpectraData
-            Spectra to prepare for regression.
-        progress_callback : ProcessingProgressCallback, optional
-            Consumer for structured frequency progress.
-        cancellation_callback : CancellationCallback, optional
-            Callback checked before each evaluation frequency.
+        :param tf: Transfer-function definition.
+        :param spec_data: Spectra to prepare for regression.
+        :param progress_callback: Consumer for structured frequency progress.
+        :param cancellation_callback: Callback checked before each evaluation frequency.
 
-        Returns
-        -------
-        RegressionInputData
-            Prepared observations and predictors.
+        :return: Prepared observations and predictors.
 
-        Raises
-        ------
-        ProcessingCancelled
-            If cancellation is requested before a frequency is prepared.
-        Exception
-            If frequency preparation fails.
+        :raises ProcessingCancelled: If cancellation is requested before a frequency is prepared.
+        :raises Exception: If frequency preparation fails.
         """
         freqs = []
         obs = []
@@ -600,8 +515,7 @@ class RegressionPreparerSpectra(ResisticsProcess):
     def _get_cross_powers(
         self, tf: TransferFunction, spec_data: SpectraData, level: int
     ) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Get cross powers
+        """Get cross powers
 
         Spectra data is:
 
@@ -617,20 +531,11 @@ class RegressionPreparerSpectra(ResisticsProcess):
 
         cross_powers = [n_wins, n_out_chans, n_cross_chans, n_freqs]
 
-        Parameters
-        ----------
-        tf : TransferFunction
-            Definition of transfer function
-        spec_data : SpectraTimeData
-            Spectra data for a decimation level
-        level : int
-            The decimation level
+        :param tf: Definition of transfer function
+        :param spec_data: Spectra data for a decimation level
+        :param level: The decimation level
 
-        Returns
-        -------
-        Tuple[np.ndarray, np.ndarray]
-            Cross powers with output channels and cross powers with input
-            channels
+        :return: Cross powers with output channels and cross powers with input channels
         """
         # prepare to calculate the crosspowers
         out_data = spec_data.get_chans(level, tf.out_chans)
@@ -645,11 +550,11 @@ class RegressionPreparerSpectra(ResisticsProcess):
 
 
 class Solution(WriteableMetadata):
-    """
-    Class to hold a transfer function solution
+    """Class to hold a transfer function solution
 
-    Examples
-    --------
+    **Examples**
+
+    ```{doctest}
     >>> from resistics.testing import solution_mt
     >>> solution = solution_mt()
     >>> print(solution.tf.to_string())
@@ -666,9 +571,12 @@ class Solution(WriteableMetadata):
     >>> solution.components["exhy"]
     Component(real=[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], imag=[-5.0, -4.0, -3.0, -2.0, -1.0, 1.0])
 
+    ```
+
     To get the components as an array, either get_component or subscripting
     be used
 
+    ```{doctest}
     >>> solution["exhy"]
     array([1.-5.j, 2.-4.j, 3.-3.j, 4.-2.j, 5.-1.j, 6.+1.j])
     >>> solution["ab"]
@@ -676,12 +584,17 @@ class Solution(WriteableMetadata):
     ...
     ValueError: Component ab not found in ['exhx', 'exhy', 'eyhx', 'eyhy']
 
+    ```
+
     It is also possible to get the tensor values at a particular evaluation
     frequency
 
+    ```{doctest}
     >>> solution.get_tensor(2)
     array([[ 2.+4.j,  3.-3.j],
            [-3.+3.j, -2.-4.j]])
+
+    ```
     """
 
     tf: TransferFunction
@@ -696,25 +609,15 @@ class Solution(WriteableMetadata):
     """The contributors to the solution with their respective details"""
 
     def __getitem__(self, key: str) -> np.ndarray:
-        """
-        Solution for a single component for all evaluation frequencies
+        """Solution for a single component for all evaluation frequencies
 
         The arguments should be output channel followed by input channel
 
-        Parameters
-        ----------
-        key : str
-            The component key
+        :param key: The component key
 
-        Returns
-        -------
-        np.ndarray
-            The component values as an array
+        :return: The component values as an array
 
-        Raises
-        ------
-        ValueError
-            If incorrect number of arguments
+        :raises ValueError: If incorrect number of arguments
         """
         if not isinstance(key, str):
             raise ValueError("Subscripting takes only 1 argument != {len(arg)}")
@@ -731,24 +634,14 @@ class Solution(WriteableMetadata):
         return np.reciprocal(self.freqs)
 
     def get_component(self, key: str) -> np.ndarray:
-        """
-        Get the solution for a single component for all the evaluation
+        """Get the solution for a single component for all the evaluation
         frequencies
 
-        Parameters
-        ----------
-        key : str
-            The component key
+        :param key: The component key
 
-        Returns
-        -------
-        np.ndarray
-            The component data in an array
+        :return: The component data in an array
 
-        Raises
-        ------
-        ValueError
-            If the component does not exist in the solution
+        :raises ValueError: If the component does not exist in the solution
         """
         if key not in self.components:
             raise ValueError(
@@ -757,20 +650,13 @@ class Solution(WriteableMetadata):
         return self.components[key].to_numpy()
 
     def get_tensor(self, eval_idx: int) -> np.ndarray:
-        """
-        Get the tensor at a single evaluation frequency. This has shape:
+        """Get the tensor at a single evaluation frequency. This has shape:
 
         n_out_chans x n_in_chans
 
-        Parameters
-        ----------
-        eval_idx : int
-            The index of the evaluation frequency
+        :param eval_idx: The index of the evaluation frequency
 
-        Returns
-        -------
-        np.ndarray
-            The tensor as a numpy array
+        :return: The tensor as a numpy array
         """
         n_out, n_in = _dimensions(self.tf)
         tensor = np.zeros(shape=(n_out, n_in), dtype=np.complex128)
@@ -781,7 +667,10 @@ class Solution(WriteableMetadata):
         return tensor
 
     def to_dataframe(self) -> pd.DataFrame:
-        """Get the solution as a pandas DataFrame"""
+        """Get the solution as a dataframe.
+
+        :return: Complex transfer-function components indexed by frequency.
+        """
         soln_data = {comp: self.get_component(comp) for comp in self.components}
         index = self.freqs
         return pd.DataFrame(data=soln_data, index=index)
@@ -803,19 +692,13 @@ class Solver(ResisticsProcess):
     ) -> Solution:
         """Solve regression input with optional progress and cancellation.
 
-        Parameters
-        ----------
-        regression_input : RegressionInputData
-            Prepared regression observations and predictors.
-        progress_callback : ProcessingProgressCallback, optional
-            Consumer for structured frequency progress.
-        cancellation_callback : CancellationCallback, optional
-            Callback checked before each evaluation frequency.
+        :param regression_input: Prepared regression observations and predictors.
+        :param progress_callback: Consumer for structured frequency progress.
+        :param cancellation_callback: Callback checked before each evaluation frequency.
 
-        Returns
-        -------
-        Solution
-            Transfer-function solution.
+        :return: Transfer-function solution.
+
+        :raises NotImplementedError: Always; concrete solvers must implement this method.
         """
         del regression_input, progress_callback, cancellation_callback
         raise NotImplementedError("Run not implemented in parent Solver class")
@@ -835,31 +718,17 @@ class SolverLinear(Solver):
         progress_callback: ProcessingProgressCallback | None = None,
         cancellation_callback: CancellationCallback | None = None,
     ) -> Solution:
-        """
-        Get the regression solution for all evaluation frequencies
+        """Get the regression solution for all evaluation frequencies
 
-        Parameters
-        ----------
-        regression_input : RegressionInputData
-            The regression input data
-        model : _FittableRegressor
-            The model to use to solve the linear regressions
-        progress_callback : ProcessingProgressCallback, optional
-            Consumer for structured frequency progress.
-        cancellation_callback : CancellationCallback, optional
-            Callback checked before each evaluation frequency.
+        :param regression_input: The regression input data
+        :param model: The model to use to solve the linear regressions
+        :param progress_callback: Consumer for structured frequency progress.
+        :param cancellation_callback: Callback checked before each evaluation frequency.
 
-        Returns
-        -------
-        Solution
-            The solution for the transfer function
+        :return: The solution for the transfer function
 
-        Raises
-        ------
-        ProcessingCancelled
-            If cancellation is requested before a frequency is solved.
-        Exception
-            If fitting a frequency fails.
+        :raises ProcessingCancelled: If cancellation is requested before a frequency is solved.
+        :raises Exception: If fitting a frequency fails.
         """
         n_freqs = regression_input.n_freqs
         tf = regression_input.tf
@@ -893,27 +762,15 @@ class SolverLinear(Solver):
     def _get_coef(
         self, model: _FittableRegressor, obs: np.ndarray, preds: np.ndarray
     ) -> np.ndarray:
-        """
-        Get coefficients for a single evaluation frequency and output channel
+        """Get coefficients for a single evaluation frequency and output channel
 
-        Parameters
-        ----------
-        model : BaseEstimator
-            sklearn base estimator
-        obs : np.ndarray
-            The observations
-        preds : np.ndarray
-            The predictors
+        :param model: sklearn base estimator
+        :param obs: The observations
+        :param preds: The predictors
 
-        Returns
-        -------
-        np.ndarray
-            The coefficients
+        :return: The coefficients
 
-        Raises
-        ------
-        ValueError
-            If the regressor completes without producing coefficients.
+        :raises ValueError: If the regressor completes without producing coefficients.
         """
         model.fit(preds, obs)
         if model.coef is None:
@@ -926,22 +783,13 @@ class SolverLinear(Solver):
         regression_input: RegressionInputData,
         tensors: np.ndarray,
     ) -> Solution:
-        """
-        Get the solution
+        """Get the solution
 
-        Parameters
-        ----------
-        tf : TransferFunction
-            The transfer function
-        regression_input : RegressionInputData
-            The regression input data
-        tensors : np.ndarray
-            The coefficients
+        :param tf: The transfer function
+        :param regression_input: The regression input data
+        :param tensors: The coefficients
 
-        Returns
-        -------
-        Solution
-            The transfer function solution
+        :return: The transfer function solution
         """
         components = {}
         for out_idx, out_chan in enumerate(tf.out_chans):
@@ -979,19 +827,11 @@ class SolverOLS(SolverLinear):
     ) -> Solution:
         """Run ordinary least squares regression with structured progress.
 
-        Parameters
-        ----------
-        regression_input : RegressionInputData
-            Prepared regression observations and predictors.
-        progress_callback : ProcessingProgressCallback, optional
-            Consumer for structured frequency progress.
-        cancellation_callback : CancellationCallback, optional
-            Callback checked before each evaluation frequency.
+        :param regression_input: Prepared regression observations and predictors.
+        :param progress_callback: Consumer for structured frequency progress.
+        :param cancellation_callback: Callback checked before each evaluation frequency.
 
-        Returns
-        -------
-        Solution
-            Transfer-function solution.
+        :return: Transfer-function solution.
         """
         model = get_least_squares_regressor()
         return self._solve(
@@ -1014,17 +854,10 @@ class SolutionWriter(ResisticsProcess):
     ) -> dict[str, str]:
         """Write the supplied solution to ``solution.json``.
 
-        Parameters
-        ----------
-        inputs : dict[str, Any]
-            Flow inputs containing the transfer-function solution.
-        context : dict[str, Any]
-            Runtime context containing the staging output path.
+        :param inputs: Flow inputs containing the transfer-function solution.
+        :param context: Runtime context containing the staging output path.
 
-        Returns
-        -------
-        dict[str, str]
-            Result path exposed to the job runner.
+        :return: Result path exposed to the job runner.
         """
         path = Path(context["staging_output_path"])
         path.mkdir(parents=True, exist_ok=False)

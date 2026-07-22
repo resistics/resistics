@@ -23,7 +23,10 @@ if TYPE_CHECKING:
 
 
 class ConfirmJobScreen(ModalScreen[bool]):
-    """Confirm submission of an already validated job."""
+    """Confirm submission of an already validated job.
+
+    :param validation: Successful validation containing the resolved job.
+    """
 
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
@@ -109,7 +112,13 @@ _YAML_FILE_STEM = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
 class CreateJobScreen(ModalScreen["JobDefinition | None"]):
-    """Create a minimal job template from project YAML resources."""
+    """Create a minimal job template from project YAML resources.
+
+    :param flow_options: Display names and stored values for available flows.
+    :param parameter_options: Display names and stored values for parameter sets.
+    :param criteria_options: Display names and stored values for gather criteria.
+    :param existing_names: Job names that cannot be reused.
+    """
 
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
@@ -269,7 +278,10 @@ class CreateJobScreen(ModalScreen["JobDefinition | None"]):
 
 
 class CopyYamlFileScreen(ModalScreen[str | None]):
-    """Ask for the filename stem of a YAML copy."""
+    """Ask for the filename stem of a YAML copy.
+
+    :param source: YAML resource being copied.
+    """
 
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
@@ -346,7 +358,10 @@ class CopyYamlFileScreen(ModalScreen[str | None]):
 
 
 class DeleteYamlFileScreen(ModalScreen[bool]):
-    """Require explicit confirmation before deleting a project YAML file."""
+    """Require explicit confirmation before deleting a project YAML file.
+
+    :param source: YAML resource proposed for deletion.
+    """
 
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
@@ -415,7 +430,10 @@ class DeleteYamlFileScreen(ModalScreen[bool]):
 
 
 class DeleteProjectDataScreen(ModalScreen[ProjectDataDeletionRequest | None]):
-    """Choose a derived-data namespace or all generated project data."""
+    """Choose a derived-data namespace or all generated project data.
+
+    :param labels: Existing output-label namespaces available for deletion.
+    """
 
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
@@ -505,7 +523,10 @@ class DeleteProjectDataScreen(ModalScreen[ProjectDataDeletionRequest | None]):
 
 
 class ConfirmProjectDataDeletionScreen(ModalScreen[bool]):
-    """Require explicit confirmation before deleting generated project data."""
+    """Require explicit confirmation before deleting generated project data.
+
+    :param deletion: Exact deletion preview presented for confirmation.
+    """
 
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
@@ -583,7 +604,12 @@ class ConfirmProjectDataDeletionScreen(ModalScreen[bool]):
 
 
 def _validate_yaml_file_stem(value: str) -> str:
-    """Validate a filename stem used when copying a project YAML file."""
+    """Validate a filename stem used when copying a project YAML file.
+
+    :param value: Value to validate or normalize.
+    :return: The value produced when this operation completes.
+    :raises ValueError: If the requested operation cannot satisfy its contract.
+    """
     value = value.strip()
     if not _YAML_FILE_STEM.fullmatch(value):
         raise ValueError(
@@ -595,7 +621,12 @@ def _validate_yaml_file_stem(value: str) -> str:
 
 
 class DirectoryPickerScreen(ModalScreen[Path | None]):
-    """Select either a directory or file with the terminal file browser."""
+    """Select either a directory or file with the terminal file browser.
+
+    :param title: Title displayed above the file browser.
+    :param select_files: Whether files, rather than directories, may be selected.
+    :param start_path: Initial directory, or the current working directory when omitted.
+    """
 
     BINDINGS = [("u", "parent_directory", "Up"), ("escape", "cancel", "Cancel")]
 

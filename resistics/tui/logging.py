@@ -26,12 +26,10 @@ if TYPE_CHECKING:
 class _SequencedDiagnostic:
     """Pair one diagnostic entry with its buffer sequence number.
 
-    Attributes
-    ----------
-    sequence : int
-        Monotonically increasing buffer position.
-    entry : DiagnosticLogEntry
-        Serializable diagnostic stored at that position.
+    **Attributes**
+
+    - **sequence** — Monotonically increasing buffer position.
+    - **entry** — Serializable diagnostic stored at that position.
     """
 
     sequence: int
@@ -42,16 +40,12 @@ class _SequencedDiagnostic:
 class _DiagnosticRead:
     """Immutable incremental read returned to the presentation layer.
 
-    Attributes
-    ----------
-    entries : tuple[DiagnosticLogEntry, ...]
-        Entries newer than the requested cursor and still retained.
-    cursor : int
-        Latest sequence observed by the read.
-    retained : int
-        Number of entries currently held by the buffer.
-    dropped : int
-        Entries lost between the requested cursor and the retained range.
+    **Attributes**
+
+    - **entries** — Entries newer than the requested cursor and still retained.
+    - **cursor** — Latest sequence observed by the read.
+    - **retained** — Number of entries currently held by the buffer.
+    - **dropped** — Entries lost between the requested cursor and the retained range.
     """
 
     entries: tuple[DiagnosticLogEntry, ...]
@@ -63,15 +57,9 @@ class _DiagnosticRead:
 class _TuiLogBuffer:
     """Retain diagnostics safely for worker-thread writers.
 
-    Parameters
-    ----------
-    max_entries : int
-        Maximum diagnostics retained for one TUI session.
+    :param max_entries: Maximum diagnostics retained for one TUI session.
 
-    Raises
-    ------
-    ValueError
-        If ``max_entries`` is less than one.
+    :raises ValueError: If ``max_entries`` is less than one.
     """
 
     def __init__(self, max_entries: int = 2_000):
@@ -85,15 +73,9 @@ class _TuiLogBuffer:
     def append(self, entry: DiagnosticLogEntry) -> int:
         """Append one entry and return its monotonically increasing sequence.
 
-        Parameters
-        ----------
-        entry : DiagnosticLogEntry
-            Diagnostic to retain.
+        :param entry: Diagnostic to retain.
 
-        Returns
-        -------
-        int
-            Sequence assigned to the entry.
+        :return: Sequence assigned to the entry.
         """
         with self._lock:
             self._sequence += 1
@@ -103,10 +85,7 @@ class _TuiLogBuffer:
     def extend(self, entries: tuple[DiagnosticLogEntry, ...]) -> None:
         """Append an immutable group of entries in order.
 
-        Parameters
-        ----------
-        entries : tuple[DiagnosticLogEntry, ...]
-            Diagnostics to append.
+        :param entries: Diagnostics to append.
         """
         for entry in entries:
             self.append(entry)
@@ -114,15 +93,9 @@ class _TuiLogBuffer:
     def read_after(self, cursor: int) -> _DiagnosticRead:
         """Return entries newer than a presentation cursor.
 
-        Parameters
-        ----------
-        cursor : int
-            Last sequence consumed by the presentation layer.
+        :param cursor: Last sequence consumed by the presentation layer.
 
-        Returns
-        -------
-        _DiagnosticRead
-            Incremental entries and the new cursor.
+        :return: Incremental entries and the new cursor.
         """
         with self._lock:
             retained = len(self._entries)
@@ -138,10 +111,7 @@ class _TuiLogBuffer:
     def write_loguru(self, message: Message) -> None:
         """Normalize one Loguru message into the session buffer.
 
-        Parameters
-        ----------
-        message : Message
-            Loguru sink message carrying its structured record.
+        :param message: Loguru sink message carrying its structured record.
         """
         record = message.record
         exception = record["exception"]
@@ -171,20 +141,12 @@ class _TuiLogBuffer:
     ) -> None:
         """Normalize one uncaught Python warning without terminal output.
 
-        Parameters
-        ----------
-        message : Warning | str
-            Warning value or text.
-        category : type[Warning]
-            Warning class.
-        filename : str
-            File that emitted the warning.
-        lineno : int
-            Source line that emitted the warning.
-        file : TextIO | None
-            Unused warning-output stream required by ``warnings.showwarning``.
-        line : str | None
-            Optional source line supplied by ``warnings.showwarning``.
+        :param message: Warning value or text.
+        :param category: Warning class.
+        :param filename: File that emitted the warning.
+        :param lineno: Source line that emitted the warning.
+        :param file: Unused warning-output stream required by ``warnings.showwarning``.
+        :param line: Optional source line supplied by ``warnings.showwarning``.
         """
         del file, line
         self.append(
@@ -201,15 +163,9 @@ class _TuiLogBuffer:
 def _warning_entry(warning: warnings.WarningMessage) -> DiagnosticLogEntry:
     """Convert a warning captured by ``catch_warnings`` into a diagnostic.
 
-    Parameters
-    ----------
-    warning : warnings.WarningMessage
-        Captured Python warning.
+    :param warning: Captured Python warning.
 
-    Returns
-    -------
-    DiagnosticLogEntry
-        Structured warning with its original category and location.
+    :return: Structured warning with its original category and location.
     """
     return DiagnosticLogEntry(
         timestamp=datetime.now(UTC),
@@ -223,15 +179,9 @@ def _warning_entry(warning: warnings.WarningMessage) -> DiagnosticLogEntry:
 def _legacy_warning_entry(message: str) -> DiagnosticLogEntry:
     """Convert the established string-only project-open warning contract.
 
-    Parameters
-    ----------
-    message : str
-        Existing warning text supplied by a direct app caller.
+    :param message: Existing warning text supplied by a direct app caller.
 
-    Returns
-    -------
-    DiagnosticLogEntry
-        Structured compatibility warning.
+    :return: Structured compatibility warning.
     """
     return DiagnosticLogEntry(
         timestamp=datetime.now(UTC),
@@ -244,17 +194,10 @@ def _legacy_warning_entry(message: str) -> DiagnosticLogEntry:
 def _error_entry(source: str, message: str) -> DiagnosticLogEntry:
     """Return a structured error raised at a TUI feature boundary.
 
-    Parameters
-    ----------
-    source : str
-        Feature that failed.
-    message : str
-        User-facing error detail.
+    :param source: Feature that failed.
+    :param message: User-facing error detail.
 
-    Returns
-    -------
-    DiagnosticLogEntry
-        Structured error entry.
+    :return: Structured error entry.
     """
     return DiagnosticLogEntry(
         timestamp=datetime.now(UTC),
@@ -267,10 +210,7 @@ def _error_entry(source: str, message: str) -> DiagnosticLogEntry:
 class _TuiDiagnosticCapture:
     """Own process-global diagnostics during ``run_tui``.
 
-    Parameters
-    ----------
-    buffer : _TuiLogBuffer
-        Session buffer receiving diagnostics.
+    :param buffer: Session buffer receiving diagnostics.
     """
 
     def __init__(self, buffer: _TuiLogBuffer):

@@ -17,6 +17,7 @@ from textual.widget import Widget
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    import plotly.graph_objects as go
     from pydantic import BaseModel
 
     from resistics.explorer import (
@@ -47,18 +48,10 @@ if TYPE_CHECKING:
 def _feature_error(feature: str, error: Exception) -> str:
     """Return actionable detail for a lazily imported feature failure.
 
-    Parameters
-    ----------
-    feature : str
-        User-facing feature name.
-    error : Exception
-        Import or runtime failure raised at the feature boundary.
+    :param feature: User-facing feature name.
+    :param error: Import or runtime failure raised at the feature boundary.
 
-    Returns
-    -------
-    str
-        Error detail that preserves ordinary failures and explains how to
-        recover from a missing required dependency.
+    :return: Error detail that preserves ordinary failures and explains how to recover from a missing required dependency.
     """
     if isinstance(error, ModuleNotFoundError):
         dependency = error.name or "unknown"
@@ -77,15 +70,9 @@ async def _run_in_worker_thread[WorkerValue](
     The executor is not shared with the asyncio event loop, so cancelling a
     Textual worker never blocks the UI while a synchronous API finishes.
 
-    Parameters
-    ----------
-    operation : Callable[[], WorkerValue]
-        Blocking callable that does not mutate Textual widgets.
+    :param operation: Blocking callable that does not mutate Textual widgets.
 
-    Returns
-    -------
-    WorkerValue
-        Value returned by the blocking callable.
+    :return: Value returned by the blocking callable.
     """
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="resistics-tui")
     try:
@@ -103,16 +90,10 @@ def _focus_relative(
 ) -> None:
     """Move focus within a bounded group of controls.
 
-    Parameters
-    ----------
-    controls : Sequence[Widget]
-        Ordered focusable widgets.
-    focused : Widget | None
-        Currently focused widget, if any.
-    increment : int
-        Relative movement through the group.
-    move_from_unfocused : bool
-        Whether to use the first control as the fallback position.
+    :param controls: Ordered focusable widgets.
+    :param focused: Currently focused widget, if any.
+    :param increment: Relative movement through the group.
+    :param move_from_unfocused: Whether to use the first control as the fallback position.
     """
     if not controls:
         return
@@ -128,20 +109,11 @@ def _focus_relative(
 def _resistics_app(screen: Screen[None]) -> ResisticsTui:
     """Return the application contract required by project screens.
 
-    Parameters
-    ----------
-    screen : Screen[None]
-        Project screen mounted by the application.
+    :param screen: Project screen mounted by the application.
 
-    Returns
-    -------
-    ResisticsTui
-        Owning resistics application.
+    :return: Owning resistics application.
 
-    Raises
-    ------
-    RuntimeError
-        If the screen is mounted by an incompatible Textual application.
+    :raises RuntimeError: If the screen is mounted by an incompatible Textual application.
     """
     from resistics.tui.app import ResisticsTui
 
@@ -156,13 +128,10 @@ class ProjectExplorerService:
 
     The service contains no Textual objects and can be exercised from scripts,
     notebooks, tests, or another presentation layer. Public discovery methods
-    return the frozen Pydantic DTOs owned by :mod:`resistics.explorer`; mutable
+    return the frozen Pydantic DTOs owned by {py:mod}`resistics.explorer`; mutable
     runner and lifecycle records remain private implementation state.
 
-    Parameters
-    ----------
-    project : Project
-        Open project used for discovery and project-owned mutations.
+    :param project: Open project used for discovery and project-owned mutations.
     """
 
     def __init__(self, project: Project):
@@ -196,10 +165,7 @@ class ProjectExplorerService:
     def discovery(self) -> Iterator[None]:
         """Protect one discovery operation from premature project closure.
 
-        Raises
-        ------
-        RuntimeError
-            If project closure was already requested.
+        :raises RuntimeError: If project closure was already requested.
         """
         with self._lifecycle_lock:
             if self._close_requested:
@@ -233,33 +199,58 @@ class ProjectExplorerService:
             self.project.close()
 
     def project_state(self) -> ProjectExplorerState:
-        """Return cached project discovery as a frozen Pydantic DTO."""
+        """Return cached project discovery as a frozen Pydantic DTO.
+
+        :return: Cached project discovery as a frozen Pydantic DTO.
+        """
         return self.index.project_state()
 
     def runs(self) -> tuple[RunSummary, ...]:
-        """Return cached MTH5 run summaries used for selections."""
+        """Return cached MTH5 run summaries used for selections.
+
+        :return: Cached MTH5 run summaries used for selections.
+        """
         return self.index.runs()
 
     def resources(self, kind: ResourceKind) -> tuple[IndexedResource, ...]:
-        """Return cached processing resources for one namespace."""
+        """Return cached processing resources for one namespace.
+
+        :param kind: Kind used by this operation.
+        :return: Cached processing resources for one namespace.
+        """
         return self.index.resources(kind)
 
     def jobs(self) -> tuple[IndexedJob, ...]:
-        """Return cached job summaries and validation results."""
+        """Return cached job summaries and validation results.
+
+        :return: Cached job summaries and validation results.
+        """
         return self.index.jobs()
 
     def job_validation(self, path: Path) -> JobValidation | None:
-        """Return cached validation for one exact job path."""
+        """Return cached validation for one exact job path.
+
+        :param path: Path or routed coordinates to process.
+        :return: Cached validation for one exact job path.
+        """
         return self.index.job_validation(path)
 
     def resource_for_path(
         self, kind: ResourceKind, path: Path
     ) -> IndexedResource | None:
-        """Return one cached resource by exact path."""
+        """Return one cached resource by exact path.
+
+        :param kind: Kind used by this operation.
+        :param path: Path or routed coordinates to process.
+        :return: One cached resource by exact path.
+        """
         return self.index.resource_for_path(kind, path)
 
     def invalidate(self, *sections: IndexSection) -> None:
-        """Invalidate project-index sections after an owned mutation."""
+        """Invalidate project-index sections after an owned mutation.
+
+        :param *sections: Sections used by this operation.
+        """
         self.index.invalidate(*sections)
 
     def invalidate_all(self) -> None:
@@ -269,7 +260,11 @@ class ProjectExplorerService:
     def job_resource_options(
         self, resource_type: ResourceKind
     ) -> list[tuple[str, str]]:
-        """Return valid resources as form labels and exact filenames."""
+        """Return valid resources as form labels and exact filenames.
+
+        :param resource_type: Kind of resource to install or select.
+        :return: Valid resources as form labels and exact filenames.
+        """
         options = []
         for resource in self.resources(resource_type):
             if resource.model is None:
@@ -281,22 +276,40 @@ class ProjectExplorerService:
         return options
 
     def job_template_names(self) -> set[str]:
-        """Return existing job filename stems for duplicate-name checks."""
+        """Return existing job filename stems for duplicate-name checks.
+
+        :return: Existing job filename stems for duplicate-name checks.
+        """
         return {resource.path.stem for resource in self.resources("jobs")}
 
     def create_job_template(self, definition: JobDefinition) -> Path:
-        """Create one editable job definition and invalidate job discovery."""
+        """Create one editable job definition and invalidate job discovery.
+
+        :param definition: Job definition to persist as a template.
+        :return: The value produced when this operation completes.
+        """
         path = self.project_jobs.create_template(definition)
         self.invalidate("jobs")
         return path
 
     @staticmethod
     def yaml_source(path: Path) -> str:
-        """Return YAML source exactly as authored, including comments."""
+        """Return YAML source exactly as authored, including comments.
+
+        :param path: Path or routed coordinates to process.
+        :return: YAML source exactly as authored, including comments.
+        """
         return path.read_text(encoding="utf-8")
 
     def copy_yaml(self, source: Path, name: str, kind: ResourceKind) -> Path:
-        """Copy a YAML resource verbatim without replacing an existing file."""
+        """Copy a YAML resource verbatim without replacing an existing file.
+
+        :param source: Open MTH5-backed data source.
+        :param name: Stable name used for the persisted resource.
+        :param kind: Kind used by this operation.
+        :return: Copy a YAML resource verbatim without replacing an existing file.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         from resistics.tui.screens.dialogs import _validate_yaml_file_stem
 
         name = _validate_yaml_file_stem(name)
@@ -310,7 +323,11 @@ class ProjectExplorerService:
         return destination
 
     def delete_yaml(self, source: Path, kind: ResourceKind) -> None:
-        """Delete a YAML resource and invalidate its cached namespace."""
+        """Delete a YAML resource and invalidate its cached namespace.
+
+        :param source: Open MTH5-backed data source.
+        :param kind: Kind used by this operation.
+        """
         source.unlink()
         self.invalidate(kind)
 
@@ -321,19 +338,35 @@ class ProjectExplorerService:
         content: str,
         kind: ResourceKind,
     ) -> None:
-        """Validate and atomically replace one project YAML resource."""
+        """Validate and atomically replace one project YAML resource.
+
+        :param path: Path or routed coordinates to process.
+        :param model_type: Concrete Pydantic model class used for validation.
+        :param content: YAML source text to validate or persist.
+        :param kind: Kind used by this operation.
+        """
         self.validate_yaml(model_type, content)
         self.write_yaml(path, content, kind)
 
     @staticmethod
     def validate_yaml(model_type: type[BaseModel], content: str) -> None:
-        """Validate authored YAML against its expected Pydantic model."""
+        """Validate authored YAML against its expected Pydantic model.
+
+        :param model_type: Concrete Pydantic model class used for validation.
+        :param content: YAML source text to validate or persist.
+        """
         from resistics.flow import model_from_yaml
 
         model_from_yaml(model_type, content)
 
     def write_yaml(self, path: Path, content: str, kind: ResourceKind) -> None:
-        """Atomically replace one validated YAML resource and invalidate it."""
+        """Atomically replace one validated YAML resource and invalidate it.
+
+        :param path: Path or routed coordinates to process.
+        :param content: YAML source text to validate or persist.
+        :param kind: Kind used by this operation.
+        :raises Exception: If the requested operation cannot satisfy its contract.
+        """
         temporary_path = None
         try:
             with NamedTemporaryFile(
@@ -354,7 +387,12 @@ class ProjectExplorerService:
         self.invalidate(kind)
 
     def restore_templates(self, kind: ResourceKind) -> list[Path]:
-        """Restore missing built-in resources for one supported namespace."""
+        """Restore missing built-in resources for one supported namespace.
+
+        :param kind: Kind used by this operation.
+        :return: Restore missing built-in resources for one supported namespace.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         from resistics.templates import (
             install_builtin_criteria_templates,
             install_builtin_flow_templates,
@@ -374,7 +412,10 @@ class ProjectExplorerService:
         return installed
 
     def deletion_options(self) -> tuple[list[str], ProjectDataDeletion]:
-        """Return derived-data labels and a complete deletion preview."""
+        """Return derived-data labels and a complete deletion preview.
+
+        :return: Derived-data labels and a complete deletion preview.
+        """
         return (
             self.project.list_project_output_labels(),
             self.project.preview_project_data_deletion(),
@@ -383,18 +424,30 @@ class ProjectExplorerService:
     def preview_project_data_deletion(
         self, output_label: str | None
     ) -> ProjectDataDeletion:
-        """Preview derived project data removal for one output label."""
+        """Preview derived project data removal for one output label.
+
+        :param output_label: Artifact namespace containing or receiving the data.
+        :return: Preview derived project data removal for one output label.
+        """
         return self.project.preview_project_data_deletion(output_label)
 
     def delete_project_data(self, output_label: str | None) -> ProjectDataDeletion:
-        """Delete derived project data and invalidate project discovery."""
+        """Delete derived project data and invalidate project discovery.
+
+        :param output_label: Artifact namespace containing or receiving the data.
+        :return: Delete derived project data and invalidate project discovery.
+        """
         deleted = self.project.delete_project_data(output_label)
         self.invalidate("project")
         return deleted
 
     @staticmethod
     def mth5_time_run_path(item: ProjectDataItem) -> str | None:
-        """Return an MTH5 item's canonical run path, when represented."""
+        """Return an MTH5 item's canonical run path, when represented.
+
+        :param item: Project data item to inspect.
+        :return: An MTH5 item's canonical run path, when represented.
+        """
         parts = [part for part in item.path.split("/") if part]
         lower_parts = [part.lower() for part in parts]
         try:
@@ -412,7 +465,13 @@ class ProjectExplorerService:
     def data_category_count(
         cls, source_data: object, items: list[ProjectDataItem], data_type: str
     ) -> int:
-        """Count displayed data, treating MTH5 time channels as one run."""
+        """Count displayed data, treating MTH5 time channels as one run.
+
+        :param source_data: Source-specific summary used to calculate the count.
+        :param items: Project data items to inspect.
+        :param data_type: Data category to select.
+        :return: Count displayed data, treating MTH5 time channels as one run.
+        """
         if source_data != ("mth5", "/") or data_type != "time":
             return sum(item.is_dataset for item in items)
         run_paths = {
@@ -424,7 +483,12 @@ class ProjectExplorerService:
 
     @staticmethod
     def visible_data_paths(items: list[ProjectDataItem], data_type: str) -> set[str]:
-        """Return matching data entries and their represented ancestors."""
+        """Return matching data entries and their represented ancestors.
+
+        :param items: Project data items to inspect.
+        :param data_type: Data category to select.
+        :return: Matching data entries and their represented ancestors.
+        """
         by_path = {item.path: item for item in items}
         visible = set()
         for item in items:
@@ -513,7 +577,11 @@ class ProjectExplorerService:
         return ("time", (summary.survey, summary.station, summary.run, channel))
 
     def data_plot_target(self, item: ProjectDataItem | None) -> PlotTarget | None:
-        """Resolve a supported plot target from one project data item."""
+        """Resolve a supported plot target from one project data item.
+
+        :param item: Project data item to inspect.
+        :return: The value produced when this operation completes.
+        """
         if item is None:
             return None
         if item.source == "mth5" and item.data_type == "time":
@@ -539,8 +607,14 @@ class ProjectExplorerService:
         return None
 
     @staticmethod
-    def build_plot_figure(project: Project, target: PlotTarget):  # noqa: C901
-        """Build a selected Plotly figure through existing plotting APIs."""
+    def build_plot_figure(project: Project, target: PlotTarget) -> go.Figure:  # noqa: C901
+        """Build a selected Plotly figure through existing plotting APIs.
+
+        :param project: Open project containing the relevant data.
+        :param target: Target graph vertex.
+        :return: Plotly figure for the selected project resource.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         from resistics.tui.state import TIME_PLOT_MAX_POINTS
 
         target_type, payload = target
@@ -604,7 +678,12 @@ class ProjectExplorerService:
         validation: JobValidation,
         progress_callback: Callable[[JobProgressEvent], None],
     ) -> None:
-        """Execute a validated job with structured progress and safe closure."""
+        """Execute a validated job with structured progress and safe closure.
+
+        :param validation: Validation used by this operation.
+        :param progress_callback: Optional callback that receives processing progress events.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         from resistics.job import JobProgressEvent, JobRunner, JobState
         from resistics.project import load
 
@@ -632,7 +711,10 @@ class ProjectExplorerService:
                 processing_project.close()
 
     def cancel_job(self) -> bool:
-        """Request cancellation from the active runner, if one exists."""
+        """Request cancellation from the active runner, if one exists.
+
+        :return: Request cancellation from the active runner, if one exists.
+        """
         runner = self._job_runner
         if runner is None:
             return False

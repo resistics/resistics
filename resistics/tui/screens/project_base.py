@@ -12,6 +12,8 @@ from resistics.tui.services import ProjectExplorerService
 from resistics.tui.state import ExplorerView, _ProjectActionState
 
 if TYPE_CHECKING:
+    from pydantic import BaseModel
+
     from resistics.job import (
         JobRunner,
         JobState,
@@ -24,14 +26,9 @@ if TYPE_CHECKING:
 class _ProjectExplorerBase(Screen[None]):
     """Hold project explorer state shared across presentation concerns.
 
-    Parameters
-    ----------
-    project : Project
-        Open project displayed by the explorer.
-    startup_warnings : list[str] | None
-        Compatibility warnings supplied by a direct screen caller.
-    log_buffer : _TuiLogBuffer | None
-        Application-session diagnostic buffer.
+    :param project: Open project displayed by the explorer.
+    :param startup_warnings: Compatibility warnings supplied by a direct screen caller.
+    :param log_buffer: Application-session diagnostic buffer.
     """
 
     DATA_CATEGORIES = [
@@ -70,7 +67,7 @@ class _ProjectExplorerBase(Screen[None]):
         self.action_state = _ProjectActionState()
         self.editing_yaml = False
         self.editing_path: Path | None = None
-        self.editing_model = None
+        self.editing_model: type[BaseModel] | None = None
         self.editing_editor_id: str | None = None
         self.startup_warnings = startup_warnings or []
         self.log_buffer = log_buffer or _TuiLogBuffer()

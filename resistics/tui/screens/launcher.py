@@ -27,7 +27,10 @@ class TuiHeader(Static):
 
 
 class HomeScreen(Screen[None]):
-    """Landing screen shown when no project has been opened."""
+    """Landing screen shown when no project has been opened.
+
+    :param message: Optional status or failure message displayed to the user.
+    """
 
     BINDINGS = [
         ("up", "previous_option", "Previous option"),
@@ -272,15 +275,11 @@ class CreateProjectScreen(Screen[None]):
 class ProjectLoadingScreen(Screen[None]):
     """Immediate, cancellable surface shown while a project opens.
 
-    Parameters
-    ----------
-    project_path : Path
-        Project directory being opened.
+    :param project_path: Project directory being opened.
 
-    Attributes
-    ----------
-    BINDINGS : ClassVar[list[BindingType]]
-        Keyboard actions available while the project is opening.
+    **Attributes**
+
+    - **BINDINGS** — Keyboard actions available while the project is opening.
     """
 
     BINDINGS: ClassVar[list[BindingType]] = [

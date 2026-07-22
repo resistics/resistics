@@ -1,11 +1,10 @@
-"""
-Module to help plotting various data
-"""
+"""Module to help plotting various data"""
 
 from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from html import escape
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -24,14 +23,15 @@ from resistics.flow_graph import (
     FLOW_LAYOUT_PADDING,
     FLOW_LAYOUT_VERTEX_SPACING,
     _flow_node_key,
+    _FlowGraphEdge,
     _FlowGraphNode,
     _FlowGraphRenderSpec,
     _render_flow_graph,
 )
 
 if TYPE_CHECKING:
-    from resistics.flow import FlowDefinition
-    from resistics.job import ResolvedJob
+    from resistics.flow import FlowDefinition, FlowNode, FlowStage, ProcessDescriptor
+    from resistics.job import JobScope, ResolvedJob
 
 PLOTLY_TEMPLATE = "seaborn"
 PLOTLY_MARGIN = {"l": 0, "r": 0, "b": 0, "t": 50}
@@ -46,8 +46,15 @@ _LTTB_DOWNSAMPLER = LTTBDownsampler()
 _NAN_LTTB_DOWNSAMPLER = NaNMinMaxLTTBDownsampler()
 
 
-def _flow_descriptors(flow, project_path: Path | None):
-    """Resolve the process contracts used by a flow."""
+def _flow_descriptors(
+    flow: FlowDefinition, project_path: Path | None
+) -> dict[str, ProcessDescriptor]:
+    """Resolve the process contracts used by a flow.
+
+    :param flow: Flow definition to inspect or execute.
+    :param project_path: Project root used to locate configuration and artifacts.
+    :return: Process descriptors keyed by qualified process path.
+    """
     from resistics.flow import process_descriptor
 
     process_paths = {
@@ -56,8 +63,18 @@ def _flow_descriptors(flow, project_path: Path | None):
     return {path: process_descriptor(path, project_path) for path in process_paths}
 
 
-def _validate_flow_node(node, nodes, descriptors) -> None:
-    """Validate the dependency contracts needed to render one node."""
+def _validate_flow_node(
+    node: FlowNode,
+    nodes: Mapping[str, FlowNode],
+    descriptors: Mapping[str, ProcessDescriptor],
+) -> None:
+    """Validate the dependency contracts needed to render one node.
+
+    :param node: Flow node within the stage.
+    :param nodes: Nodes used by this operation.
+    :param descriptors: Descriptors used by this operation.
+    :raises ValueError: If the requested operation cannot satisfy its contract.
+    """
     descriptor = descriptors[node.process]
     if set(node.inputs) != set(descriptor.input_types):
         raise ValueError(
@@ -79,8 +96,15 @@ def _validate_flow_node(node, nodes, descriptors) -> None:
             )
 
 
-def _validate_flow_stage(stage, descriptors) -> None:
-    """Validate one stage before constructing its dependency graph."""
+def _validate_flow_stage(
+    stage: FlowStage, descriptors: Mapping[str, ProcessDescriptor]
+) -> None:
+    """Validate one stage before constructing its dependency graph.
+
+    :param stage: Flow stage to execute.
+    :param descriptors: Descriptors used by this operation.
+    :raises ValueError: If the requested operation cannot satisfy its contract.
+    """
     from resistics.flow import topological_order
 
     nodes = stage.node_map()
@@ -90,8 +114,16 @@ def _validate_flow_stage(stage, descriptors) -> None:
         _validate_flow_node(node, nodes, descriptors)
 
 
-def _flow_node_hover(stage, node, descriptor) -> str:
-    """Return escaped HTML details for a Plotly node tooltip."""
+def _flow_node_hover(
+    stage: FlowStage, node: FlowNode, descriptor: ProcessDescriptor
+) -> str:
+    """Return escaped HTML details for a Plotly node tooltip.
+
+    :param stage: Flow stage to execute.
+    :param node: Flow node within the stage.
+    :param descriptor: Discovered process metadata for the node.
+    :return: Escaped HTML details for a Plotly node tooltip.
+    """
     inputs = (
         "<br>".join(
             f"{escape(name)}: {escape(value_type)}"
@@ -111,7 +143,11 @@ def _flow_node_hover(stage, node, descriptor) -> str:
 
 
 def _flow_label_lines(value: str) -> list[str]:
-    """Wrap a node label at readable word boundaries for a compact card."""
+    """Wrap a node label at readable word boundaries for a compact card.
+
+    :param value: Value to validate or normalize.
+    :return: Wrap a node label at readable word boundaries for a compact card.
+    """
     words = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", value)
     words = re.sub(r"[_-]+", " ", words).split()
     words = [
@@ -131,8 +167,13 @@ def _flow_label_lines(value: str) -> list[str]:
     return lines or [value]
 
 
-def _flow_node_label(node, descriptor) -> str:
-    """Return a compact, wrapped node label while preserving hover detail."""
+def _flow_node_label(node: FlowNode, descriptor: ProcessDescriptor) -> str:
+    """Return a compact, wrapped node label while preserving hover detail.
+
+    :param node: Flow node within the stage.
+    :param descriptor: Discovered process metadata for the node.
+    :return: A compact, wrapped node label while preserving hover detail.
+    """
     node_id = "<br>".join(escape(line) for line in _flow_label_lines(node.id))
     process_name = "<br>".join(
         escape(line) for line in _flow_label_lines(descriptor.display_name)
@@ -140,8 +181,15 @@ def _flow_node_label(node, descriptor) -> str:
     return f"<b>{node_id}</b><br>{process_name}"
 
 
-def _flow_graph(flow, descriptors):
-    """Return flow nodes and input edges after validating each stage."""
+def _flow_graph(
+    flow: FlowDefinition, descriptors: Mapping[str, ProcessDescriptor]
+) -> tuple[list[_FlowGraphNode], list[_FlowGraphEdge]]:
+    """Return flow nodes and input edges after validating each stage.
+
+    :param flow: Flow definition to inspect or execute.
+    :param descriptors: Descriptors used by this operation.
+    :return: Validated staged nodes and typed dependency edges.
+    """
     nodes = []
     edges = []
     for stage_index, stage in enumerate(flow.flow_stages()):
@@ -172,17 +220,10 @@ def _flow_render_spec(
 ) -> _FlowGraphRenderSpec:
     """Adapt a flow definition to the shared graph presentation contract.
 
-    Parameters
-    ----------
-    flow : FlowDefinition
-        Flow whose title is displayed.
-    nodes : list[_FlowGraphNode]
-        Validated nodes used to prepare card labels and hover details.
+    :param flow: Flow whose title is displayed.
+    :param nodes: Validated nodes used to prepare card labels and hover details.
 
-    Returns
-    -------
-    _FlowGraphRenderSpec
-        Flow-specific presentation consumed by the shared renderer.
+    :return: Flow-specific presentation consumed by the shared renderer.
     """
     labels = {}
     hovers = {}
@@ -212,17 +253,26 @@ def _flow_render_spec(
 def plot_flow(flow: FlowDefinition, project_path: Path | None = None) -> go.Figure:
     """Build a ranked, interactive Plotly figure for a staged processing flow.
 
-    Parameters
-    ----------
-    flow : FlowDefinition
-        Processing flow to render.
-    project_path : Path | None
-        Project used to resolve local process plugins.
+    :param flow: Processing flow to render.
+    :param project_path: Project used to resolve local process plugins.
 
-    Returns
-    -------
-    go.Figure
-        Interactive staged flow graph.
+    :return: Interactive staged flow graph.
+
+    **Examples**
+
+    Build a figure directly from a portable flow definition.
+
+    ```{doctest}
+    >>> from resistics.flow import FlowDefinition, FlowNode, FlowStage
+    >>> from resistics.plot import plot_flow
+    >>> node = FlowNode(id="read", process="resistics.time.MTH5TimeReader")
+    >>> stage = FlowStage(stage_id="runs", scope="run", nodes=[node])
+    >>> flow = FlowDefinition(id="read", name="Read", stages=[stage])
+    >>> figure = plot_flow(flow)
+    >>> len(figure.data) > 0
+    True
+
+    ```
     """
     descriptors = _flow_descriptors(flow, project_path)
     nodes, edges = _flow_graph(flow, descriptors)
@@ -230,7 +280,11 @@ def plot_flow(flow: FlowDefinition, project_path: Path | None = None) -> go.Figu
 
 
 def _job_compact_value(value: Any) -> str:
-    """Return one readable card-sized representation of a configuration value."""
+    """Return one readable card-sized representation of a configuration value.
+
+    :param value: Value to validate or normalize.
+    :return: One readable card-sized representation of a configuration value.
+    """
     if isinstance(value, dict):
         rendered = f"{{{len(value)} keys}}"
     elif isinstance(value, (list, tuple, set)):
@@ -249,8 +303,13 @@ def _job_compact_value(value: Any) -> str:
     return rendered
 
 
-def _job_configuration_lines(node, resolved_job) -> list[str]:
-    """Return compact, card-ready configuration details for one job node."""
+def _job_configuration_lines(node: FlowNode, resolved_job: ResolvedJob) -> list[str]:
+    """Return compact, card-ready configuration details for one job node.
+
+    :param node: Flow node within the stage.
+    :param resolved_job: Resolved job used by this operation.
+    :return: Compact, card-ready configuration details for one job node.
+    """
     if node.configuration_source == "criteria":
         criteria_name = (
             resolved_job.criteria_path.name
@@ -275,9 +334,17 @@ def _job_configuration_lines(node, resolved_job) -> list[str]:
 
 
 def _job_card_label(
-    node, descriptor, configuration_lines: list[str]
+    node: FlowNode,
+    descriptor: ProcessDescriptor,
+    configuration_lines: list[str],
 ) -> tuple[str, int]:
-    """Return an expanded card label and its rendered line count."""
+    """Return an expanded card label and its rendered line count.
+
+    :param node: Flow node within the stage.
+    :param descriptor: Discovered process metadata for the node.
+    :param configuration_lines: Configuration lines used by this operation.
+    :return: An expanded card label and its rendered line count.
+    """
     node_lines = _flow_label_lines(node.id)
     process_lines = _flow_label_lines(descriptor.display_name)
     title = "<br>".join(escape(line) for line in node_lines)
@@ -290,13 +357,29 @@ def _job_card_label(
 
 
 def _job_preformatted(value: Any) -> str:
-    """Format structured configuration for an indented Plotly hover section."""
+    """Format structured configuration for an indented Plotly hover section.
+
+    :param value: Value to validate or normalize.
+    :return: Format structured configuration for an indented Plotly hover section.
+    """
     rendered = json.dumps(value, indent=2, sort_keys=True, default=str)
     return rendered.replace(" ", "&nbsp;").replace("\n", "<br>")
 
 
-def _job_node_hover(stage, node, descriptor, resolved_job) -> str:
-    """Return the full effective job configuration for a node hover tooltip."""
+def _job_node_hover(
+    stage: FlowStage,
+    node: FlowNode,
+    descriptor: ProcessDescriptor,
+    resolved_job: ResolvedJob,
+) -> str:
+    """Return the full effective job configuration for a node hover tooltip.
+
+    :param stage: Flow stage to execute.
+    :param node: Flow node within the stage.
+    :param descriptor: Discovered process metadata for the node.
+    :param resolved_job: Resolved job used by this operation.
+    :return: The full effective job configuration for a node hover tooltip.
+    """
     base = _flow_node_hover(stage, node, descriptor)
     if node.configuration_source == "criteria":
         criteria_name = (
@@ -320,8 +403,12 @@ def _job_node_hover(stage, node, descriptor, resolved_job) -> str:
     return f"{base}<br><br><b>Parameter-file values</b><br>{_job_preformatted(values)}"
 
 
-def _job_scope_summary(scope) -> str:
-    """Return a compact description of the filters applied to a job."""
+def _job_scope_summary(scope: JobScope) -> str:
+    """Return a compact description of the filters applied to a job.
+
+    :param scope: Scope used by this operation.
+    :return: A compact description of the filters applied to a job.
+    """
     parts = []
     if scope.surveys:
         parts.append(f"surveys: {', '.join(scope.surveys)}")
@@ -342,19 +429,11 @@ def _job_render_spec(
 ) -> _FlowGraphRenderSpec:
     """Adapt a resolved job to the shared graph presentation contract.
 
-    Parameters
-    ----------
-    resolved_job : ResolvedJob
-        Job providing effective configuration and execution scope.
-    flow : FlowDefinition
-        Selected job stages represented as a flow.
-    nodes : list[_FlowGraphNode]
-        Validated nodes used to prepare expanded job cards.
+    :param resolved_job: Job providing effective configuration and execution scope.
+    :param flow: Selected job stages represented as a flow.
+    :param nodes: Validated nodes used to prepare expanded job cards.
 
-    Returns
-    -------
-    _FlowGraphRenderSpec
-        Job-specific presentation consumed by the shared renderer.
+    :return: Job-specific presentation consumed by the shared renderer.
     """
     labels = {}
     hovers = {}
@@ -423,18 +502,11 @@ def _job_render_spec(
 def plot_job(resolved_job: ResolvedJob, project_path: Path | None = None) -> go.Figure:
     """Build an execution-plan plot from one fully resolved processing job.
 
-    Parameters
-    ----------
-    resolved_job : ResolvedJob
-        Validated job, selected stages, and concrete work batches.
-    project_path : Path | None
-        Project used to resolve local process plugins. When omitted, the job's
+    :param resolved_job: Validated job, selected stages, and concrete work batches.
+    :param project_path: Project used to resolve local process plugins. When omitted, the job's
         runtime project path is used when present.
 
-    Returns
-    -------
-    go.Figure
-        Interactive job graph with effective configuration details.
+    :return: Interactive job graph with effective configuration details.
     """
     if project_path is None:
         runtime_path = resolved_job.processing_job.runtime.get("project_path")
@@ -456,33 +528,34 @@ def plot_job(resolved_job: ResolvedJob, project_path: Path | None = None) -> go.
 def lttb_downsample(
     x: np.ndarray, y: np.ndarray, max_pts: int = 5_000
 ) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Downsample x, y for visualisation
+    """Downsample x, y for visualisation
 
-    Parameters
-    ----------
-    x : np.ndarray
-        x array
-    y : np.ndarray
-        y array
-    max_pts : int, optional
-        Maximum number of points after downsampling, by default 5000
+    :param x: x array
+    :param y: y array
+    :param max_pts: Maximum number of points after downsampling, by default 5000
 
-    Returns
-    -------
-    Tuple[np.ndarray, np.ndarray]
-        (new_x, new_y), the downsampled x and y arrays
+    :return: (new_x, new_y), the downsampled x and y arrays
 
-    Raises
-    ------
-    ValueError
-        If the size of x does not match the size of y
+    :raises ValueError: If the size of x does not match the size of y
 
-    Notes
-    -----
+    **Notes**
+
     Selection indices are applied to the original arrays so their dtypes are
     preserved. Floating-point data containing NaNs uses the NaN-aware
     MinMaxLTTB implementation to retain markers for visible Plotly gaps.
+
+    **Examples**
+
+    Downsampling preserves the first and final coordinates.
+
+    ```{doctest}
+    >>> import numpy as np
+    >>> from resistics.plot import lttb_downsample
+    >>> x, y = lttb_downsample(np.arange(10), np.arange(10), max_pts=4)
+    >>> len(x), x[[0, -1]].tolist(), y[[0, -1]].tolist()
+    (4, [0, 9], [0, 9])
+
+    ```
     """
     if x.size != y.size:
         raise ValueError(f"x size {x.size} must equal y size {y.size}")
@@ -501,21 +574,26 @@ def lttb_downsample(
 
 
 def apply_lttb(data: np.ndarray, max_pts: int | None) -> tuple[np.ndarray, np.ndarray]:
-    """
-    A helper function for applying lttb downsampling if max_pts is not None
+    """A helper function for applying lttb downsampling if max_pts is not None
 
-    Parameters
-    ----------
-    data : np.ndarray
-        The data to downsample
-    max_pts : Union[int, None]
-        The maximum number of points or None. If None, no downsamping is
+    :param data: The data to downsample
+    :param max_pts: The maximum number of points or None. If None, no downsamping is
         performed
 
-    Returns
-    -------
-    Tuple[np.ndarray, np.ndarray]
-        Indices and data selected for plotting
+    :return: Indices and data selected for plotting
+
+    **Examples**
+
+    ``None`` retains every sample and its positional index.
+
+    ```{doctest}
+    >>> import numpy as np
+    >>> from resistics.plot import apply_lttb
+    >>> indices, values = apply_lttb(np.array([2.0, 3.0]), None)
+    >>> indices.tolist(), values.tolist()
+    ([0, 1], [2.0, 3.0])
+
+    ```
     """
     indices = np.arange(data.size)
     if max_pts is None:
@@ -531,27 +609,17 @@ def plot_timeline(
     title: str = "Timeline",
     ref_time: pd.Timestamp | None = None,
 ) -> go.Figure:
-    """
-    Plot a timeline
+    """Plot a timeline
 
     The function converts pd.Timestamps to Python datetime objects which are
     supported more fully in serialization.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame with the first and last times of the horizontal bars
-    y_col : str
-        The column to use for the y axis
-    title : str, optional
-        The title for the plot, by default "Timeline"
-    ref_time : Optional[pd.Timestamp], optional
-        The reference time, by default None
+    :param df: DataFrame with the first and last times of the horizontal bars
+    :param y_col: The column to use for the y axis
+    :param title: The title for the plot, by default "Timeline"
+    :param ref_time: The reference time, by default None
 
-    Returns
-    -------
-    go.Figure
-        Plotly figure
+    :return: Plotly figure
     """
 
     # get range for x axis
@@ -561,8 +629,8 @@ def plot_timeline(
         min_time = ref_time
     # get axis range and covert to datetime
     pad = 0.1 * (max_time - min_time)
-    range_start = (min_time - pad).to_pydatetime()
-    range_end = (max_time + pad).to_pydatetime()
+    range_start = pd.Timestamp(min_time - pad).to_pydatetime()
+    range_end = pd.Timestamp(max_time + pad).to_pydatetime()
 
     # sort for ordering
     df = df.sort_values([y_col, "start"])
@@ -591,13 +659,9 @@ def plot_timeline(
 
 
 def get_calibration_fig() -> go.Figure:
-    """
-    Get a figure for plotting calibration data
+    """Get a figure for plotting calibration data
 
-    Returns
-    -------
-    go.Figure
-        Plotly figure
+    :return: Plotly figure
     """
     fig = make_subplots(
         rows=2,
@@ -615,20 +679,12 @@ def get_calibration_fig() -> go.Figure:
 
 
 def get_time_fig(chans: list[str], y_axis_label: dict[str, str]) -> go.Figure:
-    """
-    Get a figure for plotting time data
+    """Get a figure for plotting time data
 
-    Parameters
-    ----------
-    chans : List[str]
-        The channels to plot
-    y_axis_label : Dict[str, str]
-        The labels to use for the y axis
+    :param chans: The channels to plot
+    :param y_axis_label: The labels to use for the y axis
 
-    Returns
-    -------
-    go.Figure
-        Plotly figure
+    :return: Plotly figure
     """
     fig = make_subplots(
         rows=len(chans),
@@ -644,20 +700,12 @@ def get_time_fig(chans: list[str], y_axis_label: dict[str, str]) -> go.Figure:
 
 
 def get_spectra_stack_fig(chans: list[str], y_axis_label: dict[str, str]) -> go.Figure:
-    """
-    Get a figure for plotting spectra stack data
+    """Get a figure for plotting spectra stack data
 
-    Parameters
-    ----------
-    chans : List[str]
-        The channels to plot
-    y_axis_label : Dict[str, str]
-        The y axis labels
+    :param chans: The channels to plot
+    :param y_axis_label: The y axis labels
 
-    Returns
-    -------
-    go.Figure
-        Plotly figure
+    :return: Plotly figure
     """
     fig = make_subplots(
         rows=len(chans),
@@ -675,18 +723,11 @@ def get_spectra_stack_fig(chans: list[str], y_axis_label: dict[str, str]) -> go.
 
 
 def get_spectra_section_fig(chans: list[str]) -> go.Figure:
-    """
-    Get figure for plotting spectra sections
+    """Get figure for plotting spectra sections
 
-    Parameters
-    ----------
-    chans : List[str]
-        The channels to plot
+    :param chans: The channels to plot
 
-    Returns
-    -------
-    go.Figure
-        Plotly figure
+    :return: Plotly figure
     """
     fig = make_subplots(
         rows=len(chans),

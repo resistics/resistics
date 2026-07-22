@@ -164,17 +164,10 @@ class ProjectExplorerScreen(
     ) -> _ExplorerLoadResult:
         """Load one explorer section without touching Textual widgets.
 
-        Parameters
-        ----------
-        generation : int
-            Screen generation requesting the load.
-        section : ExplorerView
-            Explorer section to discover.
+        :param generation: Screen generation requesting the load.
+        :param section: Explorer section to discover.
 
-        Returns
-        -------
-        _ExplorerLoadResult
-            Immutable result consumed on the Textual UI thread.
+        :return: Immutable result consumed on the Textual UI thread.
         """
         return await _run_in_worker_thread(
             partial(self._discover_explorer_section, generation, section)
@@ -185,17 +178,10 @@ class ProjectExplorerScreen(
     ) -> _ExplorerLoadResult:
         """Perform one synchronous discovery operation in a worker thread.
 
-        Parameters
-        ----------
-        generation : int
-            Screen generation requesting the load.
-        section : ExplorerView
-            Explorer section to discover.
+        :param generation: Screen generation requesting the load.
+        :param section: Explorer section to discover.
 
-        Returns
-        -------
-        _ExplorerLoadResult
-            Immutable success or failure result containing no widgets.
+        :return: Immutable success or failure result containing no widgets.
         """
         try:
             with self.service.discovery():
@@ -231,12 +217,8 @@ class ProjectExplorerScreen(
     ) -> None:
         """Start one lazy section load unless its current generation is ready.
 
-        Parameters
-        ----------
-        section : ExplorerView
-            Explorer view whose cached data is required.
-        force : bool
-            Reload a section even when it is already marked ready.
+        :param section: Explorer view whose cached data is required.
+        :param force: Reload a section even when it is already marked ready.
         """
         if not force and (
             section in self._loaded_sections or section in self._loading_sections
@@ -250,10 +232,7 @@ class ProjectExplorerScreen(
     def _show_section_loading(self, section: ExplorerView) -> None:
         """Render a lightweight loading placeholder without performing I/O.
 
-        Parameters
-        ----------
-        section : ExplorerView
-            Explorer section whose content is loading.
+        :param section: Explorer section whose content is loading.
         """
         if section == "project":
             self.query_one("#project-content", Static).update(
@@ -276,10 +255,7 @@ class ProjectExplorerScreen(
     def _apply_explorer_worker_result(self, event: Worker.StateChanged) -> None:
         """Apply successful current-generation discovery on the UI thread.
 
-        Parameters
-        ----------
-        event : Worker.StateChanged
-            Textual lifecycle event for a discovery worker.
+        :param event: Textual lifecycle event for a discovery worker.
         """
         if event.state != WorkerState.SUCCESS or event.worker.group != "explorer-load":
             return
@@ -301,10 +277,7 @@ class ProjectExplorerScreen(
     def _render_explorer_result(self, result: _ExplorerLoadResult) -> None:
         """Mutate widgets from one current worker result on the UI thread.
 
-        Parameters
-        ----------
-        result : _ExplorerLoadResult
-            Successful current-generation discovery result.
+        :param result: Successful current-generation discovery result.
         """
         if result.section == "project" and result.state is not None:
             self._populate_overview(result.state)
@@ -323,12 +296,8 @@ class ProjectExplorerScreen(
     def _show_section_error(self, section: ExplorerView, error: str) -> None:
         """Replace one loading placeholder with a user-facing failure.
 
-        Parameters
-        ----------
-        section : ExplorerView
-            Explorer section whose load failed.
-        error : str
-            Failure detail returned by the worker.
+        :param section: Explorer section whose load failed.
+        :param error: Failure detail returned by the worker.
         """
         message = f"Unable to load {section}: {error}"
         if section == "project":
@@ -366,17 +335,10 @@ class ProjectExplorerScreen(
     def _check_resource_action(self, action: str, active: str) -> bool:
         """Check one YAML-resource action using only in-memory state.
 
-        Parameters
-        ----------
-        action : str
-            Action name to check.
-        active : str
-            Identifier of the active tab.
+        :param action: Action name to check.
+        :param active: Identifier of the active tab.
 
-        Returns
-        -------
-        bool
-            Whether the action is currently available.
+        :return: Whether the action is currently available.
         """
         if active in {"flows", "parameters", "criteria", "jobs"} and (
             active not in self._loaded_sections
@@ -417,8 +379,13 @@ class ProjectExplorerScreen(
             "criteria",
         }
 
-    def check_action(self, action: str, parameters: tuple[object, ...]):
-        """Expose only Footer actions relevant to cached screen state."""
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        """Expose only Footer actions relevant to cached screen state.
+
+        :param action: Action whose current availability is being evaluated.
+        :param parameters: Callback or command parameters.
+        :return: Whether the action is enabled, or ``None`` to defer to Textual.
+        """
         tabbed_content = self.query(TabbedContent)
         if not tabbed_content.nodes:
             return False

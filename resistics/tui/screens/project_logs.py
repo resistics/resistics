@@ -19,15 +19,9 @@ _LEVEL_STYLES = {
 def _diagnostic_text(entry: DiagnosticLogEntry) -> Text:
     """Render one diagnostic without interpreting its content as Rich markup.
 
-    Parameters
-    ----------
-    entry : DiagnosticLogEntry
-        Structured diagnostic to render.
+    :param entry: Structured diagnostic to render.
 
-    Returns
-    -------
-    Text
-        Safely styled Rich text.
+    :return: Safely styled Rich text.
     """
     value = Text()
     timestamp = entry.timestamp.astimezone().strftime("%H:%M:%S")

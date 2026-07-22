@@ -1,5 +1,4 @@
-"""
-Module containing functions and classes related to Spectra calculation and
+"""Module containing functions and classes related to Spectra calculation and
 manipulation
 
 Spectra are calculated from the windowed, decimated time data. The inbuilt
@@ -83,38 +82,45 @@ class SpectraMetadata(WriteableMetadata):
 
 
 class SpectraData(ResisticsData):
-    """
-    Class for holding spectra data
+    """Class for holding spectra data
 
     The spectra data is stored in the class as a dictionary mapping decimation
     level to numpy array. The shape of the array for each decimation level is:
 
     n_wins x n_chans x n_freqs
+
+    :param metadata: Metadata for the spectra data.
+    :param data: Per-level complex arrays shaped as windows, channels, and frequencies.
     """
 
-    def __init__(self, metadata: SpectraMetadata, data: dict[int, np.ndarray]):
-        """
-        Initialise spectra data
-
-        Parameters
-        ----------
-        metadata : SpectraMetadata
-            Metadata for the spectra data
-        data : Dict[int, np.ndarray]
-            Dictionary of data, one entry for each evaluation level
-        """
+    def __init__(self, metadata: SpectraMetadata, data: dict[int, np.ndarray]) -> None:
         logger.debug(f"Creating SpectraData with data type {data[0].dtype}")
         self.metadata = metadata
         self.data = data
 
     def get_level(self, level: int) -> np.ndarray:
-        """Get the spectra data for a decimation level"""
+        """Get spectra data for a decimation level.
+
+        :param level: Decimation level index.
+
+        :return: Complex data shaped as windows, channels, and frequencies.
+
+        :raises ValueError: If the level is outside the available range.
+        """
         if level >= self.metadata.n_levels:
             raise ValueError(f"Level {level} not <= max {self.metadata.n_levels - 1}")
         return self.data[level]
 
     def get_chan(self, level: int, chan: str) -> np.ndarray:
-        """Get the channel spectra data for a decimation level"""
+        """Get one channel's spectra for a decimation level.
+
+        :param level: Decimation level index.
+        :param chan: Channel component name.
+
+        :return: Complex data shaped as windows by frequencies.
+
+        :raises ChannelNotFoundError: If the channel is unavailable.
+        """
         from resistics.errors import ChannelNotFoundError
 
         if chan not in self.metadata.chans:
@@ -123,7 +129,15 @@ class SpectraData(ResisticsData):
         return self.data[level][..., idx, :]
 
     def get_chans(self, level: int, chans: list[str]) -> np.ndarray:
-        """Get the channels spectra data for a decimation level"""
+        """Get selected channel spectra for a decimation level.
+
+        :param level: Decimation level index.
+        :param chans: Channel component names in the requested output order.
+
+        :return: Complex data shaped as windows, selected channels, and frequencies.
+
+        :raises ChannelNotFoundError: If any requested channel is unavailable.
+        """
         from resistics.errors import ChannelNotFoundError
 
         for chan in chans:
@@ -133,7 +147,15 @@ class SpectraData(ResisticsData):
         return self.data[level][..., indices, :]
 
     def get_freq(self, level: int, idx: int) -> np.ndarray:
-        """Get the spectra data at a frequency index for a decimation level"""
+        """Get spectra at one frequency index for a decimation level.
+
+        :param level: Decimation level index.
+        :param idx: Frequency-bin index.
+
+        :return: Complex data for every window and channel at the frequency.
+
+        :raises ValueError: If the frequency index is outside the level range.
+        """
         n_freqs = self.metadata.levels_metadata[level].n_freqs
         if idx < 0 or idx >= n_freqs:
             raise ValueError(f"Freq. index {idx} not 0 <= idx < {n_freqs}")
@@ -142,32 +164,28 @@ class SpectraData(ResisticsData):
     def get_mag_phs(
         self, level: int, unwrap: bool = False
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Get magnitude and phase for a decimation level"""
+        """Get magnitude and phase for a decimation level.
+
+        :param level: Decimation level index.
+        :param unwrap: Whether to unwrap phase along the final axis.
+
+        :return: Magnitude and phase arrays matching the level data shape.
+        """
         spec = self.data[level]
         if unwrap:
             return np.absolute(spec), np.unwrap(np.angle(spec))
         return np.absolute(spec), np.angle(spec)
 
     def get_timestamps(self, level: int) -> pd.DatetimeIndex:
-        """
-        Get the start time of each window
+        """Get the start time of each window
 
         Note that this does not use high resolution timestamps
 
-        Parameters
-        ----------
-        level : int
-            The decimation level
+        :param level: The decimation level
 
-        Returns
-        -------
-        pd.DatetimeIndex
-            The starts of each window
+        :return: The starts of each window
 
-        Raises
-        ------
-        ValueError
-            If the level is out of range
+        :raises ValueError: If the level is out of range
         """
         from resistics.window import get_win_starts
 
@@ -184,20 +202,13 @@ class SpectraData(ResisticsData):
         )
 
     def plot(self, max_pts: int | None = 10_000) -> go.Figure:
-        """
-        Stack spectra data for all decimation levels
+        """Stack spectra data for all decimation levels
 
-        Parameters
-        ----------
-        max_pts : Optional[int], optional
-            The maximum number of points in any individual plot before applying
+        :param max_pts: The maximum number of points in any individual plot before applying
             LTTB downsampling, by default 10_000. If set to None, no
             downsampling will be applied.
 
-        Returns
-        -------
-        go.Figure
-            The plotly figure
+        :return: The plotly figure
         """
         from resistics.plot import get_spectra_stack_fig
 
@@ -221,27 +232,17 @@ class SpectraData(ResisticsData):
         grouping: str | None = None,
         offset: str = "0h",
     ) -> go.Figure:
-        """
-        Stack the spectra for a decimation level with optional time grouping
+        """Stack the spectra for a decimation level with optional time grouping
 
-        Parameters
-        ----------
-        level : int
-            The decimation level
-        max_pts : int, optional
-            The maximum number of points in any individual plot before applying
+        :param level: The decimation level
+        :param max_pts: The maximum number of points in any individual plot before applying
             LTTB downsampling, by default 10_000
-        grouping : Optional[str], optional
-            A grouping interval as a pandas freq string, by default None
-        offset : str, optional
-            A time offset to add to the grouping, by default "0h". For instance,
+        :param grouping: A grouping interval as a pandas freq string, by default None
+        :param offset: A time offset to add to the grouping, by default "0h". For instance,
             to plot night time and day time spectra, set grouping to "12h" and
             offset to "6h"
 
-        Returns
-        -------
-        go.Figure
-            The plotly figure
+        :return: The plotly figure
         """
         from resistics.plot import get_spectra_stack_fig
 
@@ -278,29 +279,17 @@ class SpectraData(ResisticsData):
         color: str = "blue",
         max_pts: int | None = 10_000,
     ) -> go.Figure:
-        """
-        Add stacked spectra data to a plot
+        """Add stacked spectra data to a plot
 
-        Parameters
-        ----------
-        fig : go.Figure
-            The figure to add to
-        freqs : np.ndarray
-            Frequencies
-        data : np.ndarray
-            The magnitude data
-        legend : str
-            The legend string for the data
-        color : str, optional
-            The color to plot the line, by default "blue"
-        max_pts : Optional[int], optional
-            Maximum number of points to plot, by default 10_000. If the number
+        :param fig: The figure to add to
+        :param freqs: Frequencies
+        :param data: The magnitude data
+        :param legend: The legend string for the data
+        :param color: The color to plot the line, by default "blue"
+        :param max_pts: Maximum number of points to plot, by default 10_000. If the number
             of samples in the data is above this, it will be downsampled
 
-        Returns
-        -------
-        go.Figure
-            Plotly figure
+        :return: Plotly figure
         """
         from resistics.plot import apply_lttb
 
@@ -319,21 +308,13 @@ class SpectraData(ResisticsData):
             fig.add_trace(scatter, row=idx + 1, col=1)
         return fig
 
-    def plot_level_section(self, level: int, grouping="30T") -> go.Figure:
-        """
-        Plot a spectra section
+    def plot_level_section(self, level: int, grouping: str = "30T") -> go.Figure:
+        """Plot a spectra section
 
-        Parameters
-        ----------
-        level : int
-            The decimation level to plot
-        grouping : str, optional
-            The time domain resolution, by default "30T"
+        :param level: The decimation level to plot
+        :param grouping: The time domain resolution, by default "30T"
 
-        Returns
-        -------
-        go.Figure
-            A plotly figure
+        :return: A plotly figure
         """
         from resistics.plot import get_spectra_section_fig
 
@@ -381,92 +362,93 @@ class SpectraData(ResisticsData):
 
 
 class FourierTransform(ResisticsProcess):
-    """
-    Perform a Fourier transform of the windowed data
+    """Perform a Fourier transform of the windowed data
 
     The processor is inspired by the scipy.signal.stft function which performs
     a similar process and involves a Fourier transform along the last axis of
     the windowed data.
 
-    Parameters
-    ----------
-    win_fnc : Union[str, Tuple[str, float]]
-        The window to use before performing the FFT, by default ("kaiser", 14)
-    detrend : Union[str, None]
-        Type of detrending to apply before performing FFT, by default linear
+    :param win_fnc: The window to use before performing the FFT, by default ("kaiser", 14)
+    :param detrend: Type of detrending to apply before performing FFT, by default linear
         detrend. Setting to None will not apply any detrending to the data prior
         to the FFT
-    workers : int
-        The number of CPUs to use, by default max - 2
+    :param workers: The number of CPUs to use, by default max - 2
 
-    Examples
-    --------
+    **Examples**
+
     This example will get periodic decimated data, perfrom windowing and run the
     Fourier transform on the windowed data.
 
-    .. plot::
-        :width: 90%
+    ```{plot}
+    :width: 90%
+    :filename-prefix: fourier-transform
 
-        >>> import matplotlib.pyplot as plt
-        >>> import numpy as np
-        >>> from resistics.testing import decimated_data_periodic
-        >>> from resistics.window import WindowSetup, Windower
-        >>> from resistics.spectra import FourierTransform
-        >>> frequencies = {"chan1": [870, 590, 110, 32, 12], "chan2": [480, 375, 210, 60, 45]}
-        >>> dec_data = decimated_data_periodic(frequencies, fs=128)
-        >>> dec_data.metadata.chans
-        ['chan1', 'chan2']
-        >>> print(dec_data.to_string())
-        <class 'resistics.decimate.DecimatedData'>
-                   fs        dt  n_samples           first_time                        last_time
-        level
-        0      2048.0  0.000488      16384  2021-01-01 00:00:00  2021-01-01 00:00:07.99951171875
-        1       512.0  0.001953       4096  2021-01-01 00:00:00    2021-01-01 00:00:07.998046875
-        2       128.0  0.007812       1024  2021-01-01 00:00:00      2021-01-01 00:00:07.9921875
+    >>> import matplotlib.pyplot as plt
+    >>> import numpy as np
+    >>> from resistics.testing import decimated_data_periodic
+    >>> from resistics.window import WindowSetup, Windower
+    >>> from resistics.spectra import FourierTransform
+    >>> frequencies = {"chan1": [870, 590, 110, 32, 12], "chan2": [480, 375, 210, 60, 45]}
+    >>> dec_data = decimated_data_periodic(frequencies, fs=128)
+    >>> dec_data.metadata.chans
+    ['chan1', 'chan2']
+    >>> print(dec_data.to_string()) # doctest: +NORMALIZE_WHITESPACE
+    <class 'resistics.decimate.DecimatedData'>
+               fs        dt  n_samples           first_time                        last_time
+    level
+    0      2048.0  0.000488      16384  2021-01-01 00:00:00  2021-01-01 00:00:07.99951171875
+    1       512.0  0.001953       4096  2021-01-01 00:00:00    2021-01-01 00:00:07.998046875
+    2       128.0  0.007812       1024  2021-01-01 00:00:00      2021-01-01 00:00:07.9921875
 
-        Perform the windowing
 
-        >>> win_params = WindowSetup().run(dec_data.metadata.n_levels, dec_data.metadata.fs)
-        >>> win_data = Windower().run(dec_data.metadata.first_time, win_params, dec_data)
+    Perform the windowing
 
-        And then the Fourier transform. By default, the data will be (linearly)
-        detrended and mutliplied by a Kaiser window prior to the Fourier
-        transform
+    >>> win_params = WindowSetup().run(dec_data.metadata.n_levels, dec_data.metadata.fs)
+    >>> win_data = Windower().run(dec_data.metadata.first_time, win_params, dec_data)
 
-        >>> spec_data = FourierTransform().run(win_data)
 
-        For plotting of magnitude, let's stack the spectra
+    And then the Fourier transform. By default, the data will be (linearly)
+    detrended and mutliplied by a Kaiser window prior to the Fourier
+    transform
 
-        >>> freqs_0 = spec_data.metadata.levels_metadata[0].freqs
-        >>> data_0 = np.absolute(spec_data.data[0]).mean(axis=0)
-        >>> freqs_1 = spec_data.metadata.levels_metadata[1].freqs
-        >>> data_1 = np.absolute(spec_data.data[1]).mean(axis=0)
-        >>> freqs_2 = spec_data.metadata.levels_metadata[2].freqs
-        >>> data_2 = np.absolute(spec_data.data[2]).mean(axis=0)
+    >>> spec_data = FourierTransform().run(win_data)
 
-        Now plot
 
-        >>> plt.subplot(3,1,1) # doctest: +SKIP
-        >>> plt.plot(freqs_0, data_0[0], label="chan1") # doctest: +SKIP
-        >>> plt.plot(freqs_0, data_0[1], label="chan2") # doctest: +SKIP
-        >>> plt.grid()
-        >>> plt.title("Decimation level 0") # doctest: +SKIP
-        >>> plt.legend() # doctest: +SKIP
-        >>> plt.subplot(3,1,2) # doctest: +SKIP
-        >>> plt.plot(freqs_1, data_1[0], label="chan1") # doctest: +SKIP
-        >>> plt.plot(freqs_1, data_1[1], label="chan2") # doctest: +SKIP
-        >>> plt.grid()
-        >>> plt.title("Decimation level 1") # doctest: +SKIP
-        >>> plt.legend() # doctest: +SKIP
-        >>> plt.subplot(3,1,3) # doctest: +SKIP
-        >>> plt.plot(freqs_2, data_2[0], label="chan1") # doctest: +SKIP
-        >>> plt.plot(freqs_2, data_2[1], label="chan2") # doctest: +SKIP
-        >>> plt.grid()
-        >>> plt.title("Decimation level 2") # doctest: +SKIP
-        >>> plt.legend() # doctest: +SKIP
-        >>> plt.xlabel("Frequency") # doctest: +SKIP
-        >>> plt.tight_layout() # doctest: +SKIP
-        >>> plt.show() # doctest: +SKIP
+    For plotting of magnitude, let's stack the spectra
+
+    >>> freqs_0 = spec_data.metadata.levels_metadata[0].freqs
+    >>> data_0 = np.absolute(spec_data.data[0]).mean(axis=0)
+    >>> freqs_1 = spec_data.metadata.levels_metadata[1].freqs
+    >>> data_1 = np.absolute(spec_data.data[1]).mean(axis=0)
+    >>> freqs_2 = spec_data.metadata.levels_metadata[2].freqs
+    >>> data_2 = np.absolute(spec_data.data[2]).mean(axis=0)
+
+
+    Now plot
+
+    >>> plt.subplot(3,1,1) # doctest: +SKIP
+    >>> plt.plot(freqs_0, data_0[0], label="chan1") # doctest: +SKIP
+    >>> plt.plot(freqs_0, data_0[1], label="chan2") # doctest: +SKIP
+    >>> plt.grid()
+    >>> plt.title("Decimation level 0") # doctest: +SKIP
+    >>> plt.legend() # doctest: +SKIP
+    >>> plt.subplot(3,1,2) # doctest: +SKIP
+    >>> plt.plot(freqs_1, data_1[0], label="chan1") # doctest: +SKIP
+    >>> plt.plot(freqs_1, data_1[1], label="chan2") # doctest: +SKIP
+    >>> plt.grid()
+    >>> plt.title("Decimation level 1") # doctest: +SKIP
+    >>> plt.legend() # doctest: +SKIP
+    >>> plt.subplot(3,1,3) # doctest: +SKIP
+    >>> plt.plot(freqs_2, data_2[0], label="chan1") # doctest: +SKIP
+    >>> plt.plot(freqs_2, data_2[1], label="chan2") # doctest: +SKIP
+    >>> plt.grid()
+    >>> plt.title("Decimation level 2") # doctest: +SKIP
+    >>> plt.legend() # doctest: +SKIP
+    >>> plt.xlabel("Frequency") # doctest: +SKIP
+    >>> plt.tight_layout() # doctest: +SKIP
+    >>> plt.show() # doctest: +SKIP
+
+    ```
     """
 
     input_types: ClassVar[dict[str, str]] = {"win_data": "windowed_data"}
@@ -478,22 +460,15 @@ class FourierTransform(ResisticsProcess):
     workers: int = -2
 
     def run(self, win_data: WindowedData) -> SpectraData:
-        """
-        Perform the FFT
+        """Perform the FFT
 
         Data is padded to the next fast length before performing the FFT to
         speed up processing. Therefore, the output length may not be as
         expected.
 
-        Parameters
-        ----------
-        win_data : WindowedData
-            The input windowed data
+        :param win_data: The input windowed data
 
-        Returns
-        -------
-        SpectraData
-            The Fourier transformed output
+        :return: The Fourier transformed output
         """
         from scipy.fft import next_fast_len, rfftfreq
 
@@ -524,8 +499,7 @@ class FourierTransform(ResisticsProcess):
     def _get_level_data(
         self, metadata: WindowedLevelMetadata, data: np.ndarray, n_transform: int
     ) -> np.ndarray:
-        """
-        Run the spectra calculation for a single decimation level
+        """Run the spectra calculation for a single decimation level
 
         The input is an array with shape:
 
@@ -535,19 +509,11 @@ class FourierTransform(ResisticsProcess):
 
         n_wins x n_chans x n_transform
 
-        Parameters
-        ----------
-        metadata : WindowedLevelMetadata
-            Level metadata
-        data : np.ndarray
-            Data to transform
-        n_transform : int
-            Size of the transform
+        :param metadata: Level metadata
+        :param data: Data to transform
+        :param n_transform: Size of the transform
 
-        Returns
-        -------
-        np.ndarray
-            Transformed data for all windows
+        :return: Transformed data for all windows
         """
         from scipy import signal
         from scipy.fft import rfft
@@ -560,8 +526,13 @@ class FourierTransform(ResisticsProcess):
         # perform the fft on the last axis
         return rfft(data, n=n_transform, axis=-1, norm="ortho", workers=self.workers)
 
-    def _get_window(self, win_size: int):
-        """Get the window to apply to the data"""
+    def _get_window(self, win_size: int) -> np.ndarray:
+        """Get coefficients for the configured Fourier window.
+
+        :param win_size: Window size in samples.
+
+        :return: One coefficient per input sample.
+        """
         from scipy.signal import get_window
         from scipy.signal.windows import dpss
 
@@ -572,7 +543,13 @@ class FourierTransform(ResisticsProcess):
     def _get_level_metadata(
         self, level_metadata: WindowedLevelMetadata, freqs: list[float]
     ) -> SpectraLevelMetadata:
-        """Get the spectra metadata for a decimation level"""
+        """Get spectra metadata for a decimation level.
+
+        :param level_metadata: Source windowed-level metadata.
+        :param freqs: Fourier frequencies in hertz.
+
+        :return: Spectra-level metadata with frequency coordinates.
+        """
         metadata_dict = level_metadata.dict()
         metadata_dict["n_freqs"] = len(freqs)
         metadata_dict["freqs"] = freqs
@@ -583,23 +560,29 @@ class FourierTransform(ResisticsProcess):
         metadata_dict: dict[str, Any],
         levels_metadata: list[SpectraLevelMetadata],
     ) -> SpectraMetadata:
-        """Get the metadata for the windowed data"""
+        """Get aggregate metadata for spectra data.
+
+        :param metadata_dict: Source windowed-data metadata.
+        :param levels_metadata: Metadata for each transformed level.
+
+        :return: Aggregate spectra metadata.
+        """
         metadata_dict.pop("file_info")
         metadata_dict["levels_metadata"] = levels_metadata
         return SpectraMetadata(**metadata_dict)
 
 
 class EvaluationFreqs(ResisticsProcess):
-    """
-    Calculate the spectra values at the evaluation frequencies
+    """Calculate the spectra values at the evaluation frequencies
 
     This is done using linear interpolation in the complex domain
 
-    Example
-    -------
+    **Examples**
+
     The example will show interpolation to evaluation frequencies on a very
     simple example. Begin by generating some example spectra data.
 
+    ```{doctest}
     >>> from resistics.decimate import DecimationSetup
     >>> from resistics.spectra import EvaluationFreqs
     >>> from resistics.testing import spectra_data_basic
@@ -619,9 +602,12 @@ class EvaluationFreqs(ResisticsProcess):
         'freqs': [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0]
     }
 
+    ```
+
     The spectra data has only a single channel and a single level which has 2
     windows. Now define our evaluation frequencies.
 
+    ```{doctest}
     >>> eval_freqs = [1, 12, 23, 34, 45, 56, 67, 78, 89]
     >>> dec_setup = DecimationSetup(n_levels=1, per_level=9, eval_freqs=eval_freqs)
     >>> dec_params = dec_setup.run(spec_data.metadata.fs[0])
@@ -637,8 +623,11 @@ class EvaluationFreqs(ResisticsProcess):
         'dec_fs': [180.0]
     }
 
+    ```
+
     Now calculate the spectra at the evaluation frequencies
 
+    ```{doctest}
     >>> eval_data = EvaluationFreqs().run(dec_params, spec_data)
     >>> eval_data.metadata.levels_metadata[0].summary()
     {
@@ -651,23 +640,31 @@ class EvaluationFreqs(ResisticsProcess):
         'freqs': [1.0, 12.0, 23.0, 34.0, 45.0, 56.0, 67.0, 78.0, 89.0]
     }
 
+    ```
+
     To double check everything is as expected, let's compare the data. Comparing
     window 1 gives
 
+    ```{doctest}
     >>> print(spec_data.data[0][0, 0])
     [0.+0.j 1.+1.j 2.+2.j 3.+3.j 4.+4.j 5.+5.j 6.+6.j 7.+7.j 8.+8.j 9.+9.j]
     >>> print(eval_data.data[0][0, 0])
     [0.1+0.1j 1.2+1.2j 2.3+2.3j 3.4+3.4j 4.5+4.5j 5.6+5.6j 6.7+6.7j 7.8+7.8j
      8.9+8.9j]
 
+    ```
+
     And window 2
 
+    ```{doctest}
     >>> print(spec_data.data[0][1, 0])
     [-1. +1.j  0. +2.j  1. +3.j  2. +4.j  3. +5.j  4. +6.j  5. +7.j  6. +8.j
       7. +9.j  8.+10.j]
     >>> print(eval_data.data[0][1, 0])
     [-0.9+1.1j  0.2+2.2j  1.3+3.3j  2.4+4.4j  3.5+5.5j  4.6+6.6j  5.7+7.7j
       6.8+8.8j  7.9+9.9j]
+
+    ```
     """
 
     input_types: ClassVar[dict[str, str]] = {
@@ -680,7 +677,13 @@ class EvaluationFreqs(ResisticsProcess):
     def execute(
         self, inputs: dict[str, Any], context: Any
     ) -> "EvaluationFrequencyData":
-        """Keep the decimation setup with the spectra artifact for persistence."""
+        """Keep the decimation setup with spectra for persistence.
+
+        :param inputs: Flow inputs containing decimation parameters and spectra data.
+        :param context: Runtime context; unused by this process.
+
+        :return: Evaluation-frequency spectra and their decimation setup.
+        """
         del context
         dec_params = inputs["dec_params"]
         return EvaluationFrequencyData(
@@ -691,23 +694,15 @@ class EvaluationFreqs(ResisticsProcess):
     def run(
         self, dec_params: DecimationParameters, spec_data: SpectraData
     ) -> SpectraData:
-        """
-        Interpolate spectra data to the evaluation frequencies
+        """Interpolate spectra data to the evaluation frequencies
 
         This is a simple linear interpolation.
 
-        Parameters
-        ----------
-        dec_params : DecimationParameters
-            The decimation parameters which have the evaluation frequencies for
+        :param dec_params: The decimation parameters which have the evaluation frequencies for
             each decimation level
-        spec_data : SpectraData
-            The spectra data
+        :param spec_data: The spectra data
 
-        Returns
-        -------
-        SpectraData
-            The spectra data at the evaluation frequencies
+        :return: The spectra data at the evaluation frequencies
         """
         metadata_dict = spec_data.metadata.dict()
         data = {}
@@ -733,8 +728,7 @@ class EvaluationFreqs(ResisticsProcess):
     def _get_level_data(
         self, freqs: np.ndarray, data: np.ndarray, eval_freqs: np.ndarray
     ) -> np.ndarray:
-        """
-        Interpolate the spectra data to the evaluation frequencies
+        """Interpolate the spectra data to the evaluation frequencies
 
         The input data for a level has shape:
 
@@ -753,19 +747,11 @@ class EvaluationFreqs(ResisticsProcess):
 
         Then these float indices are used to do the interpolation.
 
-        Parameters
-        ----------
-        freqs : np.ndarray
-            The input data frequencies
-        data : np.ndarray
-            The input spectra data
-        eval_freqs : List[float]
-            The evaluation frequencies
+        :param freqs: The input data frequencies
+        :param data: The input spectra data
+        :param eval_freqs: The evaluation frequencies
 
-        Returns
-        -------
-        np.ndarray
-            Output level data
+        :return: Output level data
         """
         index = np.arange(len(freqs))
         eval_indices = np.interp(eval_freqs, freqs, index)
@@ -781,7 +767,13 @@ class EvaluationFreqs(ResisticsProcess):
     def _get_level_metadata(
         self, level_metadata: SpectraLevelMetadata, eval_freqs: np.ndarray
     ) -> SpectraLevelMetadata:
-        """Get the metadata for the decimation level"""
+        """Get metadata for an evaluation-frequency level.
+
+        :param level_metadata: Source spectra-level metadata.
+        :param eval_freqs: Selected evaluation frequencies in hertz.
+
+        :return: Spectra metadata carrying the selected frequency coordinates.
+        """
         metadata_dict = level_metadata.dict()
         metadata_dict["n_freqs"] = len(eval_freqs)
         metadata_dict["freqs"] = eval_freqs.tolist()
@@ -790,7 +782,13 @@ class EvaluationFreqs(ResisticsProcess):
     def _get_metadata(
         self, metadata_dict: dict[str, Any], levels_metadata: list[SpectraLevelMetadata]
     ) -> SpectraMetadata:
-        """Get metadata for the dataset"""
+        """Get aggregate metadata for evaluation-frequency spectra.
+
+        :param metadata_dict: Source spectra metadata.
+        :param levels_metadata: Metadata for each interpolated level.
+
+        :return: Aggregate spectra metadata.
+        """
         metadata_dict.pop("file_info")
         metadata_dict["levels_metadata"] = levels_metadata
         return SpectraMetadata(**metadata_dict)
@@ -800,22 +798,13 @@ class SpectraDataWriter(ResisticsWriter):
     """Writer of resistics spectra data"""
 
     def run(self, dir_path: Path, data: ResisticsData) -> None:
-        """
-        Write out SpectraData
+        """Write out SpectraData
 
-        Parameters
-        ----------
-        dir_path : Path
-            The directory path to write to
-        data : ResisticsData
-            Spectra data to write out
+        :param dir_path: The directory path to write to
+        :param data: Spectra data to write out
 
-        Raises
-        ------
-        TypeError
-            If ``data`` is not spectra data.
-        WriteError
-            If unable to write to the directory
+        :raises TypeError: If ``data`` is not spectra data.
+        :raises WriteError: If unable to write to the directory
         """
         from resistics.errors import WriteError
 
@@ -841,25 +830,14 @@ class SpectraDataReader(ResisticsProcess):
     def run(
         self, dir_path: Path, metadata_only: bool = False
     ) -> SpectraMetadata | SpectraData:
-        """
-        Read SpectraData
+        """Read SpectraData
 
-        Parameters
-        ----------
-        dir_path : Path
-            The directory path to read from
-        metadata_only : bool, optional
-            Flag for getting metadata only, by default False
+        :param dir_path: The directory path to read from
+        :param metadata_only: Flag for getting metadata only, by default False
 
-        Returns
-        -------
-        Union[SpectraMetadata, SpectraData]
-            The SpectraData or SpectraMetadata if metadata_only is True
+        :return: The SpectraData or SpectraMetadata if metadata_only is True
 
-        Raises
-        ------
-        ReadError
-            If the directory does not exist
+        :raises ReadError: If the directory does not exist
         """
         from resistics.errors import ReadError
 
@@ -895,7 +873,13 @@ class EvaluationFrequencyReader(ResisticsProcess):
     def execute(
         self, inputs: dict[str, Any], context: dict[str, Any]
     ) -> EvaluationFrequencyData:
-        """Read the spectra and persisted decimation parameters."""
+        """Read spectra and persisted decimation parameters.
+
+        :param inputs: Flow inputs; this reader consumes no upstream artifact.
+        :param context: Project path, run batch, and optional output label.
+
+        :return: Persisted evaluation-frequency artifact.
+        """
         del inputs
         batch = context["run_batch"]
         label = validate_output_label(context.get("output_label", self.label))
@@ -927,7 +911,15 @@ class EvaluationFrequencyWriter(ResisticsProcess):
     def execute(
         self, inputs: dict[str, Any], context: dict[str, Any]
     ) -> dict[str, str]:
-        """Persist spectra and their decimation parameters."""
+        """Persist spectra and their decimation parameters.
+
+        :param inputs: Flow inputs containing ``eval_data``.
+        :param context: Project path, run batch, and optional output label.
+
+        :return: Result containing the persisted evaluation directory.
+
+        :raises ValueError: If the input is not evaluation-frequency data.
+        """
         value = inputs["eval_data"]
         if isinstance(value, EvaluationFrequencyData):
             artifact = value
@@ -962,7 +954,15 @@ class EvaluationFrequencyParameters(ResisticsProcess):
     def execute(
         self, inputs: dict[str, Any], context: dict[str, Any]
     ) -> DecimationParameters:
-        """Extract the persisted decimation setup."""
+        """Extract the persisted decimation setup.
+
+        :param inputs: Flow inputs containing ``eval_data``.
+        :param context: Runtime context; unused by this process.
+
+        :return: Decimation parameters carried by the artifact.
+
+        :raises ValueError: If the input is not evaluation-frequency data.
+        """
         del context
         artifact = inputs["eval_data"]
         if not isinstance(artifact, EvaluationFrequencyData):
@@ -974,51 +974,56 @@ class SpectraProcess(ResisticsProcess):
     """Parent class for spectra processes"""
 
     def run(self, spec_data: SpectraData) -> SpectraData:
-        """Run a spectra processor"""
+        """Run a spectra processor.
+
+        :param spec_data: Spectra data to process.
+
+        :return: Processed spectra data.
+
+        :raises NotImplementedError: Always; subclasses must implement this method.
+        """
         raise NotImplementedError("Run is not implemented in the parent SpectraProcess")
 
 
 class SpectraSmootherUniform(SpectraProcess):
-    """
-    Smooth a spectra with a uniform filter
+    """Smooth a spectra with a uniform filter
 
     For more information, please refer to:
     https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.uniform_filter1d.html
 
-    Examples
-    --------
+    **Examples**
+
     Smooth a simple spectra data instance
 
+    ```{doctest}
     >>> from resistics.spectra import SpectraSmootherUniform
     >>> from resistics.testing import spectra_data_basic
     >>> spec_data = spectra_data_basic()
     >>> smooth_data = SpectraSmootherUniform(length_proportion=0.5).run(spec_data)
 
+    ```
+
     Look at the results for the two windows
 
+    ```{doctest}
     >>> spec_data.data[0][0,0]
     array([0.+0.j, 1.+1.j, 2.+2.j, 3.+3.j, 4.+4.j, 5.+5.j, 6.+6.j, 7.+7.j,
            8.+8.j, 9.+9.j])
     >>> smooth_data.data[0][0,0]
     array([0.8+0.8j, 1.2+1.2j, 2. +2.j , 3. +3.j , 4. +4.j , 5. +5.j ,
            6. +6.j , 7. +7.j , 7.8+7.8j, 8.2+8.2j])
+
+    ```
     """
 
     length_proportion: float = 0.1
 
     def run(self, spec_data: SpectraData) -> SpectraData:
-        """
-        Smooth spectra data with a uniform smoother
+        """Smooth spectra data with a uniform smoother
 
-        Parameters
-        ----------
-        spec_data : SpectraData
-            The input spectra data
+        :param spec_data: The input spectra data
 
-        Returns
-        -------
-        SpectraData
-            The output spectra data
+        :return: The output spectra data
         """
         import scipy.ndimage as ndimage
 
@@ -1039,7 +1044,12 @@ class SpectraSmootherUniform(SpectraProcess):
         return SpectraData(metadata, data)
 
     def _get_smooth_length(self, data_size: int) -> int:
-        """Get the smoothing length given the size of the data"""
+        """Get an odd smoothing length for the frequency-axis size.
+
+        :param data_size: Number of frequency samples.
+
+        :return: Odd smoothing length of at least one sample.
+        """
         length = int(self.length_proportion * data_size)
         if length % 2 == 0:
             length += 1
@@ -1049,23 +1059,26 @@ class SpectraSmootherUniform(SpectraProcess):
 
 
 class SpectraSmootherGaussian(SpectraProcess):
-    """
-    Smooth a spectra with a gaussian filter
+    """Smooth a spectra with a gaussian filter
 
     For more information, please refer to:
     https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter1d.html
 
-    Examples
-    --------
+    **Examples**
+
     Smooth a simple spectra data instance
 
+    ```{doctest}
     >>> from resistics.spectra import SpectraSmootherGaussian
     >>> from resistics.testing import spectra_data_basic
     >>> spec_data = spectra_data_basic()
     >>> smooth_data = SpectraSmootherGaussian().run(spec_data)
 
+    ```
+
     Look at the results for the two windows
 
+    ```{doctest}
     >>> spec_data.data[0][0,0]
     array([0.+0.j, 1.+1.j, 2.+2.j, 3.+3.j, 4.+4.j, 5.+5.j, 6.+6.j, 7.+7.j,
            8.+8.j, 9.+9.j])
@@ -1075,23 +1088,18 @@ class SpectraSmootherGaussian(SpectraProcess):
            4.09862656+4.09862656j, 4.90137344+4.90137344j,
            5.66744624+5.66744624j, 6.32492664+6.32492664j,
            6.8078464 +6.8078464j , 7.06396329+7.06396329j])
+
+    ```
     """
 
     sigma: float = 3
 
     def run(self, spec_data: SpectraData) -> SpectraData:
-        """
-        Run Gaussian filtering of spectra data
+        """Run Gaussian filtering of spectra data
 
-        Parameters
-        ----------
-        spec_data : SpectraData
-            Input spectra data
+        :param spec_data: Input spectra data
 
-        Returns
-        -------
-        SpectraData
-            Output spectra data
+        :return: Output spectra data
         """
         import scipy.ndimage as ndimage
 

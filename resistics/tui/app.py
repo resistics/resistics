@@ -93,14 +93,9 @@ if TYPE_CHECKING:
 class ResisticsTui(App[None]):
     """The resistics terminal application and project launcher.
 
-    Parameters
-    ----------
-    project_path : Path | None
-        Optional project opened immediately after mount.
-    _diagnostic_buffer : _TuiLogBuffer | None
-        Buffer installed by the official TUI launcher.
-    _diagnostic_capture : _TuiDiagnosticCapture | None
-        Process-global capture installed by the official TUI launcher.
+    :param project_path: Optional project opened immediately after mount.
+    :param _diagnostic_buffer: Buffer installed by the official TUI launcher.
+    :param _diagnostic_capture: Process-global capture installed by the official TUI launcher.
     """
 
     TITLE = "resistics"
@@ -250,10 +245,7 @@ class ResisticsTui(App[None]):
     def _mount_home(self, message: str | None = None) -> None:
         """Replace the current screen with the project launcher.
 
-        Parameters
-        ----------
-        message : str | None
-            Optional status or failure detail shown on the launcher.
+        :param message: Optional status or failure detail shown on the launcher.
         """
         self.title = "resistics"
         self.sub_title = "project launcher"
@@ -279,17 +271,10 @@ class ResisticsTui(App[None]):
     ) -> _ProjectOpenResult:
         """Open one project without blocking the Textual event loop.
 
-        Parameters
-        ----------
-        generation : int
-            App generation requesting the project.
-        project_path : Path
-            Project directory to open.
+        :param generation: App generation requesting the project.
+        :param project_path: Project directory to open.
 
-        Returns
-        -------
-        _ProjectOpenResult
-            Immutable success or failure passed back to the UI thread.
+        :return: Immutable success or failure passed back to the UI thread.
         """
         return await _run_in_worker_thread(
             partial(self._open_project_path, generation, project_path)
@@ -300,17 +285,10 @@ class ResisticsTui(App[None]):
     ) -> _ProjectOpenResult:
         """Perform synchronous project opening inside a worker thread.
 
-        Parameters
-        ----------
-        generation : int
-            App generation requesting the project.
-        project_path : Path
-            Project directory to open.
+        :param generation: App generation requesting the project.
+        :param project_path: Project directory to open.
 
-        Returns
-        -------
-        _ProjectOpenResult
-            Immutable project-open outcome containing no widgets.
+        :return: Immutable project-open outcome containing no widgets.
         """
         try:
             from resistics.project import load
@@ -347,10 +325,7 @@ class ResisticsTui(App[None]):
     def _apply_project_open_result(self, event: Worker.StateChanged) -> None:
         """Open only the latest project returned to the Textual UI thread.
 
-        Parameters
-        ----------
-        event : Worker.StateChanged
-            Textual lifecycle event for a project-open worker.
+        :param event: Textual lifecycle event for a project-open worker.
         """
         if event.state != WorkerState.SUCCESS or event.worker.group != "project-open":
             return
@@ -388,12 +363,8 @@ class ResisticsTui(App[None]):
     ) -> None:
         """Replace the current screen with one already opened project.
 
-        Parameters
-        ----------
-        project : Project
-            Open project returned by a completed worker or direct caller.
-        startup_warnings : list[str] | None
-            Warnings captured while opening the project.
+        :param project: Open project returned by a completed worker or direct caller.
+        :param startup_warnings: Warnings captured while opening the project.
         """
         if startup_warnings:
             self.diagnostic_buffer.extend(
@@ -406,7 +377,10 @@ class ResisticsTui(App[None]):
         )
 
     def _show_screen(self, screen: Screen[None]) -> None:
-        """Push the initial screen and replace it for later navigation."""
+        """Push the initial screen and replace it for later navigation.
+
+        :param screen: Screen used by this operation.
+        """
         if self._has_started_screen:
             self.switch_screen(screen)
         else:
@@ -415,7 +389,10 @@ class ResisticsTui(App[None]):
 
 
 def run_tui(project_path: Path | None = None) -> None:
-    """Run the resistics terminal application."""
+    """Run the resistics terminal application.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    """
     buffer = _TuiLogBuffer()
     with _TuiDiagnosticCapture(buffer) as capture:
         ResisticsTui(
@@ -426,7 +403,11 @@ def run_tui(project_path: Path | None = None) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Launch the TUI, optionally opening one project path immediately."""
+    """Launch the TUI, optionally opening one project path immediately.
+
+    :param argv: Command-line arguments, or the process arguments when omitted.
+    :return: Launch the TUI, optionally opening one project path immediately.
+    """
     arguments = list(sys.argv[1:] if argv is None else argv)
     if len(arguments) > 1:
         print("Usage: resistics [PROJECT_PATH]", file=sys.stderr)

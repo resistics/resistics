@@ -100,7 +100,13 @@ class ResolvedGatherCriteria(ResisticsModel):
 
 
 class GatherSelection(ResisticsData):
-    """Resolved target/rate inputs and admissible global windows for gathering."""
+    """Resolved target/rate inputs and admissible global windows for gathering.
+
+    :param station_rate_batch: Selected station, sample rate, and run paths.
+    :param remote_station: Selected remote station path, if remote reference is enabled.
+    :param criteria: Gathering policy resolved for the batch.
+    :param automatic_remote: Whether the remote station must be selected at runtime.
+    """
 
     def __init__(
         self,
@@ -120,13 +126,15 @@ class GatherCriteria(ResisticsProcess):
 
     An empty instance is the no-criteria policy: all target windows are kept and
     gathering is single-site.  Policies are currently rate-wide, while
-    :meth:`resolve` accepts level and evaluation-frequency indices so callers do
+    {py:meth}`resolve` accepts level and evaluation-frequency indices so callers do
     not need to change when the schema gains more granular overrides.
 
-    Examples
-    --------
+    **Examples**
+
     Resolve an automatic remote-reference policy for one target and rate.
 
+    ```{doctest}
+    >>> from resistics.gather import GatherCriteria
     >>> criteria = GatherCriteria(
     ...     stations={
     ...         "survey/target": {
@@ -138,6 +146,8 @@ class GatherCriteria(ResisticsProcess):
     ... )
     >>> criteria.resolve("survey/target", 128).remote_references
     'auto'
+
+    ```
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -189,7 +199,15 @@ class GatherCriteria(ResisticsProcess):
         level: int = 0,
         evaluation_frequency_index: int = 0,
     ) -> ResolvedGatherCriteria:
-        """Resolve a policy, returning the no-criteria policy when unlisted."""
+        """Resolve a policy, returning the no-criteria policy when unlisted.
+
+        :param station_path: Canonical survey/station path.
+        :param sample_rate: Sample rate of the station batch.
+        :param level: Decimation level to select.
+        :param evaluation_frequency_index: Index of the evaluation frequency within the level.
+        :return: The value produced when this operation completes.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         if level < 0 or evaluation_frequency_index < 0:
             raise ValueError(
                 "Level and evaluation-frequency index must be non-negative"
@@ -203,12 +221,20 @@ class GatherCriteria(ResisticsProcess):
         return ResolvedGatherCriteria()
 
     def remote_station_paths(self, station_path: str, sample_rate: float) -> list[str]:
-        """Return explicitly configured remotes (``auto`` resolves at runtime)."""
+        """Return explicitly configured remotes (``auto`` resolves at runtime).
+
+        :param station_path: Canonical survey/station path.
+        :param sample_rate: Sample rate of the station batch.
+        :return: Explicitly configured remotes (``auto`` resolves at runtime).
+        """
         remotes = self.resolve(station_path, sample_rate).remote_references
         return [] if remotes is None or remotes == "auto" else list(remotes)
 
     def remote_reference_count(self) -> int:
-        """Return the number of explicit remote assignments for summaries."""
+        """Return the number of explicit remote assignments for summaries.
+
+        :return: The number of explicit remote assignments for summaries.
+        """
         total = 0
         for station in self.stations.values():
             for policy in station.sampling_frequencies.values():
@@ -219,7 +245,11 @@ class GatherCriteria(ResisticsProcess):
         return total
 
     def run(self, station_rate_batch: dict[str, Any]) -> GatherSelection:
-        """Resolve the remote assignment for one target station/rate batch."""
+        """Resolve the remote assignment for one target station/rate batch.
+
+        :param station_rate_batch: Selected station, sample rate, and run paths.
+        :return: The value produced when this operation completes.
+        """
         station_rate_batch = dict(station_rate_batch)
         target = station_rate_batch.get("station_path")
         if target is None:
@@ -236,6 +266,11 @@ class GatherCriteria(ResisticsProcess):
         )
 
     def execute(self, inputs: dict[str, Any], context: Any) -> GatherSelection:
-        """Resolve criteria from the station-rate batch supplied by the executor."""
+        """Resolve criteria from the station-rate batch supplied by the executor.
+
+        :param inputs: Named upstream values supplied to the process.
+        :param context: Runtime values supplied by the flow executor.
+        :return: The value produced when this operation completes.
+        """
         del inputs
         return self.run(context["station_rate_batch"])

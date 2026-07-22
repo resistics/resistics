@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from time import monotonic
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any
 
 from textual import on, work
 from textual.widgets import Static, TabbedContent, TextArea, Tree
+from textual.widgets._tree import TreeNode
 
 from resistics.tui.screens.project_base import _ProjectExplorerBase
 from resistics.tui.services import _feature_error
@@ -19,16 +20,7 @@ if TYPE_CHECKING:
     from resistics.project import ProjectDataItem
 
 
-class _DataTreeNode(Protocol):
-    """Tree-node operations used while constructing the data catalogue."""
-
-    @property
-    def data(self) -> object:
-        return None
-
-    def add(self, label: str, data: tuple[str, str]) -> _DataTreeNode: ...
-
-    def add_leaf(self, label: str, data: tuple[str, str]) -> _DataTreeNode: ...
+type _DataTreeNode = TreeNode[Any]
 
 
 class _ProjectDataMixin(_ProjectExplorerBase):
@@ -37,10 +29,7 @@ class _ProjectDataMixin(_ProjectExplorerBase):
     def _populate_overview(self, state: ProjectExplorerState) -> None:
         """Render one worker-loaded project summary.
 
-        Parameters
-        ----------
-        state : ProjectExplorerState
-            Handle-free project discovery result.
+        :param state: Handle-free project discovery result.
         """
         summary = state.summary
         self.action_state.plot_targets["project"] = (
@@ -65,10 +54,7 @@ class _ProjectDataMixin(_ProjectExplorerBase):
     def _populate_data_tree(self, state: ProjectExplorerState) -> None:
         """Populate the filtered Project and MTH5 data hierarchy.
 
-        Parameters
-        ----------
-        state : ProjectExplorerState
-            Handle-free project and MTH5 catalogue returned by a worker.
+        :param state: Handle-free project and MTH5 catalogue returned by a worker.
         """
         tree = self.query_one("#data-tree", Tree)
         tree.clear()
@@ -95,12 +81,8 @@ class _ProjectDataMixin(_ProjectExplorerBase):
     ) -> None:
         """Add each persistent data-type category below one source root.
 
-        Parameters
-        ----------
-        root : _DataTreeNode
-            Source node receiving the category branches.
-        items : list[ProjectDataItem]
-            Persistent items belonging to the source.
+        :param root: Source node receiving the category branches.
+        :param items: Persistent items belonging to the source.
         """
         for label, data_type in self.DATA_CATEGORIES:
             matching = [item for item in items if item.data_type == data_type]
@@ -119,14 +101,9 @@ class _ProjectDataMixin(_ProjectExplorerBase):
     ) -> None:
         """Add one category's items, retaining their path ancestors.
 
-        Parameters
-        ----------
-        root : _DataTreeNode
-            Category node receiving visible items.
-        items : list[ProjectDataItem]
-            Persistent items available below the source.
-        data_type : str
-            Data type selected for this category.
+        :param root: Category node receiving visible items.
+        :param items: Persistent items available below the source.
+        :param data_type: Data type selected for this category.
         """
         visible = self.service.visible_data_paths(items, data_type)
         nodes: dict[str | None, _DataTreeNode] = {None: root}
@@ -142,8 +119,14 @@ class _ProjectDataMixin(_ProjectExplorerBase):
             else:
                 parent.add_leaf(item.name, data=(item.source, item.path))
 
-    def _data_item_for_node(self, node=None) -> ProjectDataItem | None:
-        """Return the browsed data item for a tree node, excluding tree chrome."""
+    def _data_item_for_node(
+        self, node: _DataTreeNode | None = None
+    ) -> ProjectDataItem | None:
+        """Return the browsed data item for a tree node, excluding tree chrome.
+
+        :param node: Flow node within the stage.
+        :return: The browsed data item for a tree node, excluding tree chrome.
+        """
         if node is None:
             node = self.query_one("#data-tree", Tree).cursor_node
         data = None if node is None else node.data
@@ -154,8 +137,11 @@ class _ProjectDataMixin(_ProjectExplorerBase):
             return None
         return self.data_items.get(f"{source}:{path}")
 
-    def _data_tree_cursor(self):
-        """Return the focused Data-tree node, if there is one."""
+    def _data_tree_cursor(self) -> _DataTreeNode | None:
+        """Return the focused Data-tree node, if there is one.
+
+        :return: Focused data-tree node, or ``None`` outside the active tree.
+        """
         if self.query_one(TabbedContent).active != "data":
             return None
         tree = self.query_one("#data-tree", Tree)
@@ -163,12 +149,19 @@ class _ProjectDataMixin(_ProjectExplorerBase):
             return None
         return tree.cursor_node
 
-    def _data_plot_target(self, node=None) -> PlotTarget | None:
-        """Return a plot target for the highlighted item, if it is supported."""
+    def _data_plot_target(self, node: _DataTreeNode | None = None) -> PlotTarget | None:
+        """Return a plot target for the highlighted item, if it is supported.
+
+        :param node: Flow node within the stage.
+        :return: A plot target for the highlighted item, if it is supported.
+        """
         return self.service.data_plot_target(self._data_item_for_node(node))
 
     def _flow_plot_target(self) -> PlotTarget | None:
-        """Return the focused or opened cached-valid flow plot target."""
+        """Return the focused or opened cached-valid flow plot target.
+
+        :return: The focused or opened cached-valid flow plot target.
+        """
         highlighted = self._highlighted_yaml_file()
         path: Path | None
         if highlighted is not None and highlighted[1] == "#flow-content":
@@ -180,7 +173,10 @@ class _ProjectDataMixin(_ProjectExplorerBase):
         return ("flow", path)
 
     def _job_plot_target(self) -> PlotTarget | None:
-        """Return the focused or opened cached-valid job plot target."""
+        """Return the focused or opened cached-valid job plot target.
+
+        :return: The focused or opened cached-valid job plot target.
+        """
         highlighted_path = self._highlighted_job_path()
         if highlighted_path is not None:
             summary = next(
@@ -206,7 +202,10 @@ class _ProjectDataMixin(_ProjectExplorerBase):
         return None
 
     def _has_project_timeline(self) -> bool:
-        """Return the cached project-timeline eligibility."""
+        """Return the cached project-timeline eligibility.
+
+        :return: The cached project-timeline eligibility.
+        """
         return self.action_state.plot_targets["project"] is not None
 
     def _start_project_plot(self) -> None:
@@ -240,10 +239,7 @@ class _ProjectDataMixin(_ProjectExplorerBase):
     def _open_plot(self, target: PlotTarget) -> None:
         """Open a selected Plotly figure in the browser.
 
-        Parameters
-        ----------
-        target : PlotTarget
-            Validated plot kind and its typed payload.
+        :param target: Validated plot kind and its typed payload.
         """
         plot_project = None
         target_type = target[0]
@@ -311,22 +307,19 @@ class _ProjectDataMixin(_ProjectExplorerBase):
 
     @on(Tree.NodeHighlighted, "#data-tree")
     def update_data_plot_selection(self, event: Tree.NodeHighlighted) -> None:
-        """Cache plot eligibility when the highlighted data item changes."""
+        """Cache plot eligibility when the highlighted data item changes.
+
+        :param event: Event used by this operation.
+        """
         self.action_state.plot_targets["data"] = self._data_plot_target(event.node)
         self.refresh_bindings()
 
     def _check_data_tree_action(self, action: str) -> bool:
         """Check expansion eligibility from the current in-memory tree node.
 
-        Parameters
-        ----------
-        action : str
-            Expansion or collapse action name.
+        :param action: Expansion or collapse action name.
 
-        Returns
-        -------
-        bool
-            Whether the tree action is currently available.
+        :return: Whether the tree action is currently available.
         """
         node = self._data_tree_cursor()
         if node is None or not node.allow_expand:
@@ -338,15 +331,9 @@ class _ProjectDataMixin(_ProjectExplorerBase):
     def _check_plot_action(self, active: str) -> bool:
         """Check plot eligibility using cached project and selection state.
 
-        Parameters
-        ----------
-        active : str
-            Identifier of the active tab.
+        :param active: Identifier of the active tab.
 
-        Returns
-        -------
-        bool
-            Whether the active tab has a valid cached plot target.
+        :return: Whether the active tab has a valid cached plot target.
         """
         if active in {"project", "data"}:
             return self.action_state.plot_targets[active] is not None

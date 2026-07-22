@@ -56,18 +56,14 @@ normal doctest collection protects executable examples.
 (docstring-checks)=
 ## Checking changes
 
-Run both documentation checks after changing a production API:
+Run the documentation checks after changing a production API:
 
 ```console
 uv run --locked --no-sync ruff check resistics
 uv run --locked --no-sync pydoclint --config=pyproject.toml resistics
-uv run --locked --no-sync pydoclint --config=pydoclint-myst.toml \
-  resistics/common.py resistics/sampling.py resistics/transfunc.py
 ```
 
 Ruff enforces public docstring presence. Pydoclint enforces agreement between
-the signature, annotations, and the selected module's docstring style. The
-committed pydoclint baseline records inherited contract debt only. Do not
-regenerate it to make a new violation pass: correct the docstring or use a
-narrow, reviewed suppression with an explanation. Baseline reductions are
-welcome when touched code resolves an existing finding.
+the signature, annotations, and the package's MyST docstring style. The check
+is baseline-free: correct a violation or use a narrow, reviewed suppression
+with an explanation.

@@ -32,21 +32,12 @@ class _MTH5Handle(Protocol):
     ) -> Any:
         """Open the configured MTH5 file.
 
-        Parameters
-        ----------
-        filename : str | Path | None
-            File assigned to the handle, or its already configured path.
-        mode : str
-            HDF5 open mode.
-        single_writer_multiple_reader : bool
-            Whether to enable MTH5's SWMR behavior.
-        **kwargs : Any
-            Additional HDF5 open options.
+        :param filename: File assigned to the handle, or its already configured path.
+        :param mode: HDF5 open mode.
+        :param single_writer_multiple_reader: Whether to enable MTH5's SWMR behavior.
+        :param **kwargs: Additional HDF5 open options.
 
-        Returns
-        -------
-        Any
-            Third-party MTH5 handle returned by its open operation.
+        :return: Third-party MTH5 handle returned by its open operation.
         """
         ...
 
@@ -57,42 +48,26 @@ class _MTH5Handle(Protocol):
     def h5_is_read(self) -> bool:
         """Return whether the HDF5 handle is open for reading.
 
-        Returns
-        -------
-        bool
-            ``True`` when live MTH5 objects may be accessed.
+        :return: ``True`` when live MTH5 objects may be accessed.
         """
         ...
 
     def get_survey(self, survey_name: str) -> Any:
         """Return one survey group.
 
-        Parameters
-        ----------
-        survey_name : str
-            Survey identifier.
+        :param survey_name: Survey identifier.
 
-        Returns
-        -------
-        Any
-            Third-party MTH5 survey group.
+        :return: Third-party MTH5 survey group.
         """
         ...
 
     def get_station(self, station_name: str, survey: str | None = None) -> Any:
         """Return one station group.
 
-        Parameters
-        ----------
-        station_name : str
-            Station identifier.
-        survey : str | None
-            Owning survey identifier.
+        :param station_name: Station identifier.
+        :param survey: Owning survey identifier.
 
-        Returns
-        -------
-        Any
-            Third-party MTH5 station group.
+        :return: Third-party MTH5 station group.
         """
         ...
 
@@ -101,19 +76,11 @@ class _MTH5Handle(Protocol):
     ) -> Any:
         """Return one run group.
 
-        Parameters
-        ----------
-        station_name : str
-            Owning station identifier.
-        run_name : str
-            Run identifier.
-        survey : str | None
-            Owning survey identifier.
+        :param station_name: Owning station identifier.
+        :param run_name: Run identifier.
+        :param survey: Owning survey identifier.
 
-        Returns
-        -------
-        Any
-            Third-party MTH5 run group.
+        :return: Third-party MTH5 run group.
         """
         ...
 
@@ -126,21 +93,12 @@ class _MTH5Handle(Protocol):
     ) -> Any:
         """Return one channel group.
 
-        Parameters
-        ----------
-        station_name : str
-            Owning station identifier.
-        run_name : str
-            Owning run identifier.
-        channel_name : str
-            Channel component identifier.
-        survey : str | None
-            Owning survey identifier.
+        :param station_name: Owning station identifier.
+        :param run_name: Owning run identifier.
+        :param channel_name: Channel component identifier.
+        :param survey: Owning survey identifier.
 
-        Returns
-        -------
-        Any
-            Third-party MTH5 channel group.
+        :return: Third-party MTH5 channel group.
         """
         ...
 
@@ -148,10 +106,9 @@ class _MTH5Handle(Protocol):
 class _MTH5HandleOwner:
     """Own one MTH5 handle and expose deterministic resource semantics.
 
-    Attributes
-    ----------
-    mth5_data : _MTH5Handle
-        Live third-party handle owned by this inspection source.
+    **Attributes**
+
+    - **mth5_data** — Live third-party handle owned by this inspection source.
     """
 
     mth5_data: _MTH5Handle
@@ -160,10 +117,7 @@ class _MTH5HandleOwner:
     def closed(self) -> bool:
         """Return whether the owned MTH5 handle has been closed.
 
-        Returns
-        -------
-        bool
-            ``True`` when live MTH5 groups and run data are inaccessible.
+        :return: ``True`` when live MTH5 groups and run data are inaccessible.
         """
         return not self.mth5_data.h5_is_read()
 
@@ -175,15 +129,9 @@ class _MTH5HandleOwner:
     def __enter__(self) -> Self:
         """Enter an open inspection-source context.
 
-        Returns
-        -------
-        Self
-            This source while its owned MTH5 handle is open.
+        :return: This source while its owned MTH5 handle is open.
 
-        Raises
-        ------
-        RuntimeError
-            If the source was already closed.
+        :raises RuntimeError: If the source was already closed.
         """
         if self.closed:
             raise RuntimeError(f"{type(self).__name__} MTH5 handle is closed")
@@ -197,19 +145,11 @@ class _MTH5HandleOwner:
     ) -> Literal[False]:
         """Close the source when its context exits.
 
-        Parameters
-        ----------
-        exc_type : type[BaseException] | None
-            Exception type raised inside the context, when present.
-        exc_value : BaseException | None
-            Exception raised inside the context, when present.
-        traceback : TracebackType | None
-            Traceback for the exception raised inside the context.
+        :param exc_type: Exception type raised inside the context, when present.
+        :param exc_value: Exception raised inside the context, when present.
+        :param traceback: Traceback for the exception raised inside the context.
 
-        Returns
-        -------
-        Literal[False]
-            Always ``False`` so exceptions from the context propagate.
+        :return: Always ``False`` so exceptions from the context propagate.
         """
         self.close()
         return False
@@ -217,10 +157,7 @@ class _MTH5HandleOwner:
     def _require_open(self) -> None:
         """Require a live MTH5 handle for a group or sample-data operation.
 
-        Raises
-        ------
-        RuntimeError
-            If this source has already released its owned handle.
+        :raises RuntimeError: If this source has already released its owned handle.
         """
         if self.closed:
             raise RuntimeError(f"{type(self).__name__} MTH5 handle is closed")
@@ -229,20 +166,11 @@ class _MTH5HandleOwner:
 def _open_read_only_mth5(mth5_path: Path) -> _MTH5Handle:
     """Open one MTH5 handle and clean up a partially failed open.
 
-    Parameters
-    ----------
-    mth5_path : Path
-        Existing MTH5 file to open read-only.
+    :param mth5_path: Existing MTH5 file to open read-only.
 
-    Returns
-    -------
-    _MTH5Handle
-        Open handle whose ownership must transfer to a public source.
+    :return: Open handle whose ownership must transfer to a public source.
 
-    Raises
-    ------
-    Exception
-        If MTH5 cannot open the file. Any partially opened handle is closed
+    :raises Exception: If MTH5 cannot open the file. Any partially opened handle is closed
         before the original exception is re-raised.
     """
     mth5_data = _new_mth5(mth5_path)
@@ -259,15 +187,9 @@ def _open_read_only_mth5(mth5_path: Path) -> _MTH5Handle:
 def _new_mth5(mth5_path: Path) -> _MTH5Handle:
     """Construct the third-party handle only at the file-open boundary.
 
-    Parameters
-    ----------
-    mth5_path : Path
-        MTH5 file assigned to the new handle.
+    :param mth5_path: MTH5 file assigned to the new handle.
 
-    Returns
-    -------
-    _MTH5Handle
-        Unopened third-party MTH5 handle.
+    :return: Unopened third-party MTH5 handle.
     """
     from mth5.mth5 import MTH5
 
@@ -277,12 +199,8 @@ def _new_mth5(mth5_path: Path) -> _MTH5Handle:
 def _close_failed_mth5(mth5_data: _MTH5Handle, mth5_path: Path) -> None:
     """Release a handle after failed construction without masking its error.
 
-    Parameters
-    ----------
-    mth5_data : _MTH5Handle
-        Handle whose ownership did not transfer to a public source.
-    mth5_path : Path
-        File path used if close itself needs to be diagnosed.
+    :param mth5_data: Handle whose ownership did not transfer to a public source.
+    :param mth5_path: File path used if close itself needs to be diagnosed.
     """
     try:
         if mth5_data.h5_is_read():

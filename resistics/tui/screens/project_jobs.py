@@ -16,15 +16,9 @@ if TYPE_CHECKING:
 def _progress_details(event: JobProgressEvent) -> tuple[str, str]:
     """Return the counter suffix and activity status for a job event.
 
-    Parameters
-    ----------
-    event : JobProgressEvent
-        Job event that may contain fine-grained process progress.
+    :param event: Job event that may contain fine-grained process progress.
 
-    Returns
-    -------
-    tuple[str, str]
-        Counter suffix and complete activity-status text.
+    :return: Counter suffix and complete activity-status text.
     """
     status = f"{event.job_name}: {event.state.value}"
     if event.progress is None:
@@ -107,15 +101,9 @@ class _ProjectJobsMixin(_ProjectExplorerBase):
     def _check_selected_job_action(self, active: str) -> bool | None:
         """Check job execution eligibility from cached validation summaries.
 
-        Parameters
-        ----------
-        active : str
-            Identifier of the active tab.
+        :param active: Identifier of the active tab.
 
-        Returns
-        -------
-        bool | None
-            Whether a selected job can run, or ``None`` to disable it.
+        :return: Whether a selected job can run, or ``None`` to disable it.
         """
         if active != "jobs":
             return False

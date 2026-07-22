@@ -22,6 +22,8 @@ from resistics.tui.screens.project_base import _ProjectExplorerBase
 from resistics.tui.state import ProjectDataDeletionRequest
 
 if TYPE_CHECKING:
+    from pydantic import BaseModel
+
     from resistics.explorer import IndexedJob, IndexedResource, ResourceKind
     from resistics.job import JobDefinition
     from resistics.project import ProjectDataDeletion
@@ -35,10 +37,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
     ) -> None:
         """Restore a job created or saved before its worker refresh completed.
 
-        Parameters
-        ----------
-        indexed_jobs : tuple[IndexedJob, ...]
-            Current job results returned by the discovery worker.
+        :param indexed_jobs: Current job results returned by the discovery worker.
         """
         path = self._pending_job_path
         if path is None:
@@ -57,10 +56,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
     def _populate_jobs(self, indexed_jobs: tuple[IndexedJob, ...]) -> None:
         """Populate the Jobs table from worker-loaded validation results.
 
-        Parameters
-        ----------
-        indexed_jobs : tuple[IndexedJob, ...]
-            Current job summaries and validations.
+        :param indexed_jobs: Current job summaries and validations.
         """
         table = self.query_one("#job-table", DataTable)
         table.clear(columns=True)
@@ -109,7 +105,10 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         )
 
     def _job_template_created(self, definition: JobDefinition | None) -> None:
-        """Persist a completed creation form and present the generated YAML."""
+        """Persist a completed creation form and present the generated YAML.
+
+        :param definition: Job definition to persist as a template.
+        """
         if definition is None:
             return
         try:
@@ -126,10 +125,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
     def _populate_flows(self, resources: tuple[IndexedResource, ...]) -> None:
         """Populate the read-only flow browser.
 
-        Parameters
-        ----------
-        resources : tuple[IndexedResource, ...]
-            Current parsed flow resources.
+        :param resources: Current parsed flow resources.
         """
         from resistics.flow import FlowDefinition
 
@@ -174,10 +170,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
     def _populate_parameters(self, resources: tuple[IndexedResource, ...]) -> None:
         """Populate the read-only parameter-set browser.
 
-        Parameters
-        ----------
-        resources : tuple[IndexedResource, ...]
-            Current parsed parameter-set resources.
+        :param resources: Current parsed parameter-set resources.
         """
         from resistics.flow import ParameterSet
 
@@ -217,10 +210,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
     def _populate_criteria(self, resources: tuple[IndexedResource, ...]) -> None:
         """Populate the read-only criteria browser.
 
-        Parameters
-        ----------
-        resources : tuple[IndexedResource, ...]
-            Current parsed gather-criteria resources.
+        :param resources: Current parsed gather-criteria resources.
         """
         from resistics.gather import GatherCriteria
 
@@ -279,7 +269,10 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
 
     @on(DataTable.RowHighlighted)
     def refresh_yaml_highlight_bindings(self, event: DataTable.RowHighlighted) -> None:
-        """Refresh YAML actions when a resource-table cursor moves."""
+        """Refresh YAML actions when a resource-table cursor moves.
+
+        :param event: Event used by this operation.
+        """
         resource_tabs = {
             "flow-table": "flows",
             "parameter-table": "parameters",
@@ -297,7 +290,10 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
 
     @on(DataTable.RowSelected, "#flow-table")
     def show_flow(self, event: DataTable.RowSelected) -> None:
-        """Show the complete selected flow definition."""
+        """Show the complete selected flow definition.
+
+        :param event: Event used by this operation.
+        """
         if self.editing_yaml:
             self.notify(
                 "Save or discard the current YAML edits first", severity="warning"
@@ -317,7 +313,10 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
 
     @on(DataTable.RowSelected, "#parameter-table")
     def show_parameters(self, event: DataTable.RowSelected) -> None:
-        """Show the complete selected parameter set."""
+        """Show the complete selected parameter set.
+
+        :param event: Event used by this operation.
+        """
         if self.editing_yaml:
             self.notify(
                 "Save or discard the current YAML edits first", severity="warning"
@@ -339,7 +338,10 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
 
     @on(DataTable.RowSelected, "#criteria-table")
     def show_criteria(self, event: DataTable.RowSelected) -> None:
-        """Show the complete selected criteria definition."""
+        """Show the complete selected criteria definition.
+
+        :param event: Event used by this operation.
+        """
         if self.editing_yaml:
             self.notify(
                 "Save or discard the current YAML edits first", severity="warning"
@@ -358,13 +360,20 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         self.refresh_bindings()
 
     def _show_yaml(self, editor_id: str, path: Path) -> None:
-        """Load YAML source into one read-only, syntax-aware editor."""
+        """Load YAML source into one read-only, syntax-aware editor.
+
+        :param editor_id: Identifier of the YAML editor owning the resource.
+        :param path: Path or routed coordinates to process.
+        """
         editor = self.query_one(editor_id, TextArea)
         editor.text = self.service.yaml_source(path)
         editor.read_only = True
 
-    def _yaml_edit_target(self):
-        """Return the selected YAML source and model for the active resource tab."""
+    def _yaml_edit_target(self) -> tuple[Path, type[BaseModel], str] | None:
+        """Return the selected YAML source and model for the active resource tab.
+
+        :return: Path, model class, and editor selector, or ``None`` when unavailable.
+        """
         from resistics.flow import FlowDefinition, ParameterSet
         from resistics.gather import GatherCriteria
         from resistics.job import JobDefinition
@@ -381,7 +390,10 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         return None
 
     def _selected_yaml_file(self) -> tuple[Path, str] | None:
-        """Return the selected YAML source and its editor selector."""
+        """Return the selected YAML source and its editor selector.
+
+        :return: The selected YAML source and its editor selector.
+        """
         target = self._yaml_edit_target()
         if target is None:
             return None
@@ -389,7 +401,10 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         return path, editor_id
 
     def _highlighted_yaml_file(self) -> tuple[Path, str] | None:
-        """Return the row highlighted in the focused active resource table."""
+        """Return the row highlighted in the focused active resource table.
+
+        :return: The row highlighted in the focused active resource table.
+        """
         active = self.query_one(TabbedContent).active
         resources = {
             "flows": ("#flow-table", self.flow_paths, "#flow-content"),
@@ -421,7 +436,10 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         return None if path is None else (path, editor_id)
 
     def _highlighted_job_path(self) -> Path | None:
-        """Return the focused Jobs-table row without requiring it to be opened."""
+        """Return the focused Jobs-table row without requiring it to be opened.
+
+        :return: The focused Jobs-table row without requiring it to be opened.
+        """
         highlighted = self._highlighted_yaml_file()
         if highlighted is None or highlighted[1] != "#job-content":
             return None
@@ -551,7 +569,11 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         self.notify(f"Deleted {deleted.count} Project data path(s)")
 
     def _select_yaml_file(self, editor_id: str, path: Path) -> None:
-        """Make path the current selection and display its source."""
+        """Make path the current selection and display its source.
+
+        :param editor_id: Identifier of the YAML editor owning the resource.
+        :param path: Path or routed coordinates to process.
+        """
         if editor_id == "#flow-content":
             self.selected_flow_path = path
         elif editor_id == "#parameter-content":
@@ -565,7 +587,10 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         self.refresh_bindings()
 
     def _clear_selected_yaml_file(self, editor_id: str) -> None:
-        """Clear the deleted source selection and restore its placeholder."""
+        """Clear the deleted source selection and restore its placeholder.
+
+        :param editor_id: Identifier of the YAML editor owning the resource.
+        """
         placeholders = {
             "#flow-content": "Select a flow",
             "#parameter-content": "Select a parameter set",
@@ -661,7 +686,11 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
 
     @staticmethod
     def _resource_kind(editor_id: str) -> ResourceKind | None:
-        """Return the project resource namespace owned by one editor."""
+        """Return the project resource namespace owned by one editor.
+
+        :param editor_id: Identifier of the YAML editor owning the resource.
+        :return: The project resource namespace owned by one editor.
+        """
         resource_types: dict[str, ResourceKind] = {
             "#flow-content": "flows",
             "#parameter-content": "parameters",
@@ -671,7 +700,10 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         return resource_types.get(editor_id)
 
     def _refresh_yaml_resource(self, editor_id: str) -> None:
-        """Refresh the table associated with a saved YAML resource."""
+        """Refresh the table associated with a saved YAML resource.
+
+        :param editor_id: Identifier of the YAML editor owning the resource.
+        """
         resource_type = self._resource_kind(editor_id)
         if resource_type is None:
             return

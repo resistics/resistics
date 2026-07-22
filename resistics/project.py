@@ -1,5 +1,4 @@
-"""
-MTH5-backed resistics project model and canonical artifact-path helpers.
+"""MTH5-backed resistics project model and canonical artifact-path helpers.
 
 The project API uses MTH5 surveys, stations, and runs as its sole source-data
 hierarchy. Derived processing artifacts remain in the project's ``data`` tree.
@@ -11,7 +10,7 @@ import json
 from collections.abc import Iterable
 from pathlib import Path
 from shutil import rmtree
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import h5py
 import pandas as pd
@@ -50,27 +49,53 @@ CANONICAL_PROJ_DIRS = (
 
 
 def _as_path(value: Path | str) -> Path:
-    """Return a path from a string or path-like value."""
+    """Return a path from a string or path-like value.
+
+    :param value: Value to validate or normalize.
+    :return: A path from a string or path-like value.
+    """
     return value if isinstance(value, Path) else Path(value)
 
 
 def get_flow_path(project_path: Path, flow_name: str) -> Path:
-    """Get path to a flow definition."""
+    """Get path to a flow definition.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :param flow_name: Flow name used by this operation.
+    :return: Get path to a flow definition.
+    """
     return project_path / "processing" / "flows" / flow_name
 
 
 def get_parameters_path(project_path: Path, parameters_name: str) -> Path:
-    """Get path to a processing parameters definition."""
+    """Get path to a processing parameters definition.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :param parameters_name: Parameters name used by this operation.
+    :return: Get path to a processing parameters definition.
+    """
     return project_path / "processing" / "parameters" / parameters_name
 
 
 def get_job_path(project_path: Path, job_name: str) -> Path:
-    """Get path to a processing job definition."""
+    """Get path to a processing job definition.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :param job_name: Job name used by this operation.
+    :return: Get path to a processing job definition.
+    """
     return project_path / "processing" / "jobs" / job_name
 
 
 def get_run_data_path(project_path: Path, survey: str, station: str, run: str) -> Path:
-    """Get path to derived artifacts for an MTH5 run."""
+    """Get path to derived artifacts for an MTH5 run.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :param survey: Survey identifier or optional survey filter.
+    :param station: Station identifier or optional station filter.
+    :param run: Run identifier.
+    :return: Get path to derived artifacts for an MTH5 run.
+    """
     return project_path / "data" / survey / station / run
 
 
@@ -79,27 +104,23 @@ def get_results_path(
 ) -> Path:
     """Get the canonical output-label path for a processing job.
 
-    Parameters
-    ----------
-    project_path : Path
-        Resistics project root.
-    survey : str
-        MTH5 survey identifier.
-    station : str
-        MTH5 station identifier.
-    output_label : str
-        Processing output namespace.
+    :param project_path: Resistics project root.
+    :param survey: MTH5 survey identifier.
+    :param station: MTH5 station identifier.
+    :param output_label: Processing output namespace.
 
-    Returns
-    -------
-    Path
-        Station result directory beneath the canonical project data tree.
+    :return: Station result directory beneath the canonical project data tree.
     """
     return project_path / "data" / survey / station / "results" / output_label
 
 
 def get_log_path(project_path: Path, job_name: str) -> Path:
-    """Get path to a processing-job log file."""
+    """Get path to a processing-job log file.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :param job_name: Job name used by this operation.
+    :return: Get path to a processing-job log file.
+    """
     return project_path / "logs" / f"{job_name}.log"
 
 
@@ -227,7 +248,11 @@ class ProjectDataDeletion(ResisticsModel):
 
 
 def _metadata_value(value: Any) -> JsonValue:
-    """Convert HDF5 and filesystem metadata into a JSON-safe value."""
+    """Convert HDF5 and filesystem metadata into a JSON-safe value.
+
+    :param value: Value to validate or normalize.
+    :return: The value produced when this operation completes.
+    """
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
     if isinstance(value, bytes):
@@ -242,7 +267,11 @@ def _metadata_value(value: Any) -> JsonValue:
 
 
 def _mth5_data_type(path: str) -> DataType:
-    """Classify known MTH5 dataset locations, preserving unknown entries."""
+    """Classify known MTH5 dataset locations, preserving unknown entries.
+
+    :param path: Path or routed coordinates to process.
+    :return: Classify known MTH5 dataset locations, preserving unknown entries.
+    """
     value = path.lower()
     if "transfer" in value or "tf_summary" in value:
         return "transfer_function"
@@ -263,7 +292,11 @@ def _mth5_data_type(path: str) -> DataType:
 
 
 def _project_data_type(path: Path) -> DataType:
-    """Classify project artifacts using their stable storage conventions."""
+    """Classify project artifacts using their stable storage conventions.
+
+    :param path: Path or routed coordinates to process.
+    :return: Classify project artifacts using their stable storage conventions.
+    """
     parts = {part.lower() for part in path.parts}
     if "masks" in parts:
         return "mask"
@@ -286,81 +319,45 @@ class _MTH5InspectionMixin(_MTH5HandleOwner):
     def fs(self) -> list[float]:
         """Return the distinct sampling frequencies in the inspection source.
 
-        Returns
-        -------
-        list[float]
-            Sampling frequencies represented by the source.
+        :return: Sampling frequencies represented by the source.
 
-        Raises
-        ------
-        NotImplementedError
-            If a concrete inspection source does not implement the contract.
+        :raises NotImplementedError: If a concrete inspection source does not implement the contract.
         """
         raise NotImplementedError
 
     def get_survey(self, survey: str) -> SurveyGroup:
         """Return a survey group by identifier.
 
-        Parameters
-        ----------
-        survey : str
-            Survey identifier.
+        :param survey: Survey identifier.
 
-        Returns
-        -------
-        SurveyGroup
-            Matching MTH5 survey group.
+        :return: Matching MTH5 survey group.
 
-        Raises
-        ------
-        NotImplementedError
-            If a concrete inspection source does not implement the contract.
+        :raises NotImplementedError: If a concrete inspection source does not implement the contract.
         """
         raise NotImplementedError
 
     def get_station(self, survey: str, station: str) -> StationGroup:
         """Return a station group within a survey.
 
-        Parameters
-        ----------
-        survey : str
-            Survey identifier.
-        station : str
-            Station identifier.
+        :param survey: Survey identifier.
+        :param station: Station identifier.
 
-        Returns
-        -------
-        StationGroup
-            Matching MTH5 station group.
+        :return: Matching MTH5 station group.
 
-        Raises
-        ------
-        NotImplementedError
-            If a concrete inspection source does not implement the contract.
+        :raises NotImplementedError: If a concrete inspection source does not implement the contract.
         """
         raise NotImplementedError
 
     def get_run(self, survey: str, station: str, run: str) -> RunGroup:
         """Return a run group within a survey and station.
 
-        Parameters
-        ----------
-        survey : str
-            Survey identifier.
-        station : str
-            Station identifier.
-        run : str
-            Run identifier.
+        :param survey: Survey identifier.
+        :param station: Station identifier.
+        :param run: Run identifier.
 
-        Returns
-        -------
-        RunGroup
-            Matching MTH5 run group.
+        :return: Matching MTH5 run group.
 
-        Raises
-        ------
-        NotImplementedError
-            If a concrete inspection source does not implement the contract.
+        :raises NotImplementedError: If a concrete inspection source does not implement the contract.
         """
         raise NotImplementedError
 
@@ -495,26 +492,51 @@ class MTH5File(_MTH5InspectionMixin, ResisticsModel):
     table: pd.DataFrame = Field(repr=False, exclude=True)
 
     def fs(self) -> list[float]:
-        """Return the distinct sampling frequencies present in the file."""
+        """Return the distinct sampling frequencies present in the file.
+
+        :return: The distinct sampling frequencies present in the file.
+        """
         return sorted(float(x) for x in self.table["sample_rate"].dropna().unique())
 
     def get_survey(self, survey: str) -> SurveyGroup:
-        """Return a survey group by identifier."""
+        """Return a survey group by identifier.
+
+        :param survey: Survey identifier or optional survey filter.
+        :return: A survey group by identifier.
+        """
         self._require_open()
         return self.mth5_data.get_survey(survey)
 
     def get_station(self, survey: str, station: str) -> StationGroup:
-        """Return a station group within a survey."""
+        """Return a station group within a survey.
+
+        :param survey: Survey identifier or optional survey filter.
+        :param station: Station identifier or optional station filter.
+        :return: A station group within a survey.
+        """
         self._require_open()
         return self.mth5_data.get_station(station, survey=survey)
 
     def get_run(self, survey: str, station: str, run: str) -> RunGroup:
-        """Return a run group within a survey and station."""
+        """Return a run group within a survey and station.
+
+        :param survey: Survey identifier or optional survey filter.
+        :param station: Station identifier or optional station filter.
+        :param run: Run identifier.
+        :return: A run group within a survey and station.
+        """
         self._require_open()
         return self.mth5_data.get_run(station, run, survey=survey)
 
     def read_run(self, survey: str, station: str, run: str, **kwargs: Any) -> TimeData:
-        """Read one run as resistics time data."""
+        """Read one run as resistics time data.
+
+        :param survey: Survey identifier or optional survey filter.
+        :param station: Station identifier or optional station filter.
+        :param run: Run identifier.
+        :param **kwargs: Kwargs used by this operation.
+        :return: The value produced when this operation completes.
+        """
         return _read_run(self, survey, station, run, **kwargs)
 
     def _filter_table(
@@ -540,7 +562,10 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
     runs: list[str] = Field(default_factory=list)
 
     def list_mth5_data_items(self) -> list[ProjectDataItem]:
-        """List the MTH5 group and dataset hierarchy without reading data values."""
+        """List the MTH5 group and dataset hierarchy without reading data values.
+
+        :return: List the MTH5 group and dataset hierarchy without reading data values.
+        """
         items = []
         with h5py.File(self.mth5_path, "r") as mth5_file:
 
@@ -563,7 +588,11 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         return sorted(items, key=lambda item: item.path)
 
     def get_mth5_data_metadata(self, path: str) -> ProjectDataMetadata:
-        """Return serializable metadata for one MTH5 group or dataset."""
+        """Return serializable metadata for one MTH5 group or dataset.
+
+        :param path: Path or routed coordinates to process.
+        :return: Serializable metadata for one MTH5 group or dataset.
+        """
         with h5py.File(self.mth5_path, "r") as mth5_file:
             value = mth5_file[path]
             kind = "group" if isinstance(value, h5py.Group) else "dataset"
@@ -596,7 +625,10 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         return self.project_path / "data"
 
     def list_project_data_items(self) -> list[ProjectDataItem]:
-        """List saved project artifacts without opening their data payloads."""
+        """List saved project artifacts without opening their data payloads.
+
+        :return: List saved project artifacts without opening their data payloads.
+        """
         data_path = self._data_path
         if not data_path.is_dir():
             return []
@@ -622,7 +654,10 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         return items
 
     def _project_artifact_roots(self) -> dict[Path, DataType]:
-        """Return the directories that each represent one saved artifact."""
+        """Return the directories that each represent one saved artifact.
+
+        :return: The directories that each represent one saved artifact.
+        """
         data_path = self._data_path
         if not data_path.is_dir():
             return {}
@@ -650,7 +685,12 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
     def _is_project_dataset_item(
         item_path: Path, artifact_roots: dict[Path, DataType]
     ) -> bool:
-        """Identify artifact roots and standalone unrecognised data files."""
+        """Identify artifact roots and standalone unrecognised data files.
+
+        :param item_path: Item path used by this operation.
+        :param artifact_roots: Artifact roots used by this operation.
+        :return: Identify artifact roots and standalone unrecognised data files.
+        """
         if item_path in artifact_roots:
             return True
         if not item_path.is_file():
@@ -658,7 +698,11 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         return not any(root in item_path.parents for root in artifact_roots)
 
     def get_project_data_metadata(self, path: str) -> ProjectDataMetadata:
-        """Return generic and recognized metadata for one saved project artifact."""
+        """Return generic and recognized metadata for one saved project artifact.
+
+        :param path: Path or routed coordinates to process.
+        :return: Generic and recognized metadata for one saved project artifact.
+        """
         item_path = self._project_data_item_path(path)
         kind = "directory" if item_path.is_dir() else "file"
         values: dict[str, JsonValue] = {
@@ -674,7 +718,12 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         )
 
     def get_project_data_json(self, path: str) -> JsonValue:
-        """Read one JSON artifact selected through the project-data browser."""
+        """Read one JSON artifact selected through the project-data browser.
+
+        :param path: Path or routed coordinates to process.
+        :return: The value produced when this operation completes.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         item_path = self._project_data_item_path(path)
         if not item_path.is_file() or item_path.suffix.lower() != ".json":
             raise ValueError("Project data item is not a JSON file")
@@ -684,7 +733,10 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
             raise ValueError(f"Unable to read JSON file {path}: {exc}") from exc
 
     def list_project_output_labels(self) -> list[str]:
-        """List output labels represented by recognised derived artifacts."""
+        """List output labels represented by recognised derived artifacts.
+
+        :return: List output labels represented by recognised derived artifacts.
+        """
         labels = set()
         for path, data_type in self._project_artifact_roots().items():
             if data_type == "spectra" and path.parent.name == "evals":
@@ -699,7 +751,11 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
     def preview_project_data_deletion(
         self, output_label: str | None = None
     ) -> ProjectDataDeletion:
-        """Return the derived paths that a labelled or complete clear removes."""
+        """Return the derived paths that a labelled or complete clear removes.
+
+        :param output_label: Artifact namespace containing or receiving the data.
+        :return: The derived paths that a labelled or complete clear removes.
+        """
         data_path = self._data_path
         if output_label is None:
             paths = (
@@ -736,8 +792,11 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
     ) -> ProjectDataDeletion:
         """Delete one output-label namespace or all derived project data.
 
-        The project's MTH5 file is protected even when it happens to be stored
-        beneath ``project/data``.
+                The project's MTH5 file is protected even when it happens to be stored
+                beneath ``project/data``.
+
+        :param output_label: Artifact namespace containing or receiving the data.
+        :return: Delete one output-label namespace or all derived project data.
         """
         deletion = self.preview_project_data_deletion(output_label)
         data_path = self._data_path
@@ -758,14 +817,21 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
 
     @staticmethod
     def _remove_data_path(path: Path) -> None:
-        """Remove one known derived artifact without following a symlink."""
+        """Remove one known derived artifact without following a symlink.
+
+        :param path: Path or routed coordinates to process.
+        """
         if path.is_symlink() or path.is_file():
             path.unlink()
         else:
             rmtree(path)
 
     def _delete_data_path(self, path: Path, protected: Path) -> None:
-        """Clear data recursively while retaining an in-tree MTH5 source."""
+        """Clear data recursively while retaining an in-tree MTH5 source.
+
+        :param path: Path or routed coordinates to process.
+        :param protected: Protected used by this operation.
+        """
         resolved = path.resolve()
         if resolved == protected:
             return
@@ -776,7 +842,10 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         self._remove_data_path(path)
 
     def _prune_empty_data_parents(self, path: Path) -> None:
-        """Remove empty structural directories left by a labelled deletion."""
+        """Remove empty structural directories left by a labelled deletion.
+
+        :param path: Path or routed coordinates to process.
+        """
         data_path = self._data_path
         while path != data_path and path.is_dir():
             try:
@@ -786,7 +855,12 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
             path = path.parent
 
     def _project_data_item_path(self, path: str) -> Path:
-        """Resolve a browser path and keep it within the project data root."""
+        """Resolve a browser path and keep it within the project data root.
+
+        :param path: Path or routed coordinates to process.
+        :return: The value produced when this operation completes.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         data_path = self._data_path.resolve()
         item_path = (data_path / path).resolve()
         if item_path != data_path and data_path not in item_path.parents:
@@ -797,7 +871,11 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
 
     @staticmethod
     def _project_data_descriptors(item_path: Path) -> dict[str, JsonValue]:
-        """Read recognized, small JSON descriptors associated with an artifact."""
+        """Read recognized, small JSON descriptors associated with an artifact.
+
+        :param item_path: Item path used by this operation.
+        :return: The value produced when this operation completes.
+        """
         descriptors = (
             [item_path / "metadata.json", item_path / "job_info.json"]
             if item_path.is_dir()
@@ -818,7 +896,12 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         return values
 
     def __getitem__(self, obj_path: str) -> SurveyGroup | StationGroup | RunGroup:
-        """Get an MTH5 survey, station, or run by slash-separated path."""
+        """Get an MTH5 survey, station, or run by slash-separated path.
+
+        :param obj_path: Obj path used by this operation.
+        :return: Get an MTH5 survey, station, or run by slash-separated path.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         parts = obj_path.split("/")
         if len(parts) == 1:
             return self.get_survey(parts[0])
@@ -829,38 +912,65 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         raise ValueError(f"Unknown MTH5 object path {obj_path!r}")
 
     def n_surveys(self) -> int:
-        """Get the number of surveys."""
+        """Get the number of surveys.
+
+        :return: Get the number of surveys.
+        """
         return len(self.surveys)
 
     def n_stations(self, survey: str | None = None) -> int:
-        """Get the number of stations, optionally filtered by survey."""
+        """Get the number of stations, optionally filtered by survey.
+
+        :param survey: Survey identifier or optional survey filter.
+        :return: Get the number of stations, optionally filtered by survey.
+        """
         if survey is None:
             return len(self.stations)
         return len(self.get_stations(survey=survey))
 
     def fs(self) -> list[float]:
-        """Get project sample rates."""
+        """Get project sample rates.
+
+        :return: Get project sample rates.
+        """
         if self.table.empty:
             return []
         return sorted([float(x) for x in self.table["sample_rate"].dropna().unique()])
 
     def start(self) -> pd.Timestamp:
-        """Get the first project timestamp."""
+        """Get the first project timestamp.
+
+        :return: Get the first project timestamp.
+        """
         return self.table["start"].min()
 
     def end(self) -> pd.Timestamp:
-        """Get the last project timestamp."""
+        """Get the last project timestamp.
+
+        :return: Get the last project timestamp.
+        """
         return self.table["end"].max()
 
     def get_survey(self, survey: str) -> SurveyGroup:
-        """Get an MTH5 survey group."""
+        """Get an MTH5 survey group.
+
+        :param survey: Survey identifier or optional survey filter.
+        :return: Get an MTH5 survey group.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         self._require_open()
         if survey not in self.surveys:
             raise ValueError(f"Survey {survey!r} not found in MTH5 data")
         return self.mth5_data.get_survey(survey)
 
     def get_station(self, survey: str, station: str) -> StationGroup:
-        """Get an MTH5 station group."""
+        """Get an MTH5 station group.
+
+        :param survey: Survey identifier or optional survey filter.
+        :param station: Station identifier or optional station filter.
+        :return: Get an MTH5 station group.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         self._require_open()
         station_path = f"{survey}/{station}"
         if station_path not in self.stations:
@@ -870,7 +980,12 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
     def get_stations(
         self, survey: str | None = None, fs: float | None = None
     ) -> dict[str, StationGroup]:
-        """Get station groups keyed by ``survey/station``."""
+        """Get station groups keyed by ``survey/station``.
+
+        :param survey: Survey identifier or optional survey filter.
+        :param fs: Optional sample rate used to filter or describe the data.
+        :return: Get station groups keyed by ``survey/station``.
+        """
         table = self._filter_table(survey=survey, fs=fs)
         table = table.drop_duplicates(subset=["station_path"], keep="first")
         return {
@@ -879,7 +994,14 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         }
 
     def get_run(self, survey: str, station: str, run: str) -> RunGroup:
-        """Get an MTH5 run group."""
+        """Get an MTH5 run group.
+
+        :param survey: Survey identifier or optional survey filter.
+        :param station: Station identifier or optional station filter.
+        :param run: Run identifier.
+        :return: Get an MTH5 run group.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         self._require_open()
         run_path = f"{survey}/{station}/{run}"
         if run_path not in self.runs:
@@ -892,7 +1014,13 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         station: str | None = None,
         fs: float | None = None,
     ) -> dict[str, RunGroup]:
-        """Get run groups keyed by ``survey/station/run``."""
+        """Get run groups keyed by ``survey/station/run``.
+
+        :param survey: Survey identifier or optional survey filter.
+        :param station: Station identifier or optional station filter.
+        :param fs: Optional sample rate used to filter or describe the data.
+        :return: Get run groups keyed by ``survey/station/run``.
+        """
         table = self._filter_table(survey=survey, station=station, fs=fs)
         table = table.drop_duplicates(subset=["run_path"], keep="first")
         return {
@@ -901,7 +1029,13 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         }
 
     def get_concurrent(self, station_path: str, fs: float | None = None) -> list[str]:
-        """Find station paths that overlap in time with ``station_path``."""
+        """Find station paths that overlap in time with ``station_path``.
+
+        :param station_path: Canonical survey/station path.
+        :param fs: Optional sample rate used to filter or describe the data.
+        :return: The value produced when this operation completes.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         station_table = self.table[self.table["station_path"] == station_path]
         if station_table.empty:
             raise ValueError(f"Station {station_path!r} not found in MTH5 data")
@@ -926,7 +1060,18 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         from_sample: int | None = None,
         to_sample: int | None = None,
     ) -> TimeData:
-        """Read an MTH5 run into existing resistics ``TimeData`` containers."""
+        """Read an MTH5 run into existing resistics ``TimeData`` containers.
+
+        :param survey: Survey identifier or optional survey filter.
+        :param station: Station identifier or optional station filter.
+        :param run: Run identifier.
+        :param chans: Channels to include, or all available channels when omitted.
+        :param from_time: Optional inclusive start time.
+        :param to_time: Optional inclusive end time.
+        :param from_sample: Optional inclusive first sample index.
+        :param to_sample: Optional inclusive final sample index.
+        :return: The value produced when this operation completes.
+        """
         return _read_run(
             self,
             survey,
@@ -940,11 +1085,18 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         )
 
     def to_dataframe(self) -> pd.DataFrame:
-        """Return the project MTH5 channel summary table."""
+        """Return the project MTH5 channel summary table.
+
+        :return: The project MTH5 channel summary table.
+        """
         return self.table.copy()
 
     def plot(self) -> go.Figure:
-        """Plot project run timelines."""
+        """Plot project run timelines.
+
+        :return: Plot project run timelines.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         if self.table.empty:
             raise ValueError("No runs found to plot")
         runs_table = self.table.drop_duplicates(subset=["run_path"]).copy()
@@ -958,14 +1110,20 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
         station: str | None = None,
         fs: float | None = None,
     ) -> pd.DataFrame:
-        """Filter the cached MTH5 summary table."""
-        table = self.table.copy()
+        """Filter the cached MTH5 summary table.
+
+        :param survey: Survey identifier or optional survey filter.
+        :param station: Station identifier or optional station filter.
+        :param fs: Optional sample rate used to filter or describe the data.
+        :return: Filter the cached MTH5 summary table.
+        """
+        table = cast(pd.DataFrame, self.table.copy())
         if survey is not None:
-            table = table[table["survey"] == survey]
+            table = cast(pd.DataFrame, table.loc[table["survey"] == survey])
         if station is not None:
-            table = table[table["station"] == station]
+            table = cast(pd.DataFrame, table.loc[table["station"] == station])
         if fs is not None:
-            table = table[table["sample_rate"] == fs]
+            table = cast(pd.DataFrame, table.loc[table["sample_rate"] == fs])
         return table
 
 
@@ -978,32 +1136,33 @@ def init(
 ) -> bool:
     """Initialise an MTH5-backed resistics project.
 
-    Parameters
-    ----------
-    project_path : Path | str
-        Directory in which to create the project structure.
-    mth5_path : Path | str
-        Existing MTH5 file used as the project's read-only source data.
-    ref_time : DateTimeLike
-        Reference time used for sample and window calculations.
-    overwrite : bool, optional
-        Replace existing project metadata when ``True``.
-    plugin_paths : list[Path | str] | None, optional
-        Trusted directories containing project process plugins.
+        :param project_path: Directory in which to create the project structure.
+        :param mth5_path: Existing MTH5 file used as the project's read-only source data.
+        :param ref_time: Reference time used for sample and window calculations.
+        :param overwrite: Replace existing project metadata when ``True``.
+        :param plugin_paths: Trusted directories containing project process plugins.
 
-    Returns
-    -------
-    bool
-        ``True`` after the project structure and metadata are created.
+        :return: ``True`` after the project structure and metadata are created.
 
-    Examples
-    --------
-    Initialise a project from an existing MTH5 file, then load it for use.
+        **Examples**
 
-    >>> from resistics.project import init, load
-    >>> init("example-project", "recordings.mth5", "2020-01-01")  # doctest: +SKIP
-    True
-    >>> project = load("example-project")  # doctest: +SKIP
+        Initialise a project from an existing MTH5 file, then load it for use.
+
+        ```{doctest}
+        >>> from resistics.project import init, load
+        >>> init("example-project", "recordings.mth5", "2020-01-01")  # doctest: +SKIP
+        True
+        >>> project = load("example-project")  # doctest: +SKIP
+
+        ```
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :param mth5_path: Path to the MTH5 file.
+    :param ref_time: Ref time used by this operation.
+    :param overwrite: Overwrite used by this operation.
+    :param plugin_paths: Plugin paths used by this operation.
+    :return: Initialise an MTH5-backed resistics project.
+    :raises ValueError: If the requested operation cannot satisfy its contract.
     """
     project_path = _as_path(project_path)
     mth5_path = _as_path(mth5_path)
@@ -1031,22 +1190,12 @@ def init(
 def load(project_path: Path | str) -> Project:
     """Load an MTH5-backed project that owns its handle until ``close()``.
 
-    Parameters
-    ----------
-    project_path : Path | str
-        Existing canonical resistics project directory.
+    :param project_path: Existing canonical resistics project directory.
 
-    Returns
-    -------
-    Project
-        Open project supporting deterministic ``close()`` and ``with``.
+    :return: Open project supporting deterministic ``close()`` and ``with``.
 
-    Raises
-    ------
-    ValueError
-        If project metadata, structure, or the configured MTH5 path is absent.
-    Exception
-        If metadata validation, MTH5 opening, channel-summary preparation, or
+    :raises ValueError: If project metadata, structure, or the configured MTH5 path is absent.
+    :raises Exception: If metadata validation, MTH5 opening, channel-summary preparation, or
         project construction fails. An acquired handle is closed first.
     """
     project_path = _as_path(project_path)
@@ -1080,23 +1229,12 @@ def load(project_path: Path | str) -> Project:
 def open_mth5(mth5_path: Path | str) -> MTH5File:
     """Open a read-only inspection source that owns its handle until closed.
 
-    Parameters
-    ----------
-    mth5_path : Path | str
-        Existing MTH5 file to inspect.
+    :param mth5_path: Existing MTH5 file to inspect.
 
-    Returns
-    -------
-    MTH5File
-        Open inspection source supporting deterministic ``close()`` and
-        ``with``.
+    :return: Open inspection source supporting deterministic ``close()`` and ``with``.
 
-    Raises
-    ------
-    ValueError
-        If the MTH5 path does not exist.
-    Exception
-        If MTH5 opening, channel-summary preparation, or source construction
+    :raises ValueError: If the MTH5 path does not exist.
+    :raises Exception: If MTH5 opening, channel-summary preparation, or source construction
         fails. An acquired handle is closed first.
     """
     mth5_path = _as_path(mth5_path)
@@ -1112,7 +1250,13 @@ def open_mth5(mth5_path: Path | str) -> MTH5File:
 
 
 def check_project(project_path: Path | str, mth5_path: Path | str) -> bool:
-    """Validate an MTH5-backed resistics project directory."""
+    """Validate an MTH5-backed resistics project directory.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :param mth5_path: Path to the MTH5 file.
+    :return: The value produced when this operation completes.
+    :raises ValueError: If the requested operation cannot satisfy its contract.
+    """
     project_path = _as_path(project_path)
     mth5_path = _as_path(mth5_path)
     if not mth5_path.exists():
@@ -1125,7 +1269,12 @@ def check_project(project_path: Path | str, mth5_path: Path | str) -> bool:
 
 
 def _prepare_channel_summary(table: pd.DataFrame) -> pd.DataFrame:
-    """Add canonical path columns to an MTH5 channel summary table."""
+    """Add canonical path columns to an MTH5 channel summary table.
+
+    :param table: Table used by this operation.
+    :return: Add canonical path columns to an MTH5 channel summary table.
+    :raises ValueError: If the requested operation cannot satisfy its contract.
+    """
     table = table.copy()
     if table.empty:
         for col in ["survey", "station", "run", "station_path", "run_path"]:
@@ -1134,12 +1283,16 @@ def _prepare_channel_summary(table: pd.DataFrame) -> pd.DataFrame:
     for column in ["survey", "station", "run"]:
         if column not in table.columns:
             raise ValueError(f"MTH5 channel summary missing {column!r} column")
-    table["station_path"] = (
-        table[["survey", "station"]].astype(str).agg("/".join, axis=1)
-    )
-    table["run_path"] = (
-        table[["survey", "station", "run"]].astype(str).agg("/".join, axis=1)
-    )
+    surveys = table["survey"].astype(str).tolist()
+    stations = table["station"].astype(str).tolist()
+    runs = table["run"].astype(str).tolist()
+    table["station_path"] = [
+        f"{survey}/{station}" for survey, station in zip(surveys, stations, strict=True)
+    ]
+    table["run_path"] = [
+        f"{survey}/{station}/{run}"
+        for survey, station, run in zip(surveys, stations, runs, strict=True)
+    ]
     if "start" in table.columns:
         table["start"] = pd.to_datetime(table["start"])
     if "end" in table.columns:
@@ -1153,13 +1306,13 @@ def _filter_table(
     station: str | None = None,
     fs: float | None = None,
 ) -> pd.DataFrame:
-    table = table.copy()
+    table = cast(pd.DataFrame, table.copy())
     if survey is not None:
-        table = table[table["survey"] == survey]
+        table = cast(pd.DataFrame, table.loc[table["survey"] == survey])
     if station is not None:
-        table = table[table["station"] == station]
+        table = cast(pd.DataFrame, table.loc[table["station"] == station])
     if fs is not None:
-        table = table[table["sample_rate"] == fs]
+        table = cast(pd.DataFrame, table.loc[table["sample_rate"] == fs])
     return table
 
 
@@ -1194,7 +1347,19 @@ def _read_run(
     from_sample: int | None = None,
     to_sample: int | None = None,
 ) -> TimeData:
-    """Resolve an MTH5 run and delegate its reading to ``MTH5TimeReader``."""
+    """Resolve an MTH5 run and delegate its reading to ``MTH5TimeReader``.
+
+    :param source: Open MTH5-backed data source.
+    :param survey: Survey identifier or optional survey filter.
+    :param station: Station identifier or optional station filter.
+    :param run: Run identifier.
+    :param chans: Channels to include, or all available channels when omitted.
+    :param from_time: Optional inclusive start time.
+    :param to_time: Optional inclusive end time.
+    :param from_sample: Optional inclusive first sample index.
+    :param to_sample: Optional inclusive final sample index.
+    :return: The value produced when this operation completes.
+    """
     run_group = source.get_run(survey, station, run)
     summary = source.list_runs(survey=survey, station=station)
     selected = next(item for item in summary if item.run == run)

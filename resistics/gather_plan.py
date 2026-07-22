@@ -14,14 +14,11 @@ from resistics.gather_project import _GatherProjectSource, _RemoteDiscovery
 class _EvaluationLocator:
     """One evaluation row addressed by its station-global window index.
 
-    Attributes
-    ----------
-    run_path : str
-        Persisted artifact run path.
-    local_index : int
-        Row index within that run's level array.
-    artifact : Any
-        Loaded evaluation-frequency artifact.
+    **Attributes**
+
+    - **run_path** — Persisted artifact run path.
+    - **local_index** — Row index within that run's level array.
+    - **artifact** — Loaded evaluation-frequency artifact.
     """
 
     run_path: str
@@ -33,20 +30,14 @@ class _EvaluationLocator:
 class _GatherEvaluationPlan:
     """Aligned rows for one realised evaluation frequency.
 
-    Attributes
-    ----------
-    key : int
-        Contiguous gathered-data evaluation key.
-    level : int
-        Realised decimation level.
-    evaluation_index : int
-        Evaluation index within the level.
-    frequency : float
-        Evaluation frequency in Hz.
-    target_locators : tuple[_EvaluationLocator, ...]
-        Target rows supplying output and input channels.
-    cross_locators : tuple[_EvaluationLocator, ...]
-        Local or remote rows supplying cross channels.
+    **Attributes**
+
+    - **key** — Contiguous gathered-data evaluation key.
+    - **level** — Realised decimation level.
+    - **evaluation_index** — Evaluation index within the level.
+    - **frequency** — Evaluation frequency in Hz.
+    - **target_locators** — Target rows supplying output and input channels.
+    - **cross_locators** — Local or remote rows supplying cross channels.
     """
 
     key: int
@@ -61,18 +52,13 @@ class _GatherEvaluationPlan:
 class _GatherPlan:
     """Complete immutable execution plan for gathered-data assembly.
 
-    Attributes
-    ----------
-    evaluations : tuple[_GatherEvaluationPlan, ...]
-        Ordered per-frequency row selections.
-    target_runs : frozenset[str]
-        Target artifacts that contribute at least one row.
-    remote_runs : frozenset[str]
-        Remote artifacts that contribute at least one row.
-    usable_remotes : tuple[str, ...]
-        Remote stations contributing aligned admitted windows.
-    remote_enabled : bool
-        Whether cross channels are sourced from remote artifacts.
+    **Attributes**
+
+    - **evaluations** — Ordered per-frequency row selections.
+    - **target_runs** — Target artifacts that contribute at least one row.
+    - **remote_runs** — Remote artifacts that contribute at least one row.
+    - **usable_remotes** — Remote stations contributing aligned admitted windows.
+    - **remote_enabled** — Whether cross channels are sourced from remote artifacts.
     """
 
     evaluations: tuple[_GatherEvaluationPlan, ...]
@@ -85,10 +71,7 @@ class _GatherPlan:
 class _GatherPlanner:
     """Plan mask admission and global-window alignment without assembling arrays.
 
-    Parameters
-    ----------
-    source : _GatherProjectSource
-        Source responsible for persisted mask admission.
+    :param source: Source responsible for persisted mask admission.
     """
 
     def __init__(self, source: _GatherProjectSource):
@@ -104,28 +87,15 @@ class _GatherPlanner:
     ) -> _GatherPlan:
         """Build an immutable plan for every realised evaluation frequency.
 
-        Parameters
-        ----------
-        target : str
-            Canonical target station path.
-        sample_rate : float
-            Original sampling frequency.
-        target_artifacts : dict[str, Any]
-            Validated target artifacts keyed by run path.
-        level_references : dict[int, Any]
-            Authoritative target artifact for each realised level.
-        remotes : _RemoteDiscovery
-            Compatible remote artifacts and candidate diagnostics.
+        :param target: Canonical target station path.
+        :param sample_rate: Original sampling frequency.
+        :param target_artifacts: Validated target artifacts keyed by run path.
+        :param level_references: Authoritative target artifact for each realised level.
+        :param remotes: Compatible remote artifacts and candidate diagnostics.
 
-        Returns
-        -------
-        _GatherPlan
-            Ordered admitted row pairs and contributing source identities.
+        :return: Ordered admitted row pairs and contributing source identities.
 
-        Raises
-        ------
-        ValueError
-            If a level/frequency has no admissible rows or no configured remote
+        :raises ValueError: If a level/frequency has no admissible rows or no configured remote
             can contribute.
         """
         evaluations = []
@@ -210,27 +180,15 @@ class _GatherPlanner:
     ) -> list[tuple[_EvaluationLocator, _EvaluationLocator]]:
         """Align admitted local or remote rows for one evaluation frequency.
 
-        Parameters
-        ----------
-        target : str
-            Canonical target station path.
-        sample_rate : float
-            Original sampling frequency.
-        level : int
-            Realised decimation level.
-        evaluation_index : int
-            Evaluation-frequency index within the level.
-        target_valid : dict[int, _EvaluationLocator]
-            Mask-admitted target rows keyed by global window.
-        remotes : _RemoteDiscovery
-            Compatible remote artifacts and the resolved policy.
-        usable_remotes : set[str]
-            Mutable operation-local accumulator of contributing stations.
+        :param target: Canonical target station path.
+        :param sample_rate: Original sampling frequency.
+        :param level: Realised decimation level.
+        :param evaluation_index: Evaluation-frequency index within the level.
+        :param target_valid: Mask-admitted target rows keyed by global window.
+        :param remotes: Compatible remote artifacts and the resolved policy.
+        :param usable_remotes: Mutable operation-local accumulator of contributing stations.
 
-        Returns
-        -------
-        list[tuple[_EvaluationLocator, _EvaluationLocator]]
-            Ordered target/cross row pairs.
+        :return: Ordered target/cross row pairs.
         """
         if remotes.setting is None:
             return [
@@ -272,24 +230,13 @@ class _GatherPlanner:
     ) -> dict[int, _EvaluationLocator]:
         """Index realised artifact rows by station-global window number.
 
-        Parameters
-        ----------
-        artifacts : dict[str, Any]
-            Evaluation artifacts keyed by run path.
-        level : int
-            Realised decimation level to index.
-        station_path : str
-            Canonical station path used in diagnostics.
+        :param artifacts: Evaluation artifacts keyed by run path.
+        :param level: Realised decimation level to index.
+        :param station_path: Canonical station path used in diagnostics.
 
-        Returns
-        -------
-        dict[int, _EvaluationLocator]
-            Unique global-window-indexed source rows.
+        :return: Unique global-window-indexed source rows.
 
-        Raises
-        ------
-        ValueError
-            If two runs claim the same station-global window.
+        :raises ValueError: If two runs claim the same station-global window.
         """
         catalog = {}
         for run_path in sorted(artifacts):

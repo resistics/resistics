@@ -22,14 +22,11 @@ if TYPE_CHECKING:
 class _RemoteDiscovery:
     """Compatible remote artifacts and diagnostics for one gather target.
 
-    Attributes
-    ----------
-    setting : Literal["auto"] | list[str] | None
-        Resolved remote-reference policy.
-    artifacts : dict[str, dict[str, Any]]
-        Compatible artifacts keyed by station and run path.
-    candidate_reasons : dict[str, str]
-        Rejection reason for each unusable automatic candidate.
+    **Attributes**
+
+    - **setting** — Resolved remote-reference policy.
+    - **artifacts** — Compatible artifacts keyed by station and run path.
+    - **candidate_reasons** — Rejection reason for each unusable automatic candidate.
     """
 
     setting: Literal["auto"] | list[str] | None
@@ -40,16 +37,10 @@ class _RemoteDiscovery:
 class _GatherProjectSource:
     """Own project discovery, persisted artifact reads, and mask reads.
 
-    Parameters
-    ----------
-    project : Project
-        Open project used for run and concurrent-station discovery.
-    project_path : Path
-        Root containing persisted evaluation and mask artifacts.
-    criteria : GatherCriteria
-        Resolved policy source used when admitting masked windows.
-    output_label : str
-        Persisted artifact namespace.
+    :param project: Open project used for run and concurrent-station discovery.
+    :param project_path: Root containing persisted evaluation and mask artifacts.
+    :param criteria: Resolved policy source used when admitting masked windows.
+    :param output_label: Persisted artifact namespace.
     """
 
     def __init__(
@@ -74,22 +65,12 @@ class _GatherProjectSource:
     ) -> tuple[dict[str, Any], dict[int, Any]]:
         """Load and validate target artifacts and per-level references.
 
-        Parameters
-        ----------
-        run_paths : list[str]
-            Target run paths selected by the job batch.
-        station_path : str
-            Canonical target station path.
+        :param run_paths: Target run paths selected by the job batch.
+        :param station_path: Canonical target station path.
 
-        Returns
-        -------
-        tuple[dict[str, Any], dict[int, Any]]
-            Artifacts by run and compatible reference artifact by level.
+        :return: Artifacts by run and compatible reference artifact by level.
 
-        Raises
-        ------
-        ValueError
-            If no run is selected, an artifact is unreadable, or target
+        :raises ValueError: If no run is selected, an artifact is unreadable, or target
             metadata is incompatible.
         """
         if not run_paths:
@@ -110,28 +91,15 @@ class _GatherProjectSource:
     ) -> _RemoteDiscovery:
         """Discover readable, compatible artifacts for the remote policy.
 
-        Parameters
-        ----------
-        target : str
-            Target station path.
-        sample_rate : float
-            Original sampling frequency.
-        setting : Literal["auto"] | list[str] | None
-            Resolved remote-reference policy.
-        baseline : Any
-            Target artifact used for whole-run compatibility.
-        level_references : dict[int, Any]
-            Authoritative target artifact for each realised level.
+        :param target: Target station path.
+        :param sample_rate: Original sampling frequency.
+        :param setting: Resolved remote-reference policy.
+        :param baseline: Target artifact used for whole-run compatibility.
+        :param level_references: Authoritative target artifact for each realised level.
 
-        Returns
-        -------
-        _RemoteDiscovery
-            Compatible remote artifacts plus automatic-candidate diagnostics.
+        :return: Compatible remote artifacts plus automatic-candidate diagnostics.
 
-        Raises
-        ------
-        ValueError
-            If an explicit remote is absent, unreadable, or incompatible.
+        :raises ValueError: If an explicit remote is absent, unreadable, or incompatible.
         """
         if setting is None:
             return _RemoteDiscovery(setting, {}, {})
@@ -178,23 +146,13 @@ class _GatherProjectSource:
     ) -> dict[int, Any]:
         """Apply every configured persisted mask to a window catalog.
 
-        Parameters
-        ----------
-        station_path : str
-            Target or remote station owning the catalog.
-        sample_rate : float
-            Original sampling frequency.
-        level : int
-            Decimation level.
-        evaluation_index : int
-            Evaluation-frequency index within the level.
-        catalog : dict[int, Any]
-            Global-window-indexed evaluation locators.
+        :param station_path: Target or remote station owning the catalog.
+        :param sample_rate: Original sampling frequency.
+        :param level: Decimation level.
+        :param evaluation_index: Evaluation-frequency index within the level.
+        :param catalog: Global-window-indexed evaluation locators.
 
-        Returns
-        -------
-        dict[int, Any]
-            Locators admitted by the configured mask policy.
+        :return: Locators admitted by the configured mask policy.
         """
         policy = self.criteria.resolve(
             station_path, sample_rate, level, evaluation_index
@@ -231,29 +189,15 @@ class _GatherProjectSource:
     ) -> tuple[dict[str, Any], str | None]:
         """Return compatible artifacts for one remote candidate.
 
-        Parameters
-        ----------
-        station_path : str
-            Canonical candidate station path.
-        sample_rate : float
-            Original sampling frequency.
-        baseline : Any
-            Target artifact used for whole-run compatibility.
-        level_references : dict[int, Any]
-            Authoritative target artifact for each realised level.
-        automatic : bool
-            Whether incompatibility should skip this candidate.
+        :param station_path: Canonical candidate station path.
+        :param sample_rate: Original sampling frequency.
+        :param baseline: Target artifact used for whole-run compatibility.
+        :param level_references: Authoritative target artifact for each realised level.
+        :param automatic: Whether incompatibility should skip this candidate.
 
-        Returns
-        -------
-        tuple[dict[str, Any], str | None]
-            Compatible candidate artifacts and an automatic-candidate rejection
-            reason when no artifact remains.
+        :return: Compatible candidate artifacts and an automatic-candidate rejection reason when no artifact remains.
 
-        Raises
-        ------
-        ValueError
-            If an explicit candidate has no usable runs or is incompatible.
+        :raises ValueError: If an explicit candidate has no usable runs or is incompatible.
         """
         run_paths = self._station_runs(station_path, sample_rate)
         artifacts = self._load_runs(
@@ -290,22 +234,12 @@ class _GatherProjectSource:
     def _station_runs(self, station_path: str, sample_rate: float) -> list[str]:
         """Discover run paths for one station and rate from the project index.
 
-        Parameters
-        ----------
-        station_path : str
-            Canonical station path.
-        sample_rate : float
-            Original sampling frequency.
+        :param station_path: Canonical station path.
+        :param sample_rate: Original sampling frequency.
 
-        Returns
-        -------
-        list[str]
-            Sorted matching run paths.
+        :return: Sorted matching run paths.
 
-        Raises
-        ------
-        ValueError
-            If the station path is invalid or has no runs at the rate.
+        :raises ValueError: If the station path is invalid or has no runs at the rate.
         """
         _validate_station_path(station_path)
         rows = self.project.table[
@@ -324,24 +258,13 @@ class _GatherProjectSource:
     ) -> dict[str, Any]:
         """Load cached evaluation artifacts and contextualise read failures.
 
-        Parameters
-        ----------
-        run_paths : list[str]
-            Run paths to load.
-        required : bool
-            Whether any unreadable run makes the operation fail.
-        role : str
-            Target or remote description used in diagnostics.
+        :param run_paths: Run paths to load.
+        :param required: Whether any unreadable run makes the operation fail.
+        :param role: Target or remote description used in diagnostics.
 
-        Returns
-        -------
-        dict[str, Any]
-            Readable artifacts keyed by run path.
+        :return: Readable artifacts keyed by run path.
 
-        Raises
-        ------
-        ValueError
-            If a required artifact cannot be read.
+        :raises ValueError: If a required artifact cannot be read.
         """
         values = {}
         failures = []
@@ -382,19 +305,11 @@ class _GatherProjectSource:
     def _validate_compatible(reference: Any, candidate: Any, description: str) -> None:
         """Validate whole-artifact and realised-level compatibility.
 
-        Parameters
-        ----------
-        reference : Any
-            Authoritative target artifact.
-        candidate : Any
-            Target or remote artifact to validate.
-        description : str
-            Source identity used in diagnostics.
+        :param reference: Authoritative target artifact.
+        :param candidate: Target or remote artifact to validate.
+        :param description: Source identity used in diagnostics.
 
-        Raises
-        ------
-        ValueError
-            If sampling, time, or realised-level metadata differs.
+        :raises ValueError: If sampling, time, or realised-level metadata differs.
         """
         ref_dec = reference.decimation_parameters
         got_dec = candidate.decimation_parameters
@@ -422,19 +337,11 @@ class _GatherProjectSource:
     ) -> list[str]:
         """Compare one realised evaluation level using spectra metadata only.
 
-        Parameters
-        ----------
-        reference : Any
-            Authoritative target artifact.
-        candidate : Any
-            Artifact to compare.
-        level : int
-            Realised decimation level.
+        :param reference: Authoritative target artifact.
+        :param candidate: Artifact to compare.
+        :param level: Realised decimation level.
 
-        Returns
-        -------
-        list[str]
-            Human-readable incompatible fields.
+        :return: Human-readable incompatible fields.
         """
         left = reference.spectra_data.metadata.levels_metadata[level]
         right = candidate.spectra_data.metadata.levels_metadata[level]
@@ -457,21 +364,12 @@ class _GatherProjectSource:
     ) -> None:
         """Raise with context when one realised level is incompatible.
 
-        Parameters
-        ----------
-        reference : Any
-            Authoritative target artifact.
-        candidate : Any
-            Artifact to compare.
-        level : int
-            Realised decimation level.
-        description : str
-            Source identity used in diagnostics.
+        :param reference: Authoritative target artifact.
+        :param candidate: Artifact to compare.
+        :param level: Realised decimation level.
+        :param description: Source identity used in diagnostics.
 
-        Raises
-        ------
-        ValueError
-            If level sampling, windows, or evaluation frequencies differ.
+        :raises ValueError: If level sampling, windows, or evaluation frequencies differ.
         """
         failures = _GatherProjectSource._level_compatibility_failures(
             reference, candidate, level
@@ -485,22 +383,12 @@ class _GatherProjectSource:
     ) -> dict[int, Any]:
         """Choose and validate an authoritative target artifact for each level.
 
-        Parameters
-        ----------
-        artifacts : dict[str, Any]
-            Validated target artifacts keyed by run path.
-        station_path : str
-            Canonical target station path used in diagnostics.
+        :param artifacts: Validated target artifacts keyed by run path.
+        :param station_path: Canonical target station path used in diagnostics.
 
-        Returns
-        -------
-        dict[int, Any]
-            Authoritative artifact for each realised level.
+        :return: Authoritative artifact for each realised level.
 
-        Raises
-        ------
-        ValueError
-            If no level is realised or target level metadata differs.
+        :raises ValueError: If no level is realised or target level metadata differs.
         """
         n_levels = max(
             artifact.spectra_data.metadata.n_levels for artifact in artifacts.values()
@@ -539,30 +427,16 @@ class _GatherProjectSource:
     ) -> WindowMask:
         """Load and validate one required mask with full gather context.
 
-        Parameters
-        ----------
-        station_path : str
-            Target or remote station owning the mask.
-        run_path : str
-            Run whose windows are being admitted.
-        name : str
-            Persisted mask name.
-        artifact : Any
-            Evaluation artifact the mask must describe.
-        level : int
-            Realised decimation level.
-        evaluation_index : int
-            Evaluation-frequency index within the level.
+        :param station_path: Target or remote station owning the mask.
+        :param run_path: Run whose windows are being admitted.
+        :param name: Persisted mask name.
+        :param artifact: Evaluation artifact the mask must describe.
+        :param level: Realised decimation level.
+        :param evaluation_index: Evaluation-frequency index within the level.
 
-        Returns
-        -------
-        WindowMask
-            Compatible cached or newly read mask.
+        :return: Compatible cached or newly read mask.
 
-        Raises
-        ------
-        ValueError
-            If the required mask is unavailable or incompatible.
+        :raises ValueError: If the required mask is unavailable or incompatible.
         """
         cache_key = (run_path, name)
         if cache_key in self.mask_cache:
@@ -594,21 +468,12 @@ class _GatherProjectSource:
     ) -> None:
         """Validate mask identity and every realised level signature.
 
-        Parameters
-        ----------
-        mask : WindowMask
-            Persisted mask to validate.
-        artifact : Any
-            Evaluation artifact the mask must describe.
-        run_path : str
-            Source run used in diagnostics.
-        name : str
-            Mask name used in diagnostics.
+        :param mask: Persisted mask to validate.
+        :param artifact: Evaluation artifact the mask must describe.
+        :param run_path: Source run used in diagnostics.
+        :param name: Mask name used in diagnostics.
 
-        Raises
-        ------
-        ValueError
-            If sampling, time, level, frequency, or window metadata differs.
+        :raises ValueError: If sampling, time, level, frequency, or window metadata differs.
         """
         data = artifact.spectra_data
         dec_params = artifact.decimation_parameters

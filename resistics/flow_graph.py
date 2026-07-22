@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence, Set
 from dataclasses import dataclass
 from html import escape
 from itertools import pairwise
@@ -33,44 +33,33 @@ type _FlowGraphNode = tuple[
     "ProcessDescriptor",
 ]
 type _FlowGraphEdge = tuple[int, str, str, str, str]
+type _Vertex = int | str
+type _Point = tuple[float, float] | tuple[int, int]
+type _RoutedEdge = tuple[_Vertex, _Vertex]
+type _CoordinatePath = Sequence[_Point]
 
 
 @dataclass(frozen=True)
 class _FlowGraphRenderSpec:
     """Immutable presentation contract for the private graph renderer.
 
-    Attributes
-    ----------
-    title : str
-        Escaped Plotly title markup.
-    labels : Mapping[str, str]
-        Card label markup keyed by staged node id.
-    hovers : Mapping[str, str]
-        Node hover markup keyed by staged node id.
-    card_width : float
-        Width of every node card.
-    card_height : float
-        Height of every node card.
-    card_text_size : int
-        Font size for node labels.
-    marker_size : float
-        Size of the transparent node hover target.
-    vertex_spacing : int
-        Minimum spacing requested from the graph layout.
-    margin_top : int
-        Figure margin reserved above the graph.
-    minimum_height : int
-        Minimum rendered figure height.
-    height_base : int
-        Base height before graph span is added.
-    legend_y : float
-        Vertical legend position in paper coordinates.
-    x_padding : float
-        Horizontal axis padding around laid-out nodes.
-    y_padding : float
-        Vertical axis padding around laid-out nodes.
-    metadata : Mapping[str, Any]
-        Adapter-specific values added to every trace's metadata.
+    **Attributes**
+
+    - **title** — Escaped Plotly title markup.
+    - **labels** — Card label markup keyed by staged node id.
+    - **hovers** — Node hover markup keyed by staged node id.
+    - **card_width** — Width of every node card.
+    - **card_height** — Height of every node card.
+    - **card_text_size** — Font size for node labels.
+    - **marker_size** — Size of the transparent node hover target.
+    - **vertex_spacing** — Minimum spacing requested from the graph layout.
+    - **margin_top** — Figure margin reserved above the graph.
+    - **minimum_height** — Minimum rendered figure height.
+    - **height_base** — Base height before graph span is added.
+    - **legend_y** — Vertical legend position in paper coordinates.
+    - **x_padding** — Horizontal axis padding around laid-out nodes.
+    - **y_padding** — Vertical axis padding around laid-out nodes.
+    - **metadata** — Adapter-specific values added to every trace's metadata.
     """
 
     title: str
@@ -90,13 +79,23 @@ class _FlowGraphRenderSpec:
     metadata: Mapping[str, Any]
 
 
-def _flow_node_key(stage, node) -> str:
-    """Return a globally unique key for a staged flow node."""
+def _flow_node_key(stage: FlowStage, node: FlowNode) -> str:
+    """Return a globally unique key for a staged flow node.
+
+    :param stage: Flow stage to execute.
+    :param node: Flow node within the stage.
+    :return: A globally unique key for a staged flow node.
+    """
     return f"{stage.stage_id}:{node.id}"
 
 
 def _flow_edge_hover(port: str, value_type: str) -> str:
-    """Return escaped HTML details for a Plotly input-edge tooltip."""
+    """Return escaped HTML details for a Plotly input-edge tooltip.
+
+    :param port: Port used by this operation.
+    :param value_type: Declared flow value type.
+    :return: Escaped HTML details for a Plotly input-edge tooltip.
+    """
     return f"<b>{escape(port)}</b><br>Expected type: {escape(value_type)}"
 
 
@@ -111,19 +110,11 @@ def _flow_layout(
 ]:
     """Return one shared ranked layout for validated graph nodes and edges.
 
-    Parameters
-    ----------
-    nodes : list[_FlowGraphNode]
-        Adapted staged nodes.
-    edges : list[_FlowGraphEdge]
-        Adapted dependency edges.
-    vertex_spacing : int
-        Minimum spacing passed to the layout solver.
+    :param nodes: Adapted staged nodes.
+    :param edges: Adapted dependency edges.
+    :param vertex_spacing: Minimum spacing passed to the layout solver.
 
-    Returns
-    -------
-    tuple[dict[str, int], dict[int | str, tuple[float, float] | tuple[int, int]], list[tuple[int | str, int | str]]]
-        Node numbers, coordinates, and routed edge segments.
+    :return: Node numbers, coordinates, and routed edge segments.
     """
     keys = [_flow_node_key(stage, node) for _, stage, node, _ in nodes]
     node_numbers = {key: index for index, key in enumerate(keys)}
@@ -154,16 +145,34 @@ def _flow_layout(
     return node_numbers, positions, routed_edges
 
 
-def _routed_adjacency(routed_edges):
-    """Group solver edge segments by their source vertex."""
+def _routed_adjacency(
+    routed_edges: Sequence[_RoutedEdge],
+) -> dict[_Vertex, list[_Vertex]]:
+    """Group solver edge segments by their source vertex.
+
+    :param routed_edges: Edge segments returned by the graph layout solver.
+    :return: Destination vertices grouped by their source vertex.
+    """
     adjacency = {}
     for start, end in routed_edges:
         adjacency.setdefault(start, []).append(end)
     return adjacency
 
 
-def _routed_path(source, target, adjacency, original_numbers):
-    """Find a path that contains no original nodes between its endpoints."""
+def _routed_path(
+    source: _Vertex,
+    target: _Vertex,
+    adjacency: Mapping[_Vertex, Sequence[_Vertex]],
+    original_numbers: Set[_Vertex],
+) -> list[_Vertex] | None:
+    """Find a path that contains no original nodes between its endpoints.
+
+    :param source: Source graph vertex.
+    :param target: Target graph vertex.
+    :param adjacency: Adjacency used by this operation.
+    :param original_numbers: Identifiers of original, non-routing vertices.
+    :return: Routed vertex path, or ``None`` when the target is unreachable.
+    """
     pending = [(source, [source])]
     visited = set()
     while pending:
@@ -182,8 +191,22 @@ def _routed_path(source, target, adjacency, original_numbers):
     return None
 
 
-def _flow_edge_path(source, target, routed_edges, original_numbers, positions):
-    """Trace one original edge through the solver's dummy routing vertices."""
+def _flow_edge_path(
+    source: _Vertex,
+    target: _Vertex,
+    routed_edges: Sequence[_RoutedEdge],
+    original_numbers: Set[_Vertex],
+    positions: Mapping[_Vertex, _Point],
+) -> list[_Point]:
+    """Trace one original edge through the solver's dummy routing vertices.
+
+    :param source: Source graph vertex.
+    :param target: Target graph vertex.
+    :param routed_edges: Edge segments returned by the graph layout solver.
+    :param original_numbers: Identifiers of original, non-routing vertices.
+    :param positions: Graph coordinates keyed by solver vertex.
+    :return: Coordinates along the routed edge from source to target.
+    """
     path = _routed_path(
         source, target, _routed_adjacency(routed_edges), original_numbers
     )
@@ -193,11 +216,17 @@ def _flow_edge_path(source, target, routed_edges, original_numbers, positions):
 
 
 def _flow_arrow_position(
-    path,
+    path: _CoordinatePath,
     card_width: float = FLOW_CARD_WIDTH,
     card_height: float = FLOW_CARD_HEIGHT,
 ) -> tuple[float, float]:
-    """Return the terminal arrowhead position just outside its target card."""
+    """Return the terminal arrowhead position just outside its target card.
+
+    :param path: Path or routed coordinates to process.
+    :param card_width: Card width used by this operation.
+    :param card_height: Card height used by this operation.
+    :return: The terminal arrowhead position just outside its target card.
+    """
     start_x, start_y = path[-2]
     end_x, end_y = path[-1]
     dx = end_x - start_x
@@ -218,12 +247,19 @@ def _flow_arrow_position(
 
 
 def _flow_arrow_annotation(
-    path,
+    path: _CoordinatePath,
     colour: str,
     card_width: float = FLOW_CARD_WIDTH,
     card_height: float = FLOW_CARD_HEIGHT,
-) -> dict:
-    """Return a native Plotly arrowhead aligned to the final routed segment."""
+) -> dict[str, Any]:
+    """Return a native Plotly arrowhead aligned to the final routed segment.
+
+    :param path: Path or routed coordinates to process.
+    :param colour: Colour used for the rendered graph element.
+    :param card_width: Card width used by this operation.
+    :param card_height: Card height used by this operation.
+    :return: A native Plotly arrowhead aligned to the final routed segment.
+    """
     start_x, start_y = path[-2]
     end_x, end_y = _flow_arrow_position(path, card_width, card_height)
     return {
@@ -244,14 +280,23 @@ def _flow_arrow_annotation(
 
 
 def _flow_arrow_trace(
-    path,
+    path: _CoordinatePath,
     colour: str,
     card_width: float = FLOW_CARD_WIDTH,
     card_height: float = FLOW_CARD_HEIGHT,
     meta: dict | None = None,
     legendgroup: str | None = None,
 ) -> go.Scatter:
-    """Return a trace-based arrowhead that can remain below card labels."""
+    """Return a trace-based arrowhead that can remain below card labels.
+
+    :param path: Path or routed coordinates to process.
+    :param colour: Colour used for the rendered graph element.
+    :param card_width: Card width used by this operation.
+    :param card_height: Card height used by this operation.
+    :param meta: Meta used by this operation.
+    :param legendgroup: Legendgroup used by this operation.
+    :return: A trace-based arrowhead that can remain below card labels.
+    """
     start_x, start_y = path[-2]
     end_x, end_y = _flow_arrow_position(path, card_width, card_height)
     angle = float(np.degrees(np.arctan2(end_x - start_x, end_y - start_y)))
@@ -273,8 +318,12 @@ def _flow_arrow_trace(
     )
 
 
-def _flow_edge_label_position(path) -> tuple[float, float]:
-    """Return the distance-weighted midpoint of a routed edge path."""
+def _flow_edge_label_position(path: _CoordinatePath) -> tuple[float, float]:
+    """Return the distance-weighted midpoint of a routed edge path.
+
+    :param path: Path or routed coordinates to process.
+    :return: The distance-weighted midpoint of a routed edge path.
+    """
     segments = [
         ((end_x - start_x) ** 2 + (end_y - start_y) ** 2) ** 0.5
         for (start_x, start_y), (end_x, end_y) in pairwise(path)
@@ -298,12 +347,19 @@ def _flow_edge_label_position(path) -> tuple[float, float]:
 
 
 def _flow_edge_label_trace(
-    path,
+    path: _CoordinatePath,
     value_type: str,
     legendgroup: str | None = None,
     meta: dict | None = None,
 ) -> go.Scatter:
-    """Return a visible data-type label positioned on a routed edge."""
+    """Return a visible data-type label positioned on a routed edge.
+
+    :param path: Path or routed coordinates to process.
+    :param value_type: Declared flow value type.
+    :param legendgroup: Legendgroup used by this operation.
+    :param meta: Meta used by this operation.
+    :return: A visible data-type label positioned on a routed edge.
+    """
     x, y = _flow_edge_label_position(path)
     return go.Scatter(
         x=[x],
@@ -325,7 +381,14 @@ def _flow_card_polygon(
     card_width: float = FLOW_CARD_WIDTH,
     card_height: float = FLOW_CARD_HEIGHT,
 ) -> tuple[list[float | None], list[float | None]]:
-    """Return a rectangular card path that can be toggled with its legend group."""
+    """Return a rectangular card path that can be toggled with its legend group.
+
+    :param x: X used by this operation.
+    :param y: Y used by this operation.
+    :param card_width: Card width used by this operation.
+    :param card_height: Card height used by this operation.
+    :return: A rectangular card path that can be toggled with its legend group.
+    """
     half_width = card_width / 2
     half_height = card_height / 2
     return (
@@ -356,21 +419,12 @@ def _graph_trace_metadata(
 ) -> dict[str, Any]:
     """Build consistent trace metadata for one rendered graph element.
 
-    Parameters
-    ----------
-    spec : _FlowGraphRenderSpec
-        Adapter-owned graph presentation.
-    kind : str
-        Stable element kind used by interaction and tests.
-    stage_index : int
-        Zero-based stage owning the element.
-    **details : Any
-        Edge or node identity fields for this element.
+    :param spec: Adapter-owned graph presentation.
+    :param kind: Stable element kind used by interaction and tests.
+    :param stage_index: Zero-based stage owning the element.
+    :param **details: Edge or node identity fields for this element.
 
-    Returns
-    -------
-    dict[str, Any]
-        Complete metadata shared by flow and job traces.
+    :return: Complete metadata shared by flow and job traces.
     """
     return {
         "kind": kind,
@@ -388,21 +442,12 @@ def _render_flow_graph(
 ) -> go.Figure:
     """Render an adapted flow or job graph without inspecting job state.
 
-    Parameters
-    ----------
-    flow : FlowDefinition
-        Flow providing ordered stage membership.
-    nodes : list[_FlowGraphNode]
-        Validated nodes adapted from the source model.
-    edges : list[_FlowGraphEdge]
-        Validated typed dependencies between the nodes.
-    spec : _FlowGraphRenderSpec
-        Adapter-owned labels, hover text, title, metadata, and dimensions.
+    :param flow: Flow providing ordered stage membership.
+    :param nodes: Validated nodes adapted from the source model.
+    :param edges: Validated typed dependencies between the nodes.
+    :param spec: Adapter-owned labels, hover text, title, metadata, and dimensions.
 
-    Returns
-    -------
-    go.Figure
-        Ranked interactive graph with shared rendering behaviour.
+    :return: Ranked interactive graph with shared rendering behaviour.
     """
     node_numbers, positions, routed_edges = _flow_layout(
         nodes, edges, vertex_spacing=spec.vertex_spacing

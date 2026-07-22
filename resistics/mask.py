@@ -35,7 +35,12 @@ SAFE_MASK_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
 
 def validate_mask_name(value: str) -> str:
-    """Validate a mask artifact name that is safe as one path component."""
+    """Validate a mask artifact name that is safe as one path component.
+
+    :param value: Value to validate or normalize.
+    :return: The value produced when this operation completes.
+    :raises ValueError: If the requested operation cannot satisfy its contract.
+    """
     if not SAFE_MASK_NAME.fullmatch(value):
         raise ValueError(
             "Mask names must contain only letters, numbers, '.', '_' and '-', "
@@ -92,7 +97,11 @@ class WindowMaskMetadata(WriteableMetadata):
 
 
 class WindowMask(ResisticsData):
-    """Boolean mask tables, keyed by decimation level."""
+    """Boolean mask tables, keyed by decimation level.
+
+    :param metadata: Identity and shape metadata used to validate the mask.
+    :param tables: Mask decision tables keyed by decimation level.
+    """
 
     def __init__(
         self, metadata: WindowMaskMetadata, tables: dict[int, pd.DataFrame]
@@ -129,7 +138,13 @@ class WindowMask(ResisticsData):
                 )
 
     def get_keep(self, level: int, evaluation_frequency_index: int) -> pd.Series:
-        """Return the keep decision indexed by global window."""
+        """Return the keep decision indexed by global window.
+
+        :param level: Decimation level to select.
+        :param evaluation_frequency_index: Index of the evaluation frequency within the level.
+        :return: The keep decision indexed by global window.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         try:
             return self.tables[level][evaluation_frequency_index]
         except KeyError as exc:
@@ -147,8 +162,14 @@ def get_run_mask_path(
 ) -> Path:
     """Return the canonical path for a named run mask.
 
-    ``output_label=None`` preserves the legacy unnamespaced path for direct
-    library callers.  Processing jobs always supply their output label.
+        ``output_label=None`` preserves the legacy unnamespaced path for direct
+        library callers.  Processing jobs always supply their output label.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :param run_batch: Run identity and selection metadata.
+    :param name: Stable name used for the persisted resource.
+    :param output_label: Artifact namespace containing or receiving the data.
+    :return: The canonical path for a named run mask.
     """
     validate_mask_name(name)
     path = (
@@ -170,19 +191,11 @@ class WindowMaskWriter(ResisticsWriter):
     def run(self, dir_path: Path, data: ResisticsData) -> None:
         """Write mask metadata and boolean tables beneath ``dir_path``.
 
-        Parameters
-        ----------
-        dir_path : Path
-            Output directory for the mask metadata and arrays.
-        data : ResisticsData
-            Window mask to persist.
+        :param dir_path: Output directory for the mask metadata and arrays.
+        :param data: Window mask to persist.
 
-        Raises
-        ------
-        TypeError
-            If ``data`` is not a window mask.
-        WriteError
-            If the output directory cannot be prepared.
+        :raises TypeError: If ``data`` is not a window mask.
+        :raises WriteError: If the output directory cannot be prepared.
         """
         from resistics.errors import WriteError
 
@@ -205,7 +218,12 @@ class WindowMaskReader(ResisticsProcess):
     """Read a persisted per-run mask."""
 
     def run(self, dir_path: Path) -> WindowMask:
-        """Read mask metadata and boolean tables from ``dir_path``."""
+        """Read mask metadata and boolean tables from ``dir_path``.
+
+        :param dir_path: Directory containing the persisted dataset.
+        :return: The value produced when this operation completes.
+        :raises ReadError: If the requested operation cannot satisfy its contract.
+        """
         from resistics.errors import ReadError
 
         if not dir_path.is_dir():
@@ -235,18 +253,13 @@ class WindowMaskReader(ResisticsProcess):
 class WindowMaskProcess(ResisticsProcess):
     """Base for pure window-mask calculations with a self-writing executor.
 
-    Attributes
-    ----------
-    name : ClassVar[str]
-        Stable artifact name supplied by each concrete mask.
-    input_types : ClassVar[dict[str, str]]
-        Flow input ports consumed by mask calculations.
-    output_type : ClassVar[str]
-        Flow output type produced by mask calculations.
-    runtime_requirements : ClassVar[list[str]]
-        Runtime values required to persist a calculated mask.
-    model_config :
-        Pydantic configuration rejecting unknown mask parameters.
+    **Attributes**
+
+    - **name** — Stable artifact name supplied by each concrete mask.
+    - **input_types** — Flow input ports consumed by mask calculations.
+    - **output_type** — Flow output type produced by mask calculations.
+    - **runtime_requirements** — Runtime values required to persist a calculated mask.
+    - **model_config :** — Pydantic configuration rejecting unknown mask parameters.
     """
 
     # Concrete masks have stable artifact identities, not user parameters.
@@ -267,29 +280,23 @@ class WindowMaskProcess(ResisticsProcess):
     ) -> WindowMask:
         """Calculate a mask for one windowed run.
 
-        Parameters
-        ----------
-        win_data : WindowedData
-            Windowed samples to evaluate.
-        dec_params : DecimationParameters
-            Evaluation-frequency layout for each decimation level.
-        run_batch : dict[str, Any] | None
-            Optional survey, station, and run identifiers.
+        :param win_data: Windowed samples to evaluate.
+        :param dec_params: Evaluation-frequency layout for each decimation level.
+        :param run_batch: Optional survey, station, and run identifiers.
 
-        Returns
-        -------
-        WindowMask
-            Evaluation-index-aware decisions for each window level.
+        :return: Evaluation-index-aware decisions for each window level.
 
-        Raises
-        ------
-        NotImplementedError
-            If a concrete mask does not implement the calculation.
+        :raises NotImplementedError: If a concrete mask does not implement the calculation.
         """
         raise NotImplementedError
 
     def execute(self, inputs: dict[str, Any], context: Any) -> dict[str, str]:
-        """Calculate, persist, and return the path of a named mask."""
+        """Calculate, persist, and return the path of a named mask.
+
+        :param inputs: Named upstream values supplied to the process.
+        :param context: Runtime values supplied by the flow executor.
+        :return: Calculate, persist, and return the path of a named mask.
+        """
         mask = self.run(inputs["win_data"], inputs["dec_params"], context["run_batch"])
         path = get_run_mask_path(
             Path(context["project_path"]),
@@ -388,7 +395,13 @@ class TimeMask(WindowMaskProcess):
         dec_params: DecimationParameters,
         run_batch: dict[str, Any] | None = None,
     ) -> WindowMask:
-        """Build a mask from absolute and recurring UTC time constraints."""
+        """Build a mask from absolute and recurring UTC time constraints.
+
+        :param win_data: Windowed data to evaluate.
+        :param dec_params: Decimation parameters associated with the window data.
+        :param run_batch: Run identity and selection metadata.
+        :return: The value produced when this operation completes.
+        """
         metadata = self._metadata(win_data, dec_params, run_batch)
         decisions = {}
         absolute_include = [
@@ -489,7 +502,14 @@ class AbsoluteAmplitudeMask(WindowMaskProcess):
         dec_params: DecimationParameters,
         run_batch: dict[str, Any] | None = None,
     ) -> WindowMask:
-        """Build a mask by applying each channel's amplitude limits."""
+        """Build a mask by applying each channel's amplitude limits.
+
+        :param win_data: Windowed data to evaluate.
+        :param dec_params: Decimation parameters associated with the window data.
+        :param run_batch: Run identity and selection metadata.
+        :return: The value produced when this operation completes.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         missing = sorted(set(self.limits) - set(win_data.metadata.chans))
         if missing:
             raise ValueError(f"Amplitude mask channels not found: {missing}")

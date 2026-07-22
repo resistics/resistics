@@ -35,7 +35,11 @@ DEFAULT_PARAMETERS_FILENAME = "default.yaml"
 def builtin_processing_templates(
     project_path: Path | None = None,
 ) -> dict[str, dict[str, FlowDefinition | ParameterSet | GatherCriteria]]:
-    """Return fresh models for the default flows and parameter sets."""
+    """Return fresh models for the default flows and parameter sets.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :return: Fresh models for the default flows and parameter sets.
+    """
     from resistics.gather import (
         GatherCriteria,
         RateGatherCriteria,
@@ -72,7 +76,12 @@ def builtin_processing_templates(
 
 
 def _install_builtin_templates(project_path: Path, resource_type: str) -> list[Path]:
-    """Write missing templates of one type without replacing user files."""
+    """Write missing templates of one type without replacing user files.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :param resource_type: Kind of resource to install or select.
+    :return: Write missing templates of one type without replacing user files.
+    """
     templates = builtin_processing_templates(project_path)[resource_type]
     destination = project_path / "processing" / resource_type
     destination.mkdir(parents=True, exist_ok=True)
@@ -87,12 +96,20 @@ def _install_builtin_templates(project_path: Path, resource_type: str) -> list[P
 
 
 def install_builtin_flow_templates(project_path: Path) -> list[Path]:
-    """Write all missing built-in flow templates without modifying user flows."""
+    """Write all missing built-in flow templates without modifying user flows.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :return: Write all missing built-in flow templates without modifying user flows.
+    """
     return _install_builtin_templates(project_path, "flows")
 
 
 def install_builtin_parameter_templates(project_path: Path) -> list[Path]:
-    """Install or extend the shared defaults without replacing user values."""
+    """Install or extend the shared defaults without replacing user values.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :return: Install or extend the shared defaults without replacing user values.
+    """
     directory = project_path / "processing" / "parameters"
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / DEFAULT_PARAMETERS_FILENAME
@@ -117,12 +134,20 @@ def install_builtin_parameter_templates(project_path: Path) -> list[Path]:
 
 
 def install_builtin_criteria_templates(project_path: Path) -> list[Path]:
-    """Write missing criteria examples without modifying user criteria."""
+    """Write missing criteria examples without modifying user criteria.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :return: Write missing criteria examples without modifying user criteria.
+    """
     return _install_builtin_templates(project_path, "criteria")
 
 
 def install_builtin_processing_templates(project_path: Path) -> list[Path]:
-    """Write all missing built-in templates without replacing user files."""
+    """Write all missing built-in templates without replacing user files.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :return: Write all missing built-in templates without replacing user files.
+    """
     return (
         install_builtin_flow_templates(project_path)
         + install_builtin_parameter_templates(project_path)

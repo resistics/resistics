@@ -1,24 +1,15 @@
-"""
-Module for custom resistics errors
-"""
+"""Module for custom resistics errors"""
 
 from collections.abc import Collection
 from pathlib import Path
 
 
 def path_to_string(path: Path) -> str:
-    """
-    Convert a path to a string in a OS agnostic way
+    """Convert a path to a string in a OS agnostic way
 
-    Parameters
-    ----------
-    path : Path
-        The path to convert
+    :param path: The path to convert
 
-    Returns
-    -------
-    str
-        A string for the path
+    :return: A string for the path
     """
     return f"'{path.as_posix()}'"
 
@@ -27,7 +18,10 @@ def path_to_string(path: Path) -> str:
 # general errors
 ###
 class PathError(Exception):
-    """Use for a general error with paths"""
+    """Report a general filesystem-path failure.
+
+    :param path: Filesystem path associated with the failure.
+    """
 
     def __init__(self, path: Path):
         self.path = path
@@ -62,7 +56,11 @@ class NotDirectoryError(PathError):
 
 
 class WriteError(Exception):
-    """Report a failure to write data at a filesystem path."""
+    """Report a failure to write data at a filesystem path.
+
+    :param path: Filesystem path that could not be written.
+    :param message: Additional context for the write failure.
+    """
 
     def __init__(self, path: Path, message: str = ""):
         self.path = path
@@ -74,7 +72,11 @@ class WriteError(Exception):
 
 
 class ReadError(Exception):
-    """Report a failure to read data from a filesystem path."""
+    """Report a failure to read data from a filesystem path.
+
+    :param path: Filesystem path that could not be read.
+    :param message: Additional context for the read failure.
+    """
 
     def __init__(self, path: Path, message: str = ""):
         self.path = path
@@ -89,7 +91,11 @@ class ReadError(Exception):
 # metadata data errors
 ###
 class MetadataReadError(Exception):
-    """Use when failed to read a metadata"""
+    """Report a failure to read metadata.
+
+    :param path: Metadata file that could not be read.
+    :param message: Optional additional failure context.
+    """
 
     def __init__(self, path: Path, message: str | None = None):
         self.path = path
@@ -104,7 +110,11 @@ class MetadataReadError(Exception):
 
 
 class ChannelNotFoundError(Exception):
-    """Use when a channel is not found"""
+    """Report that a requested channel is unavailable.
+
+    :param chan: Requested channel name.
+    :param chans: Available channel names.
+    """
 
     def __init__(self, chan: str, chans: Collection[str]):
         self.chan = chan
@@ -119,7 +129,12 @@ class ChannelNotFoundError(Exception):
 # calibration data errors
 ###
 class CalibrationFileNotFound(Exception):
-    """Use when calibration files are not found"""
+    """Report missing calibration files.
+
+    :param dir_path: Directory searched for calibration files.
+    :param file_paths: Expected calibration filename or filenames.
+    :param message: Additional context for the search failure.
+    """
 
     def __init__(
         self, dir_path: Path, file_paths: Path | list[Path], message: str = ""
@@ -139,7 +154,11 @@ class CalibrationFileNotFound(Exception):
 
 
 class CalibrationFileReadError(Exception):
-    """Use if encounter an error reading a calibration file"""
+    """Report a failure to read a calibration file.
+
+    :param calibration_path: Calibration file that could not be read.
+    :param message: Additional context for the read failure.
+    """
 
     def __init__(self, calibration_path: Path, message: str = ""):
         self.calibration_path = calibration_path
@@ -157,7 +176,11 @@ class CalibrationFileReadError(Exception):
 # for running processes
 ###
 class ProcessRunError(Exception):
-    """Use when a error is encountered during a process run"""
+    """Report a process execution failure.
+
+    :param process: Name of the process that failed.
+    :param message: Failure detail from the process.
+    """
 
     def __init__(self, process: str, message: str):
         self.process = process

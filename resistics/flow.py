@@ -64,22 +64,29 @@ class FlowStage(BaseModel):
         return value
 
     def node_map(self) -> dict[str, FlowNode]:
-        """Return this stage's nodes keyed by their unique identifiers."""
+        """Return this stage's nodes keyed by their unique identifiers.
+
+        :return: This stage's nodes keyed by their unique identifiers.
+        """
         return {node.id: node for node in self.nodes}
 
 
 class FlowDefinition(BaseModel):
     """Serializable staged processing definition.
 
-    Examples
-    --------
+    **Examples**
+
     Build a one-stage flow from a concrete process node.
 
+    ```{doctest}
+    >>> from resistics.flow import FlowDefinition, FlowNode, FlowStage
     >>> node = FlowNode(id="remove_mean", process="resistics.time.RemoveMean")
     >>> stage = FlowStage(stage_id="runs", scope="run", nodes=[node])
     >>> flow = FlowDefinition(id="example", name="Example", stages=[stage])
     >>> flow.flow_stages()[0].nodes[0].id
     'remove_mean'
+
+    ```
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -97,21 +104,28 @@ class FlowDefinition(BaseModel):
         return self
 
     def flow_stages(self) -> list[FlowStage]:
-        """Return the explicitly declared flow stages."""
+        """Return the explicitly declared flow stages.
+
+        :return: The explicitly declared flow stages.
+        """
         return list(self.stages)
 
 
 class ParameterSet(BaseModel):
     """Process-class configuration shared by one or more flows.
 
-    Examples
-    --------
+    **Examples**
+
     Parameters are keyed by the same qualified class paths used by flow nodes.
 
+    ```{doctest}
+    >>> from resistics.flow import ParameterSet
     >>> path = "resistics.time.RemoveMean"
     >>> parameters = ParameterSet(name="example", processes={path: {}})
     >>> parameters.for_process(path)
     {}
+
+    ```
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -121,7 +135,11 @@ class ParameterSet(BaseModel):
     processes: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     def for_process(self, process: str) -> dict[str, Any]:
-        """Return an independent parameter mapping for one process path."""
+        """Return an independent parameter mapping for one process path.
+
+        :param process: Qualified process path.
+        :return: An independent parameter mapping for one process path.
+        """
         return dict(self.processes.get(process, {}))
 
 
@@ -164,14 +182,24 @@ BUILTIN_PROCESS_MODULES = (
 
 
 def process_path(process_class: type[ResisticsProcess]) -> str:
-    """Return the stable qualified path used in flow and parameter YAML."""
+    """Return the stable qualified path used in flow and parameter YAML.
+
+    :param process_class: Concrete process class.
+    :return: The stable qualified path used in flow and parameter YAML.
+    """
     return f"{process_class.__module__}.{process_class.__name__}"
 
 
 def resolve_process_class(
     path: str, project_path: Path | None = None
 ) -> type[ResisticsProcess]:
-    """Resolve and validate a process class named directly by a flow node."""
+    """Resolve and validate a process class named directly by a flow node.
+
+    :param path: Path or routed coordinates to process.
+    :param project_path: Project root used to locate configuration and artifacts.
+    :return: The value produced when this operation completes.
+    :raises ValueError: If the requested operation cannot satisfy its contract.
+    """
     if project_path is not None:
         project_import_path = str(Path(project_path))
         if project_import_path not in sys.path:
@@ -197,22 +225,12 @@ def process_descriptor(
 ) -> ProcessDescriptor:
     """Build a UI-safe descriptor from a directly resolved process path.
 
-    Parameters
-    ----------
-    path : str
-        Import path of the process class.
-    project_path : Path | None
-        Optional project whose trusted plugins may supply the process.
+    :param path: Import path of the process class.
+    :param project_path: Optional project whose trusted plugins may supply the process.
 
-    Returns
-    -------
-    ProcessDescriptor
-        Serializable process metadata for discovery and editing.
+    :return: Serializable process metadata for discovery and editing.
 
-    Raises
-    ------
-    ValueError
-        If the path does not identify a concrete flow process.
+    :raises ValueError: If the path does not identify a concrete flow process.
     """
     process_class = resolve_process_class(path, project_path)
     output_type = process_class.output_type
@@ -239,13 +257,19 @@ def process_descriptor(
 
 
 class ProcessCatalog:
-    """Discover flow processes for a project without governing execution."""
+    """Discover flow processes for a project without governing execution.
+
+    :param project_path: Optional project root whose trusted plugins are discovered.
+    """
 
     def __init__(self, project_path: Path | None = None):
         self.project_path = None if project_path is None else Path(project_path)
 
     def discover(self) -> list[ProcessDescriptor]:
-        """Return all built-in and trusted-plugin process descriptors."""
+        """Return all built-in and trusted-plugin process descriptors.
+
+        :return: All built-in and trusted-plugin process descriptors.
+        """
         classes = {}
         for module in self._modules():
             for _, value in inspect.getmembers(module, inspect.isclass):
@@ -287,7 +311,10 @@ class FlowValidationResult(BaseModel):
 
 
 class FlowValidator:
-    """Validate graph dependencies, concrete processes, and configurations."""
+    """Validate graph dependencies, concrete processes, and configurations.
+
+    :param available_runtime: Runtime keys supplied by the surrounding job runner.
+    """
 
     def __init__(self, available_runtime: Iterable[str] | None = None):
         self.available_runtime = set(available_runtime or [])
@@ -303,17 +330,10 @@ class FlowValidator:
     ) -> FlowValidationResult:
         """Validate a job's selected stages without executing any process.
 
-        Parameters
-        ----------
-        processing_job : ProcessingJob
-            The fully bound flow and parameter set to validate.
-        stages : Iterable[FlowStage] | None, optional
-            A stage subset, or all flow stages when omitted.
+        :param processing_job: The fully bound flow and parameter set to validate.
+        :param stages: A stage subset, or all flow stages when omitted.
 
-        Returns
-        -------
-        FlowValidationResult
-            All validation errors and warnings found in a single pass.
+        :return: All validation errors and warnings found in a single pass.
         """
         errors: list[str] = []
         flow = processing_job.flow
@@ -406,7 +426,12 @@ class FlowValidator:
 
 
 def topological_order(flow: FlowStage) -> list[FlowNode]:
-    """Return nodes in dependency order or raise for a cycle."""
+    """Return nodes in dependency order or raise for a cycle.
+
+    :param flow: Flow definition to inspect or execute.
+    :return: Nodes in dependency order or raise for a cycle.
+    :raises ValueError: If the requested operation cannot satisfy its contract.
+    """
     nodes = flow.node_map()
     incoming = dict.fromkeys(nodes, 0)
     outgoing: dict[str, list[str]] = {node_id: [] for node_id in nodes}
@@ -435,6 +460,9 @@ class FlowExecutor:
     A flow contains only importable process paths.  The executor deliberately
     has no registry or built-in dispatch table: processes are instantiated from
     those paths and receive the batch context supplied by the job runner.
+
+    :param progress_callback: Optional callback that receives processing progress events.
+    :param cancellation_callback: Optional callback that reports whether execution should stop.
     """
 
     def __init__(
@@ -450,7 +478,13 @@ class FlowExecutor:
         processing_job: ProcessingJob,
         contexts: dict[str, dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        """Run every stage once with optional stage-specific runtime context."""
+        """Run every stage once with optional stage-specific runtime context.
+
+        :param processing_job: Validated flow, parameters, runtime, and output binding.
+        :param contexts: Optional runtime values keyed by stage identifier.
+        :return: Outputs produced by the completed operation.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         contexts = contexts or {}
         available = set(processing_job.runtime)
         available.add("output_label")
@@ -474,12 +508,12 @@ class FlowExecutor:
     ) -> dict[str, Any]:
         """Run one stage for one concrete run or station/rate batch.
 
-        Raises
-        ------
-        ProcessingCancelled
-            If cancellation is requested before or during a node.
-        Exception
-            If a process node fails.
+        :param processing_job: Validated flow, parameters, runtime, and output binding.
+        :param stage: Flow stage to execute.
+        :param context: Runtime values supplied by the flow executor.
+        :return: Outputs produced by the completed operation.
+        :raises ProcessingCancelled: If cancellation is requested before or during a node.
+        :raises Exception: If a process node fails.
         """
         runtime = dict(processing_job.runtime)
         runtime.update(context or {})
@@ -627,7 +661,10 @@ def _time_to_evals_nodes(windower: str) -> list[FlowNode]:
 
 
 def _evals_to_tf_nodes() -> list[FlowNode]:
-    """Nodes that gather persisted run artifacts for one station/rate batch."""
+    """Nodes that gather persisted run artifacts for one station/rate batch.
+
+    :return: Nodes that gather persisted run artifacts for one station/rate batch.
+    """
     return [
         FlowNode(
             id="criteria",
@@ -661,7 +698,10 @@ def _evals_to_tf_nodes() -> list[FlowNode]:
 
 
 def mask_calculation_flow() -> FlowDefinition:
-    """Full per-run pipeline with independent time and amplitude mask branches."""
+    """Full per-run pipeline with independent time and amplitude mask branches.
+
+    :return: Full per-run pipeline with independent time and amplitude mask branches.
+    """
     nodes = _time_to_evals_nodes("resistics.window.Windower")
     writer = nodes.pop()
     nodes.extend(
@@ -695,7 +735,10 @@ def mask_calculation_flow() -> FlowDefinition:
 
 
 def mask_calculation_parameter_set() -> ParameterSet:
-    """Editable defaults paired with :func:`mask_calculation_flow`."""
+    """Editable defaults paired with {py:func}`mask_calculation_flow`.
+
+    :return: Editable defaults paired with {py:func}`mask_calculation_flow`.
+    """
     from resistics.mask import AbsoluteAmplitudeMask, DailyTimeRange, TimeMask
 
     time_mask = TimeMask(
@@ -722,7 +765,10 @@ def mask_calculation_parameter_set() -> ParameterSet:
 
 
 def single_site_mt_flow() -> FlowDefinition:
-    """Run all time-to-evaluations work before station/rate regression."""
+    """Run all time-to-evaluations work before station/rate regression.
+
+    :return: Outputs produced by the completed operation.
+    """
     return FlowDefinition(
         id="single_site_mt_standard",
         name="Single-Site MT (Standard Windowing)",
@@ -743,7 +789,10 @@ def single_site_mt_flow() -> FlowDefinition:
 
 
 def single_site_mt_target_flow() -> FlowDefinition:
-    """Single-site MT with target-count windows and durable stage boundary."""
+    """Single-site MT with target-count windows and durable stage boundary.
+
+    :return: Single-site MT with target-count windows and durable stage boundary.
+    """
     return FlowDefinition(
         id="single_site_mt_target",
         name="Single-Site MT (Target Windowing)",
@@ -766,10 +815,12 @@ def single_site_mt_target_flow() -> FlowDefinition:
 def remote_reference_mt_flow() -> FlowDefinition:
     """Remote-reference MT using criteria to select each reference station.
 
-    The durable evaluation-frequency stage is deliberately the same as the
-    standard single-site flow.  The second stage receives a criteria file,
-    whose ``remote_references`` mapping selects the reference station for each
-    target station/rate batch.
+        The durable evaluation-frequency stage is deliberately the same as the
+        standard single-site flow.  The second stage receives a criteria file,
+        whose ``remote_references`` mapping selects the reference station for each
+        target station/rate batch.
+
+    :return: Remote-reference MT using criteria to select each reference station.
     """
     return FlowDefinition(
         id="remote_reference_mt",
@@ -791,7 +842,12 @@ def remote_reference_mt_flow() -> FlowDefinition:
 
 
 def default_parameter_set(project_path: Path | None = None) -> ParameterSet:
-    """Return defaults for all discovered opted-in process classes."""
+    """Return defaults for all discovered opted-in process classes.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :return: Defaults for all discovered opted-in process classes.
+    :raises ValueError: If the requested operation cannot satisfy its contract.
+    """
     processes = {}
     for descriptor in ProcessCatalog(project_path).discover():
         process_class = resolve_process_class(descriptor.path)
@@ -820,7 +876,14 @@ def parameter_set_for_flow(
     description: str,
     project_path: Path | None = None,
 ) -> ParameterSet:
-    """Return default parameters for only the configurable processes in ``flow``."""
+    """Return default parameters for only the configurable processes in ``flow``.
+
+    :param flow: Flow definition to inspect or execute.
+    :param name: Stable name used for the persisted resource.
+    :param description: Human-readable description for the parameter set.
+    :param project_path: Project root used to locate configuration and artifacts.
+    :return: Default parameters for only the configurable processes in ``flow``.
+    """
     defaults = default_parameter_set(project_path)
     processes = {
         process: values
@@ -837,7 +900,11 @@ def parameter_set_for_flow(
 
 
 def single_site_mt_parameter_set(project_path: Path | None = None) -> ParameterSet:
-    """Default parameters for the standard single-site MT flow."""
+    """Default parameters for the standard single-site MT flow.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :return: Default parameters for the standard single-site MT flow.
+    """
     return parameter_set_for_flow(
         single_site_mt_flow(),
         "Single-Site MT (Standard Windowing)",
@@ -849,7 +916,11 @@ def single_site_mt_parameter_set(project_path: Path | None = None) -> ParameterS
 def single_site_mt_target_parameter_set(
     project_path: Path | None = None,
 ) -> ParameterSet:
-    """Default parameters for the target-window single-site MT flow."""
+    """Default parameters for the target-window single-site MT flow.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :return: Default parameters for the target-window single-site MT flow.
+    """
     return parameter_set_for_flow(
         single_site_mt_target_flow(),
         "Single-Site MT (Target Windowing)",
@@ -861,7 +932,11 @@ def single_site_mt_target_parameter_set(
 def remote_reference_mt_parameter_set(
     project_path: Path | None = None,
 ) -> ParameterSet:
-    """Default parameters for the remote-reference MT flow."""
+    """Default parameters for the remote-reference MT flow.
+
+    :param project_path: Project root used to locate configuration and artifacts.
+    :return: Default parameters for the remote-reference MT flow.
+    """
     return parameter_set_for_flow(
         remote_reference_mt_flow(),
         "Remote-Reference MT",
@@ -871,12 +946,20 @@ def remote_reference_mt_parameter_set(
 
 
 def model_to_dict(model: BaseModel) -> dict[str, Any]:
-    """Convert a Pydantic flow model to plain Python values."""
+    """Convert a Pydantic flow model to plain Python values.
+
+    :param model: Pydantic model to serialize.
+    :return: The value produced when this operation completes.
+    """
     return model.model_dump()
 
 
 def model_to_yaml(model: BaseModel) -> str:
-    """Serialize a Pydantic flow model as readable YAML."""
+    """Serialize a Pydantic flow model as readable YAML.
+
+    :param model: Pydantic model to serialize.
+    :return: The value produced when this operation completes.
+    """
     import yaml
 
     return yaml.safe_dump(model_to_dict(model), sort_keys=False)
@@ -885,7 +968,13 @@ def model_to_yaml(model: BaseModel) -> str:
 def model_from_yaml[ModelT: BaseModel](
     model_type: type[ModelT], yaml_text: str
 ) -> ModelT:
-    """Validate YAML text as the requested Pydantic flow model."""
+    """Validate YAML text as the requested Pydantic flow model.
+
+    :param model_type: Concrete Pydantic model class used for validation.
+    :param yaml_text: YAML document to parse and validate.
+    :return: The value produced when this operation completes.
+    :raises ValueError: If the requested operation cannot satisfy its contract.
+    """
     import yaml
 
     data = yaml.safe_load(yaml_text) or {}
@@ -898,12 +987,21 @@ def model_from_yaml[ModelT: BaseModel](
 
 
 def model_to_yaml_file(model: BaseModel, path: Path) -> None:
-    """Serialize a Pydantic flow model to a YAML file."""
+    """Serialize a Pydantic flow model to a YAML file.
+
+    :param model: Pydantic model to serialize.
+    :param path: Path or routed coordinates to process.
+    """
     path.write_text(model_to_yaml(model))
 
 
 def model_from_yaml_file[ModelT: BaseModel](
     model_type: type[ModelT], path: Path
 ) -> ModelT:
-    """Read and validate a Pydantic flow model from a YAML file."""
+    """Read and validate a Pydantic flow model from a YAML file.
+
+    :param model_type: Concrete Pydantic model class used for validation.
+    :param path: Path or routed coordinates to process.
+    :return: The value produced when this operation completes.
+    """
     return model_from_yaml(model_type, path.read_text())

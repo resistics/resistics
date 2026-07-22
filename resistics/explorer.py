@@ -29,16 +29,12 @@ _ProjectValue = TypeVar("_ProjectValue")
 class ExplorerFileIdentity(BaseModel):
     """Filesystem identity used to reuse one parsed resource.
 
-    Attributes
-    ----------
-    model_config : ClassVar[ConfigDict]
-        Pydantic frozen-model configuration.
-    path : Path
-        Project resource path.
-    modified_ns : int
-        Nanosecond modification timestamp reported by the filesystem.
-    size : int
-        File size in bytes.
+    **Attributes**
+
+    - **model_config** — Pydantic frozen-model configuration.
+    - **path** — Project resource path.
+    - **modified_ns** — Nanosecond modification timestamp reported by the filesystem.
+    - **size** — File size in bytes.
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
@@ -51,14 +47,11 @@ class ExplorerFileIdentity(BaseModel):
 class ExplorerIssue(BaseModel):
     """Non-fatal project discovery failure retained for presentation layers.
 
-    Attributes
-    ----------
-    model_config : ClassVar[ConfigDict]
-        Pydantic frozen-model configuration.
-    section : str
-        Explorer section that could not be read.
-    message : str
-        User-facing failure detail.
+    **Attributes**
+
+    - **model_config** — Pydantic frozen-model configuration.
+    - **section** — Explorer section that could not be read.
+    - **message** — User-facing failure detail.
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
@@ -70,18 +63,13 @@ class ExplorerIssue(BaseModel):
 class IndexedResource(BaseModel):
     """Parsed YAML resource or its stable validation failure.
 
-    Attributes
-    ----------
-    model_config : ClassVar[ConfigDict]
-        Pydantic frozen-model configuration.
-    kind : ResourceKind
-        Project resource namespace.
-    identity : ExplorerFileIdentity
-        File identity used as the parsed-value cache key.
-    model : ResourceModel | None
-        Parsed model, or ``None`` when validation failed.
-    error : str | None
-        Validation error for malformed content.
+    **Attributes**
+
+    - **model_config** — Pydantic frozen-model configuration.
+    - **kind** — Project resource namespace.
+    - **identity** — File identity used as the parsed-value cache key.
+    - **model** — Parsed model, or ``None`` when validation failed.
+    - **error** — Validation error for malformed content.
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
@@ -105,16 +93,12 @@ class IndexedResource(BaseModel):
 class IndexedJob(BaseModel):
     """One cached job summary and its complete validation result.
 
-    Attributes
-    ----------
-    model_config : ClassVar[ConfigDict]
-        Pydantic frozen-model configuration.
-    resource : IndexedResource
-        Parsed job file record.
-    summary : JobSummary
-        Display summary derived from validation.
-    validation : JobValidation
-        Cached resolved validation used for selection and execution.
+    **Attributes**
+
+    - **model_config** — Pydantic frozen-model configuration.
+    - **resource** — Parsed job file record.
+    - **summary** — Display summary derived from validation.
+    - **validation** — Cached resolved validation used for selection and execution.
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
@@ -127,24 +111,16 @@ class IndexedJob(BaseModel):
 class ProjectExplorerState(BaseModel):
     """Cached project and MTH5 catalogue state without live file handles.
 
-    Attributes
-    ----------
-    model_config : ClassVar[ConfigDict]
-        Pydantic frozen-model configuration.
-    project_path : Path
-        Root of the indexed project.
-    mth5_identity : ExplorerFileIdentity | None
-        MTH5 path identity when the file can be statted.
-    summary : MTH5FileSummary
-        Cached MTH5 metadata summary.
-    project_data_items : tuple[ProjectDataItem, ...]
-        Cached derived project artifact hierarchy.
-    mth5_data_items : tuple[ProjectDataItem, ...]
-        Cached MTH5 group and dataset hierarchy.
-    has_project_data_to_delete : bool
-        Whether the cached project catalogue contains removable derived data.
-    issues : tuple[ExplorerIssue, ...]
-        Non-fatal discovery failures encountered while building the state.
+    **Attributes**
+
+    - **model_config** — Pydantic frozen-model configuration.
+    - **project_path** — Root of the indexed project.
+    - **mth5_identity** — MTH5 path identity when the file can be statted.
+    - **summary** — Cached MTH5 metadata summary.
+    - **project_data_items** — Cached derived project artifact hierarchy.
+    - **mth5_data_items** — Cached MTH5 group and dataset hierarchy.
+    - **has_project_data_to_delete** — Whether the cached project catalogue contains removable derived data.
+    - **issues** — Non-fatal discovery failures encountered while building the state.
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
@@ -162,16 +138,12 @@ class ProjectExplorerState(BaseModel):
 class _ResourceCacheKey:
     """Private hash key for one parsed resource file version.
 
-    Attributes
-    ----------
-    kind : ResourceKind
-        Project resource namespace.
-    path : Path
-        Project resource path.
-    modified_ns : int
-        Nanosecond modification timestamp reported by the filesystem.
-    size : int
-        File size in bytes.
+    **Attributes**
+
+    - **kind** — Project resource namespace.
+    - **path** — Project resource path.
+    - **modified_ns** — Nanosecond modification timestamp reported by the filesystem.
+    - **size** — File size in bytes.
     """
 
     kind: ResourceKind
@@ -187,10 +159,7 @@ class ProjectExplorerIndex:
     filesystem reads. Callers explicitly invalidate the affected section after
     internal mutations or invalidate every section before an external refresh.
 
-    Parameters
-    ----------
-    project : Project
-        Open project that owns discovery operations and job validation.
+    :param project: Open project that owns discovery operations and job validation.
     """
 
     def __init__(self, project: Project):
@@ -214,10 +183,7 @@ class ProjectExplorerIndex:
     def project_state(self) -> ProjectExplorerState:
         """Return cached project discovery state, building it on a miss.
 
-        Returns
-        -------
-        ProjectExplorerState
-            Handle-free project and MTH5 catalogue DTOs.
+        :return: Handle-free project and MTH5 catalogue DTOs.
         """
         with self._lock:
             if self._project_state is not None:
@@ -258,10 +224,7 @@ class ProjectExplorerIndex:
     def runs(self) -> tuple[RunSummary, ...]:
         """Return cached MTH5 run summaries, building them on first selection.
 
-        Returns
-        -------
-        tuple[RunSummary, ...]
-            Stable run summaries used to resolve MTH5 data selections.
+        :return: Stable run summaries used to resolve MTH5 data selections.
         """
         with self._lock:
             if self._runs is not None:
@@ -278,15 +241,9 @@ class ProjectExplorerIndex:
     def resources(self, kind: ResourceKind) -> tuple[IndexedResource, ...]:
         """Return cached parsed resources for one project namespace.
 
-        Parameters
-        ----------
-        kind : ResourceKind
-            Flow, parameter, criteria, or job namespace.
+        :param kind: Flow, parameter, criteria, or job namespace.
 
-        Returns
-        -------
-        tuple[IndexedResource, ...]
-            Stable path-ordered resource records, including malformed files.
+        :return: Stable path-ordered resource records, including malformed files.
         """
         with self._lock:
             cached = self._resources.get(kind)
@@ -307,10 +264,7 @@ class ProjectExplorerIndex:
     def jobs(self) -> tuple[IndexedJob, ...]:
         """Return cached job summaries and loaded-resource validation results.
 
-        Returns
-        -------
-        tuple[IndexedJob, ...]
-            Path-ordered jobs, including malformed or unresolved definitions.
+        :return: Path-ordered jobs, including malformed or unresolved definitions.
         """
         with self._lock:
             if self._jobs is not None:
@@ -327,15 +281,9 @@ class ProjectExplorerIndex:
     def job_validation(self, path: Path) -> JobValidation | None:
         """Return cached validation for one exact project job path.
 
-        Parameters
-        ----------
-        path : Path
-            Job path selected by a caller.
+        :param path: Job path selected by a caller.
 
-        Returns
-        -------
-        JobValidation | None
-            Cached result, or ``None`` when the path is not indexed.
+        :return: Cached result, or ``None`` when the path is not indexed.
         """
         return next(
             (job.validation for job in self.jobs() if job.resource.path == path), None
@@ -346,17 +294,10 @@ class ProjectExplorerIndex:
     ) -> IndexedResource | None:
         """Return one cached resource by exact path.
 
-        Parameters
-        ----------
-        kind : ResourceKind
-            Resource namespace containing the path.
-        path : Path
-            Exact project resource path.
+        :param kind: Resource namespace containing the path.
+        :param path: Exact project resource path.
 
-        Returns
-        -------
-        IndexedResource | None
-            Matching record, if it exists in the cached namespace.
+        :return: Matching record, if it exists in the cached namespace.
         """
         return next(
             (resource for resource in self.resources(kind) if resource.path == path),
@@ -366,10 +307,7 @@ class ProjectExplorerIndex:
     def invalidate(self, *sections: IndexSection) -> None:
         """Invalidate selected sections and every dependent job result.
 
-        Parameters
-        ----------
-        *sections : IndexSection
-            Project or resource sections changed by an owning operation.
+        :param *sections: Project or resource sections changed by an owning operation.
         """
         with self._lock:
             for section in sections:
@@ -401,19 +339,11 @@ class ProjectExplorerIndex:
     ) -> list[_ProjectValue]:
         """Run one non-critical project query and retain failures as issues.
 
-        Parameters
-        ----------
-        name : str
-            Section name recorded if the operation fails.
-        operation : Callable[[], list[_ProjectValue]]
-            Project query returning explorer DTOs.
-        issues : list[ExplorerIssue]
-            Mutable issue collection for non-fatal failures.
+        :param name: Section name recorded if the operation fails.
+        :param operation: Project query returning explorer DTOs.
+        :param issues: Mutable issue collection for non-fatal failures.
 
-        Returns
-        -------
-        list[_ProjectValue]
-            Query values, or an empty list after a failure.
+        :return: Query values, or an empty list after a failure.
         """
         try:
             return operation()
@@ -425,15 +355,9 @@ class ProjectExplorerIndex:
     def _optional_identity(path: Path) -> ExplorerFileIdentity | None:
         """Return a file identity, or ``None`` for an unavailable path.
 
-        Parameters
-        ----------
-        path : Path
-            File whose identity may be unavailable.
+        :param path: File whose identity may be unavailable.
 
-        Returns
-        -------
-        ExplorerFileIdentity | None
-            Available identity, otherwise ``None``.
+        :return: Available identity, otherwise ``None``.
         """
         try:
             return ProjectExplorerIndex._identity(path)
@@ -444,15 +368,9 @@ class ProjectExplorerIndex:
     def _identity(path: Path) -> ExplorerFileIdentity:
         """Return the modification-time and size identity for one file.
 
-        Parameters
-        ----------
-        path : Path
-            Existing file to identify.
+        :param path: Existing file to identify.
 
-        Returns
-        -------
-        ExplorerFileIdentity
-            Stable identity for the current file version.
+        :return: Stable identity for the current file version.
         """
         status = path.stat()
         return ExplorerFileIdentity(
@@ -463,15 +381,9 @@ class ProjectExplorerIndex:
     def _yaml_identities(directory: Path) -> tuple[ExplorerFileIdentity, ...]:
         """Scan one resource directory into stable path-ordered identities.
 
-        Parameters
-        ----------
-        directory : Path
-            Project resource directory to scan.
+        :param directory: Project resource directory to scan.
 
-        Returns
-        -------
-        tuple[ExplorerFileIdentity, ...]
-            Identities for YAML files in path order.
+        :return: Identities for YAML files in path order.
         """
         paths = sorted(
             path
@@ -486,17 +398,10 @@ class ProjectExplorerIndex:
     ) -> IndexedResource:
         """Return one identity-cached parsed resource or validation failure.
 
-        Parameters
-        ----------
-        kind : ResourceKind
-            Resource namespace assigning the expected model.
-        identity : ExplorerFileIdentity
-            Current file identity.
+        :param kind: Resource namespace assigning the expected model.
+        :param identity: Current file identity.
 
-        Returns
-        -------
-        IndexedResource
-            Parsed record or cached validation failure.
+        :return: Parsed record or cached validation failure.
         """
         key = _ResourceCacheKey(
             kind=kind,
@@ -522,17 +427,10 @@ class ProjectExplorerIndex:
     def _parse(kind: ResourceKind, path: Path) -> ResourceModel:
         """Parse one resource with the model assigned to its namespace.
 
-        Parameters
-        ----------
-        kind : ResourceKind
-            Resource namespace assigning the expected model.
-        path : Path
-            YAML file to parse.
+        :param kind: Resource namespace assigning the expected model.
+        :param path: YAML file to parse.
 
-        Returns
-        -------
-        ResourceModel
-            Validated resource model.
+        :return: Validated resource model.
         """
         if kind == "flows":
             return model_from_yaml_file(FlowDefinition, path)
@@ -545,15 +443,9 @@ class ProjectExplorerIndex:
     def _indexed_job(self, resource: IndexedResource) -> IndexedJob:
         """Resolve one parsed job through the cached resource namespaces.
 
-        Parameters
-        ----------
-        resource : IndexedResource
-            Parsed or malformed job resource.
+        :param resource: Parsed or malformed job resource.
 
-        Returns
-        -------
-        IndexedJob
-            Display summary and complete validation result.
+        :return: Display summary and complete validation result.
         """
         validation = self._validate_job_resource(resource)
         resolved = validation.resolved_job
@@ -585,15 +477,9 @@ class ProjectExplorerIndex:
     def _validate_job_resource(self, resource: IndexedResource) -> JobValidation:
         """Validate one job using only models cached by this index.
 
-        Parameters
-        ----------
-        resource : IndexedResource
-            Parsed or malformed job resource.
+        :param resource: Parsed or malformed job resource.
 
-        Returns
-        -------
-        JobValidation
-            Loaded-resource validation result.
+        :return: Loaded-resource validation result.
         """
         if not isinstance(resource.model, JobDefinition):
             return JobValidation(
@@ -642,22 +528,12 @@ class ProjectExplorerIndex:
     def _reference(self, kind: ResourceKind, name: str) -> IndexedResource:
         """Resolve one job reference within a cached resource namespace.
 
-        Parameters
-        ----------
-        kind : ResourceKind
-            Referenced resource namespace.
-        name : str
-            Exact filename or extension-free resource name.
+        :param kind: Referenced resource namespace.
+        :param name: Exact filename or extension-free resource name.
 
-        Returns
-        -------
-        IndexedResource
-            Unique cached resource matching the reference.
+        :return: Unique cached resource matching the reference.
 
-        Raises
-        ------
-        ValueError
-            If the name is unsafe, missing, or ambiguous.
+        :raises ValueError: If the name is unsafe, missing, or ambiguous.
         """
         value = Path(name)
         if value.is_absolute() or value.parent != Path("."):

@@ -1,5 +1,4 @@
-"""
-A package for the processing of magnetotelluric data
+"""A package for the processing of magnetotelluric data
 
 Resistics is a package for the robust processing of magnetotelluric data. It
 includes several features focussed on traceability and data investigation. For

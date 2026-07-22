@@ -1,7 +1,7 @@
 """Public facade and orchestration for evaluation-data gathering.
 
 Criteria models, project discovery, immutable planning, and array assembly live
-in dedicated implementation modules. Existing imports from :mod:`resistics.gather`
+in dedicated implementation modules. Existing imports from {py:mod}`resistics.gather`
 remain the supported public API.
 """
 
@@ -88,7 +88,13 @@ class Gather(ResisticsProcess):
     runtime_requirements: ClassVar[list[str]] = ["project", "project_path"]
 
     def execute(self, inputs: dict[str, Any], context: Any) -> GatheredData:
-        """Gather the flow inputs using the project supplied at runtime."""
+        """Gather the flow inputs using the project supplied at runtime.
+
+        :param inputs: Named upstream values supplied to the process.
+        :param context: Runtime values supplied by the flow executor.
+        :return: Gather the flow inputs using the project supplied at runtime.
+        :raises ValueError: If the requested operation cannot satisfy its contract.
+        """
         selection = inputs["selection"]
         if not isinstance(selection, GatherSelection):
             raise ValueError("Gather requires GatherSelection")
@@ -110,28 +116,15 @@ class Gather(ResisticsProcess):
     ) -> GatheredData:
         """Gather aligned evaluation data for one target station and rate.
 
-        Parameters
-        ----------
-        project : Project
-            Open project containing target and remote station data.
-        project_path : Path
-            Project root containing persisted evaluation artifacts.
-        selection : GatherSelection
-            Resolved target, rate, masks, and remote-reference policy.
-        tf : TransferFunction
-            Transfer function defining output, input, and cross channels.
-        output_label : str
-            Namespace containing persisted inputs.
+        :param project: Open project containing target and remote station data.
+        :param project_path: Project root containing persisted evaluation artifacts.
+        :param selection: Resolved target, rate, masks, and remote-reference policy.
+        :param tf: Transfer function defining output, input, and cross channels.
+        :param output_label: Namespace containing persisted inputs.
 
-        Returns
-        -------
-        GatheredData
-            Window-aligned arrays ready for regression.
+        :return: Window-aligned arrays ready for regression.
 
-        Raises
-        ------
-        ValueError
-            If required inputs are absent, unreadable, incompatible, or have no
+        :raises ValueError: If required inputs are absent, unreadable, incompatible, or have no
             admitted aligned windows.
         """
         batch = selection.station_rate_batch

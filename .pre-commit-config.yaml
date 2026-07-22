@@ -19,19 +19,12 @@ repos:
         entry: uv run --locked --no-sync ruff format
         language: system
         types_or: [python, pyi]
-      - id: pydoclint-numpy
-        name: pydoclint (NumPy modules)
-        description: Docstring linting for modules awaiting MyST migration
+      - id: pydoclint
+        name: pydoclint
+        description: Baseline-free MyST docstring contract linting
         entry: uv run --locked --no-sync pydoclint --config=pyproject.toml
         language: system
         files: ^resistics/.*\.py$
-        exclude: ^resistics/(common|sampling|transfunc)\.py$
-      - id: pydoclint-myst
-        name: pydoclint (MyST modules)
-        description: Baseline-free docstring linting for migrated MyST modules
-        entry: uv run --locked --no-sync pydoclint --config=pydoclint-myst.toml
-        language: system
-        files: ^resistics/(common|sampling|transfunc)\.py$
       - id: pyrefly
         name: pyrefly
         description: Type checking
