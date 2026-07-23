@@ -33,9 +33,8 @@ resistics.window
 (resistics-package)=
 ## Package contents
 
-```{eval-rst}
-.. automodule:: resistics
-   :members:
-   :undoc-members:
-   :show-inheritance:
+```{myst-automodule} resistics
+:members:
+:undoc-members:
+:show-inheritance:
 ```

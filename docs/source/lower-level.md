@@ -32,10 +32,9 @@ a validated flow, and the TUI run a project job without maintaining different
 processing implementations.
 
 (lower-level-tutorials)=
-## Data-container examples
+## Library tutorials
 
-```{toctree}
-:maxdepth: 2
-
-tutorial-datatypes/index
-```
+Continue with {doc}`tutorials/flows-and-parameters`,
+{doc}`tutorials/calibration-and-remote-reference`, and
+{doc}`tutorials/plotting-results-and-plans` for executable examples of these
+library boundaries.

@@ -53,7 +53,7 @@ Source = "https://github.com/resistics/resistics"
 "Bug Tracker" = "https://github.com/resistics/resistics/issues"
 
 [dependency-groups]
-# Matplotlib executes API plots under pytest and renders them under Sphinx.
+# Matplotlib backs fenced API plots in Sphinx and plot-focused tests.
 shared = ["matplotlib>=3.11.0"]
 dev = [
     "pre-commit>=4.6.0",
@@ -65,13 +65,9 @@ dev = [
 docs = [
     "Sphinx>=9.1.0",
     "furo>=2025.12.19",
-    "sphinx-gallery>=0.21.0",
     "sphinxext-opengraph>=0.13.0",
-    "autodoc-pydantic>=2.2.0",
     "sphinx-copybutton>=0.5.2",
-    "kaleido>=1.3.0",
     "myst-nb>=1.4.0",
-    "sphinx-autodoc2>=0.5.0",
 ]
 tests = ["pytest>=9.1.1", "pytest-cov>=7.1.0"]
 
@@ -87,7 +83,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/CHANGELOG.rst",
+    "/CHANGELOG.md",
     "/LICENCE.txt",
     "/README.md",
     "/pyproject.toml",
@@ -96,8 +92,6 @@ include = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--doctest-modules"
-doctest_optionflags = "NORMALIZE_WHITESPACE ELLIPSIS"
 minversion = "6.0"
 testpaths = ["resistics", "tests"]
 

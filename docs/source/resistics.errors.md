@@ -1,9 +1,8 @@
 (resistics-errors)=
 # `resistics.errors`
 
-```{eval-rst}
-.. automodule:: resistics.errors
-   :members:
-   :undoc-members:
-   :show-inheritance:
+```{myst-automodule} resistics.errors
+:members:
+:undoc-members:
+:show-inheritance:
 ```

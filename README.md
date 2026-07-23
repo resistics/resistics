@@ -77,7 +77,7 @@ uv run --locked --no-sync pydoclint --config=pyproject.toml resistics
 uv run --locked --no-sync pyrefly check
 uv run --locked --no-sync pytest
 uv run --locked --no-sync pytest --cov=resistics --cov-branch --cov-report=term --cov-report=html --cov-report=xml
-uv run --locked --no-sync sphinx-build -D sphinx_gallery_conf.plot_gallery=0 -b html docs/source .artifacts/hardening/documentation/html
+uv run --locked --no-sync python scripts/check_documentation.py
 uv build --no-sources
 uv run --locked --no-sync python scripts/check_minimum_dependencies.py
 uv run --locked --no-sync python scripts/audit_dependencies.py
@@ -88,9 +88,33 @@ The dependency-floor check requires the sibling checkout shown above and a
 Python 3.12 interpreter discoverable by uv. It builds both local wheels,
 resolves Resistics' runtime plus shared/test dependencies with uv's
 ``lowest-direct`` policy, verifies that every declared floor was selected,
-and runs the installed packages' doctests in a disposable environment. It does
-not modify ``.venv`` or ``uv.lock``. Transitive dependencies remain owned by
-their declaring packages and use uv's normal compatible resolution.
+and verifies both packages import from installed wheels in a disposable
+environment. It does not modify ``.venv`` or ``uv.lock``. Transitive
+dependencies remain owned by their declaring packages and use uv's normal
+compatible resolution.
+
+### Documentation
+
+The documentation gate builds only the supported HTML site, treats unresolved
+cross-references and warnings as errors, executes all six MyST-NB tutorials,
+runs all fenced docstring doctests with Sphinx, and verifies every expected
+Matplotlib plot artifact:
+
+```console
+uv run --locked --no-sync python scripts/check_documentation.py
+```
+
+External sites change independently, so link checking is an explicit networked
+local check rather than a pre-commit hook:
+
+```console
+uv run --locked --no-sync python scripts/check_documentation.py links
+```
+
+Hosted Read the Docs deployment remains an owner follow-up. Its future setup
+must check out RegressionInC beside Resistics, install the locked uv docs group,
+run the same strict gate, and request HTML output only. No PDF, EPUB, or other
+published documentation format is supported.
 
 ### Dependency security
 
@@ -135,9 +159,7 @@ native dependency through uv/PyPI, reproduce and record that failure before a
 bounded Pixi comparison. A single missing wheel, restricted network access, or
 an empty build cache is not by itself a reason to adopt a second manager.
 
-The gallery-disabled documentation command retains the measured legacy warning
-backlog until the Phase 7 documentation migration. Pyrefly is the sole type
-checker. All production modules
+Pyrefly is the sole type checker. All production modules
 are error- and warning-clean under the pinned checker, and the distribution
 advertises its inline public annotations through PEP 561. The committed empty
 baseline makes any new error-level finding fail the local gate; updating it is

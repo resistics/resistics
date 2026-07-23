@@ -1,6 +1,6 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 7.3 verified; Checkpoint 7.4 ready
+Status: in progress; Checkpoint 7.6 verified; Checkpoint 7.7 ready
 Created: 2026-07-19
 Last updated: 2026-07-22
 Working branch: `mth5`
@@ -27,28 +27,27 @@ the two documents do not drift independently.
 
 - Programme state: `in_progress`
 - Active phase: Phase 7 - MyST documentation modernisation
-- Active checkpoint: `7.4` (`resistics`) - Replace the obsolete example gallery
+- Active checkpoint: `7.7` (`resistics`) - Update contributor and release documentation
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `7.3` in `S049`
-- Last verified checkpoint: `7.3` in `S049`
-- Last session: `S049`
-- Last verified commit: resistics `1aab58a`, recording verified hardening
-  through Checkpoint 7.3 group 1;
+- Last completed checkpoint: `7.6` in `S052`
+- Last verified checkpoint: `7.6` in `S052`
+- Last session: `S052`
+- Last verified commit: resistics `e874d56`, recording verified hardening
+  through Checkpoint 7.3;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: replace the obsolete Sphinx-Gallery scripts with curated,
-  deterministic MyST-NB tutorials for the current MTH5, flow, job,
-  calibration, remote-reference, and plotting contracts.
+- Next exact action: reconcile contributor and release guidance with the final
+  uv, quality, typing, MyST, coverage, TUI-performance, and owned hosted-
+  follow-up contracts required by Checkpoint 7.7.
 
 Current worktree caveat:
 
-- Resistics `1aab58a` records verified hardening through Checkpoint 7.3 group
-  1. Groups 2-7's `time`, `decimate`, `window`, `spectra`, `calibrate`,
-  `regression`, `flow`, `job`, `project`, `mask`, and gather-family MyST
-  conversions, parser/plot routing, consolidated baseline-free MyST
-  pydoclint/pre-commit contract, documentation commands, and execution record
-  are uncommitted. The required empty
+- Resistics `e874d56` records verified hardening through Checkpoint 7.3. The
+  Checkpoint 7.4 tutorial replacement, Checkpoint 7.5 Markdown/MyST-only
+  documentation path, and Checkpoint 7.6 strict local documentation gate,
+  Sphinx doctest ownership, plot verification, HTML-only cleanup, commands,
+  tests, and execution record are uncommitted. The required empty
   `pyrefly-baseline.json` remains intentionally untracked.
 - The owner's minimum/maximum Python CI intent remains a requirement of
   deferred Checkpoint 1.6 after the obsolete hosted workflows were removed;
@@ -260,9 +259,9 @@ or short command/result reference. Detailed output belongs in the session log or
 | 7.1 | resistics | `verified` | S042; standard autodoc selected; 5 doctests; plot/reference proof |
 | 7.2 | resistics | `verified` | S043; 28 MyST pages; 62-page HTML build |
 | 7.3 | resistics | `verified` | S044-S049; all 40 modules; 808 Sphinx doctests; no legacy baseline |
-| 7.4 | resistics | `not_started` | Depends on 7.1 |
-| 7.5 | resistics | `not_started` | Depends on 7.2-7.4 |
-| 7.6 | resistics | `not_started` | Depends on 7.5 |
+| 7.4 | resistics | `verified` | S050; six executed MyST-NB tutorials; warning-clean HTML |
+| 7.5 | resistics | `verified` | S051; MyST-only sources; one autodoc path; 428 tests |
+| 7.6 | resistics | `verified` | S052; strict HTML/link gate; 808 doctests; 16 plots |
 | 7.7 | resistics | `not_started` | Depends on 7.6 |
 | Gate 7 | resistics | `not_started` | Depends on 7.1-7.7 |
 | 8.1 | resistics | `not_started` | Reconcile active plans |
@@ -451,7 +450,7 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 425 passed | S049 |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 349 passed; documentation separate | S052 |
 | Branch coverage | approximately 76% | 75.96% | 80.59%; threshold met, two coverage-instrumented TUI failures | S038 coverage XML |
 | Production Python | approximately 21,011 lines | 21,015 | 24,071 | S037 report |
 | Tests | approximately 5,941 lines | 6,051 | 7,757 | S037 report |
@@ -476,7 +475,8 @@ and must be re-measured in Phase 0 before they are treated as verified.
 | Public docstring coverage | not measured | 80.2%; 566/706 | 86.8%; 638/735 | S033 report |
 | Executable docstring examples | not measured | 778 prompts | 808 prompts | S049 |
 | Executable docstring plots | not measured | 16 directives | same | S002 report |
-| Locked packages | not recorded | 174 | 128 | S038 lock |
+| Executable tutorials | legacy Sphinx-Gallery | none | 6 MyST-NB pages; 4 interactive Plotly figures | S050 |
+| Locked packages | not recorded | 174 | 158 | S051 lock |
 | Local `.venv` size | approximately 897 MB | 910 MB | 744 MB | S038 |
 
 For timing measurements, record the machine/runtime context and multiple runs.
@@ -715,6 +715,36 @@ old id when evidence changes the direction.
   boundary and removes D056's now-unreachable RST parser fallback early;
   retain the selected autodoc adapter, fenced `eval-rst` API directives, and
   prototype dependency until their planned Checkpoint 7.5 review.
+- `D061` (2026-07-22): Replace the generated gallery with six small MyST-NB
+  text notebooks that execute on every build against a genuine, synthetic,
+  two-station MTH5 file. Keep the fixture private to the tutorial source tree,
+  hide nondeterministic dependency log output, and embed Plotly JavaScript in
+  notebook HTML MIME output so calibration, result, flow, and resolved-job
+  figures remain interactive without a CDN. Delete the removed-reader and
+  legacy-configuration examples rather than preserving an unsupported archive.
+- `D062` (2026-07-22): Make Markdown/MyST the only authored documentation
+  language and standard Sphinx autodoc the only API generator. Expose
+  ``automodule`` through a narrow MyST directive that parses only autodoc's
+  internally generated object directives as RST; parse every source docstring
+  as MyST. This retains signatures, overloads, source links, the module index,
+  and Pydantic attribute prose without retaining authored ``eval-rst``,
+  autodoc2, autodoc-pydantic, Napoleon, or mixed-parser rules. Guard the
+  boundary with repository tests rejecting maintained ``.rst`` sources,
+  legacy RST directives, and ``eval-rst`` fences. Keep the temporary Matplotlib
+  ``insert_input`` adapter until MyST supplies that state-machine operation.
+- `D063` (2026-07-22): Make `scripts/check_documentation.py` the permanent
+  local documentation authority. Its default gate builds fresh nitpicky HTML
+  with warnings fatal and keep-going enabled, executes all MyST-NB tutorials,
+  requires the exact 16 semantic Matplotlib PNG artifacts, and runs all 808
+  fenced examples through Sphinx's doctest builder without re-executing the
+  notebooks. Its explicit `links` mode is networked and remains outside
+  pre-commit. Limit nitpicky exclusions to the measured autodoc-generated
+  alias, private-base, and unavailable-third-party-inventory targets; authored
+  Resistics and intersphinx references remain enforced. Remove pytest's raw
+  module-docstring scan and the duplicate minimum-floor doctest run only after
+  the Sphinx builder passes the complete prompt inventory. Remove the generic
+  Sphinx Makefile wrappers so maintained commands request HTML only; doctest
+  and linkcheck are validation builders, not published output formats.
 
 ## Blocker Log
 
@@ -4207,3 +4237,197 @@ correct a factual error; note the correction explicitly.
 - Exact next action: replace the obsolete Sphinx-Gallery scripts with curated,
   deterministic MyST-NB tutorials covering the current MTH5, flow, job,
   calibration, remote-reference, and plotting contracts.
+
+### S050 - 2026-07-22 - Replace the obsolete gallery with executable tutorials
+
+- Checkpoint state at start: Checkpoint 7.3 was verified in S049 and recorded
+  by the owner in `e874d56`; Checkpoint 7.4 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `e874d56` with only the
+  required empty `pyrefly-baseline.json` intentionally untracked.
+- Session objective: replace every supported gallery use case with a small,
+  executable MyST-NB tutorial and delete unsupported legacy reader and
+  configuration examples.
+- Work completed: added six text notebooks for first-project creation,
+  discovery/navigation, flow and parameter construction, job validation and
+  execution, calibration and remote reference, and result/flow/job plotting.
+  Added one docs-private fixture that creates a deterministic two-station,
+  eight-channel MTH5 0.2 file entirely under a temporary directory. Forced
+  notebook execution with errors fatal on every build, embedded Plotly through
+  HTML notebook MIME with local JavaScript and stable element ids, retained
+  page-source links, and suppressed only nondeterministic setup logs. Removed
+  Sphinx-Gallery configuration and its direct dependency, refreshed the lock,
+  rewrote tutorial navigation and the transitional literature entry, deleted
+  all 14 tracked gallery sources, and removed the stale generated gallery tree
+  from the working directory.
+- Files changed: `docs/source/tutorials/`, `docs/source/conf.py`,
+  `docs/source/getting-started.md`, `docs/source/lower-level.md`,
+  `docs/source/literature.md`, `README.md`, `pyproject.toml`,
+  `docs/requirements.txt`, `uv.lock`, deletion of `examples/`, and this
+  implementation record.
+- Decisions added or superseded: D061 records the offline MTH5 fixture,
+  executable text-notebook, embedded interactive Plotly, and deletion policy.
+- Verification commands and results:
+  - `uv lock --check` passes with 168 resolved packages and no installed
+    Sphinx-Gallery package; the lock refresh removed Sphinx-Gallery 0.21.0.
+  - The complete source suite passes all 425 tests in 31.50 seconds.
+  - A fresh `sphinx-build -W --keep-going -b html -E` executes all six
+    notebooks and builds all 35 sources without warnings. The real tutorial
+    job validates one `demo/target/run001` batch, completes, emits structured
+    progress, and creates its project log.
+  - Rendered-HTML checks find all four stable Plotly containers and
+    `Plotly.newPlot`, no CDN reference, no emitted temporary path, and a source
+    file for every notebook page. Repository scans find no maintained gallery
+    configuration or navigation reference.
+  - Scoped pre-commit, `git diff --check`, and the lock check pass.
+- Measurements/artifacts: final warning-clean HTML is under
+  `/tmp/resistics-checkpoint-7-4-final-html`. Ignored generated gallery files
+  were moved recoverably to
+  `/tmp/resistics-checkpoint-7-4-legacy-gallery-bOQJJTFr` rather than retained
+  in the source tree.
+- Known failures or incomplete work: Checkpoint 7.4 has no remaining work.
+  Napoleon, autodoc-pydantic, Kaleido, autodoc2, `docs/requirements.txt`,
+  fenced `eval-rst` API directives, and the remaining authored RST files are
+  intentionally owned by Checkpoint 7.5. Nitpicky cross-reference and doctest
+  enforcement remain owned by Checkpoint 7.6.
+- Checkpoint state at end: `7.4` is `verified`; Checkpoint 7.5 is ready.
+- Commit readiness or commit id: the six tutorials, fixture, gallery removal,
+  execution configuration, dependency refresh, navigation, commands, and
+  record form a verified suggested checkpoint commit; no commit was requested
+  or created.
+- Exact next action: remove the transitional documentation dependencies and
+  remaining RST compatibility path while keeping standard autodoc as the sole
+  API generator and MyST as the sole authored documentation language.
+
+### S051 - 2026-07-22 - Remove the transitional documentation stack
+
+- Checkpoint state at start: Checkpoint 7.4 was verified in S050 and remained
+  uncommitted with its six executable tutorials; Checkpoint 7.5 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `e874d56` with the verified,
+  uncommitted Checkpoint 7.4 changes and the required empty
+  `pyrefly-baseline.json` intentionally untracked.
+- Session objective: make Markdown/MyST and standard autodoc the sole permanent
+  documentation paths, remove every transitional dependency and source, and
+  retain full generated-API and Pydantic field fidelity.
+- Work completed: renamed the changelog to Markdown; replaced all 21 fenced
+  `eval-rst` module pages with a native MyST-facing autodoc directive; made the
+  docstring adapter catch every autodoc object; and removed its mixed-parser
+  configuration. Removed Napoleon, autodoc-pydantic, autodoc2, Kaleido,
+  `docs/requirements.txt`, the prototype module, and the parser-foundation
+  page. Converted the final RST docstring directive and deleted every remaining
+  maintained `.rst` source. Added AST- and source-based tests rejecting future
+  authored RST, legacy directives, `eval-rst`, and legacy plot syntax. Refreshed
+  the lock and package source-distribution include for `CHANGELOG.md`.
+- Files changed: `CHANGELOG.md`, deletion of `CHANGELOG.rst`,
+  `docs/_ext/myst_autodoc.py`, `docs/source/conf.py`, the 21 API module pages,
+  `docs/source/index.md`, deletion of `docs/requirements.txt`,
+  `docs/prototype_api/`, and `docs/source/myst-foundation.md`,
+  `resistics/calibrate.py`, `tests/test_docstring_contract.py`,
+  `pyproject.toml`, `uv.lock`, and this implementation record. The still-dirty
+  tutorial, narrative, README, and gallery deletion paths belong to S050.
+- Decisions added or superseded: D062 closes D056's temporary parser boundary
+  and D057's `eval-rst` compatibility path while retaining the standard
+  autodoc selection itself.
+- Verification commands and results:
+  - The repository documentation guards pass all six tests; package-wide
+    pydoclint, Ruff, the uv lock check, and `git diff --check` pass.
+  - A fresh `sphinx-build -W --keep-going -b html -E` executes all six
+    tutorials and builds all 34 sources without warnings. All 20 generated
+    public module pages contain real Python object signatures; none contain
+    literal generated RST. The module index, source links, Pydantic constructor
+    fields, and rendered attribute prose are present.
+  - The complete source suite passes all 428 tests in 27.24 seconds. The source
+    distribution and wheel build from the locked project; the source archive
+    contains `CHANGELOG.md` and no RST changelog.
+  - The resolved docs group contains neither autodoc-pydantic, autodoc2,
+    Sphinx-Gallery, Kaleido, nor Napoleon. Two removed names remain only as
+    inert development metadata declared by the separate editable
+    `regressioninc` workspace package and are absent from the installed tree.
+- Measurements/artifacts: final warning-clean HTML is under
+  `/tmp/resistics-checkpoint-7-5-final-html`; built artifacts are under
+  `/tmp/resistics-checkpoint-7-5-dist`. The lock resolves 158 packages, down
+  from S050's 168 after removing ten transitional packages.
+- Known failures or incomplete work: Checkpoint 7.5 has no remaining work.
+  Nitpicky reference enforcement, the Sphinx doctest builder, explicit link
+  checking, and removal of pytest's raw module-doctest scan remain owned by
+  Checkpoint 7.6. The local MyST/Matplotlib `insert_input` compatibility hook
+  remains required and is not an authored RST path.
+- Checkpoint state at end: `7.5` is `verified`; Checkpoint 7.6 is ready.
+- Commit readiness or commit id: the Markdown/MyST-only source path, standard
+  autodoc bridge, dependency and lock reduction, guards, changelog rename,
+  deletions, and record form a verified suggested checkpoint commit; no commit
+  was requested or created.
+- Exact next action: enable nitpicky cross-reference checking and make the
+  warning-clean HTML, Sphinx doctest, plot artifact, and explicit external-link
+  checks the permanent local documentation gate.
+
+### S052 - 2026-07-22 - Enforce the local documentation gate
+
+- Checkpoint state at start: Checkpoint 7.5 was verified in S051 and remained
+  uncommitted with the verified Checkpoint 7.4 tutorial work; Checkpoint 7.6
+  was ready. The user's request named already-verified Checkpoint 4.6, so the
+  recorded next checkpoint, 7.6, was used as the intended target.
+- Starting branch, HEAD, and worktree: `mth5` at `e874d56` with the verified,
+  uncommitted Checkpoints 7.4-7.5 changes and the required empty
+  `pyrefly-baseline.json` intentionally untracked.
+- Session objective: make strict HTML, cross-reference, doctest, plot, and
+  external-link validation repeatable locally, then remove pytest's duplicate
+  raw docstring execution without reducing executable documentation coverage.
+- Work completed: added `scripts/check_documentation.py` as the owned local
+  gate. Its default mode creates fresh marker-protected output, builds
+  nitpicky warning-fatal HTML with keep-going enabled, executes the six
+  tutorials, verifies all 16 semantic fenced-plot PNGs, and runs Sphinx
+  doctest with tutorial re-execution disabled. Its explicit `links` mode runs
+  the networked Sphinx link checker. Enabled nitpicky mode permanently and
+  recorded narrowly grouped regex exclusions for the measured autodoc-
+  generated annotation aliases, private bases, and third-party types without
+  usable inventories. Removed pytest's `--doctest-modules` default and the
+  duplicate installed-wheel doctest invocation from the minimum-dependency
+  check after Sphinx passed all 808 prompts. Deleted the generic Sphinx
+  Makefile and batch wrappers, documented the HTML-only command and hosted
+  deployment follow-up, and added focused gate tests.
+- Files changed: new `scripts/check_documentation.py` and
+  `tests/test_documentation_gate.py`, `docs/source/conf.py`,
+  `docs/source/docstrings.md`, `README.md`, `pyproject.toml`,
+  `scripts/check_minimum_dependencies.py`, deletion of `docs/Makefile` and
+  `docs/make.bat`, and this implementation record. These changes remain
+  stacked on the uncommitted S050-S051 file set.
+- Decisions added or superseded: D063 makes Sphinx authoritative for fenced
+  documentation execution, separates the networked link check, and closes the
+  raw pytest-doctest and generic-output paths.
+- Verification commands and results:
+  - The permanent default command builds all 34 HTML sources under `-nW
+    --keep-going`, executes all six MyST-NB tutorials without an error or
+    warning, verifies the exact 16 fenced Matplotlib plot PNGs, and passes all
+    808 Sphinx doctests. The targeted nitpick configuration reduced the
+    measured 232 generated type-reference warnings to zero without suppressing
+    authored Resistics or intersphinx reference classes.
+  - The explicit networked link command passes every generated external
+    reference and the maintained literature DOI; its single DOI redirect is
+    valid.
+  - The normal source suite, now free of duplicate module-docstring collection,
+    passes all 349 tests in 30.06 seconds. Thirteen focused documentation guard
+    and command tests pass. Ruff format/lint, pydoclint, Pyrefly, the uv lock
+    check, pre-commit, and `git diff --check` pass.
+  - The modified minimum-dependency command still builds both wheels, selects
+    all 17 direct runtime/shared/test floors exactly, installs a consistent
+    73-package Python 3.12 environment, and imports both distributions outside
+    their source trees.
+- Measurements/artifacts: final strict HTML and doctest evidence is under
+  `/tmp/resistics-checkpoint-7-6-final-verified`; passing linkcheck output is
+  under `/tmp/resistics-checkpoint-7-6-final/linkcheck`. The unit suite now
+  reports 349 tests rather than counting 79 raw module-doctest collection
+  nodes; the stronger documentation builder executes 808 individual prompts.
+- Known failures or incomplete work: Checkpoint 7.6 has no remaining local
+  work. The link check is intentionally networked and is not scheduled while
+  hosted automation is deferred. Future Read the Docs work must check out
+  RegressionInC beside Resistics, install with locked uv, run the strict gate,
+  and request HTML only. Contributor/release consolidation remains Checkpoint
+  7.7.
+- Checkpoint state at end: `7.6` is `verified`; Checkpoint 7.7 is ready.
+- Commit readiness or commit id: the strict documentation command, targeted
+  nitpick contract, Sphinx doctest ownership, exact plot validation, link
+  check, HTML-only cleanup, tests, guidance, and record form a verified
+  suggested checkpoint commit; no commit was requested or created.
+- Exact next action: consolidate contributor and release guidance around the
+  final local gates, authoring standards, coverage policy, TUI performance
+  checks, suppression rules, and explicitly deferred hosted workflows.

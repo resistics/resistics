@@ -1,11 +1,22 @@
 """Protect documentation examples and plots that intentionally live in code."""
 
 import ast
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
 import resistics.testing as testing_helpers
 
+PROJECT_ROOT = Path(__file__).parents[1]
+MAINTAINED_SOURCE_DIRS = (
+    ".github",
+    "docs",
+    "examples",
+    "resistics",
+    "scripts",
+    "tests",
+)
+LEGACY_RST_DIRECTIVE = re.compile(r"^\s*\.\.\s+[A-Za-z0-9_-]+::", re.MULTILINE)
 MINIMUM_EXAMPLE_DOCSTRINGS = 86
 PROTECTED_PLOT_DOCSTRINGS = {
     "decimate.DecimatedData",
@@ -59,10 +70,10 @@ RELOCATED_OR_REMOVED_TEST_HELPERS = {
 
 def _iter_docstrings() -> Iterator[tuple[str, str]]:
     """Yield qualified production object names and their raw docstrings."""
-    source_root = Path(__file__).parents[1] / "resistics"
-    for path in sorted(source_root.glob("*.py")):
+    source_root = PROJECT_ROOT / "resistics"
+    for path in sorted(source_root.rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
-        module_name = path.stem
+        module_name = ".".join(path.relative_to(source_root).with_suffix("").parts)
         yield module_name, ast.get_docstring(tree, clean=False) or ""
         yield from _iter_node_docstrings(tree.body, module_name)
 
@@ -93,11 +104,41 @@ def test_docstring_example_inventory_does_not_shrink() -> None:
 def test_plot_directives_remain_with_their_documented_objects() -> None:
     """Keep every established plot directive attached to its API object."""
     actual = {
-        name
-        for name, docstring in _iter_docstrings()
-        if ".. plot::" in docstring or "```{plot}" in docstring
+        name for name, docstring in _iter_docstrings() if "```{plot}" in docstring
     }
     assert actual >= PROTECTED_PLOT_DOCSTRINGS
+
+
+def test_authored_rst_sources_are_absent() -> None:
+    """Keep Markdown as the sole authored repository documentation format."""
+    rst_paths = list(PROJECT_ROOT.glob("*.rst"))
+    for dirname in MAINTAINED_SOURCE_DIRS:
+        root = PROJECT_ROOT / dirname
+        if root.exists():
+            rst_paths.extend(root.rglob("*.rst"))
+    assert not rst_paths
+
+
+def test_legacy_rst_directives_are_absent_from_documentation() -> None:
+    """Reject RST directives and compatibility fences in maintained prose."""
+    paths = [PROJECT_ROOT / "README.md", PROJECT_ROOT / "CHANGELOG.md"]
+    paths.extend((PROJECT_ROOT / "docs" / "source").rglob("*.md"))
+    findings = []
+    for path in paths:
+        content = path.read_text(encoding="utf-8")
+        if LEGACY_RST_DIRECTIVE.search(content) or "```{eval-rst}" in content:
+            findings.append(path.relative_to(PROJECT_ROOT).as_posix())
+    assert not findings
+
+
+def test_legacy_rst_directives_are_absent_from_docstrings() -> None:
+    """Reject legacy directives from production API documentation."""
+    findings = [
+        name
+        for name, docstring in _iter_docstrings()
+        if LEGACY_RST_DIRECTIVE.search(docstring) or "```{eval-rst}" in docstring
+    ]
+    assert not findings
 
 
 def test_testing_module_retains_doctest_helpers_not_suite_only_factories() -> None:

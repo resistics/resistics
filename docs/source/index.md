@@ -69,12 +69,6 @@ docstrings
 literature
 ```
 
-```{toctree}
-:hidden:
-
-myst-foundation
-```
-
 ## Indices
 
 - {ref}`genindex`

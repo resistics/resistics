@@ -19,8 +19,7 @@ than public library APIs. They may omit a presence-only docstring when the
 declaration and implementation already make their purpose clear. Ordinary
 public methods in those modules are still documented.
 
-During the Phase 7 migration, unconverted modules retain NumPy-style docstrings
-and converted modules use MyST field lists. The opening summary should describe
+Production docstrings use MyST field lists. The opening summary should describe
 the useful outcome rather than repeat the object's name. For a non-trivial
 callable, document its parameters, returns or yields, and raised exceptions.
 Keep types in Python annotations rather than duplicating them in field lists.
@@ -50,8 +49,9 @@ while preserving its rendered behaviour.
 
 At the Checkpoint 2.4 boundary, production docstrings contained at least 86
 example sections and 14 plot directives. `tests/test_docstring_contract.py`
-protects those counts and the locations of every existing plot directive;
-normal doctest collection protects executable examples.
+protects those counts and the locations of every existing plot directive. The
+Sphinx doctest builder executes fenced examples, and the strict HTML build
+executes and verifies the plot artifacts.
 
 (docstring-checks)=
 ## Checking changes
@@ -61,6 +61,7 @@ Run the documentation checks after changing a production API:
 ```console
 uv run --locked --no-sync ruff check resistics
 uv run --locked --no-sync pydoclint --config=pyproject.toml resistics
+uv run --locked --no-sync python scripts/check_documentation.py
 ```
 
 Ruff enforces public docstring presence. Pydoclint enforces agreement between

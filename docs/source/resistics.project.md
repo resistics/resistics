@@ -9,9 +9,8 @@ MTH5 handle. Prefer `with` for deterministic release, or call the idempotent
 `close()` method explicitly. Cached summary tables remain readable after
 closure; group, channel, and sample-data operations raise `RuntimeError`.
 
-```{eval-rst}
-.. automodule:: resistics.project
-   :members:
-   :undoc-members:
-   :show-inheritance:
+```{myst-automodule} resistics.project
+:members:
+:undoc-members:
+:show-inheritance:
 ```

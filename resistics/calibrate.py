@@ -293,20 +293,20 @@ class SensorCalibrationTXT(SensorCalibrationReader):
 
     The format of the calibration file should be as follows:
 
-    .. code-block:: text
-
-        Serial = 710
-        Sensor = LEMI120
-        Static gain = 1
-        Magnitude unit = mV/nT
-        Phase unit = degrees
-        Chopper = False
+    ```text
+    Serial = 710
+    Sensor = LEMI120
+    Static gain = 1
+    Magnitude unit = mV/nT
+    Phase unit = degrees
+    Chopper = False
 
         CALIBRATION DATA
         1.1000E-4       1.000E-2        9.0000E1
         1.1000E-3       1.000E-1        9.0000E1
         1.1000E-2       1.000E0     8.9000E1
         2.1000E-2       1.903E0     8.8583E1
+    ```
 
     **See Also**
 

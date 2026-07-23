@@ -64,18 +64,15 @@ with load("example-project") as project:
 The project keeps source data read-only. Processing outputs are written beneath
 the project directory and separated by output label.
 
-(getting-started-examples)=
-## Existing examples
+(getting-started-tutorials)=
+## Continue with the tutorials
 
-The generated example gallery remains available while it is replaced by
-MTH5-first executable notebooks. Examples that refer to removed ASCII, binary,
-bz2, `letsgo`, or legacy configuration workflows are historical and are not
-part of the supported current API.
+The executable tutorials use current MTH5, flow, job, calibration, remote
+reference, and plotting APIs. Every example creates deterministic synthetic
+data locally and runs during the documentation build.
 
 ```{toctree}
 :maxdepth: 2
 
-tutorial-project/index
-tutorial-config/index
-tutorial-datatypes/index
+tutorials/index
 ```

@@ -1,19 +1,18 @@
-"""Allow standard Sphinx autodoc to render selected docstrings as MyST.
+"""Allow standard Sphinx autodoc to render every docstring as MyST.
 
 Sphinx autodoc generates reStructuredText object directives and normally parses
-their docstrings as reStructuredText too.  During the migration we wrap only
-the selected docstrings in a nested MyST directive, leaving autodoc responsible
-for discovery, signatures, aliases, overloads, and source links.
+their docstrings as reStructuredText too. We wrap their content in a nested
+MyST directive, leaving autodoc responsible for discovery, signatures, aliases,
+overloads, and source links.
 """
 
 from __future__ import annotations
 
-from re import Pattern
-from re import compile as compile_pattern
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from docutils import nodes
 from docutils.parsers.rst import Parser
+from docutils.parsers.rst import directives
 from myst_parser.mocking import MockStateMachine
 from myst_parser.parsers.sphinx_ import MystParser
 from sphinx.util.docutils import SphinxDirective, new_document
@@ -47,6 +46,29 @@ class MystDocstringDirective(SphinxDirective):
         return list(document.children)
 
 
+class MystAutoModuleDirective(SphinxDirective):
+    """Expose standard autodoc module generation through a MyST directive."""
+
+    has_content = False
+    required_arguments = 1
+    optional_arguments = 0
+    final_argument_whitespace = False
+    option_spec: ClassVar[dict[str, Any]] = {
+        "members": directives.flag,
+        "undoc-members": directives.flag,
+        "show-inheritance": directives.flag,
+    }
+
+    def run(self) -> list[nodes.Node]:
+        """Run standard ``automodule`` in an RST document node container."""
+        source, _ = self.get_source_info()
+        input_lines = [f".. automodule:: {self.arguments[0]}"]
+        input_lines.extend(f"   :{name}:" for name in self.options)
+        document = new_document(source, self.state.document.settings)
+        Parser().parse("\n".join(input_lines), document)
+        return list(document.children)
+
+
 def _parse_inserted_rst(
     state_machine: MockStateMachine,
     input_lines: Iterable[str],
@@ -63,49 +85,24 @@ def _parse_inserted_rst(
     state_machine.node.extend(document.children)
 
 
-def _compile_parser_rules(app: Sphinx) -> list[tuple[Pattern[str], str]]:
-    """Compile the configured per-object parser rules once per build."""
-    rules = [
-        (compile_pattern(pattern), parser)
-        for pattern, parser in app.config.myst_autodoc_docstring_parser_regexes
-    ]
-    app.env.temp_data["myst_autodoc_parser_rules"] = rules
-    return rules
-
-
-def _parser_for_name(app: Sphinx, name: str) -> str:
-    """Return the first configured parser matching an autodoc object name."""
-    rules = app.env.temp_data.get("myst_autodoc_parser_rules")
-    if rules is None:
-        rules = _compile_parser_rules(app)
-    for pattern, parser in rules:
-        if pattern.fullmatch(name):
-            return parser
-    return "rst"
-
-
 def _wrap_myst_docstring(
-    app: Sphinx,
+    _app: Sphinx,
     _what: str,
-    name: str,
+    _name: str,
     _obj: object,
     _options: object,
     lines: list[str],
 ) -> None:
-    """Wrap selected autodoc content in the nested MyST directive."""
-    if not lines or _parser_for_name(app, name) != "myst":
+    """Wrap autodoc content in the nested MyST directive."""
+    if not lines:
         return
     lines[:] = [".. myst-docstring::", "", *(f"   {line}" for line in lines)]
 
 
 def setup(app: Sphinx) -> dict[str, bool]:
-    """Register the directive, parser routing, and plot compatibility hook."""
-    app.add_config_value(
-        "myst_autodoc_docstring_parser_regexes",
-        [(r".*", "rst")],
-        "env",
-    )
+    """Register the catch-all parser and plot compatibility hook."""
     app.add_directive("myst-docstring", MystDocstringDirective)
+    app.add_directive("myst-automodule", MystAutoModuleDirective)
     app.connect("autodoc-process-docstring", _wrap_myst_docstring)
 
     # Remove this compatibility assignment once MyST implements insert_input.

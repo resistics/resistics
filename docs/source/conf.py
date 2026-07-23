@@ -6,15 +6,10 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 from pathlib import Path
-import os
-import re
 import sys
 import resistics
-import plotly.io as pio
 from matplotlib.sphinxext.plot_directive import PlotDirective
-from plotly.io._sg_scraper import plotly_sg_scraper
 from sphinx.application import Sphinx
-from sphinx_gallery.sorting import FileNameSortKey
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 
@@ -29,8 +24,6 @@ release = resistics.__version__
 
 extensions = [
     "sphinx.ext.autodoc",
-    "sphinxcontrib.autodoc_pydantic",
-    "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "sphinx.ext.doctest",
     "sphinx.ext.todo",
@@ -39,7 +32,6 @@ extensions = [
     "sphinx_copybutton",
     "sphinx.ext.autosectionlabel",
     "matplotlib.sphinxext.plot_directive",
-    "sphinx_gallery.gen_gallery",
     "sphinxext.opengraph",
     "myst_nb",
     "_ext.myst_autodoc",
@@ -51,7 +43,7 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["tutorial-*/*.ipynb"]
+exclude_patterns = []
 
 # resistics configuration
 # code styles
@@ -61,9 +53,54 @@ pygments_dark_style = "gruvbox-dark"
 autosectionlabel_prefix_document = True
 autodoc_member_order = "bysource"
 autodoc_undoc_members = False
-# napoleon extension
-napoleon_numpy_docstring = True
-napoleon_attr_annotations = False
+# Cross-reference warnings are fatal in the maintained documentation command.
+nitpicky = True
+# Autodoc turns annotations and inherited bases into references. These exact
+# patterns cover imported aliases, private implementation types, and third-party
+# types for which no usable Sphinx inventory exists. Authored Resistics and
+# intersphinx references remain subject to nitpicky checking.
+nitpick_ignore_regex = [
+    (
+        "py:class",
+        r"(?:BindingType|ConfigDict|DataSource|DataType|Field|FieldInfo|Ge|"
+        r"JobDefinition \| None|JsonValue|ModelT|NoneType|Path|RunGroup|"
+        r"StationGroup|SurveyGroup|VisualType|_MTH5Handle|_TuiLogBuffer|"
+        r"datetime|time)",
+    ),
+    ("py:class", r"dict\[(?:float|str)"),
+    ("py:obj", r"typing\.Literal\['parameters'"),
+    ("py:class", r"annotated_types\.(?:Ge|Gt)"),
+    (
+        "py:class",
+        r"attotime\.objects\.(?:attodatetime\.attodatetime|"
+        r"attotimedelta\.attotimedelta)",
+    ),
+    ("py:class", r"(?:go\.Figure|plotly\.graph_objs\._figure\.Figure)"),
+    (
+        "py:class",
+        r"(?:pydantic\.(?:config\.ConfigDict|main\.BaseModel|types\.JsonValue)|"
+        r"pydantic_core\.core_schema\.ValidationInfo)",
+    ),
+    (
+        "py:class",
+        r"(?:pd\.DataFrame|xarray\.core\.(?:dataarray\.DataArray|dataset\.Dataset))",
+    ),
+    (
+        "py:class",
+        r"textual\.(?:app\.App|screen\.(?:ModalScreen|Screen)|widget\.Widget|"
+        r"widgets\.(?:_directory_tree\.DirectoryTree\.(?:DirectorySelected|"
+        r"FileSelected)|_static\.Static))",
+    ),
+    (
+        "py:class",
+        r"resistics\.(?:project\._MTH5InspectionMixin|"
+        r"project_mth5\._MTH5Handle|regression\._FittableRegressor|"
+        r"tui\.(?:logging\._Tui(?:DiagnosticCapture|LogBuffer)|"
+        r"screens\.project_(?:data\._ProjectDataMixin|jobs\._ProjectJobsMixin|"
+        r"logs\._ProjectLogsMixin|resources\._ProjectResourcesMixin)|"
+        r"state\.TimePlotSelection))",
+    ),
+]
 # other configuration
 plot_include_source = True
 todo_include_todos = True
@@ -78,46 +115,13 @@ intersphinx_mapping = {
 # copy button
 copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: "
 copybutton_prompt_is_regexp = True
-# pydantic configuration
-autodoc_pydantic_model_member_order = "bysource"
-autodoc_pydantic_model_show_field_summary = False
-autodoc_pydantic_model_show_config_summary = False
-autodoc_pydantic_model_show_config_member = False
-autodoc_pydantic_model_show_validator_summary = False
-autodoc_pydantic_model_show_validator_members = False
-autodoc_pydantic_model_hide_paramlist = True
-autodoc_pydantic_field_show_default = True
 myst_enable_extensions = ["fieldlist"]
 myst_ref_domains = ["std", "py"]
-nb_execution_mode = "off"
-myst_autodoc_docstring_parser_regexes = [
-    (r"prototype_api(?:\..*)?", "myst"),
-    (r"resistics(?:\..*)?", "myst"),
-]
-# sphinx gallery
-pio.renderers.default = "sphinx_gallery_png"
-image_scrapers = ("matplotlib", plotly_sg_scraper)
-sphinx_gallery_conf = {
-    "run_stale_examples": False,
-    "filename_pattern": f"{re.escape(os.sep)}eg_",
-    "remove_config_comments": True,
-    "thumbnail_size": (300, 300),
-    "examples_dirs": [
-        "../../examples/read",
-        "../../examples/project",
-        "../../examples/config",
-        "../../examples/datatypes",
-    ],
-    "gallery_dirs": [
-        "tutorial-read",
-        "tutorial-project",
-        "tutorial-config",
-        "tutorial-datatypes",
-    ],
-    "image_scrapers": image_scrapers,
-    "within_subsection_order": FileNameSortKey,
-}
-
+nb_execution_mode = "force"
+nb_execution_timeout = 120
+nb_execution_raise_on_error = True
+linkcheck_timeout = 10
+linkcheck_retries = 2
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 

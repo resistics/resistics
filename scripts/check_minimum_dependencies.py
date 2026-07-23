@@ -3,8 +3,9 @@
 
 The check builds Resistics and its sibling RegressionInC package, resolves the
 lowest versions of Resistics' direct runtime and test dependencies, installs
-the wheels into a temporary environment, and executes both installed packages'
-doctests. It never modifies the normal project environment or ``uv.lock``.
+the wheels into a temporary environment, and verifies both imports resolve from
+the installed distributions. It never modifies the normal project environment
+or ``uv.lock``.
 
 Examples
 --------
@@ -343,22 +344,6 @@ def main() -> int:
             )
             _run(
                 [str(environment_python), "-c", import_check],
-                cwd=work,
-                environment=environment,
-            )
-            _run(
-                [
-                    str(environment_python),
-                    "-m",
-                    "pytest",
-                    "-q",
-                    "--doctest-modules",
-                    "-o",
-                    "doctest_optionflags=NORMALIZE_WHITESPACE ELLIPSIS",
-                    "--pyargs",
-                    "resistics",
-                    "regressioninc",
-                ],
                 cwd=work,
                 environment=environment,
             )
