@@ -3,8 +3,6 @@
 [![PyPI Latest Release](https://img.shields.io/pypi/v/resistics.svg)](https://pypi.org/project/resistics/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/resistics)](https://pypi.org/project/resistics/)
 [![Documentation Status](https://readthedocs.org/projects/resistics/badge/?version=latest)](https://resistics.readthedocs.io/en/latest/?badge=latest)
-[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/resistics/resistics.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/resistics/resistics/context:python)
-[![codecov](https://codecov.io/gh/resistics/resistics/branch/master/graph/badge.svg?token=CXLJC9J7AW)](https://codecov.io/gh/resistics/resistics)
 [![Code style: Ruff](https://img.shields.io/badge/code%20style-Ruff-D7FF64.svg)](https://docs.astral.sh/ruff/)
 
 Resistics is a native Python 3.12-3.14 package for the processing of
@@ -42,11 +40,10 @@ python -m pip install resistics
 
 For development of the 1.0 line, use the paired local setup below.
 
-## Developing the mth5 branch
+## Developing Resistics 1.0
 
-The `mth5` hardening branch intentionally uses an editable checkout of
-RegressionInC. Keep both repositories beside each other with these directory
-names:
+Resistics 1.0 development uses an editable checkout of RegressionInC. Keep both
+repositories beside each other with these directory names:
 
 ```text
 <development-directory>/
@@ -76,7 +73,7 @@ uv run --locked --no-sync ruff check resistics tests scripts
 uv run --locked --no-sync pydoclint --config=pyproject.toml resistics
 uv run --locked --no-sync pyrefly check
 uv run --locked --no-sync pytest
-uv run --locked --no-sync pytest --cov=resistics --cov-branch --cov-report=term --cov-report=html --cov-report=xml
+uv run --locked --no-sync python scripts/check_coverage.py
 uv run --locked --no-sync python scripts/check_documentation.py
 uv build --no-sources
 uv run --locked --no-sync python scripts/check_minimum_dependencies.py
@@ -84,12 +81,18 @@ uv run --locked --no-sync python scripts/audit_dependencies.py
 uv run --locked --no-sync python scripts/check_no_legacy_packaging.py
 ```
 
+The permanent [contributor guide](docs/source/contributing.md) covers the
+normal change loop, coverage policy, MyST and docstring standards, justified
+suppressions, and focused TUI performance checks. Use the
+[release verification guide](docs/source/releasing.md) for the local candidate
+checklist and the clearly separated owner follow-ups.
+
 The dependency-floor check requires the sibling checkout shown above and a
 Python 3.12 interpreter discoverable by uv. It builds both local wheels,
 resolves Resistics' runtime plus shared/test dependencies with uv's
-``lowest-direct`` policy, verifies that every declared floor was selected,
+`lowest-direct` policy, verifies that every declared floor was selected,
 and verifies both packages import from installed wheels in a disposable
-environment. It does not modify ``.venv`` or ``uv.lock``. Transitive
+environment. It does not modify `.venv` or `uv.lock`. Transitive
 dependencies remain owned by their declaring packages and use uv's normal
 compatible resolution.
 
@@ -125,12 +128,12 @@ the OSV vulnerability database and fails on any known vulnerability or adverse
 project status. It is intentionally a networked production-gate command rather
 than a pre-commit hook.
 
-The accepted-risk list in ``scripts/audit_dependencies.py`` is empty by
+The accepted-risk list in `scripts/audit_dependencies.py` is empty by
 default. If an advisory has no compatible fixed release, a temporary exception
 may be added only with its advisory ID, mitigation rationale, owner, and review
 date no more than 90 days away. The script rejects incomplete, duplicate,
 expired, or excessively long-lived records and uses uv's
-``--ignore-until-fixed`` option, so the advisory becomes a failure as soon as
+`--ignore-until-fixed` option, so the advisory becomes a failure as soon as
 OSV reports an available fix. Advisories with compatible fixes are updated and
 locked rather than accepted.
 
@@ -152,7 +155,7 @@ also passes a dry-run sync for all nine cells. No repeated solver or
 supported-platform failure justified adding Pixi or maintaining a second lock
 and contributor workflow.
 
-The current ``fast-sugiyama`` Linux wheel requires glibc 2.34; older glibc
+The current `fast-sugiyama` Linux wheel requires glibc 2.34; older glibc
 systems are not a verified wheel-only target and may require a Rust source
 build. If a required platform repeatedly cannot install MTH5, HDF5, or another
 native dependency through uv/PyPI, reproduce and record that failure before a

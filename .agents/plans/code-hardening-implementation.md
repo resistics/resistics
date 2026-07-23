@@ -1,8 +1,8 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Checkpoint 7.6 verified; Checkpoint 7.7 ready
+Status: in progress; Phase 7 gate verified; Checkpoint 8.1 ready
 Created: 2026-07-19
-Last updated: 2026-07-22
+Last updated: 2026-07-23
 Working branch: `mth5`
 Starting HEAD: `c345ae6`
 Governing plan: [codebase-hardening.md](codebase-hardening.md)
@@ -26,29 +26,27 @@ the two documents do not drift independently.
 ## Current State
 
 - Programme state: `in_progress`
-- Active phase: Phase 7 - MyST documentation modernisation
-- Active checkpoint: `7.7` (`resistics`) - Update contributor and release documentation
+- Active phase: Phase 8 - Final reconciliation and audit
+- Active checkpoint: `8.1` (`resistics`) - Reconcile active architecture plans
 - Checkpoint state: `not_started`
-- Last completed checkpoint: `7.6` in `S052`
-- Last verified checkpoint: `7.6` in `S052`
-- Last session: `S052`
-- Last verified commit: resistics `e874d56`, recording verified hardening
-  through Checkpoint 7.3;
+- Last completed checkpoint: `7.7` in `S053`
+- Last verified checkpoint: `7.7` and Gate 7 in `S053`
+- Last session: `S053`
+- Last verified commit: resistics `4ac30b6`, recording verified hardening
+  through Checkpoint 7.6;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: reconcile contributor and release guidance with the final
-  uv, quality, typing, MyST, coverage, TUI-performance, and owned hosted-
-  follow-up contracts required by Checkpoint 7.7.
+- Next exact action: review `.agents/plans/modernization.md` against the
+  implemented MTH5, flow/job, TUI, packaging, and MyST contracts, then mark
+  stale current-state guidance completed or superseded.
 
 Current worktree caveat:
 
-- Resistics `e874d56` records verified hardening through Checkpoint 7.3. The
-  Checkpoint 7.4 tutorial replacement, Checkpoint 7.5 Markdown/MyST-only
-  documentation path, and Checkpoint 7.6 strict local documentation gate,
-  Sphinx doctest ownership, plot verification, HTML-only cleanup, commands,
-  tests, and execution record are uncommitted. The required empty
-  `pyrefly-baseline.json` remains intentionally untracked.
+- Resistics `4ac30b6` records verified hardening through Checkpoint 7.6. The
+  Checkpoint 7.7 contributor/release guidance, combined coverage gate, focused
+  TUI test boundary, guards, changelog, and execution record are uncommitted.
+  The required empty `pyrefly-baseline.json` remains intentionally untracked.
 - The owner's minimum/maximum Python CI intent remains a requirement of
   deferred Checkpoint 1.6 after the obsolete hosted workflows were removed;
   D053 makes that current matrix Python 3.12/3.14.
@@ -262,8 +260,8 @@ or short command/result reference. Detailed output belongs in the session log or
 | 7.4 | resistics | `verified` | S050; six executed MyST-NB tutorials; warning-clean HTML |
 | 7.5 | resistics | `verified` | S051; MyST-only sources; one autodoc path; 428 tests |
 | 7.6 | resistics | `verified` | S052; strict HTML/link gate; 808 doctests; 16 plots |
-| 7.7 | resistics | `not_started` | Depends on 7.6 |
-| Gate 7 | resistics | `not_started` | Depends on 7.1-7.7 |
+| 7.7 | resistics | `verified` | S053; permanent contributor/release guidance; 80.62% coverage |
+| Gate 7 | resistics | `verified` | S042-S053; strict MyST HTML/doctest/plot/reference gate |
 | 8.1 | resistics | `not_started` | Reconcile active plans |
 | 8.2 | resistics | `not_started` | Repeat complete audit |
 | Final gate | resistics | `not_started` | All gates complete or owned deferral |
@@ -450,8 +448,8 @@ and must be re-measured in Phase 0 before they are treated as verified.
 
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
-| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 349 passed; documentation separate | S052 |
-| Branch coverage | approximately 76% | 75.96% | 80.59%; threshold met, two coverage-instrumented TUI failures | S038 coverage XML |
+| Tests | 372 collected; 371 passed; 1 failed | 373 passed | 351 passed; 808 Sphinx doctests separate | S053 |
+| Branch coverage | approximately 76% | 75.96% | 80.62%; source suite plus Sphinx doctests | S053 coverage XML |
 | Production Python | approximately 21,011 lines | 21,015 | 24,071 | S037 report |
 | Tests | approximately 5,941 lines | 6,051 | 7,757 | S037 report |
 | `resistics/tui.py` | 2,673 lines | 2,673 | `app.py` 436; project/logging modules 2,923 | S033 report |
@@ -745,6 +743,16 @@ old id when evidence changes the direction.
   the Sphinx builder passes the complete prompt inventory. Remove the generic
   Sphinx Makefile wrappers so maintained commands request HTML only; doctest
   and linkcheck are validation builders, not published output formats.
+- `D064` (2026-07-23): Make `docs/source/contributing.md` and
+  `docs/source/releasing.md` the maintained contributor and local-candidate
+  contracts, with root `CONTRIBUTING.md` as the repository entry point. Keep
+  tag protection, Trusted Publishing, hosted CI/documentation, and the
+  RegressionInC release boundary explicitly owner-managed and unverified.
+  Replace the stale pytest-cov command with `scripts/check_coverage.py`, which
+  combines the normal source suite with Sphinx's authoritative doctests and
+  excludes only marked elapsed-time tests from instrumentation. This preserves
+  the 75.95% floor, removes the known coverage-only TUI failures, and does not
+  restore pytest's deleted raw-docstring execution path.
 
 ## Blocker Log
 
@@ -4431,3 +4439,71 @@ correct a factual error; note the correction explicitly.
 - Exact next action: consolidate contributor and release guidance around the
   final local gates, authoring standards, coverage policy, TUI performance
   checks, suppression rules, and explicitly deferred hosted workflows.
+
+### S053 - 2026-07-23 - Finalise contributor and release guidance
+
+- Checkpoint state at start: Checkpoint 7.6 was verified and committed by the
+  owner; Checkpoint 7.7 was ready.
+- Starting branch, HEAD, and worktree: `mth5` at `4ac30b6` with only the
+  required empty `pyrefly-baseline.json` intentionally untracked.
+- Session objective: publish the final local contribution, docstring,
+  performance, suppression, coverage, and release-candidate contracts while
+  keeping every hosted or publishing mutation clearly deferred.
+- Work completed: added a conventional root contributor entry point and
+  maintained MyST contributor and release-verification guides. Documented the
+  paired uv setup, complete quality commands, branch-coverage floor, MyST and
+  fenced-directive authoring, substantive content checklist, private-helper
+  criteria, co-located rich examples and plots, narrow suppression process,
+  focused TUI responsiveness checks, and local candidate evidence. Labelled
+  RegressionInC release, hosted CI/documentation, protected tags, and Trusted
+  Publishing as owner follow-ups that are neither active nor verified. Removed
+  obsolete LGTM and stale-branch Codecov badges and replaced hardening-branch
+  wording with the Resistics 1.0 development contract.
+- Coverage reconciliation: the documented pytest-cov command reproduced the
+  known coverage-instrumented TUI timing failure and, after Checkpoint 7.6
+  removed pytest's raw module doctests, reported only 74.83%. Added
+  `scripts/check_coverage.py` to combine 350 normal instrumented tests with the
+  authoritative Sphinx doctest builder. Marked the synthetic elapsed-time test
+  as non-instrumented performance evidence and made the pre-existing
+  coverage-only async teardown test await actual project closure. The
+  resulting gate passes at 80.62% without restoring duplicate raw-docstring
+  execution.
+- Files changed: new `CONTRIBUTING.md`,
+  `docs/source/contributing.md`, `docs/source/releasing.md`,
+  `scripts/check_coverage.py`, and `tests/test_coverage_gate.py`; updated
+  `README.md`, `CHANGELOG.md`, `docs/source/index.md`,
+  `docs/source/docstrings.md`, `pyproject.toml`,
+  `tests/test_documentation_gate.py`, `tests/test_tui.py`, and this
+  implementation record.
+- Decisions added or superseded: D064 establishes the permanent guide
+  ownership, explicit remote follow-up boundary, and combined
+  source/Sphinx-doctest coverage command.
+- Verification commands and results:
+  - The normal suite passes all 351 tests in 30.29 seconds. The two focused TUI
+    responsiveness regressions pass without instrumentation; their contracts
+    remain cached zero-I/O action checks and refreshes owned by state changes.
+  - The combined coverage command passes 350 instrumented source tests and all
+    808 Sphinx doctests at 80.62%, above the unchanged 75.95% branch floor,
+    then writes the maintained HTML and XML artifacts.
+  - The final documentation command builds all 36 sources under nitpicky,
+    warning-fatal HTML, executes all six MyST-NB tutorials, verifies the exact
+    16 semantic Matplotlib plots, and passes all 808 doctests. The explicit
+    networked link check also passes, including the new uv reference.
+  - Ruff format/lint, pydoclint, Pyrefly, the uv lock check, legacy-packaging
+    guard, representative generated API signatures, local Plotly containers,
+    no-RST/legacy-directive scans, guide guards, and `git diff --check` pass.
+- Measurements/artifacts: strict documentation evidence is under
+  `/tmp/resistics-checkpoint-7-7-final`; link evidence is under
+  `/tmp/resistics-checkpoint-7-7-links`; combined coverage HTML, XML, and
+  doctest output are under `.artifacts/hardening/coverage/`.
+- Known failures or incomplete work: Checkpoint 7.7 and the local Phase 7 gate
+  have no remaining work. Remote publishing, tag protection, hosted CI,
+  standalone registry resolution, and hosted documentation remain explicit
+  repository-owner follow-ups and were not changed or claimed.
+- Checkpoint state at end: `7.7` and Gate 7 are `verified`; Checkpoint 8.1 is
+  ready.
+- Commit readiness or commit id: the permanent guides, combined coverage
+  command, TUI test boundary, guards, release notes, and execution record form
+  a verified suggested checkpoint commit; no commit was requested or created.
+- Exact next action: reconcile `.agents/plans/modernization.md` against the
+  completed MTH5, flow/job, TUI, packaging, and MyST architecture.

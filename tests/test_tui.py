@@ -639,6 +639,7 @@ def test_tui_keeps_session_diagnostics_separate_from_job_activity(
     assert second.closed
 
 
+@pytest.mark.performance
 def test_cached_action_checks_are_fast_and_do_not_repeat_io(
     monkeypatch, record_property, tmp_path
 ):
@@ -995,6 +996,7 @@ def test_tui_invalidates_explorer_index_after_owned_mutations(monkeypatch, tmp_p
                 lambda: all(worker.is_finished for worker in screen.workers)
             )
             await _wait_for(lambda: screen._active_discoveries == 0)
+        await _wait_for(lambda: project.closed)
 
     asyncio.run(run_test())
     assert project.closed

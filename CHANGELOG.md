@@ -1,5 +1,12 @@
 # Next release
 
+- **Added:** Permanent contributor and local release-verification guides now
+  document uv setup, quality and coverage gates, MyST authoring, suppression
+  policy, focused TUI performance checks, and separately owned hosted
+  follow-ups.
+- **Changed:** The coverage gate now combines the normal source suite with
+  Sphinx's authoritative doctests and keeps timing-sensitive TUI checks
+  outside instrumentation.
 - **Added:** `Project` and `MTH5File` now support deterministic `close()`
   and context-manager ownership of their read-only MTH5 handles.
 - **Added:** A locked OSV dependency audit covers every supported Python minor

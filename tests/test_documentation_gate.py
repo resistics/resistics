@@ -12,6 +12,29 @@ from scripts.check_documentation import (
     _verify_plot_artifacts,
 )
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+REQUIRED_GUIDES = {
+    "contributing": (
+        "uv sync --locked --all-groups",
+        "python scripts/check_coverage.py",
+        "pyrefly check",
+        "cached_action_checks_are_fast",
+        "(justified-suppressions)=",
+    ),
+    "docstrings": (
+        "(docstring-content-checklist)=",
+        "(private-helper-docstrings)=",
+        "(fenced-docstring-directives)=",
+        "Rich examples and plots belong with their documented objects",
+    ),
+    "releasing": (
+        "uv lock --check",
+        "uv build --no-sources",
+        "Owner follow-ups: not active or verified",
+        "Trusted Publishing",
+    ),
+}
+
 
 def _write_expected_plots(output_dir: Path) -> Path:
     plot_dir = output_dir / "plot_directive"
@@ -51,6 +74,20 @@ def test_output_root_requires_ownership_before_replacement(tmp_path: Path) -> No
     (tmp_path / "html").rmdir()
     _claim_output_root(tmp_path)
     assert (tmp_path / OUTPUT_MARKER).is_file()
+
+
+def test_permanent_contributor_guides_remain_complete_and_discoverable() -> None:
+    docs_root = REPOSITORY_ROOT / "docs/source"
+    index = (docs_root / "index.md").read_text(encoding="utf-8")
+    for name, required_content in REQUIRED_GUIDES.items():
+        source = (docs_root / f"{name}.md").read_text(encoding="utf-8")
+        assert f"\n{name}\n" in index
+        for content in required_content:
+            assert content in source
+
+    contributing = (REPOSITORY_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    assert "docs/source/contributing.md" in contributing
+    assert "docs/source/releasing.md" in contributing
 
 
 @pytest.mark.parametrize("change", ["missing", "unexpected"])

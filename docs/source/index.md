@@ -65,7 +65,9 @@ resistics
 :maxdepth: 2
 :caption: Contributor guide
 
+contributing
 docstrings
+releasing
 literature
 ```
 

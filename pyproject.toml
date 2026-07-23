@@ -94,6 +94,9 @@ include = [
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = ["resistics", "tests"]
+markers = [
+    "performance: timing-sensitive checks that must run without coverage instrumentation",
+]
 
 [tool.pyrefly]
 baseline = "pyrefly-baseline.json"
