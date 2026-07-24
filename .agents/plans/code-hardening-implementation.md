@@ -1,8 +1,8 @@
 # Resistics Code-Hardening Implementation Record
 
-Status: in progress; Phase 7 gate verified; Checkpoint 8.1 ready
+Status: verified; Checkpoint 8.2 and final gate verified
 Created: 2026-07-19
-Last updated: 2026-07-23
+Last updated: 2026-07-24
 Working branch: `mth5`
 Starting HEAD: `c345ae6`
 Governing plan: [codebase-hardening.md](codebase-hardening.md)
@@ -25,28 +25,29 @@ the two documents do not drift independently.
 
 ## Current State
 
-- Programme state: `in_progress`
+- Programme state: `verified`
 - Active phase: Phase 8 - Final reconciliation and audit
-- Active checkpoint: `8.1` (`resistics`) - Reconcile active architecture plans
-- Checkpoint state: `not_started`
-- Last completed checkpoint: `7.7` in `S053`
-- Last verified checkpoint: `7.7` and Gate 7 in `S053`
-- Last session: `S053`
-- Last verified commit: resistics `4ac30b6`, recording verified hardening
-  through Checkpoint 7.6;
+- Active checkpoint: Final review gate
+- Checkpoint state: `verified`
+- Last completed checkpoint: `8.2` in `S055`
+- Last verified checkpoint: `8.2` and the final gate in `S055`
+- Last session: `S055`
+- Last verified commit: resistics `b79f6df`, recording verified hardening
+  through Checkpoint 7.7; Checkpoints 8.1-8.2 are verified but uncommitted;
   regressioninc `9eb11a4` is the base of uncommitted Checkpoints 1.1 and 1.2
   work
 - Current blocker: none
-- Next exact action: review `.agents/plans/modernization.md` against the
-  implemented MTH5, flow/job, TUI, packaging, and MyST contracts, then mark
-  stale current-state guidance completed or superseded.
+- Next exact action: review the complete Checkpoints 8.1-8.2 diff and create
+  the owner-selected final hardening record commit; branch promotion and every
+  remote/release follow-up remain outside scope.
 
 Current worktree caveat:
 
-- Resistics `4ac30b6` records verified hardening through Checkpoint 7.6. The
-  Checkpoint 7.7 contributor/release guidance, combined coverage gate, focused
-  TUI test boundary, guards, changelog, and execution record are uncommitted.
-  The required empty `pyrefly-baseline.json` remains intentionally untracked.
+- Resistics `b79f6df` records verified hardening through Checkpoint 7.7.
+  Checkpoint 8.1's architecture reconciliation and Checkpoint 8.2's audit,
+  bounded Pydantic/plugin cleanup, guidance corrections, and execution record
+  are uncommitted. The required empty `pyrefly-baseline.json` remains
+  intentionally untracked.
 - The owner's minimum/maximum Python CI intent remains a requirement of
   deferred Checkpoint 1.6 after the obsolete hosted workflows were removed;
   D053 makes that current matrix Python 3.12/3.14.
@@ -262,9 +263,9 @@ or short command/result reference. Detailed output belongs in the session log or
 | 7.6 | resistics | `verified` | S052; strict HTML/link gate; 808 doctests; 16 plots |
 | 7.7 | resistics | `verified` | S053; permanent contributor/release guidance; 80.62% coverage |
 | Gate 7 | resistics | `verified` | S042-S053; strict MyST HTML/doctest/plot/reference gate |
-| 8.1 | resistics | `not_started` | Reconcile active plans |
-| 8.2 | resistics | `not_started` | Repeat complete audit |
-| Final gate | resistics | `not_started` | All gates complete or owned deferral |
+| 8.1 | resistics | `verified` | S054; modernization record reconciled to implemented architecture |
+| 8.2 | resistics | `verified` | S055; complete comparative audit and bounded cleanup |
+| Final gate | resistics | `verified` | S055; all local gates pass; F001-F005 and remote deferrals owned |
 
 ## Phase Execution Briefs
 
@@ -419,6 +420,41 @@ threshold for a Pixi trial was not met.
 - Exit evidence: every governing outcome satisfied or explicitly deferred, and
   `mth5` demonstrably production-ready. Promotion remains outside scope.
 
+## Checkpoint 8.2 Audit Outcome
+
+The final audit was run on CPython 3.13.5 under WSL2/Linux on 2026-07-24.
+Generated inventory and TUI evidence is below
+`.artifacts/hardening/final/`; documentation and paired-package artifacts are
+under `/tmp/resistics-checkpoint-8-2-*`.
+
+| Area | Phase 0 verified baseline | Checkpoint 8.2 result |
+| --- | --- | --- |
+| Tests | 373 pytest tests, including the then-configured doctests | 351 source tests plus 808 authoritative Sphinx doctests; all pass |
+| Branch coverage | 75.96% | 80.59% through the maintained combined gate |
+| Source size | 21,015 production and 6,051 test lines | 23,176 production and 7,930 test lines; the increase owns new flow/job/explorer/service contracts and their tests |
+| Largest boundaries | one 2,673-line `tui.py`; `plot.py` 1,200; `gather.py` 1,235; `project.py` 1,224 | TUI app 417 with focused screens/services; plot 741 plus graph 662; gather facade 176 with 259-522-line owners; project 1,366 plus private MTH5 boundary 209 |
+| Complexity | 17 CCR001, 5 C901, 4 ECE001 | 21 comparable CCR001 and 3 unsuppressed C901; the retired ECE001 plugin cannot parse the package's PEP 695 type aliases |
+| TUI cold import | 2.2659 s median | 0.2034 s median, a 91.02% reduction |
+| TUI first screen | 2.076730 s median | 0.092583 s median, a 95.54% reduction |
+| TUI action/handler checks | 5,200 cached checks in 0.002322 s at the Phase 4.1 implementation point | 5,200 checks in 0.925247 s with zero instrumented I/O; 177.932 µs/check; measured handlers at or below 0.351 ms |
+| Dependency weight | 174 locked packages and 910 MB environment | 158 locked packages and 842 MB environment |
+| Typing | mypy 209 errors; Pyrefly evaluation baseline 175 | Pyrefly 1.1.1 reports 0 errors, with 2 narrow suppressions and an empty error baseline |
+| Public documentation inventory | 566/706 raw documented objects (80.2%); 778 prompts; 16 plots | 605/702 raw documented objects (86.2%); the 97 exclusions are the configured Pydantic validators and Textual callbacks; 822 prompts inventoried, 808 executed, and all 16 plots verified |
+| Documentation build | not timed | strict 36-source HTML/tutorial/plot/doctest gate passed in 58.20 s |
+| Package build/install | not timed | RegressionInC wheel 0.19 s; Resistics sdist plus wheel 0.72 s; isolated paired runtime install 1.26 s; final warmed minimum-floor paired-wheel check 1.40 s |
+
+### Owned follow-ups
+
+These issues are deliberately narrower than another hardening phase.
+
+| ID | Owner | Follow-up and evidence | Consequence while open |
+| --- | --- | --- | --- |
+| F001 | Resistics maintainer; next focused TUI performance change | Cache the active tab or otherwise remove the DOM query from `ProjectExplorerScreen.check_action`; the predicate remains zero-I/O and far below the 50 ms handler limit, but 5,200 checks now take 0.925247 s rather than 0.002322 s | Footer reevaluation carries avoidable CPU cost; responsiveness remains within the verified bound |
+| F002 | Resistics maintainer; next flow/TUI complexity refactor | Decompose `FlowValidator.validate`, `ProjectExplorerService.build_plot_figure`, and `CreateProjectScreen.create`, the three unsuppressed McCabe findings; use the 21-function cognitive inventory only as review evidence because that retired plugin is not a maintained gate | These functions remain harder to review, but Ruff prevents new unsuppressed McCabe debt |
+| F003 | Resistics maintainer; before further time-pipeline growth | Split the 2,272-line `time.py` at stable data-model, transformation, and resampling/filter boundaries while preserving public imports; reassess the 1,571-line `window.py` only from the same evidence | Two cohesive numerical modules remain large; this does not weaken their tested public contracts |
+| F004 | Repository owner; standalone data cleanup | Confirm no downstream fixture consumer depends on the 14 tracked, unreferenced historical ASCII/bz2/NumPy paths below `data/time/`, then remove the classified 71,001,339-byte migration-data tree in one reviewable change | Repository checkout weight remains about 68 MiB higher; no supported runtime or documentation path uses these files |
+| F005 | Resistics maintainer; 2.0 compatibility review | Remove `ResisticsModel.dict()` and `.json()` after a deprecation boundary; Checkpoint 8.2 migrated all 15 production and 2 test callers, leaving zero repository callers | External callers retain old names backed by Pydantic v2 semantics; new repository use is prohibited |
+
 ## Verification Evidence Standard
 
 Record exact commands, exit status, and meaningful totals. A statement such as
@@ -449,33 +485,33 @@ and must be re-measured in Phase 0 before they are treated as verified.
 | Metric | Audit value | Verified baseline | Latest value | Evidence |
 | --- | --- | --- | --- | --- |
 | Tests | 372 collected; 371 passed; 1 failed | 373 passed | 351 passed; 808 Sphinx doctests separate | S053 |
-| Branch coverage | approximately 76% | 75.96% | 80.62%; source suite plus Sphinx doctests | S053 coverage XML |
-| Production Python | approximately 21,011 lines | 21,015 | 24,071 | S037 report |
-| Tests | approximately 5,941 lines | 6,051 | 7,757 | S037 report |
+| Branch coverage | approximately 76% | 75.96% | 80.59%; source suite plus Sphinx doctests | S055 coverage XML |
+| Production Python | approximately 21,011 lines | 21,015 | 23,176 | S055 final report |
+| Tests | approximately 5,941 lines | 6,051 | 7,930 | S055 final report |
 | `resistics/tui.py` | 2,673 lines | 2,673 | `app.py` 436; project/logging modules 2,923 | S033 report |
-| `resistics/plot.py` | 1,200 lines | 1,200 | plot 700; flow graph 617 | S034 report |
-| `resistics/gather.py` | 1,235 lines | 1,235 | facade 183; criteria 247; data 582; plan 312; project 645 | S035 report |
-| `resistics/project.py` | 1,224 lines | 1,224 | project 1,209; private MTH5 boundary 291 | S036 report |
-| `resistics/testing.py` | 1,296 lines | 1,296 | 816; suite-only factories 195 under tests | S037 report |
+| `resistics/plot.py` | 1,200 lines | 1,200 | plot 741; flow graph 662 | S055 final report |
+| `resistics/gather.py` | 1,235 lines | 1,235 | facade 176; criteria 276; data 522; plan 259; project 510 | S055 final report |
+| `resistics/project.py` | 1,224 lines | 1,224 | project 1,366; private MTH5 boundary 209 | S055 final report |
+| `resistics/testing.py` | 1,296 lines | 1,296 | 657; suite-only factories 195 under tests | S055 final report |
 | Flake8 | approximately 40 findings | 43 findings | 43 findings | S001 |
-| Legacy complexity | not recorded | 17 CCR001; 5 C901; 4 ECE001 | same | S002 |
+| Legacy complexity | not recorded | 17 CCR001; 5 C901; 4 ECE001 | 21 CCR001; 3 C901; ECE001 cannot parse PEP 695 | S055 audit |
 | Black format | not recorded | 26 files differ | 26 files differ | S001 |
 | mypy | 210 errors across 17 files | 209 across 17 files | removed | S016 |
 | Pyrefly | not installed | 175 errors across 17 files | 0 new errors | S016 |
-| TUI cold import | approximately 2.18 seconds | 2.2659 s median | 0.2715 s median | S033 report |
-| TUI first screen | not measured | 2.076730 s median | 0.235886 s median | S028 probe |
-| Cached TUI action checks | not measured | 5,200 in 0.002322 s; zero instrumented I/O | same | S023 XML |
-| TUI binding refresh ownership | not measured | calls 200/3/3/1 | calls 100/1/1/0; 13.007 ms maximum | S024 XML |
+| TUI cold import | approximately 2.18 seconds | 2.2659 s median | 0.2034 s median | S055 final report |
+| TUI first screen | not measured | 2.076730 s median | 0.092583 s median | S055 probe |
+| Cached TUI action checks | not measured | 5,200 in 0.002322 s; zero instrumented I/O | 5,200 in 0.925247 s; zero instrumented I/O | S055 XML; F001 |
+| TUI binding refresh ownership | not measured | calls 200/3/3/1 | calls 100/1/1/0; 0.351 ms maximum | S055 XML |
 | Explorer resource parsing | repeated by table, job, and selection | one parse per file identity | zero reads on cache hits | S025 tests |
 | TUI project/explorer loading | synchronous before first project screen | loading surface before blocked open/summary release | inactive tabs lazy; stale results rejected | S027 tests |
 | Terminal progress rendering | two unconditional `tqdm` loops | same | zero; serializable callbacks through TUI | S029 tests |
 | TUI module boundary | one module | one 2,673-line module | app 436; project 499; project mixins 63-756; logging 322; services 642; state 156 | S033 artifacts |
-| Public docstring coverage | not measured | 80.2%; 566/706 | 86.8%; 638/735 | S033 report |
-| Executable docstring examples | not measured | 778 prompts | 808 prompts | S049 |
+| Public docstring coverage | not measured | 80.2%; 566/706 | 86.2%; 605/702 raw; enforced contract clean | S055 report and quality gate |
+| Executable docstring examples | not measured | 778 prompts | 822 inventoried; 808 executed | S055 report and Sphinx |
 | Executable docstring plots | not measured | 16 directives | same | S002 report |
 | Executable tutorials | legacy Sphinx-Gallery | none | 6 MyST-NB pages; 4 interactive Plotly figures | S050 |
-| Locked packages | not recorded | 174 | 158 | S051 lock |
-| Local `.venv` size | approximately 897 MB | 910 MB | 744 MB | S038 |
+| Locked packages | not recorded | 174 | 158 | S055 lock |
+| Local `.venv` size | approximately 897 MB | 910 MB | 842 MB | S055 synced environment |
 
 For timing measurements, record the machine/runtime context and multiple runs.
 Do not compare one cold run with one warm run or turn machine-specific timings
@@ -753,6 +789,35 @@ old id when evidence changes the direction.
   excludes only marked elapsed-time tests from instrumentation. This preserves
   the 75.95% floor, removes the known coverage-only TUI failures, and does not
   restore pytest's deleted raw-docstring execution path.
+- `D065` (2026-07-23): Close the standalone/app-backend modernization plan as
+  a reconciled architecture record rather than leaving its pre-implementation
+  failures and numbered migration tasks active. Record the final
+  public-Pydantic/private-dataclass boundary, canonical MTH5 project tree,
+  class-path-keyed `ParameterSet`, independent `GatherCriteria`,
+  `JobDefinition`/`ResolvedJob` split, qualified process discovery, narrow
+  RegressionInC adapter, UI-neutral explorer service, and MyST-only
+  documentation contract. Preserve two measured decisions for Checkpoint 8.2:
+  classify the unreferenced historical `data/time/` files and either wire or
+  remove the serialized but currently inert external `plugin_paths` field.
+  Also quantify the bounded Pydantic v2-backed `dict()`/`json()` aliases rather
+  than falsely declaring those old call names absent.
+- `D066` (2026-07-24): Resolve the bounded architecture findings by making the
+  canonical `project/plugins/` package the sole project-local discovery
+  boundary and removing the serialized but inert external `plugin_paths`
+  field and `init()` argument. Pydantic continues to ignore that obsolete key
+  when reading older metadata. Migrate all 15 production and 2 test
+  `dict()`/`json()` callers to `model_dump()`/`model_dump_json()` while
+  retaining the v2-backed aliases only as an explicitly owned external
+  compatibility boundary through the 2.0 review.
+- `D067` (2026-07-24): Close the comparative audit with maintained gates as
+  the production authority and retired tools as measurement-only evidence.
+  Keep Ruff's configured McCabe gate; do not restore Flake8 merely to retain
+  cognitive/expression plugins, one of which cannot parse current PEP 695
+  syntax. Classify the unreferenced 71,001,339-byte `data/time/` tree as
+  removable migration data pending the repository owner's provenance check.
+  Record the active-tab query regression, three McCabe functions, two large
+  numerical modules, data removal, and compatibility aliases as F001-F005
+  rather than reopening completed architecture phases.
 
 ## Blocker Log
 
@@ -4507,3 +4572,149 @@ correct a factual error; note the correction explicitly.
   a verified suggested checkpoint commit; no commit was requested or created.
 - Exact next action: reconcile `.agents/plans/modernization.md` against the
   completed MTH5, flow/job, TUI, packaging, and MyST architecture.
+
+### S054 - 2026-07-23 - Reconcile the active architecture plan
+
+- Checkpoint state at start: Checkpoint 7.7 and Gate 7 were verified in S053;
+  Checkpoint 8.1 was ready. The S053 changes remained uncommitted on the
+  owner's last verified `4ac30b6` commit. During S054 the owner committed that
+  verified file set as `b79f6df`; the reconciliation preserved that commit and
+  continued from its new HEAD.
+- Starting branch, HEAD, and worktree: `mth5` at `4ac30b6` with the verified
+  uncommitted Checkpoint 7.7 files and the required empty
+  `pyrefly-baseline.json`.
+- Session objective: reconcile `.agents/plans/modernization.md` with the
+  implemented architecture so obsolete failures, names, sequencing, and
+  compatibility goals cannot direct future work.
+- Work completed: converted the modernization plan into a completed,
+  reconciled architecture record. Replaced its stale untracked-prototype,
+  collection-failure, competing-project, Pydantic v1, reader-selection, and
+  monolithic-configuration claims with the implemented standalone/library
+  boundary, Pydantic DTO/private-dataclass rule, canonical MTH5 project and
+  `TimeData` contracts, exact project tree, qualified process discovery,
+  flow/parameter/criteria/job responsibilities, RegressionInC adapter, TUI
+  service/worker/cache rules, logging surface, and MyST documentation path.
+  Added an original-phase disposition table and a maintained locked
+  verification command set.
+- Reconciled naming and supersessions: parameters are keyed by qualified
+  process class rather than node ID; `JobDefinition` is authored YAML,
+  `ResolvedJob` is the validated plan, and `ProcessingJob` is the in-memory
+  binding; independent `GatherCriteria` and `processing/criteria/` are part of
+  the final project contract; app-backend readiness means presentation-neutral
+  services rather than a `resistics-app` dependency.
+- Bounded audit discoveries: external `ProjectMetadata.plugin_paths` values are
+  serialized but not consumed by `ProcessCatalog`, and historical ASCII/bz2/
+  NumPy files under `data/time/` are unreferenced rather than active public
+  readers or proven fixtures. The record no longer claims either capability
+  and assigns their wire/remove/classify decision to Checkpoint 8.2. It also
+  assigns measurement of the Pydantic v2-backed `dict()`/`json()` compatibility
+  aliases to that audit.
+- Files changed: `.agents/plans/modernization.md` and this implementation
+  record. The owner committed the previously uncommitted Checkpoint 7.7 file
+  set separately during this session.
+- Decisions added or superseded: D065 closes the modernization task queue,
+  records the final architecture vocabulary and boundaries, and owns the three
+  bounded audit decisions above.
+- Verification commands and results:
+  - Focused project, flow, job, regression, explorer, and UI-neutral service
+    suites pass all 82 tests in 3.59 seconds.
+  - The permanent legacy-packaging guard passes.
+  - Repository searches find none of the old active-work, failed-collection,
+    competing-project, node-keyed-parameter, or Configuration-registry claims
+    outside their explicit supersession context.
+  - `git diff --check` passes.
+- Measurements/artifacts: no generated artifact is required for this
+  documentation-only reconciliation; S054 test evidence is recorded here.
+- Known failures or incomplete work: Checkpoint 8.1 has no remaining work.
+  Checkpoint 8.2 must perform the complete comparative audit and turn the
+  explicitly bounded compatibility aliases, unreferenced data, inert plugin
+  metadata, and any measured size/complexity risks into removals or owned
+  follow-ups.
+- Checkpoint state at end: `8.1` is `verified`; Checkpoint 8.2 is ready.
+- Commit readiness or commit id: the architecture record and execution record
+  form a verified suggested checkpoint commit on `b79f6df`; no commit was
+  requested or created.
+- Exact next action: run the complete Checkpoint 8.2 audit, compare every
+  current metric with Phase 0, and record narrowly owned remaining risks.
+
+### S055 - 2026-07-24 - Complete the comparative hardening audit
+
+- Checkpoint state at start: Checkpoint 8.1 was verified in S054 and
+  Checkpoint 8.2 was not started.
+- Starting branch, HEAD, and worktree: `mth5` at `b79f6df`; the uncommitted
+  Checkpoint 8.1 changes to `.agents/plans/modernization.md` and this record
+  were preserved, as was the required untracked empty
+  `pyrefly-baseline.json`.
+- Session objective: repeat every Phase 0 audit category, compare the final
+  measurements, resolve the three bounded S054 findings, and close the local
+  final gate with narrowly owned residual risks.
+- Work completed: added the comparative audit table and F001-F005 follow-up
+  register; corrected the last active Black guidance to Ruff; reconciled the
+  plugin section in the project-structure plan; removed the serialized but
+  unused external `plugin_paths` field and `init()` argument; updated the
+  plugin docs to the canonical `project/plugins/` package; migrated all 15
+  production and 2 test `dict()`/`json()` calls to Pydantic v2 names; added
+  focused removal assertions and release notes. Classified the 14 unreferenced
+  historical `data/time/` files as removable migration data, with provenance
+  review and deletion assigned to F004 rather than deleting 71,001,339 bytes
+  during the audit.
+- Files changed: the three active agent guidance/planning records, this
+  execution record, `CHANGELOG.md`, project/plugin documentation,
+  `resistics/project.py`, five numerical/fixture modules with serialization
+  calls, and their focused project/calibration/synthetic-data tests. No
+  dependency metadata, lock, historical data file, or sibling file changed.
+- Decisions added or superseded: D066 records the canonical plugin boundary
+  and Pydantic v2 caller migration; D067 records the final measurement/tool
+  authority, data classification, and bounded follow-ups.
+- Verification commands and results:
+  - Focused project, calibration, decimation, numerical-pipeline, and time
+    suites pass all 77 tests. The final source suite passes all 351 tests in
+    40.11 seconds.
+  - The maintained combined coverage gate passes 350 instrumented source
+    tests and 808 Sphinx doctests at 80.59%, above the unchanged 75.95% floor.
+  - Ruff format and lint, pydoclint, Pyrefly, all seven pre-commit hooks, the
+    legacy-packaging guard, lock check, and `git diff --check` pass. Pyrefly
+    reports zero errors, two narrow suppressions, and no baseline entries.
+  - The strict documentation gate passes all 36 sources, six executed
+    MyST-NB tutorials, 16 fenced plot artifacts, and 808 doctests. The isolated
+    timed run completed in 58.20 seconds; the final post-change run also passed
+    while sharing the machine with the source and coverage gates.
+  - The focused TUI gate passes with zero instrumented predicate I/O.
+    Repeated evidence records 5,200 checks in 0.925247 seconds and binding
+    refresh calls `100,1,1,0`, with a 0.351 ms maximum measured handler.
+  - The final locked all-group sync resolves 158 packages. The Python
+    3.12-3.14 OSV audit finds no known vulnerability or adverse project status
+    across 157 audited packages per target and retains zero accepted risks.
+  - The final Python 3.12 minimum-floor check builds and installs paired local
+    wheels, selects all 17 checked direct floors exactly across a 72-package
+    resolution, verifies 73 compatible installed packages, and imports both
+    packages only from site-packages. Its warmed final run completed in 1.40
+    seconds.
+  - A fresh Resistics source distribution and wheel built in 0.72 seconds
+    under `/tmp/resistics-checkpoint-8-2-final-dist-ANAcNR`; both advertise the
+    1.0.0a3 contract and contain `resistics/py.typed`. An isolated current
+    paired runtime install completed in 1.26 seconds and passed `uv pip check`.
+- Measurements/artifacts:
+  `.artifacts/hardening/final/codebase.json` records 23,176 production lines,
+  7,930 test lines, 605/702 raw public docstrings (86.2%), 822 prompt markers,
+  120 fenced doctest directives, 16 fenced plots, and a five-sample TUI import
+  median of 0.2034 seconds. The five-sample first-screen median is 0.092583
+  seconds. The current environment is 842 MB. The comparable complexity
+  inventory is 21 CCR001 and 3 unsuppressed C901 findings; the retired ECE001
+  plugin cannot parse the current PEP 695 aliases.
+- Known failures or incomplete work: no local gate failure remains. Initial
+  sandboxed documentation, coverage, dependency, and pre-commit attempts could
+  not use network or local kernel sockets; their approved retries passed.
+  F001-F005 own the measured TUI query cost, three McCabe functions, two large
+  numerical modules, historical data removal, and final alias deprecation.
+  RegressionInC release review, hosted CI/documentation, protected publishing,
+  standalone registry resolution, and branch promotion remain the previously
+  documented owner deferrals.
+- Checkpoint state at end: Checkpoint 8.2 and the final review gate are
+  `verified`; the programme is locally verified.
+- Commit readiness or commit id: Checkpoints 8.1-8.2 are verified and ready
+  for an owner-selected final hardening record commit on `b79f6df`; no commit
+  was requested or created.
+- Exact next action: inspect the complete Checkpoints 8.1-8.2 diff, commit the
+  verified final hardening record if desired, then address only the owned
+  follow-ups without reopening the completed programme.

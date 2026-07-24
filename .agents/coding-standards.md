@@ -13,7 +13,7 @@ Pydantic objects that can be used by any caller.
 
 ## Formatting
 
-- Use Black formatting.
+- Use Ruff formatting.
 - Keep line length at 88 characters.
 - Use ASCII unless a file already uses non-ASCII or the content requires it.
 - Prefer clear imports over dense one-line imports.

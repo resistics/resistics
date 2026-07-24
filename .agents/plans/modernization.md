@@ -1,144 +1,81 @@
-# Resistics Standalone and App Backend Modernization Plan
+# Resistics Standalone and App-Backend Modernization Record
 
-## Purpose
+Status: completed and reconciled
+Last updated: 2026-07-23
+Implementation branch: `mth5`
+Reconciled by: code-hardening Checkpoint 8.1
 
-Resistics should remain a standalone Python package for scripts, notebooks, and
-batch processing, while also providing the stable backend contract used by
-`resistics-app`. The core package should own processing, validation,
-serialization, project discovery, and result metadata. The app should own UI,
-interaction design, and any transport or process-management decisions.
+## Purpose and authority
 
-This plan focuses on four connected changes:
+Resistics remains a standalone Python package for scripts, notebooks, batch
+processing, and its Textual terminal application. The library owns scientific
+processing, validation, serialization, MTH5 project discovery, job execution,
+and result metadata. Presentation layers own interaction design and any future
+transport or process-management choices.
 
-- Move all Pydantic models and serialization to Pydantic v2.
-- Make MTH5 the only public input format.
-- Replace monolithic processing configuration with flows, parameter sets, and
-  jobs.
-- Keep numerical complex-domain regression in `regressioninc`, with resistics
-  owning MT-specific preparation and result packaging.
+This file began as the implementation plan for the Pydantic 2, MTH5-only,
+flow/job, and RegressionInC migrations. Those migrations have now been
+reconciled against the code. This document records the implemented architecture
+and the disposition of the original phases; it is no longer an active task
+queue. The code-hardening implementation record owns the remaining audit work.
 
-## Current State
+When this record and the implementation disagree, treat the implementation and
+its tests as the current state, then update this record explicitly. Do not
+revive a superseded compatibility path merely because it appears in repository
+history.
 
-- The environment is already resolving Pydantic `2.13.4`.
-- `resistics/flow.py` and `tests/test_flow.py` are active untracked work and
-  already prototype flow, parameter, and job concepts.
-- `tests/test_flow.py` passes with `UV_CACHE_DIR=/tmp/uv-cache uv run pytest
-  tests/test_flow.py -q`, with one Pydantic v1 validator deprecation warning.
-- Full test collection currently fails early because Pydantic v2 treats
-  `_types` on `ResisticsProcess` as a private model attribute, so subclass
-  registration breaks during import.
-- Full test collection also finds a `regressioninc` import mismatch:
-  `resistics.regression` imports `regressioninc.linear.models`, but the sibling
-  package currently exposes `regressioninc.base` and `regressioninc.linear`.
-- There are two project directions in the code:
-  - `resistics/project.py` and `resistics/letsgo.py` still model directory-based
-    projects with configured time readers.
-  - `resistics/resp.py` starts an MTH5-backed project model with Pydantic v2
-    datetime handling and a proposed project structure.
-- Existing docs and examples still describe ASCII/NumPy readers,
-  `resistics-readers`, and old `Configuration` behavior.
+## Implemented architecture
 
-## Target Architecture
+### Standalone library boundary
 
-### Standalone Package
+The package can be used without starting the TUI. Its public library contracts
+support:
 
-Resistics must remain useful without `resistics-app`.
+- creating, opening, inspecting, and deterministically closing an MTH5-backed
+  project;
+- listing surveys, stations, runs, sampling frequencies, time spans, channels,
+  and concurrent recordings without loading full time-series arrays;
+- creating, loading, validating, and saving flows, parameter sets, gather
+  criteria, and jobs;
+- resolving human-authored jobs into concrete batches before execution;
+- executing the same jobs from Python with structured progress and
+  cancellation callbacks;
+- archiving resolved job metadata and writing derived project artifacts; and
+- plotting intermediate data, transfer functions, flow graphs, and job plans.
 
-Required standalone capabilities:
+The `resistics` command is a Textual adapter over these library contracts.
+Future GUIs, services, or transports may consume the same models and services,
+but no web framework, IPC framework, or external application package belongs
+in the core contract.
 
-- Open and inspect MTH5-backed projects from Python.
-- List surveys, stations, runs, sample rates, time spans, and concurrent
-  recordings.
-- Build, load, validate, and save processing flows, parameter sets, and jobs.
-- Execute jobs from scripts and notebooks with progress callbacks.
-- Write reproducible result metadata and solution files.
-- Plot and inspect intermediate and final products where the existing package
-  already supports that.
+### Pydantic and dataclass boundary
 
-### App Backend
+Pydantic v2 owns public validated and serialized contracts: processing and data
+models, project summaries, explorer results, process schemas, flow resources,
+job validation, lifecycle events, and diagnostic log entries. These models
+provide YAML/JSON serialization and JSON schema for presentation-layer forms.
 
-The same core APIs should be app-safe.
+Dataclasses are reserved for private implementation records where validation or
+serialization is not part of the boundary, such as cache keys, worker
+messages, render plans, and regression progress helpers. Public explorer and
+service results must remain frozen Pydantic models; private immutable
+bookkeeping may remain dataclasses.
 
-Required backend capabilities:
+New and migrated code uses Pydantic v2 validators and `model_validate`,
+`model_dump`, `model_dump_json`, and `model_copy`. `ResisticsModel` still
+provides bounded `dict()` and `json()` aliases for external callers. They are
+compatibility aliases implemented with v2 semantics, not a Pydantic v1
+dependency. Repository code must not call them; their final removal is assigned
+to the 2.0 compatibility review.
 
-- Pydantic DTOs for project summaries, survey/station/run listings, flow
-  definitions, parameter schemas, job validation, progress events, job status,
-  and result summaries.
-- JSON schema generation for app forms and validation.
-- Deterministic serialization to YAML/JSON for user-authored configs and
-  archived job metadata.
-- No dependency on GUI frameworks, FastAPI, IPC libraries, or app-specific
-  state.
-- Clear cancellation, error, warning, and progress status surfaces for
-  long-running processing.
+### MTH5-only projects and time data
 
-## Migration Phases
+`resistics.project.Project` is the canonical project API.
+`resistics.project.MTH5File` provides the matching standalone inspection
+contract. Both own read-only MTH5 handles and support `close()` and context
+manager cleanup. Failed construction closes any partially opened handle.
 
-### Phase 1: Pydantic v2 Foundation
-
-1. Pin the project dependency to Pydantic v2 in `pyproject.toml`.
-2. Convert base model helpers in `resistics.common`:
-   - Replace class `Config` with `model_config = ConfigDict(...)`.
-   - Replace `self.json()` with `self.model_dump_json()`.
-   - Replace `self.dict()` with `self.model_dump()`.
-   - Replace `.copy(deep=True)` with `.model_copy(deep=True)`.
-   - Replace `.parse_file(path)` with explicit `Path.read_text()` plus
-     `model_validate_json`.
-3. Make subclass registries explicit:
-   - Declare registries as `ClassVar[dict[str, type[...]]]`.
-   - Do not store registries as Pydantic model fields or private attrs.
-4. Replace validators:
-   - Use `@field_validator(..., mode="before")` for input coercion.
-   - Use `@field_validator(..., mode="after")` or `@model_validator` for derived
-     fields that depend on multiple fields.
-   - Avoid mutating input dictionaries inside validators.
-5. Move the Pydantic v2 `RSDateTime` serializer/validator pattern from
-   `resistics/resp.py` into `resistics/sampling.py`.
-6. Add compatibility helper functions only where they reduce mechanical churn;
-   new code should use v2 APIs directly.
-
-Acceptance criteria:
-
-- Importing all resistics modules no longer fails on Pydantic private attrs.
-- Pydantic deprecation warnings are removed from core modules.
-- Existing metadata JSON round trips still work where the public model remains.
-
-### Phase 2: Explicit Registry-Based Serialization
-
-Keep the old capability of initializing the right class from saved JSON/YAML,
-but make it explicit and v2-native.
-
-1. Introduce a small registry utility for registered model families:
-   - Processes
-   - Transfer functions
-   - Regression solver adapters
-   - Flow step handlers, where needed
-2. Use a discriminator field consistently:
-   - Prefer `name` for backward compatibility with existing saved process
-     metadata.
-   - Prefer `type` or `type_id` for flow step definitions.
-3. Validate unknown names with clear errors that list known registered types.
-4. Support plugin registration without importing app code.
-5. Document that deserializing plugin-defined classes requires importing or
-   loading the plugin first.
-
-Acceptance criteria:
-
-- `Configuration`-style JSON/YAML can still recreate registered process classes.
-- Transfer functions round trip through JSON/YAML.
-- Unknown process and transfer-function names fail with actionable errors.
-
-### Phase 3: MTH5-Only Public Input
-
-1. Make the MTH5-backed project model the canonical public project API.
-2. Merge useful work from `resistics/resp.py` into `resistics/project.py` or a
-   clearly named project backend module.
-3. Fix current `resp.py` issues during merge:
-   - `check_project` currently returns inside the subdirectory loop.
-   - MTH5 file lifecycle needs explicit open/close behavior.
-   - MTH5 path serialization should be stable relative to project directory
-     where practical.
-4. Define canonical project structure:
+The canonical project structure is:
 
 ```text
 project/
@@ -146,168 +83,218 @@ project/
 ├── processing/
 │   ├── flows/
 │   ├── parameters/
+│   ├── criteria/
 │   └── jobs/
 ├── data/
 │   └── [survey]/[station]/
 │       ├── [run]/
 │       └── results/
-│           └── [output_label]/
+│           └── [output_label]/[sampling_frequency]/
 ├── logs/
 └── plugins/
 ```
 
-5. Add an MTH5-to-`TimeData` adapter so existing decimation, windowing,
-   spectral, calibration, gathering, and regression internals can be reused.
-6. Remove non-MTH5 readers from public defaults.
-7. Retire or hide old directory-reader project loading from public docs and
-   examples.
-8. Keep old reader classes only if they are required temporarily for tests or
-   conversion utilities; they should not be part of default workflows.
+The source MTH5 file is opened read-only and is not used as a derived-artifact
+store. Project metadata records its path and reference time. Spectra, masks,
+transfer functions, job archives, and logs belong in the project tree.
 
-Acceptance criteria:
+`MTH5TimeReader` is the only public time-series source reader.
+`Project.read_run()` and `MTH5File.read_run()` resolve an MTH5 run and return
+the channel-labelled `TimeData` contract used by the numerical pipeline.
+`TimeData` remains an in-memory processing model backed by a labelled array;
+accepting NumPy values to construct that in-memory model does not make NumPy
+files a supported input format.
 
-- A standalone user can initialize and load a project from an MTH5 file.
-- The app can list surveys, stations, runs, sample rates, and time ranges
-  without loading full time-series data.
-- Public docs no longer present ASCII/NumPy as supported input workflows.
+The old directory-reader project API, `resp.py`, `letsgo.py`, reader selection,
+and ASCII/NumPy time readers have been removed. Historical ASCII, bz2, and
+NumPy files still present below `data/time/` are not referenced by public code
+or documentation. Checkpoint 8.2 classified them as removable migration data;
+F004 requires a provenance check before deletion. They must not return to
+defaults, documentation, or tutorials.
 
-### Phase 4: Flow, Parameters, and Job Model
+### Flows, parameters, criteria, and jobs
 
-Use three separate concepts.
+The implemented names and responsibilities are:
 
-`FlowDefinition`:
+`FlowDefinition`
+: A serializable staged directed acyclic graph. Each `FlowStage` has `run` or
+  `station_rate` scope, and each `FlowNode` names a stable ID, a qualified
+  concrete `ResisticsProcess` class path, input edges, and whether its
+  configuration comes from the parameter set or gather criteria. A flow
+  contains no ordinary process parameter values or UI layout.
 
-- Defines processing order and connectivity.
-- Contains step ids and step types.
-- Does not contain user parameter values beyond structural defaults needed by
-  the flow.
+`ParameterSet`
+: Reusable process configuration keyed by qualified process class path. This
+  deliberately supersedes the original proposal to key values by node ID:
+  repeated uses of one process class share its reusable configuration.
 
-`ParameterSet`:
+`GatherCriteria`
+: Station- and sampling-frequency-specific gathering and remote-reference
+  policy. Criteria are independent project resources rather than parameter-set
+  fields.
 
-- Defines parameter values for a flow.
-- Stores values by flow node id.
-- Does not define input sites, stations, runs, or time ranges.
+`JobDefinition`
+: The human-authored YAML contract. It references project-local flow,
+  parameter, and optional criteria files and supplies survey, station,
+  sampling-frequency, and stage scope, output label, and overwrite policy.
 
-`ProcessingJob`:
+`ResolvedJob`
+: A validated job containing loaded resources, selected stages, planned
+  station/rate batches, resolved paths, and the executable binding.
 
-- Binds a flow reference, configuration reference, runtime inputs, and output
-  label.
-- Runtime inputs include survey, station, run, sampling frequency, time range,
-  remote reference, and project path as needed.
-- Batch jobs are expanded into individual resolved jobs before execution.
+`ProcessingJob`
+: The in-memory flow/parameters/runtime/output binding used by validation and
+  execution. It is not the persisted human-authored job format.
 
-Implementation steps:
+`ProjectJobs`
+: The project-local repository and validation boundary. Normal configuration
+  errors return `JobValidation` with complete errors and warnings rather than
+  escaping into a presentation layer.
 
-1. Keep the useful pieces of `resistics/flow.py`.
-2. Use `ParameterSet` for reusable node parameter values.
-3. Introduce unresolved and resolved job models:
-   - File-authored job references flow/parameters YAML paths.
-   - Resolved job contains the loaded flow/parameter models for execution.
-4. Make YAML the preferred human-authored format and JSON schema the preferred
-   app-form contract.
-5. Ensure execution writes resolved job metadata beside outputs.
-6. Keep `FlowExecutor` pure Python with callbacks for progress events.
-7. Add app-safe validation results instead of raising exceptions for normal user
-   configuration mistakes.
+`JobRunner`
+: The synchronous library executor. It expands selected batches, runs stages,
+  supports cancellation, emits structured `JobProgressEvent` values, cleans
+  partial outputs after failure or cancellation, captures warnings in project
+  logs, and archives `job_info.json` beside completed results.
 
-Acceptance criteria:
+YAML is the human-authored resource format. JSON is used for archived execution
+metadata and Pydantic schema/data interchange. Output labels are validated as
+single safe path components.
 
-- Flows, parameters, and jobs round trip through YAML.
-- The app can validate a job before execution and show field-level errors.
-- Standalone users can execute the same job from Python.
+### Process discovery and trusted plugins
 
-### Phase 5: Regression Boundary
+Flow nodes use qualified Python class paths rather than the original global
+configuration registry. `ProcessCatalog` discovers built-in processes and
+trusted project plugin modules, while `resolve_process_class()` validates a
+requested concrete class directly. Unknown or invalid paths produce actionable
+validation errors.
 
-1. Update imports to current `regressioninc` layout:
-   - `Regressor` from `regressioninc.base`
-   - `LeastSquares` and other linear models from `regressioninc.linear`
-2. Add a small resistics adapter layer for solver selection.
-3. Keep MT-specific data preparation in resistics:
-   - `RegressionInputMetadata`
-   - `RegressionInputData`
-   - `RegressionPreparerGathered`
-   - `RegressionPreparerSpectra`
-   - `Solution`
-4. Move or keep numerical regression algorithms in `regressioninc`.
-5. Do not let app code call `regressioninc` directly for standard resistics
-   workflows; use resistics solver adapters.
+The canonical `project/plugins/` package is discovered automatically. Plugin
+code is executable trusted code, not an untrusted data format, and must
+subclass `ResisticsProcess` and declare the same input, output, runtime,
+validation, and schema contracts as built-in processes.
 
-Acceptance criteria:
+Checkpoint 8.2 removed the serialized but inert
+`ProjectMetadata.plugin_paths` field and matching `init()` argument. The
+canonical `project/plugins/` package remains the sole project-local discovery
+boundary. Existing metadata containing the obsolete key remains loadable
+because unknown metadata fields are ignored.
 
-- Existing synthetic regression tests pass through the adapter.
-- Solver choices are serializable in parameter sets.
-- Future `regressioninc` layout changes affect only the adapter layer.
+This qualified-path design supersedes the proposal to preserve monolithic
+`Configuration`-style registry deserialization. Existing data and
+transfer-function polymorphism remain owned by their model families; flow
+execution has no built-in dispatch table.
 
-### Phase 6: Docs and Examples
+### RegressionInC boundary
 
-1. Update README and getting-started docs:
-   - MTH5 is the public input format.
-   - Resistics is both standalone and app-backend-ready.
-   - Flow/parameter set/job replaces monolithic processing configuration.
-2. Rewrite examples:
-   - Project initialization from MTH5.
-   - Listing project contents.
-   - Creating a flow, parameter set, and job.
-   - Running standalone processing.
-   - Loading results and plotting transfer functions.
-3. Remove or archive old read examples for ASCII, bz2, and NumPy.
-4. Update API docs to include flow/project backend modules.
-5. Ensure examples and docs do not mention unsupported public input formats.
+Resistics imports `LeastSquares` from `regressioninc.linear` through the small
+`get_least_squares_regressor()` construction boundary and relies on a private
+fit protocol rather than exposing RegressionInC internals to callers.
+Resistics owns MT-specific gathering, predictor/observation preparation,
+progress reporting, transfer-function packaging, and solution metadata.
+RegressionInC owns the numerical linear estimator.
 
-Acceptance criteria:
+Presentation code does not call RegressionInC directly for normal Resistics
+workflows. A future RegressionInC layout change should affect the construction
+boundary and its focused tests rather than project, flow, job, or TUI code.
 
-- Docs build without deprecated Pydantic warnings from resistics.
-- Public examples use only MTH5 input.
-- Standalone and app-backend usage are both documented.
+### TUI and explorer boundary
 
-## Testing Strategy
+The TUI is split into a small public facade, application owner, stable screen
+modules, UI-neutral services, cached explorer models, and logging support.
+`ProjectExplorerService` can be exercised without constructing a Textual
+application and returns frozen Pydantic DTOs from `ProjectExplorerIndex`.
 
-Run commands with a writable uv cache in this environment:
+Project opening, discovery, job execution, plotting preparation, and other
+blocking work run outside the UI thread. Cache hits and footer action
+predicates perform no project or filesystem I/O. Cache invalidation belongs to
+the mutation that changes the corresponding state, and stale worker results
+cannot replace newer selections.
+
+The Logs tab captures Resistics and dependency diagnostics without allowing a
+worker thread to write Textual widgets. It preserves warnings that are hidden
+from the terminal while Textual owns the display. Plotly figures remain a
+library result and are opened by the presentation adapter.
+
+### Documentation and examples
+
+Maintained documentation is Markdown/MyST only. Standard Sphinx autodoc,
+through the single MyST-aware adapter, is the only API generator. Six small
+MyST-NB tutorials cover MTH5 project creation and discovery, flows and
+parameters, job validation and execution, calibration and remote reference,
+and plotting results and plans.
+
+Public examples use MTH5 input only. Rich examples and plots remain with the
+objects they document when that is where users will find them most useful.
+The strict local documentation command builds warning-fatal nitpicky HTML,
+executes all tutorials, verifies protected plots, and runs the complete fenced
+doctest inventory. HTML is the only supported published output.
+
+## Original phase disposition
+
+| Original phase | Disposition | Implemented result |
+| --- | --- | --- |
+| 1. Pydantic v2 foundation | Completed with bounded alias cleanup recorded above | Pydantic v2 models, validators, serialization, Python 3.12-3.14 |
+| 2. Registry serialization | Superseded; inert external plugin paths removed in 8.2 | Qualified process paths, direct validation, built-in and canonical-project process catalogue |
+| 3. MTH5-only input | Completed | Canonical `Project`/`MTH5File`, owned read-only handles, `MTH5TimeReader` |
+| 4. Flow, parameters, and jobs | Completed with corrected final naming | Staged DAGs, class-keyed parameters, independent criteria, `JobDefinition`/`ResolvedJob` |
+| 5. Regression boundary | Completed | Narrow RegressionInC construction/protocol boundary; MT preparation remains local |
+| 6. Docs and examples | Completed | MTH5-only MyST site, six executable tutorials, current API reference |
+
+## Superseded starting-state claims
+
+The following statements described the repository before implementation and
+must not guide new work:
+
+- `flow.py` and its tests are tracked production code, not an untracked
+  prototype.
+- Full test collection passes under Pydantic v2; the old private-attribute and
+  RegressionInC import failures are closed.
+- `project.py` is the sole project direction; `resp.py` and `letsgo.py` no
+  longer exist.
+- Monolithic `Configuration`, reader selection, and ASCII/NumPy public input
+  workflows are removed rather than compatibility targets.
+- Parameter values are keyed by qualified process path, not flow node ID.
+- `JobDefinition` is the authored job and `ResolvedJob` is its validated
+  execution plan; `ProcessingJob` is only the loaded in-memory binding.
+- The implemented TUI is a supported presentation adapter. “App backend”
+  means presentation-neutral library/service contracts, not a dependency on a
+  separate `resistics-app` package.
+
+## Maintained verification
+
+From the paired Resistics/RegressionInC checkout, use the locked environment:
 
 ```console
-UV_CACHE_DIR=/tmp/uv-cache uv run pytest
-UV_CACHE_DIR=/tmp/uv-cache uv run pytest tests/test_flow.py -q
-UV_CACHE_DIR=/tmp/uv-cache uv run pytest tests/test_regression.py -q
+uv sync --locked --all-groups
+uv run --locked --no-sync pytest
+uv run --locked --no-sync python scripts/check_coverage.py
+uv run --locked --no-sync ruff format --check resistics tests scripts
+uv run --locked --no-sync ruff check resistics tests scripts
+uv run --locked --no-sync pydoclint --config=pyproject.toml resistics
+uv run --locked --no-sync pyrefly check
+uv run --locked --no-sync python scripts/check_documentation.py
 ```
 
-Add focused tests for:
+After changes to TUI state, actions, discovery, or service boundaries, also run:
 
-- Pydantic v2 model round trips.
-- Registry and discriminator behavior.
-- MTH5 project initialization, loading, summary tables, and close behavior.
-- MTH5-to-`TimeData` adapter reads.
-- Flow/parameter-set/job YAML round trips.
-- Job validation and batch expansion.
-- Progress events and failure events.
-- Regression adapter behavior.
-- App-facing DTO JSON schema generation.
+```console
+uv run --locked --no-sync pytest -q tests/test_tui.py -k "cached_action_checks_are_fast or binding_refreshes_follow_owned_state_transitions"
+```
 
-## Implementation Order
+Release candidate verification and remote follow-ups are documented in
+`docs/source/releasing.md`. Hosted CI, protected tags, Trusted Publishing,
+hosted documentation deployment, and standalone registry installation remain
+repository-owner work; they are not active or verified merely because the
+local architecture is complete.
 
-1. Fix Pydantic v2 import blockers.
-2. Fix `regressioninc` import boundary enough to collect tests.
-3. Convert remaining v1 Pydantic APIs module by module.
-4. Establish canonical MTH5 project API.
-5. Wire MTH5 read adapter into existing processing internals.
-6. Finalize flow/parameters/job models.
-7. Add app-safe DTOs and progress/status surfaces.
-8. Update docs and examples.
-9. Remove or archive unsupported public reader workflows.
+## Final audit outcome
 
-## Non-Goals
-
-- Do not add GUI, web, or IPC dependencies to core resistics.
-- Do not make `resistics-app` a dependency of resistics.
-- Do not rewrite numerical processing kernels unless required by tests or the
-  `regressioninc` split.
-- Do not preserve public ASCII/NumPy input workflows after the MTH5 migration.
-
-## Assumptions
-
-- Existing `uv.lock`, `resistics/flow.py`, and `tests/test_flow.py` changes are
-  active user work and should not be reverted.
-- Public input support should become MTH5-only.
-- Registry-based deserialization remains useful for standalone configs,
-  plugins, and app-authored YAML/JSON.
-- Resistics should expose stable backend contracts, but transport remains
-  outside the core package.
+Checkpoint 8.2 owns measurement and risk recording, not another architecture
+migration. It migrated all repository callers from the bounded
+`ResisticsModel.dict()`/`json()` aliases to their Pydantic v2 names, removed
+the inert external `plugin_paths` field, classified the unreferenced legacy
+time-data files, and measured current module size and complexity, performance,
+coverage, dependencies, typing, documentation, and package build/install
+results. Remaining issues are narrow, owned follow-ups rather than reopened
+architecture phases.

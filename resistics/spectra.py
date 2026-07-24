@@ -472,7 +472,7 @@ class FourierTransform(ResisticsProcess):
         """
         from scipy.fft import next_fast_len, rfftfreq
 
-        metadata_dict = win_data.metadata.dict()
+        metadata_dict = win_data.metadata.model_dump()
         data = {}
         spectra_levels_metadata = []
         messages = []
@@ -550,7 +550,7 @@ class FourierTransform(ResisticsProcess):
 
         :return: Spectra-level metadata with frequency coordinates.
         """
-        metadata_dict = level_metadata.dict()
+        metadata_dict = level_metadata.model_dump()
         metadata_dict["n_freqs"] = len(freqs)
         metadata_dict["freqs"] = freqs
         return SpectraLevelMetadata(**metadata_dict)
@@ -704,7 +704,7 @@ class EvaluationFreqs(ResisticsProcess):
 
         :return: The spectra data at the evaluation frequencies
         """
-        metadata_dict = spec_data.metadata.dict()
+        metadata_dict = spec_data.metadata.model_dump()
         data = {}
         spectra_levels_metadata = []
         messages = []
@@ -774,7 +774,7 @@ class EvaluationFreqs(ResisticsProcess):
 
         :return: Spectra metadata carrying the selected frequency coordinates.
         """
-        metadata_dict = level_metadata.dict()
+        metadata_dict = level_metadata.model_dump()
         metadata_dict["n_freqs"] = len(eval_freqs)
         metadata_dict["freqs"] = eval_freqs.tolist()
         return SpectraLevelMetadata(**metadata_dict)
@@ -1038,7 +1038,7 @@ class SpectraSmootherUniform(SpectraProcess):
                 spec_data.get_level(ilevel), smooth_length, axis=-1
             )
             messages.append(f"Smoothed level {ilevel} with num points {smooth_length}")
-        metadata = SpectraMetadata(**spec_data.metadata.dict())
+        metadata = SpectraMetadata(**spec_data.metadata.model_dump())
         metadata.history.add_record(self._get_record(messages))
         logger.info("Fourier coefficients calculated at evaluation frequencies")
         return SpectraData(metadata, data)
@@ -1111,7 +1111,7 @@ class SpectraSmootherGaussian(SpectraProcess):
                 spec_data.get_level(ilevel), self.sigma, axis=-1
             )
             messages.append(f"Smoothed level {ilevel} with gaussian filter")
-        metadata = SpectraMetadata(**spec_data.metadata.dict())
+        metadata = SpectraMetadata(**spec_data.metadata.model_dump())
         metadata.history.add_record(self._get_record(messages))
         logger.info("Fourier coefficients calculated at evaluation frequencies")
         return SpectraData(metadata, data)

@@ -600,7 +600,7 @@ class DecimatedData(ResisticsData):
 
         for ilevel in range(0, self.metadata.n_levels):
             logger.info(f"Plotting decimation level {ilevel}")
-            metadata_dict = self.metadata.levels_metadata[ilevel].dict()
+            metadata_dict = self.metadata.levels_metadata[ilevel].model_dump()
             metadata_dict["chans"] = self.metadata.chans
             metadata_dict["chans_metadata"] = self.metadata.chans_metadata
             time_data = TimeData(TimeMetadata(**metadata_dict), self.data[ilevel])
@@ -659,7 +659,7 @@ class Decimator(ResisticsProcess):
         :return: DecimatedData instance with all the decimated data
         """
         decimation_fnc = self._resample if self.resample else self._decimate
-        metadata_dict = time_data.metadata.dict()
+        metadata_dict = time_data.metadata.model_dump()
         data = {}
         levels_metadata = []
         messages = []
@@ -673,7 +673,9 @@ class Decimator(ResisticsProcess):
             data[ilevel] = time_data_new.data
             time_data = time_data_new
             fs = dec_params.dec_fs[ilevel]
-            levels_metadata.append(DecimatedLevelMetadata(**time_data.metadata.dict()))
+            levels_metadata.append(
+                DecimatedLevelMetadata(**time_data.metadata.model_dump())
+            )
             messages.append(f"Decimated level {ilevel}, inc. factor {factor}, fs {fs}")
         completed = list(range(len(data)))
         target = list(range(dec_params.n_levels))

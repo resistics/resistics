@@ -28,8 +28,8 @@ an output label, and execution policy. Validation resolves those references
 before a job runs, and execution emits structured progress, cancellation, and
 failure events.
 
-Projects may name trusted plugin directories, allowing custom process classes
-to participate through the same qualified-path and validation contracts as
+Custom process classes below a project's canonical `plugins/` package
+participate through the same qualified-path and validation contracts as
 built-in processes.
 
 ### TUI and standalone library

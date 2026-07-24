@@ -15,6 +15,7 @@ from resistics.project import (
     CANONICAL_PROJ_DIRS,
     PROJ_FILE,
     Project,
+    ProjectMetadata,
     check_project,
     get_flow_path,
     get_job_path,
@@ -190,7 +191,6 @@ def test_project_data_browser_lists_mth5_and_project_artifacts(tmp_path):
         ref_time="2020-01-01T00:00:00",
         mth5_data=FakeMTH5(mth5_path),
         table=pd.DataFrame(),
-        plugin_paths=[],
         surveys=[],
         stations=[],
         runs=[],
@@ -266,7 +266,6 @@ def test_project_data_deletion_is_labelled_and_preserves_an_in_tree_mth5(tmp_pat
         ref_time="2020-01-01T00:00:00",
         mth5_data=FakeMTH5(mth5_path),
         table=pd.DataFrame(),
-        plugin_paths=[],
         surveys=[],
         stations=[],
         runs=[],
@@ -298,6 +297,7 @@ def test_init_creates_canonical_project_structure(tmp_path):
 
     assert init(project_path, mth5_path, "2020-01-01 00:00:00")
     assert (project_path / PROJ_FILE).exists()
+    assert "plugin_paths" not in (project_path / PROJ_FILE).read_text()
     for subdir in CANONICAL_PROJ_DIRS:
         assert (project_path / subdir).is_dir()
     flow_path = project_path / "processing" / "flows" / DEFAULT_FLOW_FILENAME
@@ -491,6 +491,9 @@ def test_legacy_project_compatibility_surface_is_removed():
     }
     assert not any(hasattr(project_module, name) for name in removed)
     assert "force" not in signature(init).parameters
+    assert "plugin_paths" not in signature(init).parameters
+    assert "plugin_paths" not in ProjectMetadata.model_fields
+    assert "plugin_paths" not in Project.model_fields
     assert (
         signature(get_results_path).parameters["output_label"].default
         is Parameter.empty

@@ -1,5 +1,11 @@
 # Next release
 
+- **Removed:** The serialized but unused external `plugin_paths` project field
+  and `init()` argument. Trusted project processes are discovered only from
+  the canonical `project/plugins/` package.
+- **Changed:** All repository serialization call sites now use Pydantic v2
+  `model_dump()` and `model_dump_json()` names; the bounded legacy aliases
+  remain only as an external compatibility surface.
 - **Added:** Permanent contributor and local release-verification guides now
   document uv setup, quality and coverage gates, MyST authoring, suppression
   policy, focused TUI performance checks, and separately owned hosted

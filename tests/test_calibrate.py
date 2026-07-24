@@ -43,7 +43,7 @@ def test_sensor_calibration_json(monkeypatch):
 
     def mock_read_bytes(*args):
         """Mock the read_bytes used by pydantic"""
-        return get_cal_data().json().encode()
+        return get_cal_data().model_dump_json().encode()
 
     monkeypatch.setattr(Path, "read_bytes", mock_read_bytes)
     reader = SensorCalibrationJSON()

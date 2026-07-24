@@ -575,7 +575,7 @@ class SensorCalibrator(Calibrator):
                     level_metadata.freqs, data[ilevel][:, idx], cal_data
                 )
             messages.append(f"Calibrated {chan} with data from {cal_data.file_path}")
-        metadata = SpectraMetadata(**spec_data.metadata.dict())
+        metadata = SpectraMetadata(**spec_data.metadata.model_dump())
         metadata.history.add_record(self._get_record(messages))
         return SpectraData(metadata, data)
 

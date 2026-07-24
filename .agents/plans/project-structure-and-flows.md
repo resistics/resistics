@@ -220,29 +220,27 @@ def my_filter(data: TimeData, cutoff: float = 1.0) -> TimeData:
 
 A key requirement is allowing users to easily add their own processing logic.
 
-### 1. External Plugin Paths
-Instead of a fixed internal folder, the `resistics.json` file will contain a `plugin_paths` key.
-```json
-{
-  "mth5_path": "data.h5",
-  "plugin_paths": [
-    "/home/user/repos/my-custom-solvers",
-    "C:\\Users\\scientist\\Documents\\resistics-addons"
-  ]
-}
-```
-- **Why**: This allows users to keep their plugins in their own Git repositories, shared across multiple resistics projects, and version-controlled independently.
+### 1. Canonical Project Plugins
 
-### 2. Auto-Discovery Logic
-The `ExecutionEngine` will include a `PluginLoader` that:
-- Reads the `plugin_paths` from `resistics.json`.
-- Scans these directories for `.py` files.
-- Checks any paths in the `RESISTICS_PLUGINS` environment variable (for global/system-wide plugins).
-- Imports the modules, triggering registration.
-- Once registered, these custom steps appear in the **Flow Designer** and can be used in YAML flows.
+Custom process modules live below the project's `plugins/` package and are
+referenced by qualified `plugins.<module>.<class>` paths. The process catalogue
+discovers that package automatically. External plugin directories,
+`plugin_paths` metadata, and a `RESISTICS_PLUGINS` environment variable are not
+supported contracts.
+
+### 2. Discovery and Validation
+
+`ProcessCatalog` scans the canonical package for Python modules and validates
+each concrete class through the same descriptor, flow, parameter, runtime, and
+schema contracts used for built-in processes. Plugin code is trusted executable
+project code, not an untrusted configuration format.
 
 ### 3. Sharing and Testing
-Since custom processes are just Python files (optionally with an associated YAML for default parameters), they can be easily shared between researchers or committed to a project's version control.
+
+Custom processes and their tests can be committed with the project. A plugin
+that must be shared between projects should be packaged as an importable Python
+dependency and proposed through a separately designed discovery boundary
+rather than an arbitrary persisted filesystem path.
 
 ---
 

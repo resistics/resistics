@@ -416,7 +416,7 @@ def decimated_metadata(
     time_metadata = time_metadata_2chan(
         fs=fs, first_time=first_time, n_samples=n_samples
     )
-    metadata_dict = time_metadata.dict()
+    metadata_dict = time_metadata.model_dump()
     metadata_dict["fs"] = [x.fs for x in levels_metadata]
     metadata_dict["n_levels"] = n_levels
     metadata_dict["levels_metadata"] = levels_metadata
@@ -566,7 +566,7 @@ def spectra_data_basic() -> SpectraData:
         n_freqs=10,
         freqs=freqs,
     )
-    metadata_dict = time_metadata_1chan().dict()
+    metadata_dict = time_metadata_1chan().model_dump()
     metadata_dict["fs"] = [180]
     metadata_dict["n_levels"] = 1
     metadata_dict["levels_metadata"] = [level_metadata]
@@ -610,7 +610,7 @@ def _regression_input_metadata_single_site(
         eval_freqs=freqs,
         histories={"run1": History(), "run2": History()},
     )
-    cross_site = SiteCombinedMetadata(**in_site.dict())
+    cross_site = SiteCombinedMetadata(**in_site.model_dump())
     creator = {
         "name": "regression_input_metadata",
     }

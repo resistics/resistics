@@ -102,7 +102,7 @@ def evaluation_data(
         )
         for level, level_fs in enumerate(levels_fs)
     ]
-    metadata_values = time_metadata_general(chans).dict()
+    metadata_values = time_metadata_general(chans).model_dump()
     metadata_values.update(
         {
             "chans": chans,

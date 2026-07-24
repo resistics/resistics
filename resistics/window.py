@@ -1282,7 +1282,7 @@ class Windower(ResisticsProcess):
         :raises ProcessRunError: If the number of windows calculated in the window table does not
             match the size of the array views
         """
-        metadata_dict = dec_data.metadata.dict()
+        metadata_dict = dec_data.metadata.model_dump()
         data = {}
         win_levels_metadata = []
         messages = []
@@ -1442,7 +1442,7 @@ class WindowerTarget(Windower):
 
         :return: Per-level window views and their metadata.
         """
-        metadata_dict = dec_data.metadata.dict()
+        metadata_dict = dec_data.metadata.model_dump()
         data = {}
         win_levels_metadata = []
         messages = []

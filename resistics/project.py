@@ -129,7 +129,6 @@ class ProjectMetadata(ResisticsModel):
 
     mth5_path: Path
     ref_time: HighResDateTime
-    plugin_paths: list[Path] = Field(default_factory=list)
 
 
 class MTH5FileSummary(ResisticsModel):
@@ -554,7 +553,6 @@ class Project(_MTH5InspectionMixin, ResisticsModel):
     project_path: Path
     mth5_path: Path
     ref_time: HighResDateTime
-    plugin_paths: list[Path] = Field(default_factory=list)
     mth5_data: _MTH5Handle = Field(repr=False, exclude=True)
     table: pd.DataFrame = Field(repr=False, exclude=True)
     surveys: list[str] = Field(default_factory=list)
@@ -1132,7 +1130,6 @@ def init(
     mth5_path: Path | str,
     ref_time: DateTimeLike,
     overwrite: bool = False,
-    plugin_paths: list[Path | str] | None = None,
 ) -> bool:
     """Initialise an MTH5-backed resistics project.
 
@@ -1140,8 +1137,6 @@ def init(
         :param mth5_path: Existing MTH5 file used as the project's read-only source data.
         :param ref_time: Reference time used for sample and window calculations.
         :param overwrite: Replace existing project metadata when ``True``.
-        :param plugin_paths: Trusted directories containing project process plugins.
-
         :return: ``True`` after the project structure and metadata are created.
 
         **Examples**
@@ -1160,7 +1155,6 @@ def init(
     :param mth5_path: Path to the MTH5 file.
     :param ref_time: Ref time used by this operation.
     :param overwrite: Overwrite used by this operation.
-    :param plugin_paths: Plugin paths used by this operation.
     :return: Initialise an MTH5-backed resistics project.
     :raises ValueError: If the requested operation cannot satisfy its contract.
     """
@@ -1180,7 +1174,6 @@ def init(
     metadata = ProjectMetadata(
         mth5_path=mth5_path,
         ref_time=to_datetime(ref_time),
-        plugin_paths=[_as_path(path) for path in plugin_paths or []],
     )
     metadata_path.write_text(metadata.model_dump_json())
     logger.info(f"Project created in {project_path}")
@@ -1212,7 +1205,6 @@ def load(project_path: Path | str) -> Project:
             project_path=project_path,
             mth5_path=metadata.mth5_path,
             ref_time=metadata.ref_time,
-            plugin_paths=metadata.plugin_paths,
             mth5_data=mth5_data,
             table=table,
             surveys=sorted(table["survey"].dropna().unique().tolist()),

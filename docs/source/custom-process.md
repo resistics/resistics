@@ -66,8 +66,9 @@ Here `source` is the identifier of an earlier node that produces the required
 (custom-process-plugins)=
 ## Project plugins
 
-Project metadata may list trusted plugin directories. Keep custom modules in a
-stable location, use qualified paths that will remain valid when YAML is loaded
-later, and treat plugin code as executable project code rather than untrusted
+Keep custom modules below the canonical `project/plugins/` package and use
+qualified `plugins.<module>.<class>` paths that remain valid when YAML is loaded
+later. Treat plugin code as executable project code rather than untrusted
 configuration. The same descriptor and flow validation used for built-in
-processes applies to plugin classes.
+processes applies to plugin classes. External plugin directories are not part
+of the supported project contract.
