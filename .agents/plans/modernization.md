@@ -187,9 +187,10 @@ execution has no built-in dispatch table.
 
 ### RegressionInC boundary
 
-Resistics imports `LeastSquares` from `regressioninc.linear` through the small
-`get_least_squares_regressor()` construction boundary and relies on a private
-fit protocol rather than exposing RegressionInC internals to callers.
+Resistics imports `LeastSquares` from RegressionInC's stable top-level API
+through the small `get_least_squares_regressor()` construction boundary and
+relies on private fit/result protocols rather than exposing RegressionInC
+internals to callers.
 Resistics owns MT-specific gathering, predictor/observation preparation,
 progress reporting, transfer-function packaging, and solution metadata.
 RegressionInC owns the numerical linear estimator.

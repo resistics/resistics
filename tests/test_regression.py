@@ -23,6 +23,8 @@ And the corresponding predictor array has shape
 (n_wins x n_cross_chans x 2) x (n_in_chans x 2)
 """
 
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
@@ -68,7 +70,7 @@ def test_spectra_preparer_has_its_own_flow_contract():
 
 def test_linear_solver_rejects_a_regressor_without_coefficients():
     class MissingCoefficients:
-        coef = None
+        result_ = SimpleNamespace(coefficients=None)
 
         def fit(self, predictors, observations):
             return self

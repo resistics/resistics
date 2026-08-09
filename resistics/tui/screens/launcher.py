@@ -167,6 +167,9 @@ class CreateProjectScreen(Screen[None]):
                 f"{_feature_error('MTH5 inspection', exc)}"
             )
             return
+        finally:
+            # The first MTH5 import replaces process-global Loguru sinks.
+            _resistics_app(self)._reinstall_diagnostic_capture()
         self.mth5_path = mth5_path
         self.query_one("#mth5-path", Static).update(str(mth5_path))
         self.query_one("#reference-time", Input).value = summary.start_time or ""

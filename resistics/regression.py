@@ -14,7 +14,7 @@ from typing import Any, ClassVar, Protocol
 import numpy as np
 import pandas as pd
 from loguru import logger
-from regressioninc.linear import LeastSquares
+from regressioninc import LeastSquares
 
 from resistics.common import (
     CancellationCallback,
@@ -33,11 +33,18 @@ from resistics.spectra import SpectraData, SpectraMetadata
 from resistics.transfunc import Component, TransferFunction, get_component_key
 
 
+class _RegressionResult(Protocol):
+    # Minimal regressioninc result boundary required by the linear solver.
+    @property
+    def coefficients(self) -> np.ndarray: ...
+
+
 class _FittableRegressor(Protocol):
     # Minimal regressioninc/plugin boundary required by the linear solver.
-    coef: np.ndarray | None
+    @property
+    def result_(self) -> _RegressionResult: ...
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> object: ...
+    def fit(self, predictors: np.ndarray, observations: np.ndarray, /) -> object: ...
 
 
 @dataclass
@@ -764,7 +771,7 @@ class SolverLinear(Solver):
     ) -> np.ndarray:
         """Get coefficients for a single evaluation frequency and output channel
 
-        :param model: sklearn base estimator
+        :param model: RegressionInC-compatible estimator.
         :param obs: The observations
         :param preds: The predictors
 
@@ -773,9 +780,13 @@ class SolverLinear(Solver):
         :raises ValueError: If the regressor completes without producing coefficients.
         """
         model.fit(preds, obs)
-        if model.coef is None:
+        try:
+            coefficients = model.result_.coefficients
+        except AttributeError as exc:
+            raise ValueError("Regressor did not produce coefficients") from exc
+        if coefficients is None:
             raise ValueError("Regressor did not produce coefficients")
-        return model.coef
+        return coefficients
 
     def _get_solution(
         self,

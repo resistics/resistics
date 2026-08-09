@@ -305,6 +305,10 @@ class ResisticsTui(App[None]):
                 diagnostics=(_error_entry("Project loading", error),),
                 error=error,
             )
+        finally:
+            # MTH5 configures the process-global Loguru logger on its first
+            # lazy import, replacing the sink installed before project loading.
+            self._reinstall_diagnostic_capture()
         if generation != self._project_open_generation:
             try:
                 project.close()

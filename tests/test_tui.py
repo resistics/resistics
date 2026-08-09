@@ -14,6 +14,7 @@ from types import SimpleNamespace
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
+from loguru import logger
 from textual.widgets import (
     Button,
     DataTable,
@@ -51,6 +52,7 @@ from resistics.tui import (
     ProjectExplorerScreen,
     ResisticsTui,
 )
+from resistics.tui.logging import _TuiDiagnosticCapture, _TuiLogBuffer
 from resistics.tui.services import ProjectExplorerService
 
 
@@ -637,6 +639,45 @@ def test_tui_keeps_session_diagnostics_separate_from_job_activity(
     asyncio.run(run_test())
     assert first.closed
     assert second.closed
+
+
+def test_project_open_restores_logging_capture_after_dependency_reconfigure(
+    monkeypatch, tmp_path
+):
+    project = FakeProject(tmp_path / "project")
+    replacement_messages = []
+
+    def load(project_path):
+        assert project_path == project.project_path
+        logger.configure(
+            handlers=[
+                {
+                    "sink": lambda message: replacement_messages.append(
+                        message.record["message"]
+                    ),
+                    "level": "INFO",
+                }
+            ]
+        )
+        logger.warning("dependency-owned sink")
+        return project
+
+    monkeypatch.setattr("resistics.project.load", load)
+    buffer = _TuiLogBuffer()
+    with _TuiDiagnosticCapture(buffer) as capture:
+        app = ResisticsTui(
+            _diagnostic_buffer=buffer,
+            _diagnostic_capture=capture,
+        )
+
+        result = app._open_project_path(0, project.project_path)
+        logger.info("after project open")
+
+    assert result.project is project
+    assert replacement_messages == ["dependency-owned sink"]
+    assert [entry.message for entry in buffer.read_after(0).entries] == [
+        "after project open"
+    ]
 
 
 @pytest.mark.performance
