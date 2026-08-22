@@ -57,16 +57,16 @@ MTH5 recordings
          Project outputs
 ```
 
-- A **Flow** defines the ordered stages, processing functions, and data dependencies:
+- A **flow** defines the ordered stages, processing functions, and data dependencies:
   *what runs*.
-- **Parameters** configure those processing functions independently of the Flow:
+- A **parameter set** configures those processing functions independently of the flow:
   *how each step runs*.
-- **Criteria** are optional policies used by criteria-aware Flows to choose admitted
+- **Gather criteria** are optional policies used by criteria-aware flows to choose admitted
   windows, masks, and remote-reference stations: *which data are used*.
-- The Job's **Scope** limits surveys, stations, sampling frequencies, or stages.
-- The **Output label** keeps the resulting project data in a named namespace.
+- The job's **scope** limits surveys, stations, sampling frequencies, or stages.
+- The **output label** keeps the resulting derived data in a named namespace.
 
-A Job validates these references together before it runs. This makes a Flow reusable
+A job validates these references together before it runs. This makes a flow reusable
 with different settings, selection policies, targets, and output labels.
 """
 
@@ -94,11 +94,11 @@ TAB_HELP: dict[ProjectTab, _TabHelp] = {
         details=_processing_details("""
 ## What this is
 
-The Project tab is the high-level view of the current Resistics project. It identifies
+The Project tab is the high-level view of the current resistics project. It identifies
 the read-only MTH5 source, the project reference time, and the surveys, stations, runs,
 channels, and sampling frequencies available for processing.
 
-Resistics keeps flows, parameters, criteria, jobs, logs, and derived results in the
+resistics keeps flows, parameter sets, gather criteria, jobs, logs, and derived data in the
 project directory. It does not write those artifacts back into the source MTH5 file.
 
 ## What you can do here
@@ -117,7 +117,7 @@ project directory. It does not write those artifacts back into the source MTH5 f
 ## What this is
 
 The Data tab presents two sources: the original MTH5 hierarchy and artifacts created
-inside the Resistics project. MTH5 time series remain read-only; derived spectra,
+inside the resistics project. MTH5 time series remain read-only; derived spectra,
 masks, transfer functions, and other outputs live under the project data tree.
 
 Selecting an item displays its metadata on the right. Time-series channels from MTH5
@@ -133,8 +133,8 @@ and supported project artifacts can be plotted.
 
 ## How it connects
 
-Jobs read selected MTH5 recordings and write their outputs beneath the project data
-tree. The output label chosen by a Job separates different processing runs.
+Jobs read selected MTH5 recordings and write their outputs beneath the derived-data
+tree. The output label chosen by a job separates different processing runs.
 """,
     ),
     "flows": _TabHelp(
@@ -147,16 +147,16 @@ tree. The output label chosen by a Job separates different processing runs.
             """
 ## What this is
 
-A Flow is a reusable directed graph of concrete Python processing classes. Each stage
+A flow is a reusable directed graph of concrete Python processing classes. Each stage
 has a scope such as `run` or `station_rate`; each node identifies a process and maps
 its named inputs to earlier nodes. Validation checks imports, graph order, input and
 output types, configuration, and required runtime context before execution.
 
 ## What you can do here
 
-- Select a Flow to inspect or edit its YAML.
-- Press **P** to plot a valid Flow graph.
-- Copy, delete, or restore the built-in Flow definitions.
+- Select a flow to inspect or edit its YAML.
+- Press **P** to plot a valid flow graph.
+- Copy, delete, or restore the built-in flow definitions.
 - Refer to built-in processes by paths such as `resistics.time.RemoveMean`.
 """,
             """
@@ -182,7 +182,7 @@ class PassThrough(ResisticsProcess):
         return time_data
 ```
 
-Reference the class by its import path in a Flow node:
+Reference the class by its import path in a flow node:
 
 ```yaml
 - id: custom
@@ -191,7 +191,7 @@ Reference the class by its import path in a Flow node:
     time_data: read
 ```
 
-Configure the same qualified path in a Parameters file:
+Configure the same qualified path in a parameter-set file:
 
 ```yaml
 processes:
@@ -199,7 +199,7 @@ processes:
     label: custom
 ```
 
-Plugin classes use the same descriptor and Flow validation as built-in processes.
+Plugin classes use the same descriptor and flow validation as built-in processes.
 Keep them inside the project so their qualified paths remain importable when the YAML
 is loaded later.
 """,
@@ -213,16 +213,16 @@ is loaded later.
         details=_processing_details("""
 ## What this is
 
-A Parameter set maps qualified process-class paths to their configuration values.
-Keeping configuration separate lets several Jobs reuse one Flow with different
+A parameter set maps qualified process-class paths to their configuration values.
+Keeping configuration separate lets several jobs reuse one flow with different
 numerical or operational settings. A process omitted from the mapping uses its model
 defaults.
 
 ## What you can do here
 
-- Select a Parameter set to inspect or edit its YAML.
-- Copy, delete, or restore the built-in Parameter sets.
-- Match each configuration key exactly to the process path used by the Flow.
+- Select a parameter set to inspect or edit its YAML.
+- Copy, delete, or restore the built-in parameter sets.
+- Match each configuration key exactly to the process path used by the flow.
 - Use model validation errors to identify unsupported fields or values.
 """),
     ),
@@ -235,19 +235,19 @@ defaults.
         details=_processing_details("""
 ## What this is
 
-Criteria are optional station- and sampling-frequency policies for gathering persisted
+Gather criteria are optional station- and sampling-frequency policies for persisted
 evaluation data. They can combine named masks and choose no remote reference, an
 automatic remote reference, or an explicit list of remote stations.
 
-Criteria affect only Flows whose nodes request criteria configuration. A single-site
-Job can omit them.
+Gather criteria affect only flows whose nodes request criteria configuration. A
+single-site job can omit them.
 
 ## What you can do here
 
-- Select a Criteria file to inspect or edit its YAML.
+- Select a criteria file to inspect or edit its YAML.
 - Define policies by `survey/station` and sampling frequency.
-- Copy, delete, or restore the built-in Criteria examples.
-- Reference the file from a Job that uses a criteria-aware Flow.
+- Copy, delete, or restore the built-in gather-criteria examples.
+- Reference the file from a job that uses a criteria-aware flow.
 """),
     ),
     "jobs": _TabHelp(
@@ -259,15 +259,16 @@ Job can omit them.
         details=_processing_details("""
 ## What this is
 
-A Job is the runnable project-level definition. It names a Flow and Parameter set,
-optionally names Criteria, chooses a processing scope, and assigns an output label.
-Validation resolves all referenced YAML and process classes before the Job can run.
+A job is the runnable project-level definition. It names a flow and parameter set,
+optionally names gather criteria, chooses a processing scope, and assigns an output
+label. Validation resolves all referenced YAML and process classes before the job can
+run.
 
 ## What you can do here
 
-- Press **N** to create a Job from available project resources.
-- Select a Job to inspect, edit, copy, delete, or validate its YAML.
-- Press **P** to plot a valid Job and **J** to review and submit it.
+- Press **N** to create a job from available project resources.
+- Select a job to inspect, edit, copy, delete, or validate its YAML.
+- Press **P** to plot a valid job and **J** to review and run it.
 - Use scope fields to restrict surveys, stations, sampling frequencies, or stages.
 - Set `overwrite` deliberately when an output label already contains results.
 """),
@@ -278,21 +279,21 @@ Validation resolves all referenced YAML and process classes before the Job can r
         details="""
 ## What this is
 
-The Activity tab displays structured progress for the current or most recently run Job.
+The Activity tab displays structured progress for the current or most recently run job.
 Entries identify lifecycle state, processing task, target station or run, sampling
 frequency, elapsed time, and any reported failure.
 
 ## What you can do here
 
-- Follow a running Job without blocking the rest of the terminal interface.
+- Follow a running job without blocking the rest of the terminal interface.
 - Press **C** to request cancellation; the current processing step finishes first.
 - Return to Jobs to inspect or rerun the definition after completion.
 
 ## How it connects
 
-Submitting a validated Job switches here automatically. Completed work appears in the
+Running a validated job switches here automatically. Completed work appears in the
 Data tab, while diagnostic warnings and full exception details remain available in
-Session logs.
+Logs.
 """,
     ),
     "logs": _TabHelp(
@@ -304,7 +305,7 @@ Session logs.
 ## What this is
 
 Session logs retain INFO-and-higher diagnostics emitted while this terminal application
-is running. They are separate from Job activity and include dependency warnings,
+is running. They are separate from job activity and include dependency warnings,
 feature failures, source locations, and complete exception tracebacks when available.
 
 ## What you can do here

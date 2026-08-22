@@ -7,13 +7,14 @@ from pathlib import Path
 from time import monotonic
 from typing import TYPE_CHECKING, Any
 
+from rich.text import Text
 from textual import on, work
-from textual.widgets import Static, TabbedContent, TextArea, Tree
+from textual.widgets import Static, TabbedContent, Tree
 from textual.widgets._tree import TreeNode
 
-from resistics.tui.logging import _exception_entry
+from resistics.tui.logging import _error_entry
 from resistics.tui.screens.project_base import _ProjectExplorerBase
-from resistics.tui.services import _feature_error
+from resistics.tui.services import _notify_exception
 from resistics.tui.state import PlotTarget
 
 if TYPE_CHECKING:
@@ -36,14 +37,15 @@ class _ProjectDataMixin(_ProjectExplorerBase):
         self.action_state.plot_targets["project"] = (
             ("project", None) if summary.n_runs > 0 else None
         )
-        content = (
-            f"[b]{self.project.project_path.name}[/b]\n\n"
+        content = Text(self.project.project_path.name, style="bold")
+        content.append(
+            "\n\n"
             f"Project: {self.project.project_path}\n"
             f"MTH5: {summary.mth5_path}\n"
             f"MTH5 version: {summary.file_version}\n"
             f"Reference time: {self.project.ref_time!s}\n"
             f"Time span: {summary.start_time or '-'} → {summary.end_time or '-'}\n"
-            "Sample rates: "
+            "Sampling frequencies: "
             f"{', '.join(str(value) for value in summary.sample_rates) or '-'}\n\n"
             f"Surveys: {summary.n_surveys}\n"
             f"Stations: {summary.n_stations}\n"
@@ -67,15 +69,24 @@ class _ProjectDataMixin(_ProjectExplorerBase):
         self.action_state.plot_targets["data"] = None
         self.action_state.has_project_data_to_delete = state.has_project_data_to_delete
         for issue in state.issues:
+            message = f"Unable to inspect {issue.section}: {issue.message}"
+            self.log_buffer.append(_error_entry("Data discovery", message))
+        if state.issues:
+            noun = "issue" if len(state.issues) == 1 else "issues"
             self.notify(
-                f"Unable to inspect {issue.section}: {issue.message}",
+                f"Data discovery found {len(state.issues)} {noun}. See Logs for details.",
                 severity="warning",
+                markup=False,
             )
         self._add_data_catalog(project_node, list(state.project_data_items))
         self._add_data_catalog(mth5_node, list(state.mth5_data_items))
         tree.root.expand()
         project_node.expand()
         mth5_node.expand()
+        self._show_detail_state(
+            "#data-metadata",
+            "Select project or MTH5 data to view its metadata.",
+        )
 
     def _add_data_catalog(
         self, root: _DataTreeNode, items: list[ProjectDataItem]
@@ -116,9 +127,11 @@ class _ProjectDataMixin(_ProjectExplorerBase):
             key = f"{item.source}:{item.path}"
             self.data_items[key] = item
             if item.kind in {"directory", "group"}:
-                nodes[item.path] = parent.add(item.name, data=(item.source, item.path))
+                nodes[item.path] = parent.add(
+                    Text(item.name), data=(item.source, item.path)
+                )
             else:
-                parent.add_leaf(item.name, data=(item.source, item.path))
+                parent.add_leaf(Text(item.name), data=(item.source, item.path))
 
     def _data_item_for_node(
         self, node: _DataTreeNode | None = None
@@ -212,28 +225,24 @@ class _ProjectDataMixin(_ProjectExplorerBase):
     def _start_project_plot(self) -> None:
         if not self._has_project_timeline():
             return
-        self.notify("Opening project timeline")
         self._open_plot(("project", None))
 
     def _start_selected_data_plot(self) -> None:
         target = self.action_state.plot_targets["data"]
         if target is None:
             return
-        self.notify("Opening plot")
         self._open_plot(target)
 
     def _start_selected_flow_plot(self) -> None:
         target = self._flow_plot_target()
         if target is None:
             return
-        self.notify("Opening flow plot")
         self._open_plot(target)
 
     def _start_selected_job_plot(self) -> None:
         target = self._job_plot_target()
         if target is None:
             return
-        self.notify("Opening job plot")
         self._open_plot(target)
 
     @work(thread=True, exclusive=True, group="plotting")
@@ -255,25 +264,25 @@ class _ProjectDataMixin(_ProjectExplorerBase):
 
             from resistics.project import load
 
-            self.app.call_from_thread(self.notify, f"Building {plot_name}")
+            self.app.call_from_thread(
+                self.notify, f"Building {plot_name}…", markup=False
+            )
             plot_project = load(self.project.project_path)
             figure = self.service.build_plot_figure(plot_project, target)
-            build_seconds = monotonic() - started
-            self.app.call_from_thread(
-                self.notify,
-                f"{plot_name.capitalize()} built in {build_seconds:.1f}s; "
-                "opening browser",
-            )
             pio.show(figure)
-            self.app.call_from_thread(self.notify, f"{plot_name.capitalize()} opened")
-        except Exception as exc:
-            message = f"Unable to open {plot_name}: {_feature_error('Plotting', exc)}"
-            self.log_buffer.append(_exception_entry("Plotting", message, exc))
+            elapsed_seconds = monotonic() - started
             self.app.call_from_thread(
                 self.notify,
-                f"{message}\nSee Session logs for the full traceback.",
-                severity="error",
+                f"{plot_name.capitalize()} opened in {elapsed_seconds:.1f}s",
                 markup=False,
+            )
+        except Exception as exc:
+            self.app.call_from_thread(
+                _notify_exception,
+                self,
+                "Plotting",
+                f"Unable to open {plot_name}",
+                exc,
             )
         finally:
             if plot_project is not None and plot_project is not self.project:
@@ -282,32 +291,35 @@ class _ProjectDataMixin(_ProjectExplorerBase):
     @on(Tree.NodeSelected, "#data-tree")
     def show_data_metadata(self, event: Tree.NodeSelected) -> None:
         item = event.node.data
-        details = self.query_one("#data-metadata", TextArea)
         if item is None:
-            details.text = json.dumps(
-                {"message": "Select Project or MTH5 data"}, indent=2
+            self._show_detail_state(
+                "#data-metadata",
+                "Select project or MTH5 data to view its metadata.",
             )
             return
         try:
             source, path = item
             if source == "category":
-                details.text = json.dumps(
-                    {"message": f"Expand {path} to inspect its data."}, indent=2
+                self._show_detail_state(
+                    "#data-metadata", f"Expand {path} to inspect its data."
                 )
                 return
             if source == "project" and Path(path).suffix.lower() == ".json":
-                details.text = json.dumps(
-                    self.project.get_project_data_json(path), indent=2
-                )
+                content = json.dumps(self.project.get_project_data_json(path), indent=2)
             else:
                 metadata = (
                     self.project.get_project_data_metadata(path)
                     if source == "project"
                     else self.project.get_mth5_data_metadata(path)
                 )
-                details.text = metadata.model_dump_json(indent=2)
+                content = metadata.model_dump_json(indent=2)
+            self._show_detail_content("#data-metadata", content)
         except Exception as exc:
-            details.text = json.dumps({"error": str(exc)}, indent=2)
+            message = f"Unable to inspect metadata: {exc}"
+            self._show_detail_state("#data-metadata", message, error=True)
+            _notify_exception(
+                self, "Metadata inspection", "Unable to inspect metadata", exc
+            )
 
     @on(Tree.NodeHighlighted, "#data-tree")
     def update_data_plot_selection(self, event: Tree.NodeHighlighted) -> None:

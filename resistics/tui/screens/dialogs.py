@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -30,22 +31,12 @@ class ConfirmJobScreen(ModalScreen[bool]):
 
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
-        Binding("left", "previous_action", "Previous action", priority=True),
-        Binding("right", "next_action", "Next action", priority=True),
+        Binding("left", "previous_action", "Previous action"),
+        Binding("right", "next_action", "Next action"),
     ]
 
     CSS = """
-    ConfirmJobScreen { align: center middle; background: transparent; }
-    #confirm-dialog {
-        width: 72;
-        height: auto;
-        padding: 1 2;
-        border: round #faa881;
-        background: #202020;
-        color: #f7f4f2;
-    }
-    #confirm-actions { height: auto; align-horizontal: right; margin-top: 1; }
-    #confirm-actions Button { margin-left: 1; }
+    #confirm-dialog { width: 72; }
     """
 
     def __init__(self, validation: JobValidation):
@@ -58,22 +49,25 @@ class ConfirmJobScreen(ModalScreen[bool]):
             raise ValueError("A resolved job is required for confirmation")
         definition = resolved.definition
         stages = ", ".join(definition.scope.stages) or "all stages"
-        details = (
-            f"Submit [bold]{definition.name}[/bold]?\n\n"
+        details = Text()
+        details.append(definition.name, style="bold")
+        details.append(
+            "\n\n"
             f"Flow: {definition.flow}\n"
-            f"Parameters: {definition.parameters}\n"
-            f"Criteria: {definition.criteria or '-'}\n"
+            f"Parameter set: {definition.parameters}\n"
+            f"Criteria: {definition.criteria or 'None'}\n"
             f"Stages: {stages}\n"
             f"Output label: {definition.output_label}"
         )
-        with Vertical(id="confirm-dialog"):
+        with Vertical(id="confirm-dialog", classes="modal-dialog"):
+            yield Static("Run job", classes="modal-title", markup=False)
             yield Static(details)
-            with Horizontal(id="confirm-actions"):
+            with Horizontal(id="confirm-actions", classes="modal-actions"):
                 yield Button("Cancel", id="cancel", classes="dialog-action")
                 yield Button(
                     "Run job",
                     id="confirm",
-                    variant="success",
+                    variant="primary",
                     classes="dialog-action",
                 )
 
@@ -122,24 +116,12 @@ class CreateJobScreen(ModalScreen["JobDefinition | None"]):
 
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
-        Binding("left", "previous_action", "Previous action", priority=True),
-        Binding("right", "next_action", "Next action", priority=True),
+        Binding("left", "previous_action", "Previous action"),
+        Binding("right", "next_action", "Next action"),
     ]
 
     CSS = """
-    CreateJobScreen { align: center middle; }
-    #create-job-dialog {
-        width: 72;
-        height: auto;
-        padding: 1 2;
-        border: round #faa881;
-        background: #202020;
-        color: #f7f4f2;
-    }
     #create-job-dialog Input, #create-job-dialog Select { margin-bottom: 1; }
-    #create-job-status { height: auto; color: #faa881; }
-    #create-job-actions { height: auto; align-horizontal: right; margin-top: 1; }
-    #create-job-actions Button { margin-left: 1; }
     """
 
     def __init__(
@@ -164,8 +146,8 @@ class CreateJobScreen(ModalScreen["JobDefinition | None"]):
         parameter_value = (
             self.parameter_options[0][1] if self.parameter_options else Select.NULL
         )
-        with Vertical(id="create-job-dialog"):
-            yield Static("[bold]Create job template[/bold]")
+        with Vertical(id="create-job-dialog", classes="modal-dialog"):
+            yield Static("Create job", classes="modal-title", markup=False)
             yield Static("Job name")
             yield Input(placeholder="my_job", id="job-name")
             yield Static("Output label")
@@ -178,30 +160,35 @@ class CreateJobScreen(ModalScreen["JobDefinition | None"]):
                 value=flow_value,
                 id="job-flow",
             )
-            yield Static("Parameters")
+            yield Static("Parameter set")
             yield Select(
                 self.parameter_options,
-                prompt="Select parameters",
+                prompt="Select a parameter set",
                 allow_blank=not self.parameter_options,
                 value=parameter_value,
                 id="job-parameters",
             )
-            yield Static("Criteria")
+            yield Static("Criteria (optional)")
             yield Select(
                 self.criteria_options,
                 allow_blank=False,
                 value=_NO_CRITERIA_VALUE,
                 id="job-criteria",
             )
-            yield Static("", id="create-job-status")
-            with Horizontal(id="create-job-actions"):
+            yield Static(
+                "",
+                id="create-job-status",
+                classes="form-status",
+                markup=False,
+            )
+            with Horizontal(id="create-job-actions", classes="modal-actions"):
                 yield Button(
                     "Cancel", id="cancel-job-template", classes="dialog-action"
                 )
                 yield Button(
                     "Create job",
                     id="create-job-template",
-                    variant="success",
+                    variant="primary",
                     classes="dialog-action",
                     disabled=not can_create,
                 )
@@ -210,7 +197,8 @@ class CreateJobScreen(ModalScreen["JobDefinition | None"]):
         self.query_one("#job-name", Input).focus()
         if not self.flow_options or not self.parameter_options:
             self._set_status(
-                "Add valid flow and parameter YAML files before creating a job"
+                "Add a valid flow and parameter set before creating a job.",
+                severity="warning",
             )
 
     @on(Button.Pressed, "#cancel-job-template")
@@ -244,13 +232,13 @@ class CreateJobScreen(ModalScreen["JobDefinition | None"]):
             self._set_status(str(exc))
             return
         if name in self.existing_names:
-            self._set_status(f"A job named '{name}' already exists")
+            self._set_status(f"A job named '{name}' already exists.")
             return
         flow = self._select_value("#job-flow")
         parameters = self._select_value("#job-parameters")
         criteria = self._select_value("#job-criteria")
         if flow is None or parameters is None:
-            self._set_status("Choose a flow and parameters file")
+            self._set_status("Choose a flow and parameter set.")
             return
         self.dismiss(
             JobDefinition(
@@ -266,8 +254,11 @@ class CreateJobScreen(ModalScreen["JobDefinition | None"]):
         value = self.query_one(selector, Select).value
         return None if value is Select.NULL else str(value)
 
-    def _set_status(self, message: str) -> None:
-        self.query_one("#create-job-status", Static).update(message)
+    def _set_status(self, message: str, *, severity: str = "error") -> None:
+        status = self.query_one("#create-job-status", Static)
+        status.update(message)
+        status.set_class(severity == "error", "status-error")
+        status.set_class(severity == "warning", "status-warning")
 
     def _focus_action(self, increment: int) -> None:
         actions = [
@@ -285,24 +276,12 @@ class CopyYamlFileScreen(ModalScreen[str | None]):
 
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
-        Binding("left", "previous_action", "Previous action", priority=True),
-        Binding("right", "next_action", "Next action", priority=True),
+        Binding("left", "previous_action", "Previous action"),
+        Binding("right", "next_action", "Next action"),
     ]
 
     CSS = """
-    CopyYamlFileScreen { align: center middle; background: transparent; }
-    #copy-yaml-dialog {
-        width: 72;
-        height: auto;
-        padding: 1 2;
-        border: round #faa881;
-        background: #202020;
-        color: #f7f4f2;
-    }
     #copy-yaml-name { margin-top: 1; }
-    #copy-yaml-status { height: auto; margin-top: 1; color: #faa881; }
-    #copy-yaml-actions { height: auto; align-horizontal: right; margin-top: 1; }
-    #copy-yaml-actions Button { margin-left: 1; }
     """
 
     def __init__(self, source: Path):
@@ -310,17 +289,19 @@ class CopyYamlFileScreen(ModalScreen[str | None]):
         self.source = source
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="copy-yaml-dialog"):
-            yield Static(f"[bold]Copy {self.source.name}[/bold]")
+        title = Text("Copy ")
+        title.append(self.source.name, style="bold")
+        with Vertical(id="copy-yaml-dialog", classes="modal-dialog"):
+            yield Static(title, classes="modal-title")
             yield Static("The YAML content will be copied unchanged.")
             yield Input(value=f"{self.source.stem}_copy", id="copy-yaml-name")
-            yield Static("", id="copy-yaml-status")
-            with Horizontal(id="copy-yaml-actions"):
+            yield Static("", id="copy-yaml-status", classes="form-status", markup=False)
+            with Horizontal(id="copy-yaml-actions", classes="modal-actions"):
                 yield Button("Cancel", id="cancel-copy-yaml", classes="dialog-action")
                 yield Button(
                     "Copy file",
                     id="confirm-copy-yaml",
-                    variant="success",
+                    variant="primary",
                     classes="dialog-action",
                 )
 
@@ -347,7 +328,9 @@ class CopyYamlFileScreen(ModalScreen[str | None]):
                 _validate_yaml_file_stem(self.query_one("#copy-yaml-name", Input).value)
             )
         except ValueError as exc:
-            self.query_one("#copy-yaml-status", Static).update(str(exc))
+            status = self.query_one("#copy-yaml-status", Static)
+            status.update(str(exc))
+            status.add_class("status-error")
 
     def _focus_action(self, increment: int) -> None:
         actions = [
@@ -365,34 +348,22 @@ class DeleteYamlFileScreen(ModalScreen[bool]):
 
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
-        Binding("left", "previous_action", "Previous action", priority=True),
-        Binding("right", "next_action", "Next action", priority=True),
+        Binding("left", "previous_action", "Previous action"),
+        Binding("right", "next_action", "Next action"),
     ]
-
-    CSS = """
-    DeleteYamlFileScreen { align: center middle; background: transparent; }
-    #delete-yaml-dialog {
-        width: 72;
-        height: auto;
-        padding: 1 2;
-        border: round #ac3600;
-        background: #202020;
-        color: #f7f4f2;
-    }
-    #delete-yaml-actions { height: auto; align-horizontal: right; margin-top: 1; }
-    #delete-yaml-actions Button { margin-left: 1; }
-    """
 
     def __init__(self, source: Path):
         super().__init__()
         self.source = source
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="delete-yaml-dialog"):
-            yield Static(
-                f"Delete [bold]{self.source.name}[/bold]?\n\nThis cannot be undone."
-            )
-            with Horizontal(id="delete-yaml-actions"):
+        message = Text()
+        message.append(self.source.name, style="bold")
+        message.append("\n\nThis cannot be undone.")
+        with Vertical(id="delete-yaml-dialog", classes="modal-dialog modal-danger"):
+            yield Static("Delete YAML file", classes="modal-title", markup=False)
+            yield Static(message)
+            with Horizontal(id="delete-yaml-actions", classes="modal-actions"):
                 yield Button("Cancel", id="cancel-delete-yaml", classes="dialog-action")
                 yield Button(
                     "Delete file",
@@ -437,24 +408,11 @@ class DeleteProjectDataScreen(ModalScreen[ProjectDataDeletionRequest | None]):
 
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
-        Binding("left", "previous_action", "Previous action", priority=True),
-        Binding("right", "next_action", "Next action", priority=True),
+        Binding("left", "previous_action", "Previous action"),
+        Binding("right", "next_action", "Next action"),
     ]
 
-    CSS = """
-    DeleteProjectDataScreen { align: center middle; background: transparent; }
-    #delete-data-dialog {
-        width: 72;
-        height: auto;
-        padding: 1 2;
-        border: round #ac3600;
-        background: #202020;
-        color: #f7f4f2;
-    }
-    #delete-data-dialog Select { margin-top: 1; }
-    #delete-data-actions { height: auto; align-horizontal: right; margin-top: 1; }
-    #delete-data-actions Button { margin-left: 1; }
-    """
+    CSS = "#delete-data-dialog Select { margin-top: 1; }"
 
     def __init__(self, labels: Sequence[str]):
         super().__init__()
@@ -463,28 +421,28 @@ class DeleteProjectDataScreen(ModalScreen[ProjectDataDeletionRequest | None]):
     def compose(self) -> ComposeResult:
         options = [(label, label) for label in self.labels]
         value = self.labels[0] if self.labels else Select.NULL
-        with Vertical(id="delete-data-dialog"):
-            yield Static("[bold]Delete derived Project data[/bold]")
+        with Vertical(id="delete-data-dialog", classes="modal-dialog modal-danger"):
+            yield Static("Delete derived data", classes="modal-title", markup=False)
             yield Static("Output label")
             yield Select(
                 options,
-                prompt="No labelled data available",
+                prompt="No output labels found",
                 allow_blank=not self.labels,
                 value=value,
                 id="delete-data-label",
             )
             yield Static("The MTH5 file and project setup are never deleted.")
-            with Horizontal(id="delete-data-actions"):
+            with Horizontal(id="delete-data-actions", classes="modal-actions"):
                 yield Button("Cancel", id="cancel-delete-data", classes="dialog-action")
                 yield Button(
-                    "Delete label",
+                    "Delete selected data",
                     id="delete-data-label-action",
                     variant="error",
                     classes="dialog-action",
                     disabled=not self.labels,
                 )
                 yield Button(
-                    "Delete all Project data",
+                    "Delete all derived data",
                     id="delete-all-data-action",
                     variant="error",
                     classes="dialog-action",
@@ -530,23 +488,9 @@ class ConfirmProjectDataDeletionScreen(ModalScreen[bool]):
 
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
-        Binding("left", "previous_action", "Previous action", priority=True),
-        Binding("right", "next_action", "Next action", priority=True),
+        Binding("left", "previous_action", "Previous action"),
+        Binding("right", "next_action", "Next action"),
     ]
-
-    CSS = """
-    ConfirmProjectDataDeletionScreen { align: center middle; background: transparent; }
-    #confirm-delete-data-dialog {
-        width: 72;
-        height: auto;
-        padding: 1 2;
-        border: round #ac3600;
-        background: #202020;
-        color: #f7f4f2;
-    }
-    #confirm-delete-data-actions { height: auto; align-horizontal: right; margin-top: 1; }
-    #confirm-delete-data-actions Button { margin-left: 1; }
-    """
 
     def __init__(self, deletion: ProjectDataDeletion):
         super().__init__()
@@ -554,17 +498,25 @@ class ConfirmProjectDataDeletionScreen(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         if self.deletion.output_label is None:
-            scope = "all derived Project data"
+            scope = Text("all derived data")
         else:
-            scope = f"output label [bold]{self.deletion.output_label}[/bold]"
-        with Vertical(id="confirm-delete-data-dialog"):
-            yield Static(
-                f"Delete {scope}?\n\n"
-                f"{self.deletion.count} top-level path(s) will be removed. "
-                "The MTH5 file and project setup are retained.\n\n"
-                "This cannot be undone."
-            )
-            with Horizontal(id="confirm-delete-data-actions"):
+            scope = Text("data for output label ")
+            scope.append(self.deletion.output_label, style="bold")
+        noun = "path" if self.deletion.count == 1 else "paths"
+        message = Text("Delete ")
+        message.append_text(scope)
+        message.append(
+            "?\n\n"
+            f"{self.deletion.count} top-level {noun} will be removed. "
+            "The MTH5 file and project setup are retained.\n\n"
+            "This cannot be undone."
+        )
+        with Vertical(
+            id="confirm-delete-data-dialog", classes="modal-dialog modal-danger"
+        ):
+            yield Static("Confirm deletion", classes="modal-title", markup=False)
+            yield Static(message)
+            with Horizontal(id="confirm-delete-data-actions", classes="modal-actions"):
                 yield Button(
                     "Cancel", id="cancel-confirm-delete-data", classes="dialog-action"
                 )
@@ -613,10 +565,10 @@ def _validate_yaml_file_stem(value: str) -> str:
     value = value.strip()
     if not _YAML_FILE_STEM.fullmatch(value):
         raise ValueError(
-            "New name must use letters, numbers, dots, underscores, or hyphens"
+            "New name must use letters, numbers, dots, underscores, or hyphens."
         )
     if Path(value).suffix in {".yaml", ".yml"}:
-        raise ValueError("New name must not include a YAML extension")
+        raise ValueError("New name must not include a YAML extension.")
     return value
 
 
@@ -628,10 +580,12 @@ class DirectoryPickerScreen(ModalScreen[Path | None]):
     :param start_path: Initial directory, or the current working directory when omitted.
     """
 
-    BINDINGS = [("u", "parent_directory", "Up"), ("escape", "cancel", "Cancel")]
+    BINDINGS = [
+        ("u", "parent_directory", "Parent folder"),
+        ("escape", "cancel", "Cancel"),
+    ]
 
     CSS = """
-    DirectoryPickerScreen { align: center middle; }
     #path-picker-dialog {
         width: 80%;
         height: 80%;
@@ -639,8 +593,13 @@ class DirectoryPickerScreen(ModalScreen[Path | None]):
         border: round #faa881;
         background: #202020;
     }
-    #path-picker { height: 1fr; background: #202020; color: #f7f4f2; }
-    #path-picker:focus { background: #343434; }
+    #path-picker {
+        height: 1fr;
+        background: #202020;
+        color: #f7f4f2;
+        border: tall #343434;
+    }
+    #path-picker:focus { background: #202020; border: tall #0a009f; }
     #path-picker-help, #path-picker-path {
         height: auto;
         margin-bottom: 1;
@@ -652,29 +611,30 @@ class DirectoryPickerScreen(ModalScreen[Path | None]):
 
     def __init__(self, title: str, select_files: bool, start_path: Path | None = None):
         super().__init__()
-        self.title = title
+        self.picker_title = title
         self.select_files = select_files
         self.start_path = start_path or Path.home()
         self.navigation_instruction = (
-            "Up/Down: move  •  Space: expand/collapse  •  U or Up: parent"
+            "Up/Down: move  •  Space: expand/collapse  •  Enter: select  •  "
+            "U: parent folder"
         )
         self.selection_instruction = (
-            "Press Enter on the MTH5 file to select it."
+            "Select the highlighted file."
             if select_files
-            else "Press Enter on the resistics project folder to select it."
+            else "Select the highlighted folder."
         )
 
     def compose(self) -> ComposeResult:
         with Vertical(id="path-picker-dialog"):
-            yield Static(f"[bold]{self.title}[/bold]")
+            yield Static(Text(self.picker_title, style="bold"))
             yield Static(
                 f"{self.navigation_instruction}\n{self.selection_instruction}",
                 id="path-picker-help",
             )
-            yield Static(str(self.start_path), id="path-picker-path")
+            yield Static(str(self.start_path), id="path-picker-path", markup=False)
             yield DirectoryTree(self.start_path, id="path-picker")
             with Horizontal(id="path-picker-actions"):
-                yield Button("Up", id="up-picker")
+                yield Button("Parent folder", id="up-picker")
                 yield Button("Cancel", id="cancel-picker")
 
     def on_mount(self) -> None:

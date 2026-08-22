@@ -16,7 +16,7 @@ from textual.screen import Screen
 from textual.worker import Worker, WorkerState
 
 from resistics.tui.logging import (
-    _error_entry,
+    _exception_entry,
     _legacy_warning_entry,
     _TuiDiagnosticCapture,
     _TuiLogBuffer,
@@ -110,7 +110,7 @@ class ResisticsTui(App[None]):
         color: #f7f4f2;
     }
     Footer { background: #070066; color: #faa881; }
-    Footer > .footer--key { background: #ac3600; color: #f7f4f2; }
+    Footer > .footer--key { background: #faa881; color: #101010; }
     ToastRack {
         dock: bottom;
         align: right bottom;
@@ -133,7 +133,11 @@ class ResisticsTui(App[None]):
         background: #202020;
     }
     #home Button, #create-project-form Button { margin-top: 1; }
-    #home-message, #create-status { margin-top: 1; color: #faa881; }
+    #home-message { margin-top: 1; color: #faa881; }
+    #home-message.status-error { color: #ff6b6b; }
+    .form-status { height: auto; margin-top: 1; color: #faa881; }
+    .form-status.status-error { color: #ff6b6b; }
+    .form-status.status-warning { color: #f0c674; }
     #parent-path, #mth5-path { color: #aaa6ad; }
     #create-actions { height: auto; align-horizontal: right; margin-top: 1; }
     #create-actions Button { margin-left: 1; }
@@ -155,7 +159,12 @@ class ResisticsTui(App[None]):
     .split { height: 1fr; }
     .left { width: 2fr; border-right: solid #faa881; padding-right: 1; }
     .right { width: 3fr; }
-    Tree, DataTable { background: #202020; color: #f7f4f2; }
+    Tree, DataTable {
+        background: #202020;
+        color: #f7f4f2;
+        border: tall #343434;
+    }
+    Tree:focus, DataTable:focus { border: tall #0a009f; }
     DataTable > .datatable--header { background: #0a009f; color: #f7f4f2; }
     Tree > .tree--label, DataTable > .datatable--cursor,
     Tree > .tree--cursor, Tree:focus > .tree--cursor,
@@ -182,9 +191,21 @@ class ResisticsTui(App[None]):
         border: tall #343434;
     }
     #data-metadata:focus, #flow-content:focus, #parameter-content:focus,
-    #criteria-content:focus, #job-content:focus { border: tall #343434; }
-    Button { background: #faa881; color: #101010; border: none; }
-    Button.-success { background: #ac3600; color: #f7f4f2; }
+    #criteria-content:focus, #job-content:focus { border: tall #0a009f; }
+    .panel-state {
+        height: 1fr;
+        padding: 1;
+        content-align: center middle;
+        text-align: center;
+        background: #202020;
+        color: #aaa6ad;
+        border: tall #343434;
+    }
+    .panel-state.panel-state-error { color: #ff6b6b; }
+    Button { background: #343434; color: #f7f4f2; border: none; }
+    Button.-primary { background: #faa881; color: #101010; }
+    Button.-success { background: #237a3b; color: #f7f4f2; }
+    Button.-error { background: #ac3600; color: #f7f4f2; }
     Button:focus {
         background: #0a009f;
         color: #f7f4f2;
@@ -192,20 +213,23 @@ class ResisticsTui(App[None]):
         text-style: none;
     }
     Button:disabled { background: #343434; color: #aaa6ad; }
-    Button.dialog-action {
-        background: #343434;
+    Button.dialog-action { text-style: none; }
+    ModalScreen { align: center middle; background: transparent; }
+    .modal-dialog {
+        width: 72;
+        height: auto;
+        padding: 1 2;
+        border: round #faa881;
+        background: #202020;
         color: #f7f4f2;
-        text-style: none;
     }
-    Button.dialog-action:focus {
-        background: #faa881;
-        color: #101010;
-        border: none;
-        text-style: bold;
-    }
+    .modal-dialog.modal-danger { border: round #ac3600; }
+    .modal-title { height: auto; text-style: bold; margin-bottom: 1; }
+    .modal-actions { height: auto; align-horizontal: right; margin-top: 1; }
+    .modal-actions Button { margin-left: 1; }
     #activity-log, #logs-log {
         height: 1fr;
-        border: round #ac3600;
+        border: round #343434;
         background: #202020;
         color: #f7f4f2;
     }
@@ -249,14 +273,15 @@ class ResisticsTui(App[None]):
         self._reject_pending_project_open()
         self._mount_home(message)
 
-    def _mount_home(self, message: str | None = None) -> None:
+    def _mount_home(self, message: str | None = None, *, error: bool = False) -> None:
         """Replace the current screen with the project launcher.
 
         :param message: Optional status or failure detail shown on the launcher.
+        :param error: Whether the message describes a failed operation.
         """
         self.title = "resistics"
         self.sub_title = "project launcher"
-        self._show_screen(HomeScreen(message))
+        self._show_screen(HomeScreen(message, message_is_error=error))
 
     def show_create_project(self) -> None:
         self._reject_pending_project_open()
@@ -309,7 +334,7 @@ class ResisticsTui(App[None]):
             return _ProjectOpenResult(
                 generation=generation,
                 project_path=project_path,
-                diagnostics=(_error_entry("Project loading", error),),
+                diagnostics=(_exception_entry("Project loading", error, exc),),
                 error=error,
             )
         finally:
@@ -350,7 +375,8 @@ class ResisticsTui(App[None]):
         self.diagnostic_buffer.extend(result.diagnostics)
         if result.error is not None or result.project is None:
             self._mount_home(
-                f"[red]Unable to open project:[/] {result.error or 'Unknown error'}"
+                f"Unable to open project: {result.error or 'Unknown error'}",
+                error=True,
             )
             return
         self._mount_project(result.project)

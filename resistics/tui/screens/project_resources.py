@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from loguru import logger
+from rich.text import Text
 from textual import on
 from textual.widgets import DataTable, TabbedContent, TextArea
 
@@ -19,6 +19,7 @@ from resistics.tui.screens.dialogs import (
     DeleteYamlFileScreen,
 )
 from resistics.tui.screens.project_base import _ProjectExplorerBase
+from resistics.tui.services import _notify_exception
 from resistics.tui.state import ProjectDataDeletionRequest
 
 if TYPE_CHECKING:
@@ -60,7 +61,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         """
         table = self.query_one("#job-table", DataTable)
         table.clear(columns=True)
-        table.add_columns("Job", "Flow", "Parameters", "Output", "Status")
+        table.add_columns("Job", "Flow", "Parameter set", "Output label", "Validation")
         self.job_summaries.clear()
         self.selected_job_path = None
         self.selected_validation = None
@@ -68,23 +69,22 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
             summary = indexed_job.summary
             key = str(summary.path)
             self.job_summaries[key] = summary
-            status = (
-                "[green]valid[/green]" if summary.is_valid else "[red]invalid[/red]"
+            status = Text(
+                "Valid" if summary.is_valid else "Invalid",
+                style="green" if summary.is_valid else "red",
             )
             table.add_row(
-                summary.name,
-                summary.flow,
-                summary.parameters,
-                summary.output_label,
+                Text(summary.name),
+                Text(summary.flow),
+                Text(summary.parameters),
+                Text(summary.output_label),
                 status,
                 key=key,
             )
         if self.job_summaries:
-            self.query_one("#job-content", TextArea).text = "Select a job"
+            self._show_detail_state("#job-content", "Select a job to view its YAML.")
         else:
-            self.query_one(
-                "#job-content", TextArea
-            ).text = "No YAML jobs found in processing/jobs"
+            self._show_detail_state("#job-content", "No jobs found in processing/jobs.")
 
     def action_create_job(self) -> None:
         """Open the Jobs-tab form for a new editable job template."""
@@ -114,13 +114,13 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         try:
             path = self.service.create_job_template(definition)
         except Exception as exc:
-            self.notify(f"Unable to create job: {exc}", severity="error")
+            _notify_exception(self, "Job creation", "Unable to create the job", exc)
             return
         self._start_new_load_generation()
         self._loaded_sections.discard("jobs")
         self._pending_job_path = path
         self._request_explorer_section("jobs", force=True)
-        self.notify(f"Created {path.name}")
+        self.notify(f"Created {path.name}", markup=False)
 
     def _populate_flows(self, resources: tuple[IndexedResource, ...]) -> None:
         """Populate the read-only flow browser.
@@ -131,7 +131,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
 
         table = self.query_one("#flow-table", DataTable)
         table.clear(columns=True)
-        table.add_columns("Flow", "ID", "Version", "Nodes", "Status")
+        table.add_columns("Flow", "ID", "Version", "Nodes", "Validation")
         self.flow_paths.clear()
         self.action_state.valid_flow_paths.clear()
         for resource in resources:
@@ -143,29 +143,34 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
                 self.action_state.valid_flow_paths.add(path)
                 n_nodes = sum(len(stage.nodes) for stage in flow.flow_stages())
                 table.add_row(
-                    flow.name,
-                    flow.id,
-                    flow.version,
+                    Text(flow.name),
+                    Text(flow.id),
+                    Text(flow.version),
                     str(n_nodes),
-                    "[green]valid[/green]",
+                    Text("Valid", style="green"),
                     key=key,
                 )
             else:
                 table.add_row(
-                    path.stem,
+                    Text(path.stem),
                     "-",
                     "-",
                     "-",
-                    "[red]invalid[/red]",
+                    Text("Invalid", style="red"),
                     key=key,
                 )
                 logger.debug(f"Unable to read flow {path}: {resource.error}")
-        if self.flow_paths and self.selected_flow_path is None:
-            self.query_one("#flow-content", TextArea).text = "Select a flow"
-        elif not self.flow_paths:
-            self.query_one(
-                "#flow-content", TextArea
-            ).text = "No YAML flows found in processing/flows"
+        selected_path = self.selected_flow_path
+        if selected_path is not None and selected_path in self.flow_paths.values():
+            self._show_yaml("#flow-content", selected_path)
+        elif self.flow_paths:
+            self.selected_flow_path = None
+            self._show_detail_state("#flow-content", "Select a flow to view its YAML.")
+        else:
+            self.selected_flow_path = None
+            self._show_detail_state(
+                "#flow-content", "No flows found in processing/flows."
+            )
 
     def _populate_parameters(self, resources: tuple[IndexedResource, ...]) -> None:
         """Populate the read-only parameter-set browser.
@@ -176,7 +181,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
 
         table = self.query_one("#parameter-table", DataTable)
         table.clear(columns=True)
-        table.add_columns("Parameters", "Processes", "Status")
+        table.add_columns("Parameter set", "Processes", "Validation")
         self.parameter_paths.clear()
         for resource in resources:
             path = resource.path
@@ -185,27 +190,34 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
             if isinstance(resource.model, ParameterSet):
                 parameters = resource.model
                 table.add_row(
-                    parameters.name,
+                    Text(parameters.name),
                     str(len(parameters.processes)),
-                    "[green]valid[/green]",
+                    Text("Valid", style="green"),
                     key=key,
                 )
             else:
                 table.add_row(
-                    path.stem,
+                    Text(path.stem),
                     "-",
-                    "[red]invalid[/red]",
+                    Text("Invalid", style="red"),
                     key=key,
                 )
                 logger.debug(f"Unable to read parameter set {path}: {resource.error}")
-        if self.parameter_paths and self.selected_parameter_path is None:
-            self.query_one(
-                "#parameter-content", TextArea
-            ).text = "Select a parameter set"
-        elif not self.parameter_paths:
-            self.query_one(
-                "#parameter-content", TextArea
-            ).text = "No YAML parameter sets found in processing/parameters"
+        selected_path = self.selected_parameter_path
+        if selected_path is not None and selected_path in self.parameter_paths.values():
+            self._show_yaml("#parameter-content", selected_path)
+        elif self.parameter_paths:
+            self.selected_parameter_path = None
+            self._show_detail_state(
+                "#parameter-content",
+                "Select a parameter set to view its YAML.",
+            )
+        else:
+            self.selected_parameter_path = None
+            self._show_detail_state(
+                "#parameter-content",
+                "No parameter sets found in processing/parameters.",
+            )
 
     def _populate_criteria(self, resources: tuple[IndexedResource, ...]) -> None:
         """Populate the read-only criteria browser.
@@ -216,7 +228,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
 
         table = self.query_one("#criteria-table", DataTable)
         table.clear(columns=True)
-        table.add_columns("Criteria", "Remote references", "Status")
+        table.add_columns("Criteria", "Remote references", "Validation")
         self.criteria_paths.clear()
         for resource in resources:
             path = resource.path
@@ -225,22 +237,33 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
             if isinstance(resource.model, GatherCriteria):
                 criteria = resource.model
                 table.add_row(
-                    path.stem,
+                    Text(path.stem),
                     str(criteria.remote_reference_count()),
-                    "[green]valid[/green]",
+                    Text("Valid", style="green"),
                     key=key,
                 )
             else:
-                table.add_row(path.stem, "-", "[red]invalid[/red]", key=key)
+                table.add_row(
+                    Text(path.stem),
+                    "-",
+                    Text("Invalid", style="red"),
+                    key=key,
+                )
                 logger.debug(f"Unable to read criteria {path}: {resource.error}")
-        if self.criteria_paths and self.selected_criteria_path is None:
-            self.query_one(
-                "#criteria-content", TextArea
-            ).text = "Select a criteria file"
-        elif not self.criteria_paths:
-            self.query_one(
-                "#criteria-content", TextArea
-            ).text = "No YAML criteria files found in processing/criteria"
+        selected_path = self.selected_criteria_path
+        if selected_path is not None and selected_path in self.criteria_paths.values():
+            self._show_yaml("#criteria-content", selected_path)
+        elif self.criteria_paths:
+            self.selected_criteria_path = None
+            self._show_detail_state(
+                "#criteria-content", "Select a criteria file to view its YAML."
+            )
+        else:
+            self.selected_criteria_path = None
+            self._show_detail_state(
+                "#criteria-content",
+                "No gather-criteria files found in processing/criteria.",
+            )
 
     @on(DataTable.RowSelected, "#job-table")
     def show_job(self, event: DataTable.RowSelected) -> None:
@@ -255,15 +278,15 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         self.selected_validation = self.service.job_validation(summary.path)
         validation = self.selected_validation
         self._show_yaml("#job-content", summary.path)
-        if validation is not None and validation.ok:
-            self.notify("Job YAML is valid")
-        else:
+        if validation is None or not validation.ok:
             errors = [] if validation is None else validation.errors
             logger.debug(f"Invalid job YAML {summary.path}: {'; '.join(errors)}")
+            noun = "error" if len(errors) == 1 else "errors"
             self.notify(
-                f"Job YAML is invalid ({len(errors)} error(s)); "
-                "source shown for repair or deletion",
+                f"Job is invalid ({len(errors)} {noun}); its YAML source is shown "
+                "for repair or deletion",
                 severity="warning",
+                markup=False,
             )
         self.refresh_bindings()
 
@@ -305,8 +328,9 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         if resource is None or not resource.is_valid:
             logger.debug(f"Invalid flow YAML {path}: {resource and resource.error}")
             self.notify(
-                "Flow YAML is invalid; source shown for repair or deletion",
+                "Flow is invalid; its YAML source is shown for repair or deletion",
                 severity="warning",
+                markup=False,
             )
         self._show_yaml("#flow-content", path)
         self.refresh_bindings()
@@ -330,8 +354,9 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
                 f"Invalid parameter YAML {path}: {resource and resource.error}"
             )
             self.notify(
-                "Parameter YAML is invalid; source shown for repair or deletion",
+                "Parameter set is invalid; its YAML source is shown for repair or deletion",
                 severity="warning",
+                markup=False,
             )
         self._show_yaml("#parameter-content", path)
         self.refresh_bindings()
@@ -353,8 +378,9 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         if resource is None or not resource.is_valid:
             logger.debug(f"Invalid criteria YAML {path}: {resource and resource.error}")
             self.notify(
-                "Criteria YAML is invalid; source shown for repair or deletion",
+                "Gather criteria are invalid; the YAML source is shown for repair or deletion",
                 severity="warning",
+                markup=False,
             )
         self._show_yaml("#criteria-content", path)
         self.refresh_bindings()
@@ -365,8 +391,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         :param editor_id: Identifier of the YAML editor owning the resource.
         :param path: Path or routed coordinates to process.
         """
-        editor = self.query_one(editor_id, TextArea)
-        editor.text = self.service.yaml_source(path)
+        editor = self._show_detail_content(editor_id, self.service.yaml_source(path))
         editor.read_only = True
 
     def _yaml_edit_target(self) -> tuple[Path, type[BaseModel], str] | None:
@@ -466,17 +491,14 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         try:
             destination = self.service.copy_yaml(source, name, resource_type)
         except Exception as exc:
-            self.notify(f"Unable to copy YAML: {exc}", severity="error")
+            _notify_exception(self, "YAML copy", "Unable to copy the YAML file", exc)
             return
         self._refresh_yaml_resource(editor_id)
         self._select_yaml_file(editor_id, destination)
-        self.notify(f"Copied {source.name} to {destination.name}")
+        self.notify(f"Copied {source.name} to {destination.name}", markup=False)
 
     def action_delete_yaml(self) -> None:
-        """Delete Data-tab artifacts or the highlighted YAML source."""
-        if self.query_one(TabbedContent).active == "data":
-            self._start_project_data_deletion()
-            return
+        """Delete the highlighted or currently opened YAML source."""
         selected = self._highlighted_yaml_file() or self._selected_yaml_file()
         if selected is None:
             self.notify("Select a YAML file first", severity="warning")
@@ -496,29 +518,42 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         try:
             self.service.delete_yaml(source, resource_type)
         except FileNotFoundError:
-            self.notify(f"{source.name} was already deleted", severity="warning")
+            self.notify(
+                f"{source.name} was already deleted",
+                severity="warning",
+                markup=False,
+            )
             return
         except Exception as exc:
-            self.notify(f"Unable to delete YAML: {exc}", severity="error")
+            _notify_exception(
+                self, "YAML deletion", "Unable to delete the YAML file", exc
+            )
             return
         self._refresh_yaml_resource(editor_id)
         self._clear_selected_yaml_file(editor_id)
-        self.notify(f"Deleted {source.name}")
+        self.notify(f"Deleted {source.name}", markup=False)
+
+    def action_delete_project_data(self) -> None:
+        """Choose and delete a derived-data namespace from the Data tab."""
+        self._start_project_data_deletion()
 
     def _start_project_data_deletion(self) -> None:
         """Choose the namespace of derived project data to remove."""
         if self.job_state == self._job_state_type.running:
-            self.notify("Data deletion is unavailable while a job is running")
+            self.notify(
+                "Data deletion is unavailable while a job is running",
+                severity="warning",
+            )
             return
         try:
             labels, preview = self.service.deletion_options()
         except Exception as exc:
-            self.notify(f"Unable to inspect project data: {exc}", severity="error")
+            _notify_exception(
+                self, "Derived data inspection", "Unable to inspect derived data", exc
+            )
             return
         if not labels and not preview.paths:
-            self.notify(
-                "There is no derived Project data to delete", severity="warning"
-            )
+            self.notify("There is no derived data to delete", severity="warning")
             return
         self.app.push_screen(
             DeleteProjectDataScreen(labels), self._project_data_deletion_selected
@@ -532,16 +567,18 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         try:
             deletion = self.service.preview_project_data_deletion(request.output_label)
         except Exception as exc:
-            self.notify(f"Unable to prepare deletion: {exc}", severity="error")
+            _notify_exception(
+                self, "Derived data deletion", "Unable to prepare the deletion", exc
+            )
             return
         if not deletion.paths:
             label = request.output_label
             message = (
-                "There is no derived Project data to delete"
+                "There is no derived data to delete"
                 if label is None
                 else f"No data exists for output label {label!r}"
             )
-            self.notify(message, severity="warning")
+            self.notify(message, severity="warning", markup=False)
             return
         self.app.push_screen(
             ConfirmProjectDataDeletionScreen(deletion),
@@ -558,15 +595,19 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         try:
             deleted = self.service.delete_project_data(deletion.output_label)
         except Exception as exc:
-            self.notify(f"Unable to delete Project data: {exc}", severity="error")
+            _notify_exception(
+                self, "Derived data deletion", "Unable to delete derived data", exc
+            )
             return
         self._start_new_load_generation()
         self._loaded_sections.discard("data")
-        self.query_one("#data-metadata", TextArea).text = json.dumps(
-            {"message": "Select Project or MTH5 data"}, indent=2
+        self._show_detail_state(
+            "#data-metadata",
+            "Select project or MTH5 data to view its metadata.",
         )
         self._request_explorer_section("data", force=True)
-        self.notify(f"Deleted {deleted.count} Project data path(s)")
+        noun = "path" if deleted.count == 1 else "paths"
+        self.notify(f"Deleted {deleted.count} derived-data {noun}", markup=False)
 
     def _select_yaml_file(self, editor_id: str, path: Path) -> None:
         """Make path the current selection and display its source.
@@ -592,10 +633,10 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         :param editor_id: Identifier of the YAML editor owning the resource.
         """
         placeholders = {
-            "#flow-content": "Select a flow",
-            "#parameter-content": "Select a parameter set",
-            "#criteria-content": "Select a criteria file",
-            "#job-content": "Select a job",
+            "#flow-content": "Select a flow to view its YAML.",
+            "#parameter-content": "Select a parameter set to view its YAML.",
+            "#criteria-content": "Select a criteria file to view its YAML.",
+            "#job-content": "Select a job to view its YAML.",
         }
         if editor_id == "#flow-content":
             self.selected_flow_path = None
@@ -607,8 +648,8 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
             self.selected_job_path = None
             self.selected_validation = None
         editor = self.query_one(editor_id, TextArea)
-        editor.text = placeholders[editor_id]
         editor.read_only = True
+        self._show_detail_state(editor_id, placeholders[editor_id])
         self.refresh_bindings()
 
     def action_edit_yaml(self) -> None:
@@ -627,7 +668,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         editor = self.query_one(self.editing_editor_id, TextArea)
         editor.read_only = False
         editor.focus()
-        self.notify("Editing YAML — Ctrl+S saves; Esc discards")
+        self.notify("Editing YAML — Ctrl+S saves; Esc discards", markup=False)
         self.refresh_bindings()
 
     def action_save_yaml(self) -> None:
@@ -643,7 +684,9 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         try:
             self.service.validate_yaml(self.editing_model, editor.text)
         except Exception as exc:
-            self.notify(f"YAML was not saved: {exc}", severity="error")
+            _notify_exception(
+                self, "YAML validation", "The YAML file was not saved", exc
+            )
             return
         try:
             resource_type = self._resource_kind(self.editing_editor_id)
@@ -651,7 +694,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
                 return
             self.service.write_yaml(self.editing_path, editor.text, resource_type)
         except Exception as exc:
-            self.notify(f"Unable to save YAML: {exc}", severity="error")
+            _notify_exception(self, "YAML saving", "Unable to save the YAML file", exc)
             return
         editor.read_only = True
         saved_path = self.editing_path
@@ -662,7 +705,7 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         self._refresh_yaml_resource(editor_id)
         self._show_yaml(editor_id, saved_path)
         self.refresh_bindings()
-        self.notify(f"Saved {saved_path.name}")
+        self.notify(f"Saved {saved_path.name}", markup=False)
 
     def action_discard_yaml(self) -> None:
         """Discard the active YAML draft and restore its saved source."""
@@ -740,7 +783,8 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         if reload_jobs:
             self._request_explorer_section("jobs", force=True)
         if installed:
-            self.notify(f"Restored {len(installed)} flow template(s)")
+            noun = "template" if len(installed) == 1 else "templates"
+            self.notify(f"Restored {len(installed)} flow {noun}", markup=False)
         else:
             self.notify("All built-in flow templates are already present")
 
@@ -755,7 +799,8 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         if reload_jobs:
             self._request_explorer_section("jobs", force=True)
         if installed:
-            self.notify(f"Restored {len(installed)} parameter-set template(s)")
+            noun = "template" if len(installed) == 1 else "templates"
+            self.notify(f"Restored {len(installed)} parameter-set {noun}", markup=False)
         else:
             self.notify("All built-in parameter-set templates are already present")
 
@@ -770,9 +815,12 @@ class _ProjectResourcesMixin(_ProjectExplorerBase):
         if reload_jobs:
             self._request_explorer_section("jobs", force=True)
         if installed:
-            self.notify(f"Restored {len(installed)} criteria example(s)")
+            noun = "example" if len(installed) == 1 else "examples"
+            self.notify(
+                f"Restored {len(installed)} gather-criteria {noun}", markup=False
+            )
         else:
-            self.notify("All built-in criteria examples are already present")
+            self.notify("All built-in gather-criteria examples are already present")
 
     def action_restore_defaults(self) -> None:
         """Restore defaults for the active Flows or Parameters tab."""

@@ -20,6 +20,7 @@ from textual.widgets import (
 )
 from textual.worker import Worker, WorkerState
 
+from resistics.tui.logging import _exception_entry
 from resistics.tui.screens.launcher import TuiHeader
 from resistics.tui.screens.project_data import _ProjectDataMixin
 from resistics.tui.screens.project_help import (
@@ -54,7 +55,8 @@ class ProjectExplorerScreen(
         ("n", "create_job", "New job"),
         ("e", "edit_yaml", "Edit YAML"),
         ("y", "copy_yaml", "Copy YAML"),
-        ("delete", "delete_yaml", "Delete"),
+        Binding("delete", "delete_project_data", "Delete derived data"),
+        Binding("delete", "delete_yaml", "Delete YAML"),
         ("ctrl+s", "save_yaml", "Save YAML"),
         Binding("escape", "discard_yaml", "Discard YAML", priority=True),
         ("j", "run_selected_job", "Run job"),
@@ -84,26 +86,42 @@ class ProjectExplorerScreen(
                             data_tree.show_root = False
                             yield data_tree
                         with Vertical(classes="right"):
-                            yield TextArea.code_editor(
-                                '{\n  "message": "Select Project or MTH5 data"\n}',
+                            yield Static(
+                                "Select project or MTH5 data to view its metadata.",
+                                id="data-metadata-state",
+                                classes="panel-state",
+                                markup=False,
+                            )
+                            editor = TextArea.code_editor(
+                                "",
                                 language="json",
                                 theme="vscode_dark",
                                 read_only=True,
                                 id="data-metadata",
                             )
+                            editor.display = False
+                            yield editor
             with TabPane("Flows", id="flows"), Vertical(classes="pane"):
                 yield self._tab_explainer("flows")
                 with Horizontal(classes="split"):
                     with Vertical(classes="left"):
                         yield DataTable(id="flow-table", cursor_type="row")
                     with Vertical(classes="right"):
-                        yield TextArea.code_editor(
-                            "Select a flow",
+                        yield Static(
+                            "Select a flow to view its YAML.",
+                            id="flow-content-state",
+                            classes="panel-state",
+                            markup=False,
+                        )
+                        editor = TextArea.code_editor(
+                            "",
                             language="yaml",
                             theme="vscode_dark",
                             read_only=True,
                             id="flow-content",
                         )
+                        editor.display = False
+                        yield editor
             with TabPane("Parameters", id="parameters"):
                 with Vertical(classes="pane"):
                     yield self._tab_explainer("parameters")
@@ -111,13 +129,21 @@ class ProjectExplorerScreen(
                         with Vertical(classes="left"):
                             yield DataTable(id="parameter-table", cursor_type="row")
                         with Vertical(classes="right"):
-                            yield TextArea.code_editor(
-                                "Select a parameter set",
+                            yield Static(
+                                "Select a parameter set to view its YAML.",
+                                id="parameter-content-state",
+                                classes="panel-state",
+                                markup=False,
+                            )
+                            editor = TextArea.code_editor(
+                                "",
                                 language="yaml",
                                 theme="vscode_dark",
                                 read_only=True,
                                 id="parameter-content",
                             )
+                            editor.display = False
+                            yield editor
             with TabPane("Criteria", id="criteria"):
                 with Vertical(classes="pane"):
                     yield self._tab_explainer("criteria")
@@ -125,31 +151,47 @@ class ProjectExplorerScreen(
                         with Vertical(classes="left"):
                             yield DataTable(id="criteria-table", cursor_type="row")
                         with Vertical(classes="right"):
-                            yield TextArea.code_editor(
-                                "Select a criteria file",
+                            yield Static(
+                                "Select a criteria file to view its YAML.",
+                                id="criteria-content-state",
+                                classes="panel-state",
+                                markup=False,
+                            )
+                            editor = TextArea.code_editor(
+                                "",
                                 language="yaml",
                                 theme="vscode_dark",
                                 read_only=True,
                                 id="criteria-content",
                             )
+                            editor.display = False
+                            yield editor
             with TabPane("Jobs", id="jobs"), Vertical(classes="pane"):
                 yield self._tab_explainer("jobs")
                 with Horizontal(classes="split"):
                     with Vertical(classes="left"):
                         yield DataTable(id="job-table", cursor_type="row")
                     with Vertical(classes="right"):
-                        yield TextArea.code_editor(
-                            "Select a job",
+                        yield Static(
+                            "Select a job to view its YAML.",
+                            id="job-content-state",
+                            classes="panel-state",
+                            markup=False,
+                        )
+                        editor = TextArea.code_editor(
+                            "",
                             language="yaml",
                             theme="vscode_dark",
                             read_only=True,
                             id="job-content",
                         )
+                        editor.display = False
+                        yield editor
             with TabPane("Activity", id="activity"):
                 with Vertical(classes="pane"):
                     yield self._tab_explainer("activity")
                     yield Static("No active job", id="activity-status")
-                    yield RichLog(id="activity-log", markup=True, wrap=True)
+                    yield RichLog(id="activity-log", markup=False, wrap=True)
             with TabPane("Logs", id="logs"):
                 with Vertical(classes="pane"):
                     yield self._tab_explainer("logs")
@@ -231,10 +273,13 @@ class ProjectExplorerScreen(
                     resources=self.service.resources(section),
                 )
         except Exception as exc:
+            source = f"{section.title()} loading"
+            message = str(exc)
             return _ExplorerLoadResult(
                 generation=generation,
                 section=section,
-                error=str(exc),
+                error=message,
+                diagnostic=_exception_entry(source, message, exc),
             )
 
     def _request_explorer_section(
@@ -267,6 +312,7 @@ class ProjectExplorerScreen(
             tree = self.query_one("#data-tree", Tree)
             tree.clear()
             tree.root.add_leaf("Loading project data…")
+            self._show_detail_state("#data-metadata", "Loading metadata…")
         else:
             editor_ids = {
                 "flows": "#flow-content",
@@ -274,7 +320,7 @@ class ProjectExplorerScreen(
                 "criteria": "#criteria-content",
                 "jobs": "#job-content",
             }
-            self.query_one(editor_ids[section], TextArea).text = "Loading…"
+            self._show_detail_state(editor_ids[section], "Loading…")
 
     @on(Worker.StateChanged)
     def _apply_explorer_worker_result(self, event: Worker.StateChanged) -> None:
@@ -291,6 +337,8 @@ class ProjectExplorerScreen(
             return
         self._loading_sections.discard(result.section)
         if result.error is not None:
+            if result.diagnostic is not None:
+                self.log_buffer.append(result.diagnostic)
             self._show_section_error(result.section, result.error)
             self.refresh_bindings()
             return
@@ -324,13 +372,26 @@ class ProjectExplorerScreen(
         :param section: Explorer section whose load failed.
         :param error: Failure detail returned by the worker.
         """
-        message = f"Unable to load {section}: {error}"
+        labels = {
+            "project": "project overview",
+            "data": "data",
+            "flows": "flows",
+            "parameters": "parameter sets",
+            "criteria": "gather criteria",
+            "jobs": "jobs",
+        }
+        message = f"Unable to load {labels[section]}: {error}"
         if section == "project":
-            self.query_one("#project-content", Static).update(f"[red]{message}[/red]")
+            from rich.text import Text
+
+            self.query_one("#project-content", Static).update(
+                Text(message, style="red")
+            )
         elif section == "data":
             tree = self.query_one("#data-tree", Tree)
             tree.clear()
             tree.root.add_leaf(message)
+            self._show_detail_state("#data-metadata", message, error=True)
         else:
             editor_ids = {
                 "flows": "#flow-content",
@@ -338,8 +399,12 @@ class ProjectExplorerScreen(
                 "criteria": "#criteria-content",
                 "jobs": "#job-content",
             }
-            self.query_one(editor_ids[section], TextArea).text = message
-        self.notify(message, severity="error")
+            self._show_detail_state(editor_ids[section], message, error=True)
+        self.notify(
+            f"{message}\nSee Logs for the full traceback.",
+            severity="error",
+            markup=False,
+        )
 
     def _start_new_load_generation(self) -> None:
         """Reject outstanding results before a cache invalidation transition."""
@@ -381,13 +446,24 @@ class ProjectExplorerScreen(
                 and not self.editing_yaml
                 and self.job_state != self._job_state_type.running
             )
-        if action == "delete_yaml" and active == "data":
+        if action == "delete_project_data":
             return (
-                not self.editing_yaml
+                active == "data"
+                and not self.editing_yaml
                 and self.job_state != self._job_state_type.running
                 and self.action_state.has_project_data_to_delete
             )
-        if action in {"copy_yaml", "delete_yaml"}:
+        if action == "delete_yaml":
+            return (
+                active in {"flows", "parameters", "criteria", "jobs"}
+                and not self.editing_yaml
+                and self.job_state != self._job_state_type.running
+                and (
+                    self._highlighted_yaml_file() is not None
+                    or self._selected_yaml_file() is not None
+                )
+            )
+        if action == "copy_yaml":
             return (
                 not self.editing_yaml
                 and self.job_state != self._job_state_type.running
@@ -420,6 +496,7 @@ class ProjectExplorerScreen(
             "create_job",
             "copy_yaml",
             "delete_yaml",
+            "delete_project_data",
             "save_yaml",
             "discard_yaml",
             "restore_defaults",
@@ -453,7 +530,9 @@ class ProjectExplorerScreen(
 
     def action_refresh(self) -> None:
         if self.job_state == self._job_state_type.running:
-            self.notify("Refresh is unavailable while a job is running")
+            self.notify(
+                "Refresh is unavailable while a job is running", severity="warning"
+            )
             return
         if self.editing_yaml:
             self.notify(

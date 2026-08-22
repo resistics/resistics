@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from rich.text import Text
 from textual import work
 from textual.widgets import RichLog, Static, TabbedContent
 
+from resistics.tui.logging import _exception_entry
 from resistics.tui.screens.project_base import _ProjectExplorerBase
 
 if TYPE_CHECKING:
@@ -20,13 +22,13 @@ def _progress_details(event: JobProgressEvent) -> tuple[str, str]:
 
     :return: Counter suffix and complete activity-status text.
     """
-    status = f"{event.job_name}: {event.state.value}"
+    status = f"{event.job_name} · {event.state.value.capitalize()}"
     if event.progress is None:
         return "", status
     if event.progress.total is None:
         return f" [{event.progress.current}]", status
     counter = f"{event.progress.current}/{event.progress.total}"
-    return f" [{counter}]", f"{event.job_name}: {event.progress.task} {counter}"
+    return f" [{counter}]", f"{event.job_name} · {event.progress.task} {counter}"
 
 
 class _ProjectJobsMixin(_ProjectExplorerBase):
@@ -41,10 +43,21 @@ class _ProjectJobsMixin(_ProjectExplorerBase):
         validation = self.selected_validation
         if validation is None or validation.resolved_job is None:
             raise ValueError("A resolved job is required for execution")
+
+        def record_error(error: Exception) -> None:
+            self.log_buffer.append(
+                _exception_entry(
+                    "Job processing",
+                    "Unable to start the job",
+                    error,
+                )
+            )
+
         self.app.call_from_thread(self._set_running)
         self.service.run_job(
             validation,
             lambda event: self.app.call_from_thread(self._show_progress, event),
+            record_error,
         )
 
     def _set_running(self) -> None:
@@ -73,14 +86,24 @@ class _ProjectJobsMixin(_ProjectExplorerBase):
             context.append(f"sample rate {event.sample_rate:g} Hz")
         target = f" — {', '.join(context)}" if context else ""
         progress, status = _progress_details(event)
-        line = (
-            f"[{event.state.value}] {event.message}{progress}{target} "
-            f"({event.elapsed_seconds:.1f}s)"
+        state_styles = {
+            "completed": "green",
+            "failed": "red",
+            "cancelled": "yellow",
+            "running": "cyan",
+        }
+        line = Text()
+        line.append(
+            f"{event.state.value.upper():<10}",
+            style=state_styles.get(event.state.value, "white"),
+        )
+        line.append(
+            f" {event.message}{progress}{target} ({event.elapsed_seconds:.1f}s)"
         )
         if event.error:
-            line += f"\n[red]{event.error}[/red]"
+            line.append(f"\n{event.error}", style="red")
         self.query_one("#activity-log", RichLog).write(line)
-        self.query_one("#activity-status", Static).update(status)
+        self.query_one("#activity-status", Static).update(Text(status))
         if event.state in {
             self._job_state_type.completed,
             self._job_state_type.failed,
@@ -126,7 +149,7 @@ class _ProjectJobsMixin(_ProjectExplorerBase):
 
     def action_cancel_job(self) -> None:
         if self.job_runner is None or self.job_state != self._job_state_type.running:
-            self.notify("No active job")
+            self.notify("No active job", severity="warning")
             return
         self.service.cancel_job()
         self.notify("Cancellation requested; the current step will finish first")

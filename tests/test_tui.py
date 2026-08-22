@@ -170,6 +170,77 @@ def test_feature_errors_explain_missing_dependencies():
     )
 
 
+def test_create_project_failure_is_markup_safe_and_retained(monkeypatch, tmp_path):
+    error_text = "invalid metadata [input_value='field@usgs', input_type=str]"
+
+    def fail_to_open(path):
+        raise ValueError(error_text)
+
+    monkeypatch.setattr("resistics.project.open_mth5", fail_to_open)
+    app = ResisticsTui()
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            app.show_create_project()
+            await pilot.pause()
+            form = app.screen
+            form._mth5_selected(tmp_path / "recordings[legacy].h5")
+            await pilot.pause()
+
+            status = form.query_one("#create-status", Static)
+            assert error_text in str(status.render())
+            assert status.has_class("status-error")
+            entry = next(
+                item
+                for item in app.diagnostic_buffer.read_after(0).entries
+                if item.source == "MTH5 inspection"
+            )
+            assert error_text in entry.message
+            assert entry.exception is not None
+            assert "ValueError: invalid metadata" in entry.exception
+
+    asyncio.run(run_test())
+
+
+def test_explorer_failure_uses_error_state_and_retains_traceback(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project[legacy]")
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+    error_text = "invalid resource [input_type=str]"
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)):
+            await _wait_for(lambda: isinstance(app.screen, ProjectExplorerScreen))
+            explorer = app.screen
+
+            def fail_to_load(kind):
+                raise ValueError(f"{kind}: {error_text}")
+
+            monkeypatch.setattr(explorer.service, "resources", fail_to_load)
+            explorer.query_one(TabbedContent).active = "flows"
+            await _wait_for(
+                lambda: (
+                    "Unable to load flows"
+                    in explorer.query_one("#flow-content", TextArea).text
+                )
+            )
+
+            state = explorer.query_one("#flow-content-state", Static)
+            assert state.display
+            assert state.has_class("panel-state-error")
+            assert error_text in str(state.render())
+            entry = next(
+                item
+                for item in app.diagnostic_buffer.read_after(0).entries
+                if item.source == "Flows loading"
+            )
+            assert entry.exception is not None
+            assert "ValueError: flows: invalid resource" in entry.exception
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
 def _record_call(calls, name, operation):
     def wrapped(*args, **kwargs):
         calls.append(name)
@@ -527,9 +598,9 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
                 "Project",
                 "MTH5",
             ]
-            app.screen.set_focus(tree)
-            app.action_focus_next()
-            assert app.focused is metadata_details
+            metadata_state = app.screen.query_one("#data-metadata-state", Static)
+            assert metadata_state.display
+            assert not metadata_details.display
 
     asyncio.run(run_test())
     assert project.closed
@@ -564,6 +635,12 @@ def test_project_tab_help_content_covers_every_tab_and_processing_relationship()
     assert all(
         "plugins.example.PassThrough" not in TAB_HELP[tab].details
         for tab in tab_ids - {"flows"}
+    )
+    assert ResisticsTui.TITLE == "resistics"
+    assert all(
+        "Resistics"
+        not in f"{content.summary}\n{content.details}".replace("ResisticsProcess", "")
+        for content in TAB_HELP.values()
     )
 
 
@@ -652,7 +729,7 @@ def test_project_help_is_scrollable_small_screen_and_h_does_not_capture_yaml(
 
             explorer.query_one(TabbedContent).active = "flows"
             editor = explorer.query_one("#flow-content", TextArea)
-            await _wait_for(lambda: "No YAML flows" in editor.text)
+            await _wait_for(lambda: "No flows found" in editor.text)
             editor.text = ""
             editor.read_only = False
             explorer.editing_yaml = True
@@ -1260,15 +1337,15 @@ def test_tui_catalogues_project_and_mth5_data_by_type(monkeypatch, tmp_path):
             assert project_node.is_expanded
             assert mth5_node.is_expanded
             assert [str(node.label) for node in project_node.children] == [
-                "Time data (0)",
-                "Spectra/evaluations (1)",
+                "Time series (0)",
+                "Spectra and evaluations (1)",
                 "Masks (0)",
                 "Transfer functions (0)",
                 "Other (0)",
             ]
             assert [str(node.label) for node in mth5_node.children] == [
-                "Time data (1)",
-                "Spectra/evaluations (1)",
+                "Time series (1)",
+                "Spectra and evaluations (1)",
                 "Masks (0)",
                 "Transfer functions (0)",
                 "Other (0)",
@@ -1383,7 +1460,11 @@ def test_tui_views_project_json_and_confirms_project_data_deletion(
             assert screen.query_one("#data-metadata", TextArea).text == json.dumps(
                 project.json_data[node.data[1]], indent=2
             )
-            assert screen.check_action("delete_yaml", ())
+            assert screen.check_action("delete_project_data", ())
+            assert (
+                screen.active_bindings["delete"].binding.description
+                == "Delete derived data"
+            )
             await pilot.press("delete")
             await pilot.pause()
             picker = app.screen
@@ -1597,7 +1678,7 @@ def test_tui_plot_failure_is_markup_safe_and_retained_in_session_logs(
 
             assert notifications[-1][1]["severity"] == "error"
             assert notifications[-1][1]["markup"] is False
-            assert "See Session logs" in notifications[-1][0]
+            assert "See Logs" in notifications[-1][0]
             entries = app.diagnostic_buffer.read_after(0).entries
             entry = next(item for item in entries if item.source == "Plotting")
             assert "jpeacock@usgs" in entry.message
@@ -1832,7 +1913,12 @@ def test_tui_copies_and_deletes_selected_yaml_files(monkeypatch, tmp_path):
             await pilot.pause()
             copy_form = app.screen
             assert isinstance(copy_form, CopyYamlFileScreen)
-            copy_form.query_one("#copy-yaml-name", Input).value = "standard_copy"
+            copy_name = copy_form.query_one("#copy-yaml-name", Input)
+            copy_name.value = "standard_copy"
+            await pilot.press("right")
+            assert copy_form.focused is copy_name
+            await pilot.press("tab")
+            assert copy_form.focused is copy_form.query_one("#cancel-copy-yaml", Button)
             await pilot.press("right")
             assert copy_form.focused is copy_form.query_one(
                 "#confirm-copy-yaml", Button
@@ -1846,6 +1932,10 @@ def test_tui_copies_and_deletes_selected_yaml_files(monkeypatch, tmp_path):
             assert app.screen.selected_flow_path == copied_path
             assert app.screen.check_action("copy_yaml", ())
             assert app.screen.check_action("delete_yaml", ())
+            assert (
+                app.screen.active_bindings["delete"].binding.description
+                == "Delete YAML"
+            )
             await pilot.press("delete")
             await pilot.pause()
             delete_form = app.screen
@@ -1863,7 +1953,8 @@ def test_tui_copies_and_deletes_selected_yaml_files(monkeypatch, tmp_path):
             assert flow_path.exists()
             assert app.screen.selected_flow_path is None
             assert (
-                app.screen.query_one("#flow-content", TextArea).text == "Select a flow"
+                app.screen.query_one("#flow-content", TextArea).text
+                == "Select a flow to view its YAML."
             )
             assert not app.screen.check_action("copy_yaml", ())
             assert not app.screen.check_action("delete_yaml", ())
@@ -1883,8 +1974,8 @@ def test_tui_deletes_invalid_yaml_from_highlight_without_opening_it(
             "#flow-content",
             project.project_path / "processing/flows/invalid.yaml",
             "bad: [",
-            "Select a flow",
-            "No YAML flows found in processing/flows",
+            "Select a flow to view its YAML.",
+            "No flows found in processing/flows.",
         ),
         (
             "parameters",
@@ -1892,8 +1983,8 @@ def test_tui_deletes_invalid_yaml_from_highlight_without_opening_it(
             "#parameter-content",
             project.project_path / "processing/parameters/invalid.yaml",
             "bad: [",
-            "Select a parameter set",
-            "No YAML parameter sets found in processing/parameters",
+            "Select a parameter set to view its YAML.",
+            "No parameter sets found in processing/parameters.",
         ),
         (
             "criteria",
@@ -1901,8 +1992,8 @@ def test_tui_deletes_invalid_yaml_from_highlight_without_opening_it(
             "#criteria-content",
             project.project_path / "processing/criteria/legacy.yaml",
             "remote_references:\n  survey/a: survey/b\n",
-            "Select a criteria file",
-            "No YAML criteria files found in processing/criteria",
+            "Select a criteria file to view its YAML.",
+            "No gather-criteria files found in processing/criteria.",
         ),
         (
             "jobs",
@@ -1910,8 +2001,8 @@ def test_tui_deletes_invalid_yaml_from_highlight_without_opening_it(
             "#job-content",
             project.project_path / "processing/jobs/invalid.yaml",
             "bad: [",
-            "Select a job",
-            "No YAML jobs found in processing/jobs",
+            "Select a job to view its YAML.",
+            "No jobs found in processing/jobs.",
         ),
     ]
     for _, _, _, path, content, _, _ in resources:
@@ -1997,7 +2088,10 @@ def test_tui_copies_and_runs_highlighted_job_without_opening_it(monkeypatch, tmp
             table.move_cursor(row=0)
             await pilot.pause()
             assert app.screen.selected_job_path is None
-            assert app.screen.query_one("#job-content", TextArea).text == "Select a job"
+            assert (
+                app.screen.query_one("#job-content", TextArea).text
+                == "Select a job to view its YAML."
+            )
             assert app.screen.check_action("run_selected_job", ())
             assert app.screen.check_action("copy_yaml", ())
 
@@ -2008,7 +2102,10 @@ def test_tui_copies_and_runs_highlighted_job_without_opening_it(monkeypatch, tmp
             assert confirmation.validation.resolved_job.path == job_path
             confirmation.action_cancel()
             await pilot.pause()
-            assert app.screen.query_one("#job-content", TextArea).text == "Select a job"
+            assert (
+                app.screen.query_one("#job-content", TextArea).text
+                == "Select a job to view its YAML."
+            )
 
             table = app.screen.query_one("#job-table", DataTable)
             table.focus()
@@ -2037,7 +2134,7 @@ def test_tui_copies_highlighted_flow_parameters_and_criteria_without_opening(
             "#flow-content",
             project.project_path / "processing/flows/standard.yaml",
             model_to_yaml(single_site_mt_flow()),
-            "Select a flow",
+            "Select a flow to view its YAML.",
         ),
         (
             "parameters",
@@ -2045,7 +2142,7 @@ def test_tui_copies_highlighted_flow_parameters_and_criteria_without_opening(
             "#parameter-content",
             project.project_path / "processing/parameters/default.yaml",
             model_to_yaml(default_parameter_set()),
-            "Select a parameter set",
+            "Select a parameter set to view its YAML.",
         ),
         (
             "criteria",
@@ -2053,7 +2150,7 @@ def test_tui_copies_highlighted_flow_parameters_and_criteria_without_opening(
             "#criteria-content",
             project.project_path / "processing/criteria/single_site.yaml",
             model_to_yaml(GatherCriteria()),
-            "Select a criteria file",
+            "Select a criteria file to view its YAML.",
         ),
     ]
     for _, _, _, path, content, _ in resources:
@@ -2170,7 +2267,7 @@ def test_tui_runs_job_worker_and_reports_threaded_progress(monkeypatch, tmp_path
             self.progress_callback(
                 JobProgressEvent(
                     state=JobState.running,
-                    message="Started: runs",
+                    message="Started [input_type=str]: runs",
                     job_name=resolved_job.definition.name,
                     survey="survey",
                     station="a",
@@ -2239,17 +2336,68 @@ def test_tui_runs_job_worker_and_reports_threaded_progress(monkeypatch, tmp_path
             assert explorer.job_runner is None
             assert (
                 str(explorer.query_one("#activity-status", Static).render())
-                == "field_job: completed"
+                == "field_job · Completed"
             )
             activity_log = explorer.query_one("#activity-log", RichLog)
             activity = "\n".join(line.text for line in activity_log.lines)
             normalized_activity = " ".join(activity.split())
+            assert "Started [input_type=str]: runs" in normalized_activity
             assert "station survey/a, run run1" in normalized_activity
             assert "station survey/a, sample rate 128 Hz" in normalized_activity
             assert "2/4" in normalized_activity
 
     asyncio.run(run_test())
     assert processing_project.closed
+
+
+def test_tui_retains_job_start_failure_traceback(monkeypatch, tmp_path):
+    project_path = tmp_path / "project"
+    project = FakeProject(project_path)
+    error_text = "invalid job metadata [input_type=str]"
+    load_count = 0
+
+    def load(path):
+        nonlocal load_count
+        load_count += 1
+        if load_count == 1:
+            return project
+        raise ValueError(error_text)
+
+    monkeypatch.setattr("resistics.project.load", load)
+    app = ResisticsTui(project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await _wait_for(lambda: isinstance(app.screen, ProjectExplorerScreen))
+            explorer = app.screen
+            explorer.selected_validation = SimpleNamespace(
+                resolved_job=SimpleNamespace(
+                    definition=SimpleNamespace(name="field_job")
+                )
+            )
+            thread = Thread(
+                target=explorer._execute_selected_job.__wrapped__, args=(explorer,)
+            )
+            thread.start()
+            await _wait_for(lambda: not thread.is_alive())
+            thread.join()
+            await pilot.pause()
+
+            assert explorer.job_state == JobState.failed
+            activity = "\n".join(
+                line.text for line in explorer.query_one("#activity-log", RichLog).lines
+            )
+            assert error_text in activity
+            entry = next(
+                item
+                for item in app.diagnostic_buffer.read_after(0).entries
+                if item.source == "Job processing"
+            )
+            assert entry.exception is not None
+            assert "ValueError: invalid job metadata" in entry.exception
+
+    asyncio.run(run_test())
+    assert project.closed
 
 
 def test_tui_starts_on_the_project_home_screen():
@@ -2281,12 +2429,12 @@ def test_tui_uses_a_four_second_notification_timeout():
 def test_directory_picker_starts_at_home_with_parent_navigation():
     picker = DirectoryPickerScreen("Select a project", False)
     assert picker.start_path == Path.home()
-    assert ("u", "parent_directory", "Up") in picker.BINDINGS
+    assert ("u", "parent_directory", "Parent folder") in picker.BINDINGS
     assert ("escape", "cancel", "Cancel") in picker.BINDINGS
     assert "Space: expand/collapse" in picker.navigation_instruction
-    assert "project folder" in picker.selection_instruction
+    assert "highlighted folder" in picker.selection_instruction
     assert (
-        "MTH5 file"
+        "highlighted file"
         in DirectoryPickerScreen("Select an MTH5 file", True).selection_instruction
     )
 
@@ -2397,10 +2545,12 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
     assert "Tree:focus > .tree--cursor" in ResisticsTui.CSS
     assert "DataTable:focus > .datatable--cursor" in ResisticsTui.CSS
     assert "text-style: none;" in ResisticsTui.CSS
-    assert "background: transparent;" in CopyYamlFileScreen.CSS
-    assert "background: transparent;" in DeleteYamlFileScreen.CSS
-    assert "background: transparent;" in ConfirmJobScreen.CSS
+    assert "ModalScreen { align: center middle; background: transparent; }" in (
+        ResisticsTui.CSS
+    )
+    assert ".modal-dialog {" in ResisticsTui.CSS
+    assert ".modal-dialog.modal-danger" in ResisticsTui.CSS
     assert "Button.dialog-action {" in ResisticsTui.CSS
     assert "background: #343434;" in ResisticsTui.CSS
-    assert "Button.dialog-action:focus" in ResisticsTui.CSS
-    assert "text-style: bold;" in ResisticsTui.CSS
+    assert "Button.-primary" in ResisticsTui.CSS
+    assert "Button.-error" in ResisticsTui.CSS

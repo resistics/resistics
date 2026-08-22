@@ -103,6 +103,7 @@ class _ExplorerLoadResult:
     - **jobs** — Validated jobs for the Jobs view.
     - **runs** — MTH5 run summaries preloaded for Data plot selection.
     - **error** — User-facing discovery error on failure.
+    - **diagnostic** — Structured failure detail retained in session logs.
     """
 
     generation: int
@@ -112,6 +113,7 @@ class _ExplorerLoadResult:
     jobs: tuple[IndexedJob, ...] = ()
     runs: tuple[RunSummary, ...] = ()
     error: str | None = None
+    diagnostic: DiagnosticLogEntry | None = None
 
 
 @dataclass

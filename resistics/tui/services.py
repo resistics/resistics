@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING, Literal
 from textual.screen import Screen
 from textual.widget import Widget
 
+from resistics.tui.logging import _exception_entry
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -60,6 +62,48 @@ def _feature_error(feature: str, error: Exception) -> str:
             "Reinstall resistics with its required dependencies."
         )
     return str(error)
+
+
+def _record_exception(
+    screen: Screen[None],
+    source: str,
+    summary: str,
+    error: Exception,
+) -> str:
+    """Retain a feature failure and return its concise user-facing message.
+
+    :param screen: Screen whose application owns the diagnostic session.
+    :param source: Feature name shown in session logs.
+    :param summary: Brief description of the failed action.
+    :param error: Exception raised by the action.
+    :return: Markup-safe message suitable for inline display or notification.
+    """
+    message = f"{summary}: {_feature_error(source, error)}"
+    _resistics_app(screen).diagnostic_buffer.append(
+        _exception_entry(source, message, error)
+    )
+    return message
+
+
+def _notify_exception(
+    screen: Screen[None],
+    source: str,
+    summary: str,
+    error: Exception,
+) -> None:
+    """Record a feature failure and show concise, markup-safe guidance.
+
+    :param screen: Screen displaying the notification.
+    :param source: Feature name shown in session logs.
+    :param summary: Brief description of the failed action.
+    :param error: Exception raised by the action.
+    """
+    message = _record_exception(screen, source, summary, error)
+    screen.notify(
+        f"{message}\nSee Logs for the full traceback.",
+        severity="error",
+        markup=False,
+    )
 
 
 async def _run_in_worker_thread[WorkerValue](
@@ -677,11 +721,13 @@ class ProjectExplorerService:
         self,
         validation: JobValidation,
         progress_callback: Callable[[JobProgressEvent], None],
+        error_callback: Callable[[Exception], None] | None = None,
     ) -> None:
         """Execute a validated job with structured progress and safe closure.
 
         :param validation: Validation used by this operation.
         :param progress_callback: Optional callback that receives processing progress events.
+        :param error_callback: Optional callback that retains a job-start exception.
         :raises ValueError: If the requested operation cannot satisfy its contract.
         """
         from resistics.job import JobProgressEvent, JobRunner, JobState
@@ -697,6 +743,8 @@ class ProjectExplorerService:
             )
             self._job_runner.run(validation.resolved_job)
         except Exception as exc:
+            if error_callback is not None:
+                error_callback(exc)
             progress_callback(
                 JobProgressEvent(
                     state=JobState.failed,

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from textual.screen import Screen
+from textual.widgets import Static, TextArea
 
 from resistics.tui.logging import _legacy_warning_entry, _TuiLogBuffer
 from resistics.tui.services import ProjectExplorerService
@@ -32,8 +33,8 @@ class _ProjectExplorerBase(Screen[None]):
     """
 
     DATA_CATEGORIES = [
-        ("Time data", "time"),
-        ("Spectra/evaluations", "spectra"),
+        ("Time series", "time"),
+        ("Spectra and evaluations", "spectra"),
         ("Masks", "mask"),
         ("Transfer functions", "transfer_function"),
         ("Other", "other"),
@@ -83,6 +84,49 @@ class _ProjectExplorerBase(Screen[None]):
         self._load_generation = 0
         self._loaded_sections: set[ExplorerView] = set()
         self._loading_sections: set[ExplorerView] = set()
+
+    _DETAIL_STATES = {
+        "#data-metadata": "#data-metadata-state",
+        "#flow-content": "#flow-content-state",
+        "#parameter-content": "#parameter-content-state",
+        "#criteria-content": "#criteria-content-state",
+        "#job-content": "#job-content-state",
+    }
+
+    def _show_detail_state(
+        self,
+        editor_id: str,
+        message: str,
+        *,
+        error: bool = False,
+    ) -> None:
+        """Show a consistent non-content state beside an explorer browser.
+
+        :param editor_id: Detail editor associated with the state.
+        :param message: Human-readable loading, empty, selection, or error text.
+        :param error: Whether to apply the error presentation.
+        """
+        editor = self.query_one(editor_id, TextArea)
+        state = self.query_one(self._DETAIL_STATES[editor_id], Static)
+        editor.text = message
+        editor.display = False
+        state.update(message)
+        state.set_class(error, "panel-state-error")
+        state.display = True
+
+    def _show_detail_content(self, editor_id: str, content: str) -> TextArea:
+        """Show actual YAML or JSON detail and hide its passive state.
+
+        :param editor_id: Detail editor receiving the content.
+        :param content: Literal source or metadata text to display.
+        :return: Visible detail editor.
+        """
+        state = self.query_one(self._DETAIL_STATES[editor_id], Static)
+        editor = self.query_one(editor_id, TextArea)
+        state.display = False
+        editor.text = content
+        editor.display = True
+        return editor
 
     @property
     def job_runner(self) -> JobRunner | None:

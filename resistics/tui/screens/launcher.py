@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar
 
+from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import BindingType
@@ -13,16 +14,16 @@ from textual.screen import Screen
 from textual.widgets import Button, Footer, Input, Static
 
 from resistics.tui.screens.dialogs import DirectoryPickerScreen
-from resistics.tui.services import _feature_error, _focus_relative, _resistics_app
+from resistics.tui.services import _focus_relative, _record_exception, _resistics_app
 
 
 class TuiHeader(Static):
     """Render the application title without Header's reactive mount timing."""
 
     def on_mount(self) -> None:
-        title = f"[bold]{self.app.title}[/bold]"
+        title = Text(self.app.title, style="bold")
         if self.app.sub_title:
-            title += f" [dim]— {self.app.sub_title}[/]"
+            title.append(f" — {self.app.sub_title}", style="dim")
         self.update(title)
 
 
@@ -30,6 +31,7 @@ class HomeScreen(Screen[None]):
     """Landing screen shown when no project has been opened.
 
     :param message: Optional status or failure message displayed to the user.
+    :param message_is_error: Whether to apply the error presentation to the message.
     """
 
     BINDINGS = [
@@ -38,17 +40,23 @@ class HomeScreen(Screen[None]):
         ("q", "quit", "Quit"),
     ]
 
-    def __init__(self, message: str | None = None):
+    def __init__(self, message: str | None = None, *, message_is_error: bool = False):
         super().__init__()
         self.message = message
+        self.message_is_error = message_is_error
 
     def compose(self) -> ComposeResult:
         yield TuiHeader(id="app-header")
         with Horizontal(classes="launcher-layout"), Vertical(id="home"):
             yield Static("[bold]Welcome to resistics[/bold]\nOpen or create a project.")
             if self.message:
-                yield Static(self.message, id="home-message")
-            yield Button("Open project", id="open-project", variant="success")
+                yield Static(
+                    self.message,
+                    id="home-message",
+                    classes="status-error" if self.message_is_error else "",
+                    markup=False,
+                )
+            yield Button("Open project", id="open-project", variant="primary")
             yield Button("Create project", id="create-project")
             yield Button("Quit", id="quit")
         yield Footer()
@@ -112,18 +120,20 @@ class CreateProjectScreen(Screen[None]):
                 yield Static("[bold]Create project[/bold]")
                 yield Static("Parent directory")
                 yield Button("Choose parent directory", id="choose-parent")
-                yield Static("Not selected", id="parent-path")
+                yield Static("Not selected", id="parent-path", markup=False)
                 yield Static("Project folder name")
                 yield Input(placeholder="my_project", id="project-name")
                 yield Static("MTH5 file")
                 yield Button("Choose MTH5 file", id="choose-mth5")
-                yield Static("Not selected", id="mth5-path")
+                yield Static("Not selected", id="mth5-path", markup=False)
                 yield Static("Reference time")
                 yield Input(placeholder="YYYY-MM-DD HH:MM:SS", id="reference-time")
-                yield Static("", id="create-status")
+                yield Static(
+                    "", id="create-status", classes="form-status", markup=False
+                )
                 with Horizontal(id="create-actions"):
                     yield Button("Back", id="back")
-                    yield Button("Create and open", id="create", variant="success")
+                    yield Button("Create and open", id="create", variant="primary")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -163,8 +173,13 @@ class CreateProjectScreen(Screen[None]):
                 source.close()
         except Exception as exc:
             self._set_status(
-                f"[red]Unable to read MTH5 file:[/] "
-                f"{_feature_error('MTH5 inspection', exc)}"
+                _record_exception(
+                    self,
+                    "MTH5 inspection",
+                    "Unable to read the MTH5 file",
+                    exc,
+                ),
+                severity="error",
             )
             return
         finally:
@@ -175,7 +190,8 @@ class CreateProjectScreen(Screen[None]):
         self.query_one("#reference-time", Input).value = summary.start_time or ""
         if summary.start_time is None:
             self._set_status(
-                "[yellow]The MTH5 file has no recording start time; enter one manually.[/]"
+                "The MTH5 file has no recording start time; enter one manually.",
+                severity="warning",
             )
         else:
             self._set_status("")
@@ -189,7 +205,7 @@ class CreateProjectScreen(Screen[None]):
         project_name = self.query_one("#project-name", Input).value.strip()
         reference_time = self.query_one("#reference-time", Input).value.strip()
         if self.parent_path is None:
-            self._set_status("[red]Choose a parent directory.[/]")
+            self._set_status("Choose a parent directory.", severity="error")
             return
         if (
             not project_name
@@ -200,36 +216,53 @@ class CreateProjectScreen(Screen[None]):
                 "..",
             }
         ):
-            self._set_status("[red]Enter a single new project folder name.[/]")
+            self._set_status(
+                "Enter a single new project folder name.", severity="error"
+            )
             return
         project_path = self.parent_path / project_name
         if project_path.exists():
             if (project_path / "resistics.json").exists():
                 self._set_status(
-                    "[yellow]This is already a resistics project. Use Open project instead.[/]"
+                    "This is already a resistics project. Use Open project instead.",
+                    severity="warning",
                 )
             else:
                 self._set_status(
-                    "[red]Choose a project folder name that does not exist.[/]"
+                    "Choose a project folder name that does not exist.",
+                    severity="error",
                 )
             return
         if self.mth5_path is None:
-            self._set_status("[red]Choose an MTH5 file.[/]")
+            self._set_status("Choose an MTH5 file.", severity="error")
             return
         if not reference_time:
-            self._set_status("[red]Enter a project reference time.[/]")
+            self._set_status("Enter a project reference time.", severity="error")
             return
         try:
             to_datetime(reference_time)
         except Exception as exc:
-            self._set_status(f"[red]Invalid reference time:[/] {exc}")
+            self._set_status(
+                _record_exception(
+                    self,
+                    "Project creation",
+                    "Invalid reference time",
+                    exc,
+                ),
+                severity="error",
+            )
             return
         try:
             init_project(project_path, self.mth5_path, reference_time)
         except Exception as exc:
             self._set_status(
-                f"[red]Unable to create project:[/] "
-                f"{_feature_error('Project creation', exc)}"
+                _record_exception(
+                    self,
+                    "Project creation",
+                    "Unable to create the project",
+                    exc,
+                ),
+                severity="error",
             )
             return
         _resistics_app(self).open_project_path(project_path)
@@ -271,8 +304,11 @@ class CreateProjectScreen(Screen[None]):
         ]
         _focus_relative(actions, self.focused, increment, move_from_unfocused=False)
 
-    def _set_status(self, message: str) -> None:
-        self.query_one("#create-status", Static).update(message)
+    def _set_status(self, message: str, *, severity: str | None = None) -> None:
+        status = self.query_one("#create-status", Static)
+        status.update(message)
+        status.set_class(severity == "error", "status-error")
+        status.set_class(severity == "warning", "status-warning")
 
 
 class ProjectLoadingScreen(Screen[None]):
@@ -298,11 +334,9 @@ class ProjectLoadingScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         yield TuiHeader(id="app-header")
         with VerticalScroll(classes="pane"):
-            yield Static(
-                f"[bold]Opening project[/bold]\n\n{self.project_path}\n\n"
-                "Loading MTH5 metadata…",
-                id="project-loading",
-            )
+            message = Text("Opening project", style="bold")
+            message.append(f"\n\n{self.project_path}\n\nLoading MTH5 metadata…")
+            yield Static(message, id="project-loading")
         yield Footer()
 
     def action_cancel(self) -> None:
