@@ -11,6 +11,7 @@ from textual import on, work
 from textual.widgets import Static, TabbedContent, TextArea, Tree
 from textual.widgets._tree import TreeNode
 
+from resistics.tui.logging import _exception_entry
 from resistics.tui.screens.project_base import _ProjectExplorerBase
 from resistics.tui.services import _feature_error
 from resistics.tui.state import PlotTarget
@@ -266,10 +267,13 @@ class _ProjectDataMixin(_ProjectExplorerBase):
             pio.show(figure)
             self.app.call_from_thread(self.notify, f"{plot_name.capitalize()} opened")
         except Exception as exc:
+            message = f"Unable to open {plot_name}: {_feature_error('Plotting', exc)}"
+            self.log_buffer.append(_exception_entry("Plotting", message, exc))
             self.app.call_from_thread(
                 self.notify,
-                f"Unable to open {plot_name}: {_feature_error('Plotting', exc)}",
+                f"{message}\nSee Session logs for the full traceback.",
                 severity="error",
+                markup=False,
             )
         finally:
             if plot_project is not None and plot_project is not self.project:

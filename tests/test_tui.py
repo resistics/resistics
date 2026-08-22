@@ -1429,6 +1429,50 @@ def test_tui_rejects_mismatched_plot_payloads(target, message):
         ProjectExplorerService.build_plot_figure(SimpleNamespace(), target)
 
 
+def test_tui_plot_failure_is_markup_safe_and_retained_in_session_logs(
+    monkeypatch, tmp_path
+):
+    project = FakeProject(tmp_path / "project")
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)):
+            await _wait_for(lambda: isinstance(app.screen, ProjectExplorerScreen))
+            screen = app.screen
+            notifications = []
+
+            def notify(message, **kwargs):
+                notifications.append((message, kwargs))
+
+            def fail_to_build(project, target):
+                del project, target
+                raise ValueError(
+                    "invalid metadata [input_value='jpeacock@usgs', input_type=str]"
+                )
+
+            def call_directly(callback, *args, **kwargs):
+                return callback(*args, **kwargs)
+
+            monkeypatch.setattr(screen, "notify", notify)
+            monkeypatch.setattr(screen.service, "build_plot_figure", fail_to_build)
+            monkeypatch.setattr(app, "call_from_thread", call_directly)
+
+            screen._open_plot.__wrapped__(screen, ("project", None))
+
+            assert notifications[-1][1]["severity"] == "error"
+            assert notifications[-1][1]["markup"] is False
+            assert "See Session logs" in notifications[-1][0]
+            entries = app.diagnostic_buffer.read_after(0).entries
+            entry = next(item for item in entries if item.source == "Plotting")
+            assert "jpeacock@usgs" in entry.message
+            assert entry.exception is not None
+            assert "ValueError: invalid metadata" in entry.exception
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
 def test_tui_plots_a_valid_selected_flow(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
     flow_path = project.project_path / "processing/flows/standard.yaml"

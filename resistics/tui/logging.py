@@ -207,6 +207,24 @@ def _error_entry(source: str, message: str) -> DiagnosticLogEntry:
     )
 
 
+def _exception_entry(source: str, message: str, error: Exception) -> DiagnosticLogEntry:
+    """Return a structured error with its complete traceback.
+
+    :param source: Feature that failed.
+    :param message: User-facing error detail.
+    :param error: Exception raised at the feature boundary.
+
+    :return: Structured error entry retaining debugging detail.
+    """
+    return DiagnosticLogEntry(
+        timestamp=datetime.now(UTC),
+        level="ERROR",
+        source=source,
+        message=message,
+        exception="".join(format_exception(error)).rstrip(),
+    )
+
+
 class _TuiDiagnosticCapture:
     """Own process-global diagnostics during ``run_tui``.
 

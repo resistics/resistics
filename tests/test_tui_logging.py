@@ -8,7 +8,11 @@ from loguru import logger
 from pydantic import BaseModel, ValidationError
 
 from resistics.tui import DiagnosticLogEntry
-from resistics.tui.logging import _TuiDiagnosticCapture, _TuiLogBuffer
+from resistics.tui.logging import (
+    _exception_entry,
+    _TuiDiagnosticCapture,
+    _TuiLogBuffer,
+)
 
 
 def diagnostic(message: str) -> DiagnosticLogEntry:
@@ -57,6 +61,20 @@ def test_diagnostic_buffer_is_thread_safe_incremental_and_bounded():
         {str(index) for index in range(8)}
     )
     assert buffer.read_after(first.cursor).entries == ()
+
+
+def test_exception_entry_retains_validation_detail_and_traceback():
+    try:
+        raise ValueError("invalid metadata [input_value='jpeacock@usgs']")
+    except ValueError as error:
+        entry = _exception_entry("Plotting", "Unable to open plot", error)
+
+    assert entry.level == "ERROR"
+    assert entry.source == "Plotting"
+    assert entry.message == "Unable to open plot"
+    assert entry.exception is not None
+    assert "ValueError: invalid metadata" in entry.exception
+    assert "jpeacock@usgs" in entry.exception
 
 
 def test_diagnostic_capture_filters_debug_and_recovers_after_loguru_reconfigure():
