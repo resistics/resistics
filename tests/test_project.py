@@ -55,6 +55,7 @@ class FakeChannelSummary:
                     "sample_rate": 128.0,
                     "start": "2020-01-01T00:00:00",
                     "end": "2020-01-01T01:00:00",
+                    "has_data": True,
                 },
                 {
                     "survey": "survey",
@@ -63,6 +64,7 @@ class FakeChannelSummary:
                     "sample_rate": 128.0,
                     "start": "2020-01-01T00:30:00",
                     "end": "2020-01-01T01:30:00",
+                    "has_data": True,
                 },
             ]
         )
@@ -416,6 +418,35 @@ def test_open_mth5_builds_serializable_read_only_summary(monkeypatch, tmp_path):
         source.get_survey("survey")
     with pytest.raises(RuntimeError, match="MTH5 handle is closed"):
         source.__enter__()
+
+
+def test_mth5_file_summary_times_ignore_channels_without_data(monkeypatch, tmp_path):
+    """Placeholder channels do not determine the suggested reference time."""
+
+    class PlaceholderChannelSummary(FakeChannelSummary):
+        def to_dataframe(self):
+            table = super().to_dataframe()
+            placeholder = table.iloc[[0]].copy()
+            placeholder["run"] = "placeholder"
+            placeholder["start"] = "1980-01-01T00:00:00"
+            placeholder["end"] = "1980-01-01T00:00:00"
+            placeholder["has_data"] = False
+            return pd.concat([placeholder, table], ignore_index=True)
+
+    class PlaceholderMTH5(FakeMTH5):
+        def __init__(self, path):
+            super().__init__(path)
+            self._channel_summary = PlaceholderChannelSummary()
+
+    monkeypatch.setattr("resistics.project_mth5._new_mth5", PlaceholderMTH5)
+    mth5_path = tmp_path / "data.h5"
+    mth5_path.write_text("")
+
+    with open_mth5(mth5_path) as source:
+        summary = source.file_summary()
+
+    assert summary.start_time == "2020-01-01T00:00:00"
+    assert summary.end_time == "2020-01-01T01:30:00"
 
 
 def test_load_closes_mth5_when_summary_construction_fails(monkeypatch, tmp_path):

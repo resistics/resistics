@@ -371,6 +371,7 @@ class _MTH5InspectionMixin(_MTH5HandleOwner):
     def file_summary(self) -> MTH5FileSummary:
         self._require_open()
         table = self.table
+        time_table = table.loc[table["has_data"].eq(True)]
         return MTH5FileSummary(
             mth5_path=self.mth5_path,
             file_version=str(self.mth5_data.file_version),
@@ -379,8 +380,8 @@ class _MTH5InspectionMixin(_MTH5HandleOwner):
             n_runs=table["run_path"].nunique() if not table.empty else 0,
             n_channels=len(table.index),
             sample_rates=self.fs(),
-            start_time=_iso_min(table, "start"),
-            end_time=_iso_max(table, "end"),
+            start_time=_iso_min(time_table, "start"),
+            end_time=_iso_max(time_table, "end"),
         )
 
     def list_surveys(self) -> list[SurveySummary]:
