@@ -53,6 +53,7 @@ from resistics.tui import (
     ResisticsTui,
 )
 from resistics.tui.logging import _TuiDiagnosticCapture, _TuiLogBuffer
+from resistics.tui.screens.project_help import TAB_HELP, ProjectTabHelpScreen
 from resistics.tui.services import ProjectExplorerService
 
 
@@ -529,6 +530,140 @@ def test_tui_mounts_project_views(monkeypatch, tmp_path):
             app.screen.set_focus(tree)
             app.action_focus_next()
             assert app.focused is metadata_details
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
+def test_project_tab_help_content_covers_every_tab_and_processing_relationship():
+    tab_ids = {
+        "project",
+        "data",
+        "flows",
+        "parameters",
+        "criteria",
+        "jobs",
+        "activity",
+        "logs",
+    }
+    assert set(TAB_HELP) == tab_ids
+    assert all(
+        value.summary.strip() and value.details.strip() for value in TAB_HELP.values()
+    )
+
+    processing_tabs = {"project", "flows", "parameters", "criteria", "jobs"}
+    for tab in processing_tabs:
+        assert "Job = Flow + Parameters + optional Criteria + Scope + Output label" in (
+            TAB_HELP[tab].details
+        )
+        assert "MTH5 recordings" in TAB_HELP[tab].details
+        assert "Project outputs" in TAB_HELP[tab].details
+
+    assert "plugins/example.py" in TAB_HELP["flows"].details
+    assert "plugins.example.PassThrough" in TAB_HELP["flows"].details
+    assert all(
+        "plugins.example.PassThrough" not in TAB_HELP[tab].details
+        for tab in tab_ids - {"flows"}
+    )
+
+
+def test_project_tabs_show_summaries_and_active_contextual_help(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await _wait_for(lambda: isinstance(app.screen, ProjectExplorerScreen))
+            explorer = app.screen
+            tabs = explorer.query_one(TabbedContent)
+            assert ("h", "show_help", "Help") in explorer.BINDINGS
+
+            for tab, content in TAB_HELP.items():
+                pane = explorer.query_one(f"#{tab}", TabPane)
+                summaries = pane.query(".tab-explainer")
+                assert len(summaries) == 1
+                assert content.summary in str(summaries.first(Static).render())
+
+                tabs.active = tab
+                await pilot.pause()
+                assert explorer.check_action("show_help", ())
+                await pilot.press("h")
+                await pilot.pause()
+                assert isinstance(app.screen, ProjectTabHelpScreen)
+                assert app.screen.tab == tab
+                assert app.screen.query_one("#project-tab-help-scroll", RichLog)
+                await pilot.press("h" if tab == "project" else "escape")
+                await pilot.pause()
+                assert app.screen is explorer
+
+    asyncio.run(run_test())
+    assert project.closed
+
+
+def test_project_help_is_scrollable_small_screen_and_h_does_not_capture_yaml(
+    monkeypatch, tmp_path
+):
+    project = FakeProject(tmp_path / "project")
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(60, 20)) as pilot:
+            await _wait_for(lambda: isinstance(app.screen, ProjectExplorerScreen))
+            explorer = app.screen
+            await pilot.press("h")
+            await pilot.pause()
+            help_screen = app.screen
+            assert isinstance(help_screen, ProjectTabHelpScreen)
+            dialog = help_screen.query_one("#project-tab-help-dialog")
+            assert dialog.region.width <= 60
+            assert dialog.region.height <= 20
+            help_log = help_screen.query_one("#project-tab-help-scroll", RichLog)
+            assert help_screen.focused is help_log
+            assert help_log.styles.scrollbar_gutter == "stable"
+            assert help_log.styles.scrollbar_size_vertical == 1
+            assert help_log.styles.background.hex == "#101010"
+            assert help_log.styles.background_tint.a == 0
+            assert help_log.scroll_y == 0
+            await pilot.press("tab")
+            await pilot.pause()
+            assert help_screen.focused is help_screen.query_one(
+                "#close-project-tab-help", Button
+            )
+            assert help_log.styles.background.hex == "#101010"
+            assert help_log.styles.background_tint.a == 0
+            await pilot.press("shift+tab")
+            await pilot.pause()
+            assert help_screen.focused is help_log
+            await pilot.press("end")
+            await pilot.pause()
+            assert help_log.scroll_y > 0
+            await pilot.press("escape")
+            await pilot.pause()
+            assert app.screen is explorer
+
+            await pilot.press("h")
+            await pilot.pause()
+            assert isinstance(app.screen, ProjectTabHelpScreen)
+            await pilot.click("#close-project-tab-help")
+            await pilot.pause()
+            assert app.screen is explorer
+
+            explorer.query_one(TabbedContent).active = "flows"
+            editor = explorer.query_one("#flow-content", TextArea)
+            await _wait_for(lambda: "No YAML flows" in editor.text)
+            editor.text = ""
+            editor.read_only = False
+            explorer.editing_yaml = True
+            editor.focus()
+            explorer.refresh_bindings()
+            assert not explorer.check_action("show_help", ())
+
+            await pilot.press("h")
+            await pilot.pause()
+            assert app.screen is explorer
+            assert editor.text == "h"
 
     asyncio.run(run_test())
     assert project.closed

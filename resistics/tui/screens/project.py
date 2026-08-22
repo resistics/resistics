@@ -22,6 +22,11 @@ from textual.worker import Worker, WorkerState
 
 from resistics.tui.screens.launcher import TuiHeader
 from resistics.tui.screens.project_data import _ProjectDataMixin
+from resistics.tui.screens.project_help import (
+    TAB_HELP,
+    ProjectTab,
+    ProjectTabHelpScreen,
+)
 from resistics.tui.screens.project_jobs import _ProjectJobsMixin
 from resistics.tui.screens.project_logs import _ProjectLogsMixin
 from resistics.tui.screens.project_resources import _ProjectResourcesMixin
@@ -54,6 +59,7 @@ class ProjectExplorerScreen(
         Binding("escape", "discard_yaml", "Discard YAML", priority=True),
         ("j", "run_selected_job", "Run job"),
         ("p", "plot", "Plot"),
+        ("h", "show_help", "Help"),
         ("right_square_bracket", "expand_data_node", "Expand"),
         ("left_square_bracket", "collapse_data_node", "Collapse"),
         ("c", "cancel_job", "Cancel job"),
@@ -65,23 +71,28 @@ class ProjectExplorerScreen(
         yield TuiHeader(id="app-header")
         with TabbedContent(initial="project"):
             with TabPane("Project", id="project"):
-                with VerticalScroll(classes="pane"):
-                    yield Static(id="project-content")
+                with Vertical(classes="pane"):
+                    yield self._tab_explainer("project")
+                    with VerticalScroll(classes="tab-body"):
+                        yield Static(id="project-content")
             with TabPane("Data", id="data"):
-                with Horizontal(classes="pane split"):
-                    with Vertical(classes="left"):
-                        data_tree = Tree("Data", id="data-tree")
-                        data_tree.show_root = False
-                        yield data_tree
-                    with Vertical(classes="right"):
-                        yield TextArea.code_editor(
-                            '{\n  "message": "Select Project or MTH5 data"\n}',
-                            language="json",
-                            theme="vscode_dark",
-                            read_only=True,
-                            id="data-metadata",
-                        )
+                with Vertical(classes="pane"):
+                    yield self._tab_explainer("data")
+                    with Horizontal(classes="split"):
+                        with Vertical(classes="left"):
+                            data_tree = Tree("Data", id="data-tree")
+                            data_tree.show_root = False
+                            yield data_tree
+                        with Vertical(classes="right"):
+                            yield TextArea.code_editor(
+                                '{\n  "message": "Select Project or MTH5 data"\n}',
+                                language="json",
+                                theme="vscode_dark",
+                                read_only=True,
+                                id="data-metadata",
+                            )
             with TabPane("Flows", id="flows"), Vertical(classes="pane"):
+                yield self._tab_explainer("flows")
                 with Horizontal(classes="split"):
                     with Vertical(classes="left"):
                         yield DataTable(id="flow-table", cursor_type="row")
@@ -95,6 +106,7 @@ class ProjectExplorerScreen(
                         )
             with TabPane("Parameters", id="parameters"):
                 with Vertical(classes="pane"):
+                    yield self._tab_explainer("parameters")
                     with Horizontal(classes="split"):
                         with Vertical(classes="left"):
                             yield DataTable(id="parameter-table", cursor_type="row")
@@ -108,6 +120,7 @@ class ProjectExplorerScreen(
                             )
             with TabPane("Criteria", id="criteria"):
                 with Vertical(classes="pane"):
+                    yield self._tab_explainer("criteria")
                     with Horizontal(classes="split"):
                         with Vertical(classes="left"):
                             yield DataTable(id="criteria-table", cursor_type="row")
@@ -120,6 +133,7 @@ class ProjectExplorerScreen(
                                 id="criteria-content",
                             )
             with TabPane("Jobs", id="jobs"), Vertical(classes="pane"):
+                yield self._tab_explainer("jobs")
                 with Horizontal(classes="split"):
                     with Vertical(classes="left"):
                         yield DataTable(id="job-table", cursor_type="row")
@@ -133,10 +147,12 @@ class ProjectExplorerScreen(
                         )
             with TabPane("Activity", id="activity"):
                 with Vertical(classes="pane"):
+                    yield self._tab_explainer("activity")
                     yield Static("No active job", id="activity-status")
                     yield RichLog(id="activity-log", markup=True, wrap=True)
             with TabPane("Logs", id="logs"):
                 with Vertical(classes="pane"):
+                    yield self._tab_explainer("logs")
                     yield Static("Session logs · INFO+", id="logs-status")
                     yield RichLog(
                         id="logs-log",
@@ -145,6 +161,15 @@ class ProjectExplorerScreen(
                         auto_scroll=True,
                     )
         yield Footer()
+
+    @staticmethod
+    def _tab_explainer(tab: ProjectTab) -> Static:
+        """Return the consistently styled summary for one project tab.
+
+        :param tab: Project tab whose summary should be displayed.
+        :return: Static explanatory text for the tab.
+        """
+        return Static(TAB_HELP[tab].summary, classes="tab-explainer")
 
     def on_mount(self) -> None:
         self.query_one("#project-content", Static).update(
@@ -415,7 +440,16 @@ class ProjectExplorerScreen(
             return self._check_data_tree_action(action)
         if action == "plot":
             return self._check_plot_action(active)
+        if action == "show_help":
+            return not self.editing_yaml
         return super().check_action(action, parameters)
+
+    def action_show_help(self) -> None:
+        """Open contextual help for the active project tab."""
+        active = self.query_one(TabbedContent).active
+        if active not in TAB_HELP or self.editing_yaml:
+            return
+        self.app.push_screen(ProjectTabHelpScreen(active))
 
     def action_refresh(self) -> None:
         if self.job_state == self._job_state_type.running:

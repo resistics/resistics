@@ -145,6 +145,13 @@ class ResisticsTui(App[None]):
     Tab.-active { background: #faa881; color: #101010; text-style: bold; }
     TabPane { background: #101010; color: #f7f4f2; }
     .pane { height: 1fr; padding: 1; background: #101010; color: #f7f4f2; }
+    .tab-explainer {
+        height: auto;
+        min-height: 1;
+        margin-bottom: 1;
+        color: #aaa6ad;
+    }
+    .tab-body { height: 1fr; }
     .split { height: 1fr; }
     .left { width: 2fr; border-right: solid #faa881; padding-right: 1; }
     .right { width: 3fr; }
