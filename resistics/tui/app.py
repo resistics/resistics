@@ -148,23 +148,24 @@ class ResisticsTui(App[None]):
     Tab { color: #f7f4f2; }
     Tab.-active { background: #faa881; color: #101010; text-style: bold; }
     TabPane { background: #101010; color: #f7f4f2; }
-    .pane { height: 1fr; padding: 1; background: #101010; color: #f7f4f2; }
+    .pane { height: 1fr; padding: 0; background: #101010; color: #f7f4f2; }
     .tab-explainer {
         height: auto;
         min-height: 1;
+        padding: 0 1;
         margin-bottom: 1;
         color: #aaa6ad;
     }
     .tab-body { height: 1fr; }
     .split { height: 1fr; }
-    .left { width: 2fr; border-right: solid #faa881; padding-right: 1; }
+    .left { width: 2fr; padding-right: 1; }
     .right { width: 3fr; }
     Tree, DataTable {
         background: #202020;
         color: #f7f4f2;
-        border: tall #343434;
+        border: solid #555555;
     }
-    Tree:focus, DataTable:focus { border: tall #0a009f; }
+    Tree:focus, DataTable:focus { border: solid #0a009f; }
     DataTable > .datatable--header { background: #0a009f; color: #f7f4f2; }
     Tree > .tree--label, DataTable > .datatable--cursor,
     Tree > .tree--cursor, Tree:focus > .tree--cursor,
@@ -188,10 +189,10 @@ class ResisticsTui(App[None]):
         height: 1fr;
         background: #202020;
         color: #f7f4f2;
-        border: tall #343434;
+        border: solid #555555;
     }
     #data-metadata:focus, #flow-content:focus, #parameter-content:focus,
-    #criteria-content:focus, #job-content:focus { border: tall #0a009f; }
+    #criteria-content:focus, #job-content:focus { border: solid #0a009f; }
     .panel-state {
         height: 1fr;
         padding: 1;
@@ -199,7 +200,7 @@ class ResisticsTui(App[None]):
         text-align: center;
         background: #202020;
         color: #aaa6ad;
-        border: tall #343434;
+        border: solid #555555;
     }
     .panel-state.panel-state-error { color: #ff6b6b; }
     Button { background: #343434; color: #f7f4f2; border: none; }
@@ -229,12 +230,13 @@ class ResisticsTui(App[None]):
     .modal-actions Button { margin-left: 1; }
     #activity-log, #logs-log {
         height: 1fr;
-        border: round #343434;
+        border: solid #555555;
         background: #202020;
         color: #f7f4f2;
     }
     #activity-status, #logs-status {
         height: auto;
+        padding: 0 1;
         margin-bottom: 1;
         color: #faa881;
     }

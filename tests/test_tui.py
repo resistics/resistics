@@ -2539,6 +2539,10 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
         ResisticsTui.CSS
     )
     assert "#faa881" in ResisticsTui.CSS
+    assert ".pane { height: 1fr; padding: 0;" in ResisticsTui.CSS
+    assert ".left { width: 2fr; padding-right: 1; }" in ResisticsTui.CSS
+    assert "border-right: solid #faa881;" not in ResisticsTui.CSS
+    assert "border: solid #555555;" in ResisticsTui.CSS
     assert "#ac3600" in ResisticsTui.CSS
     assert "Button:focus" in ResisticsTui.CSS
     assert "background: #0a009f;" in ResisticsTui.CSS
@@ -2554,3 +2558,70 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
     assert "background: #343434;" in ResisticsTui.CSS
     assert "Button.-primary" in ResisticsTui.CSS
     assert "Button.-error" in ResisticsTui.CSS
+
+
+def test_project_panels_use_consistent_borders_and_spacing(monkeypatch, tmp_path):
+    project = FakeProject(tmp_path / "project")
+    monkeypatch.setattr("resistics.project.load", lambda project_path: project)
+    app = ResisticsTui(project.project_path)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await _wait_for(lambda: isinstance(app.screen, ProjectExplorerScreen))
+            explorer = app.screen
+            tabs = explorer.query_one(TabbedContent)
+
+            panel_ids = (
+                "#data-tree",
+                "#data-metadata",
+                "#data-metadata-state",
+                "#flow-table",
+                "#flow-content",
+                "#flow-content-state",
+                "#parameter-table",
+                "#parameter-content",
+                "#parameter-content-state",
+                "#criteria-table",
+                "#criteria-content",
+                "#criteria-content-state",
+                "#job-table",
+                "#job-content",
+                "#job-content-state",
+                "#activity-log",
+                "#logs-log",
+            )
+            for panel_id in panel_ids:
+                border_style, border_color = explorer.query_one(
+                    panel_id
+                ).styles.border.top
+                assert border_style == "solid"
+                assert border_color.hex == "#555555"
+
+            tabs.active = "flows"
+            await pilot.pause()
+            flow_pane = explorer.query_one("#flows", TabPane)
+            flow_table = explorer.query_one("#flow-table", DataTable)
+            flow_state = explorer.query_one("#flow-content-state", Static)
+            assert flow_table.region.x == flow_pane.content_region.x
+            assert flow_state.region.right == flow_pane.content_region.right
+            assert flow_state.region.x - flow_table.region.right == 1
+            assert flow_table.region.bottom == flow_pane.content_region.bottom
+            assert flow_state.region.bottom == flow_pane.content_region.bottom
+
+            flow_table.focus()
+            await pilot.pause()
+            focus_style, focus_color = flow_table.styles.border.top
+            assert focus_style == "solid"
+            assert focus_color.hex == "#0A009F"
+
+            split_bounds = (flow_table.region.x, flow_state.region.right)
+            for tab, log_id in (("activity", "#activity-log"), ("logs", "#logs-log")):
+                tabs.active = tab
+                await pilot.pause()
+                tab_pane = explorer.query_one(f"#{tab}", TabPane)
+                log = explorer.query_one(log_id, RichLog)
+                assert (log.region.x, log.region.right) == split_bounds
+                assert log.region.bottom == tab_pane.content_region.bottom
+
+    asyncio.run(run_test())
+    assert project.closed
