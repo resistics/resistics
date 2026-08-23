@@ -278,6 +278,17 @@ async def _wait_for(condition, timeout=2.0):
     await asyncio.wait_for(poll(), timeout=timeout)
 
 
+def _assert_scrollbar_palette(widget):
+    styles = widget.styles
+    assert styles.scrollbar_color.hex == "#003054"
+    assert styles.scrollbar_color_hover.hex == "#003C6A"
+    assert styles.scrollbar_color_active.hex == "#0178D4"
+    assert styles.scrollbar_background.hex == "#101010"
+    assert styles.scrollbar_background_hover.hex == "#101010"
+    assert styles.scrollbar_background_active.hex == "#101010"
+    assert styles.scrollbar_corner_color.hex == "#101010"
+
+
 def test_project_and_overview_loading_do_not_block_the_ui(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
     load_started = Event()
@@ -700,6 +711,7 @@ def test_project_help_is_scrollable_small_screen_and_h_does_not_capture_yaml(
             assert help_screen.focused is help_log
             assert help_log.styles.scrollbar_gutter == "stable"
             assert help_log.styles.scrollbar_size_vertical == 1
+            _assert_scrollbar_palette(help_log)
             assert help_log.styles.background.hex == "#101010"
             assert help_log.styles.background_tint.a == 0
             assert help_log.scroll_y == 0
@@ -2437,6 +2449,11 @@ def test_directory_picker_starts_at_home_with_parent_navigation():
         "highlighted file"
         in DirectoryPickerScreen("Select an MTH5 file", True).selection_instruction
     )
+    assert "padding: 0;" in DirectoryPickerScreen.CSS
+    assert "border: heavy #003054;" in DirectoryPickerScreen.CSS
+    assert "border: heavy #555555;" in DirectoryPickerScreen.CSS
+    assert "outline: none;" in DirectoryPickerScreen.CSS
+    assert "background-tint: 0%;" in DirectoryPickerScreen.CSS
 
 
 def test_invalid_startup_project_returns_to_home(monkeypatch, tmp_path):
@@ -2539,10 +2556,19 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
         ResisticsTui.CSS
     )
     assert "#faa881" in ResisticsTui.CSS
-    assert ".pane { height: 1fr; padding: 0;" in ResisticsTui.CSS
+    assert ".pane {" in ResisticsTui.CSS
+    assert "padding: 0 0 1 0;" in ResisticsTui.CSS
     assert ".left { width: 2fr; padding-right: 1; }" in ResisticsTui.CSS
     assert "border-right: solid #faa881;" not in ResisticsTui.CSS
-    assert "border: solid #555555;" in ResisticsTui.CSS
+    assert "scrollbar-color: #003054;" in ResisticsTui.CSS
+    assert "scrollbar-color-hover: #003c6a;" in ResisticsTui.CSS
+    assert "scrollbar-color-active: #0178d4;" in ResisticsTui.CSS
+    assert "scrollbar-background: #101010;" in ResisticsTui.CSS
+    assert "border: heavy #003054;" in ResisticsTui.CSS
+    assert "border: heavy #555555;" in ResisticsTui.CSS
+    assert "outline: none;" in ResisticsTui.CSS
+    assert "background-tint: 0%;" in ResisticsTui.CSS
+    assert "border: solid #555555;" not in ResisticsTui.CSS
     assert "#ac3600" in ResisticsTui.CSS
     assert "Button:focus" in ResisticsTui.CSS
     assert "background: #0a009f;" in ResisticsTui.CSS
@@ -2560,7 +2586,7 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
     assert "Button.-error" in ResisticsTui.CSS
 
 
-def test_project_panels_use_consistent_borders_and_spacing(monkeypatch, tmp_path):
+def test_project_panels_use_heavy_borders_and_contain_scrollbars(monkeypatch, tmp_path):
     project = FakeProject(tmp_path / "project")
     monkeypatch.setattr("resistics.project.load", lambda project_path: project)
     app = ResisticsTui(project.project_path)
@@ -2591,37 +2617,96 @@ def test_project_panels_use_consistent_borders_and_spacing(monkeypatch, tmp_path
                 "#logs-log",
             )
             for panel_id in panel_ids:
-                border_style, border_color = explorer.query_one(
-                    panel_id
-                ).styles.border.top
-                assert border_style == "solid"
-                assert border_color.hex == "#555555"
+                panel = explorer.query_one(panel_id)
+                assert all(edge[0] == "heavy" for edge in panel.styles.border)
+                assert all(edge[1].hex == "#555555" for edge in panel.styles.border)
+                assert all(edge[0] == "" for edge in panel.styles.outline)
+                assert panel.styles.padding.top == 0
+                assert panel.styles.padding.right == 0
+                assert panel.styles.padding.bottom == 0
+                assert panel.styles.padding.left == 0
+                _assert_scrollbar_palette(panel)
 
             tabs.active = "flows"
             await pilot.pause()
             flow_pane = explorer.query_one("#flows", TabPane)
             flow_table = explorer.query_one("#flow-table", DataTable)
             flow_state = explorer.query_one("#flow-content-state", Static)
+            await _wait_for(lambda: len(flow_table.columns) > 0)
+            overflow_row = ("flow-with-a-very-long-name",) + ("long-value",) * (
+                len(flow_table.columns) - 1
+            )
+            for index in range(50):
+                flow_table.add_row(*overflow_row, key=f"overflow-{index}")
+            await pilot.pause()
             assert flow_table.region.x == flow_pane.content_region.x
             assert flow_state.region.right == flow_pane.content_region.right
             assert flow_state.region.x - flow_table.region.right == 1
-            assert flow_table.region.bottom == flow_pane.content_region.bottom
-            assert flow_state.region.bottom == flow_pane.content_region.bottom
+            assert flow_table.region.bottom == flow_pane.content_region.bottom - 1
+            assert flow_state.region.bottom == flow_pane.content_region.bottom - 1
+            assert flow_table.show_header
+            assert flow_table.content_region.y == flow_table.region.y + 1
+            assert flow_table.content_region.x == flow_table.region.x + 1
+            assert flow_table.horizontal_scrollbar.display
+            assert flow_table.vertical_scrollbar.display
+            assert (
+                flow_table.horizontal_scrollbar.region.x == flow_table.content_region.x
+            )
+            assert (
+                flow_table.horizontal_scrollbar.region.right
+                == flow_table.vertical_scrollbar.region.x
+            )
+            assert (
+                flow_table.horizontal_scrollbar.region.bottom
+                == flow_table.content_region.bottom
+            )
+            assert (
+                flow_table.vertical_scrollbar.region.right
+                == flow_table.content_region.right
+            )
+            assert (
+                flow_table.vertical_scrollbar.region.bottom
+                == flow_table.horizontal_scrollbar.region.y
+            )
 
             flow_table.focus()
             await pilot.pause()
             focus_style, focus_color = flow_table.styles.border.top
-            assert focus_style == "solid"
-            assert focus_color.hex == "#0A009F"
+            assert focus_style == "heavy"
+            assert focus_color.hex == "#003054"
+            assert all(edge[0] == "" for edge in flow_table.styles.outline)
+            assert flow_table.styles.background_tint.a == 0
 
             split_bounds = (flow_table.region.x, flow_state.region.right)
+            flow_editor = explorer.query_one("#flow-content", TextArea)
+            flow_state.display = False
+            flow_editor.display = True
+            flow_editor.focus()
+            await pilot.pause()
+            assert flow_editor.styles.border.top[0] == "heavy"
+            assert flow_editor.styles.border.top[1].hex == "#003054"
+            assert all(edge[0] == "" for edge in flow_editor.styles.outline)
+            assert flow_editor.styles.background_tint.a == 0
+
             for tab, log_id in (("activity", "#activity-log"), ("logs", "#logs-log")):
                 tabs.active = tab
                 await pilot.pause()
                 tab_pane = explorer.query_one(f"#{tab}", TabPane)
                 log = explorer.query_one(log_id, RichLog)
                 assert (log.region.x, log.region.right) == split_bounds
-                assert log.region.bottom == tab_pane.content_region.bottom
+                assert log.region.bottom == tab_pane.content_region.bottom - 1
+                for index in range(50):
+                    log.write(f"Overflow line {index}")
+                await pilot.pause()
+                assert log.vertical_scrollbar.display
+                assert log.vertical_scrollbar.region.right == log.content_region.right
+                assert log.vertical_scrollbar.region.bottom == log.content_region.bottom
+                log.focus()
+                await pilot.pause()
+                assert log.styles.border.top[0] == "heavy"
+                assert log.styles.border.top[1].hex == "#003054"
+                assert all(edge[0] == "" for edge in log.styles.outline)
+                assert log.styles.background_tint.a == 0
 
     asyncio.run(run_test())
     assert project.closed

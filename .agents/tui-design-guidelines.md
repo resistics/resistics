@@ -6,12 +6,19 @@ Use these guidelines for the resistics terminal user interface.
 
 - Keep the application canvas neutral black (`#101010`) and standard panels
   charcoal (`#202020`). Do not use blue-tinted surfaces for general content.
-- Use a lighter neutral grey (`#343434`) to communicate focus, selection, or
-  an elevated interactive surface. Prefer this surface-state change to a focus
-  border so panels behave consistently.
-- Reserve the resistics colours for accents: blue (`#0a009f` and `#070066`) for
-  the header and footer, peach (`#faa881`) for active selections and primary
-  controls, and orange (`#ac3600`) for successful or destructive actions.
+- Use a lighter neutral grey (`#343434`) to communicate selection or an elevated
+  interactive surface. Keep focused content-panel surfaces charcoal rather than
+  tinting their backgrounds.
+- Frame content panels with a native heavy border: neutral grey (`#555555`) at
+  rest and deep blue (`#003054`) when focused. Keep the border thickness fixed
+  across focus changes so content and scrollbars remain inside the frame.
+- Retain rounded borders for dialog frames, tall borders for single-line inputs,
+  and borderless surface styling for buttons. Consistency applies within these
+  interface roles rather than requiring one border style everywhere.
+- Reserve the remaining resistics colours for accents: blue (`#0a009f` and
+  `#070066`) for the header and footer, peach (`#faa881`) for active selections
+  and primary controls, and orange (`#ac3600`) for successful or destructive
+  actions.
 - Keep normal text light (`#f7f4f2`) and disabled text muted (`#aaa6ad`) for
   readable contrast on dark surfaces.
 

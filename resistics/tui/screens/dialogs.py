@@ -595,11 +595,18 @@ class DirectoryPickerScreen(ModalScreen[Path | None]):
     }
     #path-picker {
         height: 1fr;
+        padding: 0;
         background: #202020;
         color: #f7f4f2;
-        border: tall #343434;
+        border: heavy #555555;
+        outline: none;
     }
-    #path-picker:focus { background: #202020; border: tall #0a009f; }
+    #path-picker:focus {
+        background: #202020;
+        background-tint: 0%;
+        border: heavy #003054;
+        outline: none;
+    }
     #path-picker-help, #path-picker-path {
         height: auto;
         margin-bottom: 1;

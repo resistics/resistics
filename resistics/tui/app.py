@@ -103,6 +103,15 @@ class ResisticsTui(App[None]):
     NOTIFICATION_TIMEOUT = 4.0
     CSS = """
     Screen { layout: vertical; background: #101010; color: #f7f4f2; }
+    Widget {
+        scrollbar-color: #003054;
+        scrollbar-color-hover: #003c6a;
+        scrollbar-color-active: #0178d4;
+        scrollbar-background: #101010;
+        scrollbar-background-hover: #101010;
+        scrollbar-background-active: #101010;
+        scrollbar-corner-color: #101010;
+    }
     #app-header {
         height: 1;
         padding: 0 1;
@@ -148,7 +157,12 @@ class ResisticsTui(App[None]):
     Tab { color: #f7f4f2; }
     Tab.-active { background: #faa881; color: #101010; text-style: bold; }
     TabPane { background: #101010; color: #f7f4f2; }
-    .pane { height: 1fr; padding: 0; background: #101010; color: #f7f4f2; }
+    .pane {
+        height: 1fr;
+        padding: 0 0 1 0;
+        background: #101010;
+        color: #f7f4f2;
+    }
     .tab-explainer {
         height: auto;
         min-height: 1;
@@ -161,11 +175,17 @@ class ResisticsTui(App[None]):
     .left { width: 2fr; padding-right: 1; }
     .right { width: 3fr; }
     Tree, DataTable {
+        padding: 0;
         background: #202020;
         color: #f7f4f2;
-        border: solid #555555;
+        border: heavy #555555;
+        outline: none;
     }
-    Tree:focus, DataTable:focus { border: solid #0a009f; }
+    Tree:focus, DataTable:focus {
+        background-tint: 0%;
+        border: heavy #003054;
+        outline: none;
+    }
     DataTable > .datatable--header { background: #0a009f; color: #f7f4f2; }
     Tree > .tree--label, DataTable > .datatable--cursor,
     Tree > .tree--cursor, Tree:focus > .tree--cursor,
@@ -187,20 +207,27 @@ class ResisticsTui(App[None]):
     #data-metadata, #flow-content, #parameter-content, #criteria-content,
     #job-content {
         height: 1fr;
+        padding: 0;
         background: #202020;
         color: #f7f4f2;
-        border: solid #555555;
+        border: heavy #555555;
+        outline: none;
     }
     #data-metadata:focus, #flow-content:focus, #parameter-content:focus,
-    #criteria-content:focus, #job-content:focus { border: solid #0a009f; }
+    #criteria-content:focus, #job-content:focus {
+        background-tint: 0%;
+        border: heavy #003054;
+        outline: none;
+    }
     .panel-state {
         height: 1fr;
-        padding: 1;
+        padding: 0;
         content-align: center middle;
         text-align: center;
         background: #202020;
         color: #aaa6ad;
-        border: solid #555555;
+        border: heavy #555555;
+        outline: none;
     }
     .panel-state.panel-state-error { color: #ff6b6b; }
     Button { background: #343434; color: #f7f4f2; border: none; }
@@ -230,9 +257,16 @@ class ResisticsTui(App[None]):
     .modal-actions Button { margin-left: 1; }
     #activity-log, #logs-log {
         height: 1fr;
-        border: solid #555555;
+        padding: 0;
+        border: heavy #555555;
+        outline: none;
         background: #202020;
         color: #f7f4f2;
+    }
+    #activity-log:focus, #logs-log:focus {
+        background-tint: 0%;
+        border: heavy #003054;
+        outline: none;
     }
     #activity-status, #logs-status {
         height: auto;
