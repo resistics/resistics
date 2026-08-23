@@ -2571,7 +2571,7 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
     assert "border: solid #555555;" not in ResisticsTui.CSS
     assert "#ac3600" in ResisticsTui.CSS
     assert "Button:focus" in ResisticsTui.CSS
-    assert "background: #0a009f;" in ResisticsTui.CSS
+    assert "Button.-active { tint: transparent; }" in ResisticsTui.CSS
     assert "Tree:focus > .tree--cursor" in ResisticsTui.CSS
     assert "DataTable:focus > .datatable--cursor" in ResisticsTui.CSS
     assert "text-style: none;" in ResisticsTui.CSS
@@ -2580,10 +2580,97 @@ def test_tui_uses_dark_surfaces_with_resistics_accents():
     )
     assert ".modal-dialog {" in ResisticsTui.CSS
     assert ".modal-dialog.modal-danger" in ResisticsTui.CSS
-    assert "Button.dialog-action {" in ResisticsTui.CSS
+    assert "Button.dialog-action {" not in ResisticsTui.CSS
     assert "background: #343434;" in ResisticsTui.CSS
-    assert "Button.-primary" in ResisticsTui.CSS
-    assert "Button.-error" in ResisticsTui.CSS
+    assert "Button.-primary" not in ResisticsTui.CSS
+    assert "Button.-success" not in ResisticsTui.CSS
+    assert "Button.-error" not in ResisticsTui.CSS
+
+
+def test_tui_button_colours_follow_selection_state():
+    app = ResisticsTui()
+
+    def assert_selected(button):
+        assert button.styles.background.hex == "#003054"
+        assert button.styles.color.hex == "#F7F4F2"
+        assert button.styles.background_tint.a == 0
+        assert button.styles.tint.a == 0
+        assert button.styles.text_style.bold is True
+        assert all(edge[0] == "" for edge in button.styles.outline)
+
+    def assert_unselected(button):
+        assert button.styles.background.hex == "#343434"
+        assert button.styles.color.hex == "#F7F4F2"
+        assert button.styles.tint.a == 0
+        assert button.styles.text_style.bold is not True
+        assert all(edge[0] == "" for edge in button.styles.outline)
+
+    async def run_test():
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            primary = app.screen.query_one("#open-project", Button)
+            neutral = app.screen.query_one("#create-project", Button)
+
+            assert app.focused is primary
+            assert primary.variant == "primary"
+            assert_selected(primary)
+            assert_unselected(neutral)
+
+            await pilot.press("down")
+            assert app.focused is neutral
+            assert_selected(neutral)
+            assert_unselected(primary)
+
+            await pilot.hover(primary)
+            await pilot.pause()
+            assert_unselected(primary)
+            primary.add_class("-active")
+            await pilot.pause()
+            assert_unselected(primary)
+            primary.remove_class("-active")
+
+            app.show_create_project()
+            await pilot.pause()
+            create = app.screen.query_one("#create", Button)
+            create.focus()
+            await pilot.pause()
+            assert_selected(create)
+            rendered_label = "".join(segment.text for segment in create.render_line(0))
+            assert "Create and open" in rendered_label
+            assert create.region.height == 1
+
+            app.push_screen(DeleteYamlFileScreen(Path("flow.yaml")))
+            await pilot.pause()
+            delete_screen = app.screen
+            cancel = delete_screen.query_one("#cancel-delete-yaml", Button)
+            delete = delete_screen.query_one("#confirm-delete-yaml", Button)
+            assert delete.variant == "error"
+            assert_selected(cancel)
+            assert_unselected(delete)
+            await pilot.press("right")
+            assert delete_screen.focused is delete
+            assert_selected(delete)
+            assert_unselected(cancel)
+            delete.add_class("-active")
+            await pilot.pause()
+            assert_selected(delete)
+            delete.remove_class("-active")
+
+            delete_screen.action_cancel()
+            await pilot.pause()
+            app.push_screen(DeleteProjectDataScreen([]))
+            await pilot.pause()
+            disabled = app.screen.query_one("#delete-data-label-action", Button)
+            assert disabled.disabled
+            assert disabled.styles.background.hex == "#202020"
+            assert disabled.styles.color.hex == "#AAA6AD"
+            assert disabled.styles.text_style.bold is not True
+            assert all(edge[0] == "" for edge in disabled.styles.outline)
+            disabled.focus()
+            await pilot.pause()
+            assert app.focused is not disabled
+
+    asyncio.run(run_test())
 
 
 def test_project_panels_use_heavy_borders_and_contain_scrollbars(monkeypatch, tmp_path):

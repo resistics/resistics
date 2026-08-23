@@ -230,18 +230,22 @@ class ResisticsTui(App[None]):
         outline: none;
     }
     .panel-state.panel-state-error { color: #ff6b6b; }
-    Button { background: #343434; color: #f7f4f2; border: none; }
-    Button.-primary { background: #faa881; color: #101010; }
-    Button.-success { background: #237a3b; color: #f7f4f2; }
-    Button.-error { background: #ac3600; color: #f7f4f2; }
-    Button:focus {
-        background: #0a009f;
+    Button {
+        background: #343434;
         color: #f7f4f2;
         border: none;
+        outline: none;
         text-style: none;
     }
-    Button:disabled { background: #343434; color: #aaa6ad; }
-    Button.dialog-action { text-style: none; }
+    Button:focus {
+        background: #003054;
+        color: #f7f4f2;
+        background-tint: 0%;
+        outline: none;
+        text-style: bold;
+    }
+    Button.-active { tint: transparent; }
+    Button:disabled { background: #202020; color: #aaa6ad; }
     ModalScreen { align: center middle; background: transparent; }
     .modal-dialog {
         width: 72;

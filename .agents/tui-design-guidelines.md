@@ -15,10 +15,14 @@ Use these guidelines for the resistics terminal user interface.
 - Retain rounded borders for dialog frames, tall borders for single-line inputs,
   and borderless surface styling for buttons. Consistency applies within these
   interface roles rather than requiring one border style everywhere.
-- Reserve the remaining resistics colours for accents: blue (`#0a009f` and
-  `#070066`) for the header and footer, peach (`#faa881`) for active selections
-  and primary controls, and orange (`#ac3600`) for successful or destructive
-  actions.
+- Use button colour only to communicate interaction state: neutral grey
+  (`#343434`) when unselected, soft blue (`#003054`) when focused, and charcoal
+  (`#202020`) with muted text when disabled. Button purpose must not change its
+  colour, including during hover and press interactions.
+- Reserve strong blue (`#0a009f` and `#070066`) for the header and footer. Use
+  soft blue (`#003054`) for focus frames, selected buttons, and scrollbars.
+- Keep peach and orange accents for non-button selections, warnings, and
+  destructive dialog frames where semantic context remains useful.
 - Keep normal text light (`#f7f4f2`) and disabled text muted (`#aaa6ad`) for
   readable contrast on dark surfaces.
 
@@ -32,8 +36,8 @@ Use these guidelines for the resistics terminal user interface.
   visible focus state and cyclic ordering where it helps rapid selection.
 - File pickers should start in the user's home directory and provide an
   explicit keyboard-accessible action to move to the parent directory.
-- Use colour changes to make focus visible; do not rely only on pointer input
-  or a border.
+- Combine focus colour with a non-colour cue such as bold button labels; do not
+  rely only on pointer input or colour.
 
 ## Verification
 
